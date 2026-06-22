@@ -17,9 +17,8 @@ services:
       - key: PORT
         value: 3000
 
-  - type: web
+  - type: static
     name: code-assessment-frontend
-    runtime: static
     rootDir: frontend
     buildCommand: npm install && npm run build
     publishPath: dist
