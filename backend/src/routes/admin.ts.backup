@@ -1,0 +1,72 @@
+// backend/src/routes/admin.ts
+import { Router } from 'express';
+import { AdminController } from '../controllers/AdminController.js';
+import { authenticate, authorize } from '../middleware/auth.js';
+import { 
+  authenticatedRateLimiter,
+  adminRateLimiter
+} from '../middleware/rateLimit.js';
+import { noCache } from '../middleware/cache.js';
+import { sanitizeAdminInputs, sanitizeSensitiveFields } from '../middleware/sanitizeAdmin.js';
+import { adminPerformanceMiddleware } from '../middleware/adminPerformance.js';
+import { UserRole } from '../types/index.js';
+
+const router = Router();
+
+router.use(authenticate);
+router.use(authorize(UserRole.ADMIN));
+
+router.use(sanitizeAdminInputs);
+router.use(sanitizeSensitiveFields);
+router.use(adminPerformanceMiddleware);
+
+router.get(
+  '/users',
+  authenticatedRateLimiter,
+  noCache,
+  AdminController.listUsers
+);
+
+router.get(
+  '/users/:id',
+  authenticatedRateLimiter,
+  noCache,
+  AdminController.getUserById
+);
+
+router.post(
+  '/users',
+  adminRateLimiter,
+  noCache,
+  AdminController.createUser
+);
+
+router.put(
+  '/users/:id',
+  adminRateLimiter,
+  noCache,
+  AdminController.updateUser
+);
+
+router.delete(
+  '/users/:id',
+  adminRateLimiter,
+  noCache,
+  AdminController.deleteUser
+);
+
+router.post(
+  '/users/:id/reactivate',
+  adminRateLimiter,
+  noCache,
+  AdminController.reactivateUser
+);
+
+router.post(
+  '/users/:id/reset-password',
+  adminRateLimiter,
+  noCache,
+  AdminController.resetPassword
+);
+
+export default router;

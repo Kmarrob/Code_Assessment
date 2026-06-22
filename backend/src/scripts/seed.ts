@@ -1,0 +1,207 @@
+// backend/src/scripts/seed.ts
+import mongoose from 'mongoose';
+import { config } from '../config/env.js';
+import { logger } from '../utils/logger.js';
+import { Control } from '../models/Control.js';
+import { Company } from '../models/Company.js';
+import { User } from '../models/User.js';
+
+const controlsData = [
+  // Controles Organizacionais (5.1 a 5.37)
+  { id: '5.1', nome: 'Políticas de segurança da informação', tiposDeControles: ['Organizacionais'], nota: 'Parcialmente implementado', tipoDeControle: ['Preventivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Identificar'], capacidadesOperacionais: ['Governança'], dominioDeSI: ['Governança e ecossistema'] },
+  { id: '5.2', nome: 'Funções e responsabilidades de segurança da informação', tiposDeControles: ['Organizacionais'], nota: 'Não implementado', tipoDeControle: ['Preventivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Identificar'], capacidadesOperacionais: ['Governança'], dominioDeSI: ['Governança e ecossistema'] },
+  { id: '5.3', nome: 'Segregação de funções', tiposDeControles: ['Organizacionais'], nota: 'Implementado', tipoDeControle: ['Preventivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Proteger'], capacidadesOperacionais: ['Governança', 'Gestão de identidade e acesso'], dominioDeSI: ['Governança e ecossistema'] },
+  { id: '5.4', nome: 'Responsabilidades da direção', tiposDeControles: ['Organizacionais'], nota: 'Implementado', tipoDeControle: ['Preventivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Identificar'], capacidadesOperacionais: ['Governança'], dominioDeSI: ['Governança e ecossistema'] },
+  { id: '5.5', nome: 'Contato com autoridades', tiposDeControles: ['Organizacionais'], nota: 'Parcialmente implementado', tipoDeControle: ['Preventivo', 'Corretivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Identificar', 'Proteger', 'Responder', 'Restaurar'], capacidadesOperacionais: ['Governança'], dominioDeSI: ['Defesa', 'Resiliência'] },
+  { id: '5.6', nome: 'Contato com grupos de interesses especial', tiposDeControles: ['Organizacionais'], nota: 'Não implementado', tipoDeControle: ['Preventivo', 'Corretivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Proteger', 'Responder', 'Restaurar'], capacidadesOperacionais: ['Governança'], dominioDeSI: ['Defesa'] },
+  { id: '5.7', nome: 'Inteligência de ameaças', tiposDeControles: ['Organizacionais'], nota: 'Parcialmente implementado', tipoDeControle: ['Preventivo', 'Detectivo', 'Corretivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Identificar', 'Detectar', 'Responder'], capacidadesOperacionais: ['Gestão de ameaças e vulnerabilidades'], dominioDeSI: ['Defesa', 'Resiliência'] },
+  { id: '5.8', nome: 'Gestão de projetos de segurança da informação', tiposDeControles: ['Organizacionais'], nota: 'Parcialmente implementado', tipoDeControle: ['Preventivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Identificar'], capacidadesOperacionais: ['Governança'], dominioDeSI: ['Governança e ecossistema'] },
+  { id: '5.9', nome: 'Inventário de ativos de informação e outros ativos associados', tiposDeControles: ['Organizacionais'], nota: 'Implementado', tipoDeControle: ['Preventivo', 'Detectivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Identificar'], capacidadesOperacionais: ['Gestão de ativos'], dominioDeSI: ['Defesa'] },
+  { id: '5.10', nome: 'Classificação da informação', tiposDeControles: ['Organizacionais'], nota: 'Implementado', tipoDeControle: ['Preventivo', 'Detectivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Identificar', 'Proteger'], capacidadesOperacionais: ['Gestão de ativos'], dominioDeSI: ['Defesa'] },
+  { id: '5.11', nome: 'Etiquetagem de ativos', tiposDeControles: ['Organizacionais'], nota: 'Implementado', tipoDeControle: ['Preventivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Identificar'], capacidadesOperacionais: ['Gestão de ativos'], dominioDeSI: ['Defesa'] },
+  { id: '5.12', nome: 'Gestão da capacidade', tiposDeControles: ['Organizacionais'], nota: 'Parcialmente implementado', tipoDeControle: ['Preventivo', 'Detectivo', 'Corretivo'], propriedadeDeSI: ['Disponibilidade'], conceitoDeSegurancaCibernetica: ['Proteger'], capacidadesOperacionais: ['Gestão de continuidade do negócio'], dominioDeSI: ['Resiliência'] },
+  { id: '5.13', nome: 'Registro, inventário e controle de mídias', tiposDeControles: ['Organizacionais'], nota: 'Implementado', tipoDeControle: ['Preventivo', 'Detectivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Identificar', 'Proteger'], capacidadesOperacionais: ['Gestão de ativos'], dominioDeSI: ['Defesa'] },
+  { id: '5.14', nome: 'Transferência de mídias', tiposDeControles: ['Organizacionais'], nota: 'Implementado', tipoDeControle: ['Preventivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Proteger'], capacidadesOperacionais: ['Gestão de ativos'], dominioDeSI: ['Defesa'] },
+  { id: '5.15', nome: 'Descarte de mídia', tiposDeControles: ['Organizacionais'], nota: 'Implementado', tipoDeControle: ['Preventivo', 'Corretivo'], propriedadeDeSI: ['Confidencialidade'], conceitoDeSegurancaCibernetica: ['Proteger'], capacidadesOperacionais: ['Gestão de ativos'], dominioDeSI: ['Defesa'] },
+  { id: '5.16', nome: 'Funções e responsabilidades para a gestão de incidentes', tiposDeControles: ['Organizacionais'], nota: 'Implementado', tipoDeControle: ['Preventivo', 'Corretivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Identificar', 'Responder', 'Restaurar'], capacidadesOperacionais: ['Gestão de incidentes', 'Governança'], dominioDeSI: ['Resiliência'] },
+  { id: '5.17', nome: 'Procedimentos de resposta a incidentes', tiposDeControles: ['Organizacionais'], nota: 'Parcialmente implementado', tipoDeControle: ['Corretivo', 'Preventivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Responder', 'Restaurar', 'Identificar'], capacidadesOperacionais: ['Gestão de incidentes'], dominioDeSI: ['Resiliência'] },
+  { id: '5.18', nome: 'Documentação de evidências', tiposDeControles: ['Organizacionais'], nota: 'Parcialmente implementado', tipoDeControle: ['Detectivo', 'Corretivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade'], conceitoDeSegurancaCibernetica: ['Responder', 'Restaurar'], capacidadesOperacionais: ['Gestão de incidentes'], dominioDeSI: ['Resiliência'] },
+  { id: '5.19', nome: 'Avaliação de eventos de segurança da informação', tiposDeControles: ['Organizacionais'], nota: 'Parcialmente implementado', tipoDeControle: ['Detectivo', 'Corretivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Detectar', 'Responder'], capacidadesOperacionais: ['Gestão de incidentes'], dominioDeSI: ['Defesa', 'Resiliência'] },
+  { id: '5.20', nome: 'Resposta a incidentes', tiposDeControles: ['Organizacionais'], nota: 'Parcialmente implementado', tipoDeControle: ['Corretivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Responder', 'Restaurar'], capacidadesOperacionais: ['Gestão de incidentes'], dominioDeSI: ['Resiliência'] },
+  { id: '5.21', nome: 'Aprendizado com incidentes', tiposDeControles: ['Organizacionais'], nota: 'Parcialmente implementado', tipoDeControle: ['Corretivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Responder', 'Restaurar'], capacidadesOperacionais: ['Gestão de incidentes'], dominioDeSI: ['Resiliência'] },
+  { id: '5.22', nome: 'Gestão de continuidade de negócios', tiposDeControles: ['Organizacionais'], nota: 'Parcialmente implementado', tipoDeControle: ['Preventivo', 'Corretivo'], propriedadeDeSI: ['Disponibilidade'], conceitoDeSegurancaCibernetica: ['Proteger', 'Restaurar'], capacidadesOperacionais: ['Gestão de continuidade do negócio'], dominioDeSI: ['Resiliência'] },
+  { id: '5.23', nome: 'Segurança da informação para provedores de serviço', tiposDeControles: ['Organizacionais'], nota: 'Parcialmente implementado', tipoDeControle: ['Preventivo', 'Detectivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Identificar', 'Proteger'], capacidadesOperacionais: ['Governança', 'Gestão de terceiros'], dominioDeSI: ['Governança e ecossistema'] },
+  { id: '5.24', nome: 'Gestão de fornecedores', tiposDeControles: ['Organizacionais'], nota: 'Parcialmente implementado', tipoDeControle: ['Preventivo', 'Detectivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Identificar', 'Proteger'], capacidadesOperacionais: ['Gestão de terceiros'], dominioDeSI: ['Governança e ecossistema'] },
+  { id: '5.25', nome: 'Requisitos de segurança da informação em contratos com fornecedores', tiposDeControles: ['Organizacionais'], nota: 'Parcialmente implementado', tipoDeControle: ['Preventivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Identificar', 'Proteger'], capacidadesOperacionais: ['Gestão de terceiros'], dominioDeSI: ['Governança e ecossistema'] },
+  { id: '5.26', nome: 'Monitoramento de fornecedores', tiposDeControles: ['Organizacionais'], nota: 'Não implementado', tipoDeControle: ['Detectivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Detectar', 'Responder'], capacidadesOperacionais: ['Gestão de terceiros'], dominioDeSI: ['Governança e ecossistema'] },
+  { id: '5.27', nome: 'Gestão de mudanças', tiposDeControles: ['Organizacionais'], nota: 'Parcialmente implementado', tipoDeControle: ['Preventivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Identificar', 'Proteger'], capacidadesOperacionais: ['Governança'], dominioDeSI: ['Governança e ecossistema'] },
+  { id: '5.28', nome: 'Avaliação de impacto da segurança da informação', tiposDeControles: ['Organizacionais'], nota: 'Parcialmente implementado', tipoDeControle: ['Preventivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Identificar', 'Proteger'], capacidadesOperacionais: ['Governança'], dominioDeSI: ['Governança e ecossistema'] },
+  { id: '5.29', nome: 'Avaliação de riscos', tiposDeControles: ['Organizacionais'], nota: 'Parcialmente implementado', tipoDeControle: ['Preventivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Identificar'], capacidadesOperacionais: ['Gestão de riscos'], dominioDeSI: ['Governança e ecossistema'] },
+  { id: '5.30', nome: 'Tratamento de riscos', tiposDeControles: ['Organizacionais'], nota: 'Parcialmente implementado', tipoDeControle: ['Preventivo', 'Corretivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Identificar', 'Proteger'], capacidadesOperacionais: ['Gestão de riscos'], dominioDeSI: ['Governança e ecossistema'] },
+  { id: '5.31', nome: 'Plano de auditoria interna', tiposDeControles: ['Organizacionais'], nota: 'Parcialmente implementado', tipoDeControle: ['Detectivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Identificar', 'Detectar'], capacidadesOperacionais: ['Governança'], dominioDeSI: ['Governança e ecossistema'] },
+  { id: '5.32', nome: 'Conformidade com requisitos legais e regulatórios', tiposDeControles: ['Organizacionais'], nota: 'Parcialmente implementado', tipoDeControle: ['Preventivo', 'Detectivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Identificar', 'Proteger'], capacidadesOperacionais: ['Governança'], dominioDeSI: ['Governança e ecossistema'] },
+  { id: '5.33', nome: 'Análise crítica da segurança da informação', tiposDeControles: ['Organizacionais'], nota: 'Parcialmente implementado', tipoDeControle: ['Preventivo', 'Detectivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Identificar'], capacidadesOperacionais: ['Governança'], dominioDeSI: ['Governança e ecossistema'] },
+  { id: '5.34', nome: 'Análise crítica da direção', tiposDeControles: ['Organizacionais'], nota: 'Parcialmente implementado', tipoDeControle: ['Preventivo', 'Detectivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Identificar'], capacidadesOperacionais: ['Governança'], dominioDeSI: ['Governança e ecossistema'] },
+  { id: '5.35', nome: 'Comunicação com partes interessadas', tiposDeControles: ['Organizacionais'], nota: 'Implementado', tipoDeControle: ['Preventivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Identificar', 'Proteger'], capacidadesOperacionais: ['Governança'], dominioDeSI: ['Governança e ecossistema'] },
+  { id: '5.36', nome: 'Gestão de documentos', tiposDeControles: ['Organizacionais'], nota: 'Implementado', tipoDeControle: ['Preventivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Identificar', 'Proteger'], capacidadesOperacionais: ['Governança'], dominioDeSI: ['Governança e ecossistema'] },
+  { id: '5.37', nome: 'Registros e evidências', tiposDeControles: ['Organizacionais'], nota: 'Parcialmente implementado', tipoDeControle: ['Preventivo', 'Detectivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Identificar', 'Proteger'], capacidadesOperacionais: ['Governança'], dominioDeSI: ['Governança e ecossistema'] },
+  // Controles de Pessoas (6.1 a 6.8)
+  { id: '6.1', nome: 'Triagem e seleção de pessoas', tiposDeControles: ['Pessoas'], nota: 'Implementado', tipoDeControle: ['Preventivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Identificar', 'Proteger'], capacidadesOperacionais: ['Gestão de pessoas'], dominioDeSI: ['Defesa'] },
+  { id: '6.2', nome: 'Termos e condições de trabalho', tiposDeControles: ['Pessoas'], nota: 'Implementado', tipoDeControle: ['Preventivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Proteger'], capacidadesOperacionais: ['Gestão de pessoas'], dominioDeSI: ['Defesa'] },
+  { id: '6.3', nome: 'Conscientização e treinamento', tiposDeControles: ['Pessoas'], nota: 'Parcialmente implementado', tipoDeControle: ['Preventivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Identificar', 'Proteger'], capacidadesOperacionais: ['Gestão de pessoas'], dominioDeSI: ['Defesa'] },
+  { id: '6.4', nome: 'Disciplina', tiposDeControles: ['Pessoas'], nota: 'Implementado', tipoDeControle: ['Preventivo', 'Corretivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Proteger', 'Responder'], capacidadesOperacionais: ['Gestão de pessoas'], dominioDeSI: ['Defesa'] },
+  { id: '6.5', nome: 'Responsabilidades pós-emprego', tiposDeControles: ['Pessoas'], nota: 'Parcialmente implementado', tipoDeControle: ['Preventivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Proteger'], capacidadesOperacionais: ['Gestão de pessoas'], dominioDeSI: ['Defesa'] },
+  { id: '6.6', nome: 'Acordos de confidencialidade', tiposDeControles: ['Pessoas'], nota: 'Implementado', tipoDeControle: ['Preventivo'], propriedadeDeSI: ['Confidencialidade'], conceitoDeSegurancaCibernetica: ['Proteger'], capacidadesOperacionais: ['Gestão de pessoas'], dominioDeSI: ['Defesa'] },
+  { id: '6.7', nome: 'Trabalho remoto', tiposDeControles: ['Pessoas'], nota: 'Parcialmente implementado', tipoDeControle: ['Preventivo', 'Detectivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Proteger'], capacidadesOperacionais: ['Gestão de pessoas'], dominioDeSI: ['Defesa'] },
+  { id: '6.8', nome: 'Retorno ao trabalho presencial', tiposDeControles: ['Pessoas'], nota: 'Parcialmente implementado', tipoDeControle: ['Preventivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Proteger'], capacidadesOperacionais: ['Gestão de pessoas'], dominioDeSI: ['Defesa'] },
+  // Controles Físicos (7.1 a 7.14)
+  { id: '7.1', nome: 'Perímetro de segurança física', tiposDeControles: ['Físicos'], nota: 'Implementado', tipoDeControle: ['Preventivo', 'Detectivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Proteger', 'Detectar'], capacidadesOperacionais: ['Segurança física'], dominioDeSI: ['Defesa'] },
+  { id: '7.2', nome: 'Controles de acesso físico', tiposDeControles: ['Físicos'], nota: 'Implementado', tipoDeControle: ['Preventivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Proteger'], capacidadesOperacionais: ['Segurança física'], dominioDeSI: ['Defesa'] },
+  { id: '7.3', nome: 'Salas e escritórios seguros', tiposDeControles: ['Físicos'], nota: 'Implementado', tipoDeControle: ['Preventivo', 'Detectivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Proteger'], capacidadesOperacionais: ['Segurança física'], dominioDeSI: ['Defesa'] },
+  { id: '7.4', nome: 'Segurança de salas de servidores', tiposDeControles: ['Físicos'], nota: 'Implementado', tipoDeControle: ['Preventivo', 'Detectivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Proteger'], capacidadesOperacionais: ['Segurança física'], dominioDeSI: ['Defesa'] },
+  { id: '7.5', nome: 'Proteção contra ameaças ambientais', tiposDeControles: ['Físicos'], nota: 'Parcialmente implementado', tipoDeControle: ['Preventivo', 'Detectivo', 'Corretivo'], propriedadeDeSI: ['Disponibilidade'], conceitoDeSegurancaCibernetica: ['Proteger', 'Restaurar'], capacidadesOperacionais: ['Segurança física'], dominioDeSI: ['Resiliência'] },
+  { id: '7.6', nome: 'Área de recepção', tiposDeControles: ['Físicos'], nota: 'Implementado', tipoDeControle: ['Preventivo', 'Detectivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Proteger'], capacidadesOperacionais: ['Segurança física'], dominioDeSI: ['Defesa'] },
+  { id: '7.7', nome: 'Área de trabalho segura', tiposDeControles: ['Físicos'], nota: 'Implementado', tipoDeControle: ['Preventivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Proteger'], capacidadesOperacionais: ['Segurança física'], dominioDeSI: ['Defesa'] },
+  { id: '7.8', nome: 'Limpeza de mesa', tiposDeControles: ['Físicos'], nota: 'Parcialmente implementado', tipoDeControle: ['Preventivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade'], conceitoDeSegurancaCibernetica: ['Proteger'], capacidadesOperacionais: ['Segurança física'], dominioDeSI: ['Defesa'] },
+  { id: '7.9', nome: 'Limpeza de tela', tiposDeControles: ['Físicos'], nota: 'Parcialmente implementado', tipoDeControle: ['Preventivo'], propriedadeDeSI: ['Confidencialidade'], conceitoDeSegurancaCibernetica: ['Proteger'], capacidadesOperacionais: ['Segurança física'], dominioDeSI: ['Defesa'] },
+  { id: '7.10', nome: 'Descarte e reutilização segura de equipamentos', tiposDeControles: ['Físicos'], nota: 'Parcialmente implementado', tipoDeControle: ['Preventivo', 'Corretivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade'], conceitoDeSegurancaCibernetica: ['Proteger'], capacidadesOperacionais: ['Segurança física'], dominioDeSI: ['Defesa'] },
+  { id: '7.11', nome: 'Equipamentos de terceiros', tiposDeControles: ['Físicos'], nota: 'Parcialmente implementado', tipoDeControle: ['Preventivo', 'Detectivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Proteger'], capacidadesOperacionais: ['Segurança física'], dominioDeSI: ['Defesa'] },
+  { id: '7.12', nome: 'Propriedade de ativos', tiposDeControles: ['Físicos'], nota: 'Implementado', tipoDeControle: ['Preventivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Identificar', 'Proteger'], capacidadesOperacionais: ['Gestão de ativos'], dominioDeSI: ['Defesa'] },
+  { id: '7.13', nome: 'Monitoramento de áreas físicas', tiposDeControles: ['Físicos'], nota: 'Parcialmente implementado', tipoDeControle: ['Detectivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Detectar'], capacidadesOperacionais: ['Segurança física'], dominioDeSI: ['Defesa'] },
+  { id: '7.14', nome: 'Proteção contra interrupções de energia', tiposDeControles: ['Físicos'], nota: 'Parcialmente implementado', tipoDeControle: ['Preventivo', 'Corretivo'], propriedadeDeSI: ['Disponibilidade'], conceitoDeSegurancaCibernetica: ['Proteger', 'Restaurar'], capacidadesOperacionais: ['Segurança física'], dominioDeSI: ['Resiliência'] },
+  // Controles Tecnológicos (8.1 a 8.34)
+  { id: '8.1', nome: 'Política de segurança de rede', tiposDeControles: ['Tecnológicos'], nota: 'Implementado', tipoDeControle: ['Preventivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Proteger'], capacidadesOperacionais: ['Gestão de redes'], dominioDeSI: ['Defesa'] },
+  { id: '8.2', nome: 'Controles de acesso à rede', tiposDeControles: ['Tecnológicos'], nota: 'Implementado', tipoDeControle: ['Preventivo', 'Detectivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Proteger', 'Detectar'], capacidadesOperacionais: ['Gestão de redes'], dominioDeSI: ['Defesa'] },
+  { id: '8.3', nome: 'Segmentação de rede', tiposDeControles: ['Tecnológicos'], nota: 'Parcialmente implementado', tipoDeControle: ['Preventivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Proteger'], capacidadesOperacionais: ['Gestão de redes'], dominioDeSI: ['Defesa'] },
+  { id: '8.4', nome: 'Controle de acesso a sistemas', tiposDeControles: ['Tecnológicos'], nota: 'Implementado', tipoDeControle: ['Preventivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Proteger'], capacidadesOperacionais: ['Gestão de identidade e acesso'], dominioDeSI: ['Defesa'] },
+  { id: '8.5', nome: 'Registro e monitoramento de acesso', tiposDeControles: ['Tecnológicos'], nota: 'Parcialmente implementado', tipoDeControle: ['Detectivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Detectar'], capacidadesOperacionais: ['Gestão de identidade e acesso'], dominioDeSI: ['Defesa'] },
+  { id: '8.6', nome: 'Gerenciamento de identidades', tiposDeControles: ['Tecnológicos'], nota: 'Parcialmente implementado', tipoDeControle: ['Preventivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Proteger'], capacidadesOperacionais: ['Gestão de identidade e acesso'], dominioDeSI: ['Defesa'] },
+  { id: '8.7', nome: 'Gerenciamento de senhas', tiposDeControles: ['Tecnológicos'], nota: 'Implementado', tipoDeControle: ['Preventivo', 'Detectivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Proteger'], capacidadesOperacionais: ['Gestão de identidade e acesso'], dominioDeSI: ['Defesa'] },
+  { id: '8.8', nome: 'Autenticação multifator', tiposDeControles: ['Tecnológicos'], nota: 'Parcialmente implementado', tipoDeControle: ['Preventivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Proteger'], capacidadesOperacionais: ['Gestão de identidade e acesso'], dominioDeSI: ['Defesa'] },
+  { id: '8.9', nome: 'Controle de acesso a aplicações', tiposDeControles: ['Tecnológicos'], nota: 'Implementado', tipoDeControle: ['Preventivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Proteger'], capacidadesOperacionais: ['Gestão de identidade e acesso'], dominioDeSI: ['Defesa'] },
+  { id: '8.10', nome: 'Controle de acesso a dados', tiposDeControles: ['Tecnológicos'], nota: 'Parcialmente implementado', tipoDeControle: ['Preventivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Proteger'], capacidadesOperacionais: ['Gestão de identidade e acesso'], dominioDeSI: ['Defesa'] },
+  { id: '8.11', nome: 'Backup e recuperação', tiposDeControles: ['Tecnológicos'], nota: 'Parcialmente implementado', tipoDeControle: ['Corretivo'], propriedadeDeSI: ['Disponibilidade', 'Integridade'], conceitoDeSegurancaCibernetica: ['Restaurar'], capacidadesOperacionais: ['Gestão de continuidade do negócio'], dominioDeSI: ['Resiliência'] },
+  { id: '8.12', nome: 'Criptografia de dados', tiposDeControles: ['Tecnológicos'], nota: 'Parcialmente implementado', tipoDeControle: ['Preventivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade'], conceitoDeSegurancaCibernetica: ['Proteger'], capacidadesOperacionais: ['Gestão de criptografia'], dominioDeSI: ['Defesa'] },
+  { id: '8.13', nome: 'Proteção contra malware', tiposDeControles: ['Tecnológicos'], nota: 'Implementado', tipoDeControle: ['Preventivo', 'Detectivo', 'Corretivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Proteger', 'Detectar'], capacidadesOperacionais: ['Gestão de ameaças e vulnerabilidades'], dominioDeSI: ['Defesa'] },
+  { id: '8.14', nome: 'Proteção contra ransomware', tiposDeControles: ['Tecnológicos'], nota: 'Parcialmente implementado', tipoDeControle: ['Preventivo', 'Detectivo', 'Corretivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Proteger', 'Detectar', 'Restaurar'], capacidadesOperacionais: ['Gestão de ameaças e vulnerabilidades'], dominioDeSI: ['Defesa', 'Resiliência'] },
+  { id: '8.15', nome: 'Gestão de vulnerabilidades', tiposDeControles: ['Tecnológicos'], nota: 'Parcialmente implementado', tipoDeControle: ['Preventivo', 'Detectivo', 'Corretivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Identificar', 'Proteger', 'Detectar'], capacidadesOperacionais: ['Gestão de ameaças e vulnerabilidades'], dominioDeSI: ['Defesa', 'Resiliência'] },
+  { id: '8.16', nome: 'Monitoramento de segurança', tiposDeControles: ['Tecnológicos'], nota: 'Parcialmente implementado', tipoDeControle: ['Detectivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Detectar', 'Responder'], capacidadesOperacionais: ['Monitoramento e análise'], dominioDeSI: ['Defesa'] },
+  { id: '8.17', nome: 'Análise de logs', tiposDeControles: ['Tecnológicos'], nota: 'Parcialmente implementado', tipoDeControle: ['Detectivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Detectar'], capacidadesOperacionais: ['Monitoramento e análise'], dominioDeSI: ['Defesa'] },
+  { id: '8.18', nome: 'Proteção contra ataques de negação de serviço', tiposDeControles: ['Tecnológicos'], nota: 'Parcialmente implementado', tipoDeControle: ['Preventivo', 'Detectivo', 'Corretivo'], propriedadeDeSI: ['Disponibilidade'], conceitoDeSegurancaCibernetica: ['Proteger', 'Detectar', 'Responder'], capacidadesOperacionais: ['Gestão de redes'], dominioDeSI: ['Defesa', 'Resiliência'] },
+  { id: '8.19', nome: 'Gestão de patches', tiposDeControles: ['Tecnológicos'], nota: 'Parcialmente implementado', tipoDeControle: ['Preventivo', 'Corretivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Proteger', 'Responder'], capacidadesOperacionais: ['Gestão de ativos'], dominioDeSI: ['Defesa'] },
+  { id: '8.20', nome: 'Testes de intrusão', tiposDeControles: ['Tecnológicos'], nota: 'Não implementado', tipoDeControle: ['Detectivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Identificar', 'Detectar'], capacidadesOperacionais: ['Gestão de ameaças e vulnerabilidades'], dominioDeSI: ['Defesa'] },
+  { id: '8.21', nome: 'Gerenciamento de dispositivos móveis', tiposDeControles: ['Tecnológicos'], nota: 'Parcialmente implementado', tipoDeControle: ['Preventivo', 'Detectivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Proteger', 'Detectar'], capacidadesOperacionais: ['Gestão de dispositivos'], dominioDeSI: ['Defesa'] },
+  { id: '8.22', nome: 'Política de segurança para dispositivos', tiposDeControles: ['Tecnológicos'], nota: 'Parcialmente implementado', tipoDeControle: ['Preventivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Proteger'], capacidadesOperacionais: ['Gestão de dispositivos'], dominioDeSI: ['Defesa'] },
+  { id: '8.23', nome: 'Gestão de ativos de TI', tiposDeControles: ['Tecnológicos'], nota: 'Parcialmente implementado', tipoDeControle: ['Preventivo', 'Detectivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Identificar', 'Proteger'], capacidadesOperacionais: ['Gestão de ativos'], dominioDeSI: ['Defesa'] },
+  { id: '8.24', nome: 'Gerenciamento de mudanças em TI', tiposDeControles: ['Tecnológicos'], nota: 'Parcialmente implementado', tipoDeControle: ['Preventivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Proteger'], capacidadesOperacionais: ['Governança'], dominioDeSI: ['Governança e ecossistema'] },
+  { id: '8.25', nome: 'Gerenciamento de projetos de TI', tiposDeControles: ['Tecnológicos'], nota: 'Parcialmente implementado', tipoDeControle: ['Preventivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Identificar'], capacidadesOperacionais: ['Governança'], dominioDeSI: ['Governança e ecossistema'] },
+  { id: '8.26', nome: 'Conformidade com padrões técnicos', tiposDeControles: ['Tecnológicos'], nota: 'Parcialmente implementado', tipoDeControle: ['Preventivo', 'Detectivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Identificar', 'Proteger'], capacidadesOperacionais: ['Governança'], dominioDeSI: ['Governança e ecossistema'] },
+  { id: '8.27', nome: 'Segurança de aplicações web', tiposDeControles: ['Tecnológicos'], nota: 'Parcialmente implementado', tipoDeControle: ['Preventivo', 'Detectivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Proteger', 'Detectar'], capacidadesOperacionais: ['Desenvolvimento seguro'], dominioDeSI: ['Defesa'] },
+  { id: '8.28', nome: 'Segurança de APIs', tiposDeControles: ['Tecnológicos'], nota: 'Parcialmente implementado', tipoDeControle: ['Preventivo', 'Detectivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Proteger', 'Detectar'], capacidadesOperacionais: ['Desenvolvimento seguro'], dominioDeSI: ['Defesa'] },
+  { id: '8.29', nome: 'Segurança em nuvem', tiposDeControles: ['Tecnológicos'], nota: 'Parcialmente implementado', tipoDeControle: ['Preventivo', 'Detectivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Proteger', 'Detectar', 'Restaurar'], capacidadesOperacionais: ['Gestão de redes'], dominioDeSI: ['Defesa', 'Resiliência'] },
+  { id: '8.30', nome: 'Segurança de containers', tiposDeControles: ['Tecnológicos'], nota: 'Não implementado', tipoDeControle: ['Preventivo', 'Detectivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Proteger', 'Detectar'], capacidadesOperacionais: ['Desenvolvimento seguro'], dominioDeSI: ['Defesa'] },
+  { id: '8.31', nome: 'Análise de código fonte', tiposDeControles: ['Tecnológicos'], nota: 'Não implementado', tipoDeControle: ['Preventivo', 'Detectivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Proteger', 'Detectar'], capacidadesOperacionais: ['Desenvolvimento seguro'], dominioDeSI: ['Defesa'] },
+  { id: '8.32', nome: 'Testes de segurança em desenvolvimento', tiposDeControles: ['Tecnológicos'], nota: 'Não implementado', tipoDeControle: ['Preventivo', 'Detectivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Proteger', 'Detectar'], capacidadesOperacionais: ['Desenvolvimento seguro'], dominioDeSI: ['Defesa'] },
+  { id: '8.33', nome: 'Resposta a incidentes em TI', tiposDeControles: ['Tecnológicos'], nota: 'Parcialmente implementado', tipoDeControle: ['Corretivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Responder', 'Restaurar'], capacidadesOperacionais: ['Gestão de incidentes'], dominioDeSI: ['Resiliência'] },
+  { id: '8.34', nome: 'Recuperação de desastres em TI', tiposDeControles: ['Tecnológicos'], nota: 'Parcialmente implementado', tipoDeControle: ['Corretivo'], propriedadeDeSI: ['Disponibilidade'], conceitoDeSegurancaCibernetica: ['Restaurar'], capacidadesOperacionais: ['Gestão de continuidade do negócio'], dominioDeSI: ['Resiliência'] }
+];
+
+async function seedControls() {
+  try {
+    await mongoose.connect(config.MONGODB_URI, {
+      dbName: config.MONGODB_DB_NAME,
+    });
+
+    logger.info('📦 Conectado ao MongoDB');
+
+    // ============================================
+    // 1. POPULAR CONTROLES
+    // ============================================
+    await Control.deleteMany({});
+    logger.info('🗑️ Controles existentes removidos');
+
+    const result = await Control.insertMany(controlsData);
+    logger.info(`✅ ${result.length} controles inseridos com sucesso`);
+
+    // ============================================
+    // 2. CRIAR EMPRESA PADRÃO
+    // ============================================
+    logger.info('🏢 Verificando empresa padrão...');
+
+    let defaultCompany = await Company.findOne({ name: 'Empresa Padrão' });
+    
+    if (!defaultCompany) {
+      defaultCompany = await Company.create({
+        name: 'Empresa Padrão',
+        cnpj: '00.000.000/0001-00',
+        plan: 'enterprise',
+        status: 'active',
+        maxUsers: 100,
+        maxControls: 93,
+      });
+      logger.info(`✅ Empresa padrão criada: ${defaultCompany.name} (ID: ${defaultCompany._id})`);
+    } else {
+      logger.info(`✅ Empresa padrão já existe: ${defaultCompany.name} (ID: ${defaultCompany._id})`);
+    }
+
+    // ============================================
+    // 3. ASSOCIAR USUÁRIOS EXISTENTES À EMPRESA PADRÃO
+    // ============================================
+    logger.info('👤 Atualizando usuários existentes...');
+
+    const usersWithoutCompany = await User.find({
+      $or: [
+        { companyId: { $exists: false } },
+        { companyId: null }
+      ]
+    });
+
+    if (usersWithoutCompany.length > 0) {
+      const updateResult = await User.updateMany(
+        {
+          $or: [
+            { companyId: { $exists: false } },
+            { companyId: null }
+          ]
+        },
+        { companyId: defaultCompany._id }
+      );
+      
+      logger.info(`✅ ${updateResult.modifiedCount} usuários associados à empresa padrão`);
+      
+      // Listar usuários atualizados
+      const updatedUsers = await User.find({ companyId: defaultCompany._id })
+        .select('name email role')
+        .lean();
+      
+      logger.info(`📋 Total de usuários na empresa padrão: ${updatedUsers.length}`);
+      updatedUsers.forEach((user) => {
+        logger.info(`  - ${user.name} (${user.email}) - ${user.role}`);
+      });
+    } else {
+      logger.info('✅ Todos os usuários já estão associados a uma empresa');
+    }
+
+    // ============================================
+    // 4. RESULTADO FINAL
+    // ============================================
+    const totalUsers = await User.countDocuments();
+    const totalCompanies = await Company.countDocuments();
+    const totalControls = await Control.countDocuments();
+
+    logger.info('=========================================');
+    logger.info('📊 RESUMO DO SEED');
+    logger.info('=========================================');
+    logger.info(`🏢 Empresas: ${totalCompanies}`);
+    logger.info(`👤 Usuários: ${totalUsers}`);
+    logger.info(`📋 Controles: ${totalControls}`);
+    logger.info('=========================================');
+
+    process.exit(0);
+  } catch (error) {
+    logger.error('❌ Erro ao popular banco de dados:', error);
+    process.exit(1);
+  }
+}
+
+seedControls();

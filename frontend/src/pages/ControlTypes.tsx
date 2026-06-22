@@ -1,0 +1,164 @@
+// frontend/src/pages/dashboard/ControlTypes.tsx
+import React, { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
+import { Loader2, AlertCircle } from 'lucide-react';
+import { dashboardService, DashboardData } from '../../services/dashboard.service.js';
+import { useAuth } from '../../contexts/AuthContext.js';
+import { DataTable } from '../../components/dashboard/DataTable.js';
+import { PieChart } from '../../components/dashboard/PieChart.js';
+import { BarChart } from '../../components/dashboard/BarChart.js';
+import toast from 'react-hot-toast';
+
+const TYPES = ['Preventivo', 'Detectivo', 'Corretivo'];
+const STATUS_COLORS = {
+  'Implementado': 'hsl(142,70%,45%)',
+  'Parcialmente implementado': 'hsl(38,92%,50%)',
+  'Não implementado': 'hsl(0,72%,51%)',
+  'Não se aplica': 'hsl(215,20%,55%)',
+};
+
+export const ControlTypes: React.FC = () => {
+  const { companyId } = useParams<{ companyId: string }>();
+  const { user } = useAuth();
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadData = async () => {
+      if (!companyId) {
+        setError('ID da empresa não informado');
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      setError(null);
+      try {
+        let dashboardData;
+        if (user?.role === 'admin') {
+          dashboardData = await dashboardService.getAdminCompanyDashboard(companyId);
+        } else {
+          dashboardData = await dashboardService.getRepDashboard(companyId);
+        }
+        setData(dashboardData);
+      } catch (err: any) {
+        console.error('Erro ao carregar dashboard:', err);
+        setError('Erro ao carregar dados');
+        toast.error('Erro ao carregar dados');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, [companyId, user?.role]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-32 gap-2 text-gray-500">
+        <Loader2 className="w-6 h-6 animate-spin" />
+        Carregando dados...
+      </div>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <div className="flex items-center justify-center py-32">
+        <div className="text-center">
+          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+          <p className="text-red-600">{error || 'Dados não disponíveis'}</p>
+        </div>
+      </div>
+    );
+  }
+
+  const typeData = TYPES.map(type => {
+    const controls = data.controls.filter(c => 
+      c.control?.tipoDeControle?.includes(type)
+    );
+    const total = controls.length;
+    const implemented = controls.filter(c => c.status === 'Implementado').length;
+    const partial = controls.filter(c => c.status === 'Parcialmente implementado').length;
+    const notImpl = controls.filter(c => c.status === 'Não implementado').length;
+    const na = controls.filter(c => c.status === 'Não se aplica').length;
+    
+    return {
+      name: type,
+      total,
+      implemented,
+      partial,
+      notImpl,
+      na,
+      pImpl: total > 0 ? Math.round((implemented / total) * 100) : 0,
+      pPartial: total > 0 ? Math.round((partial / total) * 100) : 0,
+      pNot: total > 0 ? Math.round((notImpl / total) * 100) : 0,
+      pNa: total > 0 ? Math.round((na / total) * 100) : 0,
+    };
+  });
+
+  const totals = typeData.reduce((acc, c) => ({
+    implemented: acc.implemented + c.implemented,
+    partial: acc.partial + c.partial,
+    notImpl: acc.notImpl + c.notImpl,
+    na: acc.na + c.na,
+    total: acc.total + c.total,
+  }), { implemented: 0, partial: 0, notImpl: 0, na: 0, total: 0 });
+
+  const columns = [
+    { key: 'name', label: 'Tipo de Controle' },
+    { key: 'implemented', label: 'Implementados', align: 'center' as const },
+    { key: 'partial', label: 'Parciais', align: 'center' as const },
+    { key: 'notImpl', label: 'Não Implementados', align: 'center' as const },
+    { key: 'na', label: 'Não se aplica', align: 'center' as const },
+    { key: 'total', label: 'Total', align: 'center' as const },
+    { key: 'pImpl', label: 'Implementados %', align: 'center' as const, format: (v: number) => <span className="text-emerald-400 font-bold">{v}%</span> },
+    { key: 'pPartial', label: 'Parcial %', align: 'center' as const, format: (v: number) => <span className="text-amber-400">{v}%</span> },
+    { key: 'pNot', label: 'Não Impl. %', align: 'center' as const, format: (v: number) => <span className="text-red-400">{v}%</span> },
+  ];
+
+  return (
+    <div className="space-y-6 max-w-7xl mx-auto">
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">Tipos de Controle</h1>
+        <p className="text-sm text-gray-500 mt-1">
+          Análise dos controles Preventivos, Detectivos e Corretivos da ISO/IEC 27002:2022
+        </p>
+      </div>
+
+      <DataTable data={typeData} columns={columns} />
+
+      {/* Charts por tipo */}
+      {typeData.map((row, index) => {
+        const pieData = [
+          { name: 'Implementado', value: row.implemented, color: STATUS_COLORS['Implementado'] },
+          { name: 'Parcial', value: row.partial, color: STATUS_COLORS['Parcialmente implementado'] },
+          { name: 'Não Implementado', value: row.notImpl, color: STATUS_COLORS['Não implementado'] },
+          { name: 'Não se aplica', value: row.na, color: STATUS_COLORS['Não se aplica'] },
+        ].filter(d => d.value > 0);
+
+        const barData = [
+          { name: 'Implementados', value: row.implemented, color: STATUS_COLORS['Implementado'] },
+          { name: 'Parciais', value: row.partial, color: STATUS_COLORS['Parcialmente implementado'] },
+          { name: 'Não Implementados', value: row.notImpl, color: STATUS_COLORS['Não implementado'] },
+        ].filter(d => d.value > 0);
+
+        return (
+          <div key={row.name} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <PieChart
+              data={pieData}
+              title={`Gráficos — ${row.name}`}
+              subtitle={`${row.total} controles · ${row.pImpl}% implementados · ${row.pPartial}% parciais · ${row.pNot}% não implementados`}
+            />
+            <BarChart
+              data={barData}
+              title="Quantidade por Status"
+              subtitle={`Distribuição dos controles ${row.name}`}
+            />
+          </div>
+        );
+      })}
+    </div>
+  );
+};

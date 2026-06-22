@@ -1,0 +1,28 @@
+# https://www.robotstxt.org/robotstxt.html
+User-agent: *
+Allow: /
+Disallow: /login
+Disallow: /register
+Disallow: /admin
+Disallow: /profile
+Disallow: /api
+
+Sitemap: https://code-assessment.com/sitemap.xml
+
+Crawl-delay: 2
+
+User-agent: Googlebot
+Allow: /
+Disallow: /login
+Disallow: /register
+Disallow: /admin
+Disallow: /profile
+Disallow: /api
+
+User-agent: Bingbot
+Allow: /
+Disallow: /login
+Disallow: /register
+Disallow: /admin
+Disallow: /profile
+Disallow: /api

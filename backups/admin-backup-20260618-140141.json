@@ -1,0 +1,70 @@
+{
+  "totalUsers": 6,
+  "timestamp": "2026-06-18 14:01:41",
+  "users": [
+    {
+      "_id": "6a3401ce5c9d1b670db81cb5",
+      "name": "Carlos Pereira",
+      "email": "carlos.pereira@empresa.com",
+      "role": "user",
+      "company": "Empresa B",
+      "department": "Operações",
+      "isActive": true,
+      "createdAt": "2026-06-18T14:33:50.94Z"
+    },
+    {
+      "_id": "6a3401ce5c9d1b670db81cb0",
+      "name": "Ana Costa",
+      "email": "ana.costa@empresa.com",
+      "role": "consultant",
+      "company": "Empresa A",
+      "department": "Consultoria",
+      "isActive": true,
+      "createdAt": "2026-06-18T14:33:50.586Z"
+    },
+    {
+      "_id": "6a3401ce5c9d1b670db81cab",
+      "name": "Pedro Oliveira",
+      "email": "pedro.oliveira@empresa.com",
+      "role": "rep",
+      "company": "Empresa A",
+      "department": "Financeiro",
+      "isActive": true,
+      "createdAt": "2026-06-18T14:33:50.215Z"
+    },
+    {
+      "_id": "6a3401cd5c9d1b670db81ca6",
+      "name": "Maria Santos",
+      "email": "maria.santos@empresa.com",
+      "role": "user",
+      "company": "Empresa A",
+      "department": "RH",
+      "isActive": true,
+      "createdAt": "2026-06-18T14:33:49.838Z"
+    },
+    {
+      "_id": "6a3401cd5c9d1b670db81ca1",
+      "name": "João Silva",
+      "email": "joao.silva@empresa.com",
+      "role": "user",
+      "company": "Empresa A",
+      "department": "TI",
+      "isActive": true,
+      "createdAt": "2026-06-18T14:33:49.435Z"
+    },
+    {
+      "_id": "6a32e842849ecccf680768da",
+      "name": "Admin Master",
+      "email": "admin@codeassessment.com",
+      "role": "admin",
+      "isActive": true,
+      "createdAt": "2026-06-17T18:32:34.555Z",
+      "lastLoginAt": "2026-06-18T17:01:41.69Z"
+    }
+  ],
+  "metadata": {
+    "exportedBy": "admin@codeassessment.com",
+    "version": "1.0.0",
+    "source": "Code_Assessment Admin Module"
+  }
+}
