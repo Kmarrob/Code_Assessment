@@ -1,7 +1,7 @@
 // backend/src/controllers/UserController.ts
 import { Response, NextFunction } from 'express';
 import { UserService } from '../services/UserService.js';
-import { AuthenticatedRequest } from '../types/index.js';
+import { AuthenticatedRequest, MaturityLevel } from '../types/index.js';
 import { AppError, ValidationError } from '../middleware/errorHandler.js';
 import { ErrorLogger } from '../utils/errorLogger.js';
 import { validate } from '../utils/validation.js';
@@ -9,7 +9,7 @@ import { z } from 'zod';
 
 const saveResponseSchema = z.object({
   assignmentId: z.string().min(1, 'ID da atribuição é obrigatório'),
-  maturityLevel: z.string().min(1, 'Nível de maturidade é obrigatório'),
+  maturityLevel: z.enum(['N/A', '0', '1', '2']),
   scenarioDescription: z.string().optional(),
   evidence: z.array(z.string()).optional(),
   notes: z.string().optional(),
@@ -105,7 +105,13 @@ export class UserController {
         throw new ValidationError(validation.errors || {});
       }
 
-      const response = await UserService.saveResponse(userId, validation.data);
+      // Garantir que maturityLevel seja do tipo MaturityLevel
+      const data = {
+        ...validation.data,
+        maturityLevel: validation.data.maturityLevel as MaturityLevel,
+      };
+
+      const response = await UserService.saveResponse(userId, data);
 
       res.json({
         success: true,
