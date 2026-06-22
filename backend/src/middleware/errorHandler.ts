@@ -32,7 +32,6 @@ export class AppError extends Error {
 }
 
 export class ValidationError extends AppError {
-  // Mantido o overload original
   constructor(errors: Record<string, string[]> | string) {
     if (typeof errors === 'string') {
       super(errors, 400, true, undefined, 'VALIDATION_ERROR');
@@ -126,7 +125,6 @@ export function errorHandler(
 ): void {
   let error = err as AppError;
   
-  // Mapear erros específicos
   if (err instanceof mongoose.Error) {
     error = mapMongoDBError(err);
   } else if (err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError') {
@@ -141,7 +139,6 @@ export function errorHandler(
     );
   }
 
-  // Log detalhado
   const logData = {
     eventType: 'ERROR',
     message: error.message,
@@ -158,9 +155,7 @@ export function errorHandler(
     params: config.NODE_ENV !== 'production' ? req.params : undefined,
   };
 
-  // Log de erro de segurança
   if (error.statusCode === 401 || error.statusCode === 403) {
-    // Usando o enum correto ou fallback para string
     const eventType = error.statusCode === 401 
       ? (SecurityEventType.LOGIN_FAILED || 'LOGIN_FAILED' as SecurityEventType)
       : (SecurityEventType.ACCESS_DENIED || 'ACCESS_DENIED' as SecurityEventType);
@@ -183,7 +178,6 @@ export function errorHandler(
     logger.error(`[CRITICAL ERROR] ${error.message}`, logData);
   }
 
-  // Resposta
   const response = {
     success: false,
     message: error.message,
@@ -199,10 +193,6 @@ export function errorHandler(
 
   res.status(error.statusCode).json(response);
 }
-
-// ============================================
-// MIDDLEWARE DE ROTAS NÃO ENCONTRADAS
-// ============================================
 
 export function notFoundHandler(req: Request, res: Response, next: NextFunction): void {
   const error = new AppError(

@@ -6,7 +6,7 @@ import { logger } from '../utils/logger.js';
 import { passwordPolicy } from '../services/PasswordPolicy.js';
 
 // Interface para o documento com métodos
-interface IUserDocument extends IUser, Document {
+export interface IUserDocument extends IUser, Document {
   comparePassword(candidatePassword: string): Promise<boolean>;
   needsPasswordChange(): boolean;
 }
@@ -44,9 +44,6 @@ const userSchema = new Schema<IUserDocument>(
       trim: true,
       maxlength: [100, 'Empresa deve ter no máximo 100 caracteres'],
     },
-    // ============================================
-    // CAMPOS PARA MULTI-TENANCY
-    // ============================================
     companyId: {
       type: Schema.Types.ObjectId,
       ref: 'Company',
@@ -57,9 +54,6 @@ const userSchema = new Schema<IUserDocument>(
       ref: 'User',
       required: false,
     },
-    // ============================================
-    // CONSULTOR RESPONSÁVEL
-    // ============================================
     consultantId: {
       type: Schema.Types.ObjectId,
       ref: 'User',
@@ -182,7 +176,7 @@ userSchema.pre<IUserDocument>('save', async function (next) {
 });
 
 // ============================================
-// ÍNDICES - CENTRALIZADOS (SEM DUPLICAÇÃO)
+// ÍNDICES
 // ============================================
 
 userSchema.index({ email: 1 }, { unique: true });

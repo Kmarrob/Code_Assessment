@@ -16,8 +16,7 @@ export async function checkPasswordExpiry(
     }
 
     // Verificar se o método existe e se a senha expirou
-    // O método needsPasswordChange está definido no schema do User
-    if (typeof user.needsPasswordChange === 'function' && user.needsPasswordChange()) {
+    if (typeof (user as any).needsPasswordChange === 'function' && (user as any).needsPasswordChange()) {
       const isPasswordChangeRoute = req.path === '/profile' && req.method === 'PUT';
       
       if (!isPasswordChangeRoute) {

@@ -64,7 +64,6 @@ export class HealthController {
       let dbLatency = 0;
 
       try {
-        // Verificar se db existe antes de chamar admin().ping()
         if (mongoose.connection.db) {
           await mongoose.connection.db.admin().ping();
           dbLatency = Date.now() - startTime;
@@ -82,7 +81,6 @@ export class HealthController {
       const totalMemory = memoryUsage.heapTotal / 1024 / 1024;
       const usedMemory = memoryUsage.heapUsed / 1024 / 1024;
 
-      // Obter estatísticas do banco com fallback
       let dbStats;
       try {
         dbStats = db.getStats();

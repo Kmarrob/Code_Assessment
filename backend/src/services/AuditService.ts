@@ -83,7 +83,6 @@ export class AuthService {
         throw new AuthenticationError('Email ou senha inválidos');
       }
 
-      // CORRIGIDO: usar lastLogin (não lastLoginAt)
       user.lastLogin = new Date();
       await user.save();
 
@@ -93,16 +92,14 @@ export class AuthService {
         user.role
       );
 
-      // CORRIGIDO: refreshToken é opcional
       user.refreshToken = tokens.refreshToken;
       await user.save();
 
-      // CORRIGIDO: construir o objeto manualmente com tipagem correta
       const userResponse: IUser = {
         _id: user._id,
         name: user.name,
         email: user.email,
-        password: '', // não será exposto devido ao toJSON
+        password: '',
         role: user.role,
         company: user.company,
         department: user.department,
@@ -150,7 +147,6 @@ export class AuthService {
         user.role
       );
 
-      // CORRIGIDO: refreshToken é opcional
       user.refreshToken = tokens.refreshToken;
       await user.save();
 
@@ -178,7 +174,6 @@ export class AuthService {
 
       await TokenService.revokeAllUserTokens(userId);
 
-      // CORRIGIDO: refreshToken é opcional
       user.refreshToken = undefined;
       await user.save();
 
@@ -211,7 +206,6 @@ export class AuthService {
       user.password = newPassword;
       await user.save();
 
-      // CORRIGIDO: refreshToken é opcional
       user.refreshToken = undefined;
       await user.save();
 

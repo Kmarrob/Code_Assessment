@@ -3,11 +3,6 @@ import rateLimit from 'express-rate-limit';
 import { config } from '../config/env.js';
 import { logger } from '../utils/logger.js';
 
-// ============================================
-// RATE LIMITERS POR ENDPOINT
-// ============================================
-
-// 1. Login - Restrito (5 tentativas / 15 min)
 export const authRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 5,
@@ -32,7 +27,6 @@ export const authRateLimiter = rateLimit({
   },
 });
 
-// 2. Register - Moderado (10 tentativas / 1 hora)
 export const registerRateLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 10,
@@ -55,7 +49,6 @@ export const registerRateLimiter = rateLimit({
   },
 });
 
-// 3. Refresh Token - Restrito (10 tentativas / 15 min)
 export const refreshRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
@@ -69,7 +62,6 @@ export const refreshRateLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-// 4. APIs Autenticadas - Médio (100 tentativas / 1 minuto)
 export const authenticatedRateLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 100,
@@ -95,7 +87,6 @@ export const authenticatedRateLimiter = rateLimit({
   },
 });
 
-// 5. APIs Públicas - Leve (50 tentativas / 1 minuto)
 export const publicRateLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 50,
@@ -109,7 +100,6 @@ export const publicRateLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-// 6. Health Check - Sem limite
 export const healthRateLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 1000,
@@ -124,7 +114,6 @@ export const healthRateLimiter = rateLimit({
   skip: () => true,
 });
 
-// 7. Rate Limiter para rotas sensíveis
 export const sensitiveRateLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 5,
@@ -138,10 +127,9 @@ export const sensitiveRateLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-// 8. Admin - AUMENTADO PARA DESENVOLVIMENTO
 export const adminRateLimiter = rateLimit({
-  windowMs: 60 * 1000,  // 1 minuto (era 1 hora)
-  max: 100,  // 100 tentativas (era 20)
+  windowMs: 60 * 1000,
+  max: 100,
   message: {
     success: false,
     message: 'Muitas tentativas de operações. Tente novamente em 1 minuto.',

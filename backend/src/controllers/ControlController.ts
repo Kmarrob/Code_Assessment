@@ -179,7 +179,7 @@ export class ControlController {
   /**
    * Cria um novo controle
    */
-  static async createControl(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+  static async createControl(_req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const {
         id,
@@ -193,7 +193,7 @@ export class ControlController {
         conceitoDeSegurancaCibernetica,
         capacidadesOperacionais,
         dominioDeSI,
-      } = req.body;
+      } = _req.body;
 
       // Validações básicas
       if (!id || !nome) {
@@ -222,7 +222,7 @@ export class ControlController {
 
       await control.save();
 
-      logger.info(`Controle ${control.id} criado por ${req.user?.email}`);
+      logger.info(`Controle ${control.id} criado por ${_req.user?.email}`);
 
       res.status(201).json({
         success: true,
