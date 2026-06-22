@@ -6,7 +6,7 @@ import { AppError } from './errorHandler.js';
 
 export async function checkDatabaseHealth(
   req: Request,
-  res: Response,
+  _res: Response,
   next: NextFunction
 ): Promise<void> {
   try {

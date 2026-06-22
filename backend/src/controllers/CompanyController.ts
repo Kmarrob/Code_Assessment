@@ -3,6 +3,7 @@ import { Response, NextFunction } from 'express';
 import { CompanyService } from '../services/CompanyService.js';
 import { AuthenticatedRequest } from '../types/index.js';
 import { logger } from '../utils/logger.js';
+import { AppError } from '../middleware/errorHandler.js';
 
 export class CompanyController {
   /**
@@ -46,6 +47,10 @@ export class CompanyController {
     try {
       const { id } = req.params;
 
+      if (!id) {
+        throw new AppError('ID da empresa é obrigatório', 400);
+      }
+
       const company = await CompanyService.getCompanyById(id);
 
       res.json({
@@ -76,7 +81,7 @@ export class CompanyController {
         plan,
         maxUsers,
         maxControls,
-        createdBy: req.userId, // Adicionando o admin que criou
+        createdBy: req.userId,
       });
 
       logger.info(`Empresa criada por ${req.user?.email}: ${company.name}`);
@@ -103,14 +108,15 @@ export class CompanyController {
   ): Promise<void> {
     try {
       const { id } = req.params;
-      
-      // Extrair todos os campos do body
+
+      if (!id) {
+        throw new AppError('ID da empresa é obrigatório', 400);
+      }
+
       const { name, cnpj, plan, maxUsers, maxControls, status, consultantId } = req.body;
 
-      // Validar e tratar consultantId
       let validatedConsultantId: string | null | undefined = consultantId;
-      
-      // Se consultantId for null, undefined, string vazia ou "null", definir como null
+
       if (consultantId === null || 
           consultantId === undefined || 
           consultantId === '' || 
@@ -128,6 +134,10 @@ export class CompanyController {
         status,
         consultantId: validatedConsultantId,
       });
+
+      if (!company) {
+        throw new AppError('Empresa não encontrada após atualização', 404);
+      }
 
       logger.info(`Empresa atualizada por ${req.user?.email}: ${company.name}`);
 
@@ -155,7 +165,15 @@ export class CompanyController {
     try {
       const { id } = req.params;
 
+      if (!id) {
+        throw new AppError('ID da empresa é obrigatório', 400);
+      }
+
       const company = await CompanyService.deactivateCompany(id);
+
+      if (!company) {
+        throw new AppError('Empresa não encontrada', 404);
+      }
 
       logger.info(`Empresa desativada por ${req.user?.email}: ${company.name}`);
 
@@ -182,7 +200,15 @@ export class CompanyController {
     try {
       const { id } = req.params;
 
+      if (!id) {
+        throw new AppError('ID da empresa é obrigatório', 400);
+      }
+
       const company = await CompanyService.reactivateCompany(id);
+
+      if (!company) {
+        throw new AppError('Empresa não encontrada', 404);
+      }
 
       logger.info(`Empresa reativada por ${req.user?.email}: ${company.name}`);
 
@@ -209,7 +235,15 @@ export class CompanyController {
     try {
       const { id } = req.params;
 
+      if (!id) {
+        throw new AppError('ID da empresa é obrigatório', 400);
+      }
+
       const result = await CompanyService.assignAllControls(id);
+
+      if (!result || !result.company) {
+        throw new AppError('Empresa não encontrada', 404);
+      }
 
       logger.info(`Todos os controles atribuídos à empresa ${result.company.name} por ${req.user?.email}`);
 
@@ -233,7 +267,7 @@ export class CompanyController {
    * Obter estatísticas das empresas
    */
   static async getStats(
-    req: AuthenticatedRequest,
+    _req: AuthenticatedRequest,
     res: Response,
     next: NextFunction
   ): Promise<void> {

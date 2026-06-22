@@ -74,7 +74,7 @@ const userSchema = new Schema<IUserDocument>(
       type: Boolean,
       default: true,
     },
-    lastLoginAt: {
+    lastLogin: {
       type: Date,
     },
     refreshToken: {
@@ -196,7 +196,7 @@ userSchema.index({ consultantId: 1 });
 userSchema.index({ companyId: 1, role: 1 });
 userSchema.index({ consultantId: 1, role: 1 });
 userSchema.index({ name: 'text', email: 'text' });
-userSchema.index({ lastLoginAt: -1 });
+userSchema.index({ lastLogin: -1 });
 userSchema.index({ passwordExpiresAt: 1 });
 
 // ============================================

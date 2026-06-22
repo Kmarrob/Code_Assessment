@@ -9,6 +9,19 @@ import { AppError, NotFoundError, ValidationError } from '../middleware/errorHan
 import { logger } from '../utils/logger.js';
 import { UserRole, ResponseStatus } from '../types/index.js';
 
+// Tipo de retorno para listUsers
+interface ListUsersResult {
+  users: any[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrevious: boolean;
+  };
+}
+
 export class RepService {
   /**
    * Listar usuários de um preposto (usuários que ele cadastrou)
@@ -21,7 +34,7 @@ export class RepService {
       search?: string;
       status?: 'all' | 'active' | 'inactive';
     } = {}
-  ) {
+  ): Promise<ListUsersResult> {
     const { page = 1, limit = 10, search = '', status = 'all' } = filters;
 
     // Verificar se o preposto existe e obter sua empresa
@@ -58,7 +71,7 @@ export class RepService {
 
     const [users, total] = await Promise.all([
       User.find(filter)
-        .select('_id name email role company department isActive lastLoginAt createdAt updatedAt')
+        .select('_id name email role company department isActive lastLogin createdAt updatedAt')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
@@ -356,7 +369,7 @@ export class RepService {
     // Calcular porcentagem
     const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
 
-    // Detalhar cada atribuição - CORRIGIDO: verificar se controlId existe
+    // Detalhar cada atribuição
     const details = assignments.map((assignment) => {
       const control = assignment.controlId as any;
       return {
@@ -396,7 +409,7 @@ export class RepService {
       createdBy: repId,
       role: UserRole.USER,
     };
-    
+
     if (rep.companyId) {
       filter.companyId = rep.companyId;
     }
@@ -463,7 +476,7 @@ export class RepService {
       createdBy: repId,
       role: UserRole.USER,
     };
-    
+
     if (rep.companyId) {
       filter.companyId = rep.companyId;
     }

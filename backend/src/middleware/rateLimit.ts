@@ -20,7 +20,7 @@ export const authRateLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
-  skip: (req) => config.NODE_ENV === 'test',
+  skip: (_req) => config.NODE_ENV === 'test',
   handler: (req, res) => {
     logger.warn(`Rate limit exceeded for IP: ${req.ip} - Login attempt`);
     res.status(429).json({

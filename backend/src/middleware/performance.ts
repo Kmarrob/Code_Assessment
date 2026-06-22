@@ -107,7 +107,7 @@ export function getPerformanceMetrics(): typeof metrics {
   return { ...metrics };
 }
 
-export function performanceMetricsHandler(req: Request, res: Response): void {
+export function performanceMetricsHandler(_req: Request, res: Response): void {
   res.json({
     success: true,
     data: {

@@ -9,7 +9,7 @@ const tokenBlacklist = new Map<string, { revokedAt: Date; reason: string }>();
 export class TokenService {
   static generateAccessToken(userId: string, email: string, role: UserRole): string {
     const payload: IJWTPayload = { id: userId, email, role };
-    return jwt.sign(payload, config.JWT_SECRET as jwt.Secret, {
+    return jwt.sign(payload, config.JWT_SECRET, {
       expiresIn: config.JWT_ACCESS_EXPIRES_IN,
       algorithm: 'HS256',
     });
@@ -17,7 +17,7 @@ export class TokenService {
 
   static generateRefreshToken(userId: string, email: string, role: UserRole): string {
     const payload: IJWTPayload = { id: userId, email, role };
-    return jwt.sign(payload, config.JWT_REFRESH_SECRET as jwt.Secret, {
+    return jwt.sign(payload, config.JWT_REFRESH_SECRET, {
       expiresIn: config.JWT_REFRESH_EXPIRES_IN,
       algorithm: 'HS256',
     });
@@ -36,7 +36,7 @@ export class TokenService {
 
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-      
+
       for (const [key, value] of tokenBlacklist) {
         if (value.revokedAt < sevenDaysAgo) {
           tokenBlacklist.delete(key);

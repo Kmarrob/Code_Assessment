@@ -5,6 +5,15 @@ import { User } from '../models/User.js';
 import { AppError, NotFoundError, ValidationError } from '../middleware/errorHandler.js';
 import { logger } from '../utils/logger.js';
 
+export interface CreateCompanyData {
+  name: string;
+  cnpj?: string;
+  plan?: 'basic' | 'pro' | 'enterprise';
+  maxUsers?: number;
+  maxControls?: number;
+  createdBy?: string;
+}
+
 export class CompanyService {
   /**
    * Listar todas as empresas (Admin)
@@ -81,7 +90,7 @@ export class CompanyService {
     const company = await Company.findById(companyId)
       .populate('assignedControls', 'id nome')
       .lean();
-    
+
     if (!company) {
       throw new NotFoundError('Empresa não encontrada');
     }
@@ -101,13 +110,7 @@ export class CompanyService {
   /**
    * Criar empresa
    */
-  static async createCompany(data: {
-    name: string;
-    cnpj?: string;
-    plan?: 'basic' | 'pro' | 'enterprise';
-    maxUsers?: number;
-    maxControls?: number;
-  }) {
+  static async createCompany(data: CreateCompanyData) {
     // Verificar se já existe empresa com mesmo nome
     const existing = await Company.findOne({ name: data.name });
     if (existing) {
@@ -115,12 +118,14 @@ export class CompanyService {
     }
 
     const company = new Company({
-      ...data,
+      name: data.name,
+      cnpj: data.cnpj || '',
       plan: data.plan || 'basic',
       maxUsers: data.maxUsers || 10,
       maxControls: data.maxControls || 93,
       status: 'active',
       assignedControls: [],
+      createdBy: data.createdBy ? new mongoose.Types.ObjectId(data.createdBy) : undefined,
     });
 
     await company.save();
@@ -131,7 +136,7 @@ export class CompanyService {
   }
 
   /**
-   * Atualizar empresa - CORRIGIDO
+   * Atualizar empresa
    */
   static async updateCompany(
     companyId: string,
@@ -159,16 +164,15 @@ export class CompanyService {
     }
 
     // Atualizar apenas os campos que vieram no data
-    // Usar findOneAndUpdate para não sobrescrever campos não enviados
     const updateData: any = {};
-    
+
     if (data.name !== undefined) updateData.name = data.name;
     if (data.cnpj !== undefined) updateData.cnpj = data.cnpj;
     if (data.plan !== undefined) updateData.plan = data.plan;
     if (data.maxUsers !== undefined) updateData.maxUsers = data.maxUsers;
     if (data.maxControls !== undefined) updateData.maxControls = data.maxControls;
     if (data.status !== undefined) updateData.status = data.status;
-    
+
     // Tratar consultantId
     if (data.consultantId !== undefined) {
       if (data.consultantId === null || data.consultantId === '') {
@@ -252,7 +256,7 @@ export class CompanyService {
     total: number;
   }> {
     const { Control } = await import('../models/Control.js');
-    
+
     const company = await Company.findById(companyId);
     if (!company) {
       throw new NotFoundError('Empresa não encontrada');

@@ -1,209 +1,240 @@
-// backend/src/services/AuditService.ts
-import { SecurityLogger, SecurityEventType } from '../utils/securityLogger.js';
+// backend/src/services/AuthService.ts
+import jwt from 'jsonwebtoken';
+import { User } from '../models/User.js';
+import { config } from '../config/env.js';
+import { logger } from '../utils/logger.js';
+import { IJWTPayload, UserRole, IUser } from '../types/index.js';
+import { AppError, AuthenticationError } from '../middleware/errorHandler.js';
+import { TokenService } from './TokenService.js';
 
-export interface AuditLog {
-  userId: string;
-  email: string;
-  action: string;
-  targetUserId?: string;
-  targetEmail?: string;
-  details?: Record<string, any>;
-  ip: string;
-  userAgent: string;
-  success: boolean;
-  timestamp: Date;
+export interface AuthTokens {
+  accessToken: string;
+  refreshToken: string;
+  expiresIn: number;
 }
 
-export interface AuditFilter {
-  userId?: string;
-  action?: string;
-  startDate?: Date;
-  endDate?: Date;
-  success?: boolean;
-}
+export class AuthService {
+  static generateTokens(userId: string, email: string, role: UserRole): AuthTokens {
+    const payload: IJWTPayload = { id: userId, email, role };
 
-export class AuditService {
-  static logAdminAction(
-    userId: string,
-    email: string,
-    action: string,
-    ip: string,
-    userAgent: string,
-    success: boolean,
-    details?: Record<string, any>
-  ): void {
-    SecurityLogger.log({
-      eventType: SecurityEventType.USER_UPDATED,
-      timestamp: new Date(),
-      userId,
-      email,
-      ip,
-      userAgent,
-      success,
-      message: `Ação administrativa: ${action}`,
-      details,
+    const accessToken = jwt.sign(payload, config.JWT_SECRET, {
+      expiresIn: config.JWT_ACCESS_EXPIRES_IN,
     });
-  }
 
-  static logUserCreation(
-    adminId: string,
-    adminEmail: string,
-    targetUserId: string,
-    targetEmail: string,
-    role: string,
-    ip: string,
-    userAgent: string,
-    success: boolean
-  ): void {
-    SecurityLogger.log({
-      eventType: SecurityEventType.USER_CREATED,
-      timestamp: new Date(),
-      userId: targetUserId,
-      email: targetEmail,
-      ip,
-      userAgent,
-      success,
-      message: `Usuário criado por ${adminEmail} com papel: ${role}`,
-      details: {
-        adminId,
-        adminEmail,
-        role,
-      },
+    const refreshToken = jwt.sign(payload, config.JWT_REFRESH_SECRET, {
+      expiresIn: config.JWT_REFRESH_EXPIRES_IN,
     });
-  }
 
-  static logUserUpdate(
-    adminId: string,
-    adminEmail: string,
-    targetUserId: string,
-    targetEmail: string,
-    changes: Record<string, any>,
-    ip: string,
-    userAgent: string,
-    success: boolean
-  ): void {
-    SecurityLogger.log({
-      eventType: SecurityEventType.USER_UPDATED,
-      timestamp: new Date(),
-      userId: targetUserId,
-      email: targetEmail,
-      ip,
-      userAgent,
-      success,
-      message: `Usuário atualizado por ${adminEmail}`,
-      details: {
-        adminId,
-        adminEmail,
-        changes,
-      },
-    });
-  }
-
-  static logUserDeactivation(
-    adminId: string,
-    adminEmail: string,
-    targetUserId: string,
-    targetEmail: string,
-    ip: string,
-    userAgent: string,
-    success: boolean
-  ): void {
-    SecurityLogger.log({
-      eventType: SecurityEventType.USER_DELETED,
-      timestamp: new Date(),
-      userId: targetUserId,
-      email: targetEmail,
-      ip,
-      userAgent,
-      success,
-      message: `Usuário desativado por ${adminEmail}`,
-      details: {
-        adminId,
-        adminEmail,
-      },
-    });
-  }
-
-  static logUserReactivation(
-    adminId: string,
-    adminEmail: string,
-    targetUserId: string,
-    targetEmail: string,
-    ip: string,
-    userAgent: string,
-    success: boolean
-  ): void {
-    SecurityLogger.log({
-      eventType: SecurityEventType.USER_UPDATED,
-      timestamp: new Date(),
-      userId: targetUserId,
-      email: targetEmail,
-      ip,
-      userAgent,
-      success,
-      message: `Usuário reativado por ${adminEmail}`,
-      details: {
-        adminId,
-        adminEmail,
-      },
-    });
-  }
-
-  static logPasswordReset(
-    adminId: string,
-    adminEmail: string,
-    targetUserId: string,
-    targetEmail: string,
-    ip: string,
-    userAgent: string,
-    success: boolean
-  ): void {
-    SecurityLogger.log({
-      eventType: SecurityEventType.PASSWORD_CHANGE,
-      timestamp: new Date(),
-      userId: targetUserId,
-      email: targetEmail,
-      ip,
-      userAgent,
-      success,
-      message: `Senha resetada por ${adminEmail}`,
-      details: {
-        adminId,
-        adminEmail,
-      },
-    });
-  }
-
-  static logAccessDenied(
-    userId: string,
-    email: string,
-    action: string,
-    ip: string,
-    userAgent: string,
-    reason: string
-  ): void {
-    SecurityLogger.log({
-      eventType: SecurityEventType.ACCESS_DENIED,
-      timestamp: new Date(),
-      userId,
-      email,
-      ip,
-      userAgent,
-      success: false,
-      message: `Acesso negado: ${action}`,
-      details: { reason },
-    });
-  }
-
-  static async getAuditLogs(
-    _filter?: AuditFilter,
-    _page: number = 1,
-    _limit: number = 50
-  ): Promise<{ logs: AuditLog[]; total: number }> {
-    // Em produção, isso seria uma consulta ao banco de dados
     return {
-      logs: [],
-      total: 0,
+      accessToken,
+      refreshToken,
+      expiresIn: parseInt(config.JWT_ACCESS_EXPIRES_IN) * 60,
     };
+  }
+
+  static async register(userData: {
+    name: string;
+    email: string;
+    password: string;
+    company?: string;
+    department?: string;
+    role?: UserRole;
+  }): Promise<IUser> {
+    try {
+      const existingUser = await User.findOne({ email: userData.email }).select('_id').lean();
+      if (existingUser) {
+        throw new AppError('Email já está em uso', 400);
+      }
+
+      const user = new User({
+        ...userData,
+        role: userData.role || UserRole.USER,
+        isActive: true,
+      });
+
+      await user.save();
+
+      logger.info(`Novo usuário registrado: ${user.email} (${user.role})`);
+      return user;
+
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error('Erro ao registrar usuário:', error);
+      throw new AppError('Erro ao registrar usuário', 500);
+    }
+  }
+
+  static async login(email: string, password: string): Promise<{ user: IUser; tokens: AuthTokens }> {
+    try {
+      const user = await User.findOne({ email })
+        .select('_id name email password role company department isActive refreshToken')
+        .exec();
+
+      if (!user) {
+        throw new AuthenticationError('Email ou senha inválidos');
+      }
+
+      if (!user.isActive) {
+        throw new AuthenticationError('Usuário inativo');
+      }
+
+      const isPasswordValid = await user.comparePassword(password);
+      if (!isPasswordValid) {
+        throw new AuthenticationError('Email ou senha inválidos');
+      }
+
+      // CORRIGIDO: usar lastLogin (não lastLoginAt)
+      user.lastLogin = new Date();
+      await user.save();
+
+      const tokens = AuthService.generateTokens(
+        user._id.toString(),
+        user.email,
+        user.role
+      );
+
+      // CORRIGIDO: refreshToken é opcional
+      user.refreshToken = tokens.refreshToken;
+      await user.save();
+
+      // CORRIGIDO: construir o objeto manualmente com tipagem correta
+      const userResponse: IUser = {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        password: '', // não será exposto devido ao toJSON
+        role: user.role,
+        company: user.company,
+        department: user.department,
+        isActive: user.isActive,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+        lastLogin: user.lastLogin,
+        passwordChangedAt: user.passwordChangedAt,
+      };
+
+      return { user: userResponse, tokens };
+
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error('Erro ao fazer login:', error);
+      throw new AppError('Erro ao fazer login', 500);
+    }
+  }
+
+  static async refreshToken(refreshToken: string): Promise<AuthTokens> {
+    try {
+      if (TokenService.isTokenRevoked(refreshToken)) {
+        throw new AuthenticationError('Refresh token revogado');
+      }
+
+      const decoded = TokenService.verifyToken(refreshToken, config.JWT_REFRESH_SECRET);
+
+      const user = await User.findById(decoded.id)
+        .select('_id email role refreshToken isActive')
+        .exec();
+
+      if (!user || !user.isActive) {
+        throw new AuthenticationError('Usuário inválido ou inativo');
+      }
+
+      if (user.refreshToken !== refreshToken) {
+        throw new AuthenticationError('Refresh token inválido');
+      }
+
+      await TokenService.revokeToken(refreshToken, 'Refresh token rotation');
+
+      const tokens = AuthService.generateTokens(
+        user._id.toString(),
+        user.email,
+        user.role
+      );
+
+      // CORRIGIDO: refreshToken é opcional
+      user.refreshToken = tokens.refreshToken;
+      await user.save();
+
+      return tokens;
+
+    } catch (error) {
+      if (error instanceof jwt.JsonWebTokenError) {
+        throw new AuthenticationError('Refresh token inválido');
+      }
+      if (error instanceof jwt.TokenExpiredError) {
+        throw new AuthenticationError('Refresh token expirado');
+      }
+      if (error instanceof AppError) throw error;
+      logger.error('Erro ao renovar token:', error);
+      throw new AppError('Erro ao renovar token', 500);
+    }
+  }
+
+  static async logout(userId: string): Promise<void> {
+    try {
+      const user = await User.findById(userId);
+      if (!user) {
+        throw new AppError('Usuário não encontrado', 404);
+      }
+
+      await TokenService.revokeAllUserTokens(userId);
+
+      // CORRIGIDO: refreshToken é opcional
+      user.refreshToken = undefined;
+      await user.save();
+
+      logger.info(`Usuário deslogado com revogação de tokens: ${user.email}`);
+
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error('Erro ao fazer logout:', error);
+      throw new AppError('Erro ao fazer logout', 500);
+    }
+  }
+
+  static async changePassword(
+    userId: string,
+    currentPassword: string,
+    newPassword: string
+  ): Promise<void> {
+    try {
+      const user = await User.findById(userId).select('+password');
+
+      if (!user) {
+        throw new AppError('Usuário não encontrado', 404);
+      }
+
+      const isPasswordValid = await user.comparePassword(currentPassword);
+      if (!isPasswordValid) {
+        throw new AppError('Senha atual incorreta', 400);
+      }
+
+      user.password = newPassword;
+      await user.save();
+
+      // CORRIGIDO: refreshToken é opcional
+      user.refreshToken = undefined;
+      await user.save();
+
+      logger.info(`Senha alterada para: ${user.email}`);
+
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error('Erro ao alterar senha:', error);
+      throw new AppError('Erro ao alterar senha', 500);
+    }
+  }
+
+  static async getUserById(userId: string): Promise<IUser | null> {
+    return User.findById(userId)
+      .select('_id name email role company department isActive lastLogin')
+      .lean()
+      .exec() as Promise<IUser | null>;
+  }
+
+  static async getUserByEmail(email: string): Promise<IUser | null> {
+    return User.findOne({ email })
+      .select('_id name email role company department isActive lastLogin')
+      .lean()
+      .exec() as Promise<IUser | null>;
   }
 }

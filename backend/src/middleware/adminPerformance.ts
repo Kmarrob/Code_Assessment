@@ -88,7 +88,7 @@ export function getAdminMetrics(): typeof adminMetrics {
   return { ...adminMetrics };
 }
 
-export function adminMetricsHandler(req: Request, res: Response): void {
+export function adminMetricsHandler(_req: Request, res: Response): void {
   res.json({
     success: true,
     data: {

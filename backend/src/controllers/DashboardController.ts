@@ -122,7 +122,7 @@ export class DashboardController {
    * Listar todas as empresas com resumo (Admin)
    */
   static async listCompaniesSummary(
-    req: AuthenticatedRequest,
+    _req: AuthenticatedRequest,
     res: Response,
     next: NextFunction
   ): Promise<void> {

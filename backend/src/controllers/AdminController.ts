@@ -1,7 +1,6 @@
 // backend/src/controllers/AdminController.ts
 import { Response, NextFunction } from 'express';
 import { AdminService } from '../services/AdminService.js';
-import { logger } from '../utils/logger.js';
 import { validate } from '../utils/validation.js';
 import { AuthenticatedRequest, UserRole } from '../types/index.js';
 import { AppError, ValidationError, NotFoundError } from '../middleware/errorHandler.js';

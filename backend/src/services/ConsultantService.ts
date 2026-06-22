@@ -4,10 +4,8 @@ import { User } from '../models/User.js';
 import { Company } from '../models/Company.js';
 import { Assignment } from '../models/Assignment.js';
 import { Response } from '../models/Response.js';
-import { Control } from '../models/Control.js';
-import { AppError, NotFoundError, ValidationError } from '../middleware/errorHandler.js';
-import { logger } from '../utils/logger.js';
-import { UserRole, ResponseStatus } from '../types/index.js';
+import { AppError, NotFoundError } from '../middleware/errorHandler.js';
+import { UserRole } from '../types/index.js';
 
 export class ConsultantService {
   /**

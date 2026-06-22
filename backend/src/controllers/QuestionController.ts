@@ -2,7 +2,7 @@
 import { Response, NextFunction } from 'express';
 import { QuestionService } from '../services/QuestionService.js';
 import { AuthenticatedRequest } from '../types/index.js';
-import { AppError, ValidationError } from '../middleware/errorHandler.js';
+import { AppError } from '../middleware/errorHandler.js';
 import { logger } from '../utils/logger.js';
 import { z } from 'zod';
 
