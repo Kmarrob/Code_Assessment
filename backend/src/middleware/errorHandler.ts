@@ -122,7 +122,7 @@ export function errorHandler(
   err: Error | AppError,
   req: Request,
   res: Response,
-  next: NextFunction  // Mantido para compatibilidade
+  _next: NextFunction
 ): void {
   let error = err as AppError;
   
@@ -198,13 +198,6 @@ export function errorHandler(
   };
 
   res.status(error.statusCode).json(response);
-  
-  // Chamar next para garantir que o fluxo continue (se necessário)
-  // Em alguns frameworks, é necessário chamar next para erros não tratados
-  // Mantido para compatibilidade
-  if (next) {
-    next();
-  }
 }
 
 // ============================================

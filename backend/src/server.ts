@@ -12,11 +12,12 @@ import authRoutes from './routes/auth.js';
 import adminRoutes from './routes/admin.js';
 import repRoutes from './routes/rep.routes.js';
 import userRoutes from './routes/user.routes.js';
-import consultantRoutes from './routes/consultant.routes.js'; // <-- NOVA IMPORTAÇÃO
+import consultantRoutes from './routes/consultant.routes.js';
 import { noCache } from './middleware/cache.js';
 import { SitemapController } from './controllers/SitemapController.js';
 import { adminMetricsHandler } from './middleware/adminPerformance.js';
 import { authenticate, authorize } from './middleware/auth.js';
+import { UserRole } from './types/index.js';
 
 const app = express();
 
@@ -82,9 +83,9 @@ app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/rep', repRoutes);
 app.use('/api/user', userRoutes);
-app.use('/api/consultant', consultantRoutes); // <-- NOVA ROTA
+app.use('/api/consultant', consultantRoutes);
 
-app.get('/health', noCache, (req, res) => {
+app.get('/health', noCache, (_req, res) => {
   res.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
@@ -95,7 +96,7 @@ app.get('/health', noCache, (req, res) => {
 
 // SEO Routes
 app.get('/sitemap.xml', SitemapController.generate);
-app.get('/robots.txt', (req, res) => {
+app.get('/robots.txt', (_req, res) => {
   res.type('text/plain');
   res.send(`# https://www.robotstxt.org/robotstxt.html
 User-agent: *
@@ -128,8 +129,8 @@ Disallow: /api
 `);
 });
 
-// Admin Metrics (protegido) - CORRIGIDO: UserRole.ADMIN -> 'admin'
-app.get('/admin/metrics', authenticate, authorize('admin'), adminMetricsHandler);
+// Admin Metrics (protegido)
+app.get('/admin/metrics', authenticate, authorize(UserRole.ADMIN), adminMetricsHandler);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

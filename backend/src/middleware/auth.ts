@@ -1,3 +1,4 @@
+// backend/src/middleware/auth.ts
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { User } from '../models/User.js';
@@ -27,7 +28,8 @@ export async function authenticate(
     
     const decoded = jwt.verify(token, config.JWT_SECRET) as IJWTPayload;
     
-    const user = await User.findById(decoded.userId).select('+refreshToken');
+    // Usar 'id' em vez de 'userId' (corresponde ao IJWTPayload)
+    const user = await User.findById(decoded.id).select('+refreshToken');
     
     if (!user) {
       res.status(401).json({

@@ -44,7 +44,7 @@ interface HealthCheckResponse {
 export class HealthController {
   private static startTime = Date.now();
 
-  static async basic(req: Request, res: Response): Promise<void> {
+  static async basic(_req: Request, res: Response): Promise<void> {
     const isConnected = db.getConnectionState();
     const status = isConnected ? 'ok' : 'degraded';
 
@@ -57,7 +57,7 @@ export class HealthController {
     });
   }
 
-  static async detailed(req: Request, res: Response): Promise<void> {
+  static async detailed(_req: Request, res: Response): Promise<void> {
     try {
       const startTime = Date.now();
       let dbStatus: 'up' | 'down' | 'degraded' = 'up';
@@ -142,7 +142,7 @@ export class HealthController {
     }
   }
 
-  static async readiness(req: Request, res: Response): Promise<void> {
+  static async readiness(_req: Request, res: Response): Promise<void> {
     const isConnected = db.getConnectionState();
     const isReady = isConnected && mongoose.connection.readyState === 1;
 
@@ -153,7 +153,7 @@ export class HealthController {
     }
   }
 
-  static async liveness(req: Request, res: Response): Promise<void> {
+  static async liveness(_req: Request, res: Response): Promise<void> {
     res.status(200).json({ status: 'alive' });
   }
 

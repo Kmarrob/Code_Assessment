@@ -2,7 +2,6 @@
 import { Response, NextFunction } from 'express';
 import { CompanyService } from '../services/CompanyService.js';
 import { AuthenticatedRequest } from '../types/index.js';
-import { AppError } from '../middleware/errorHandler.js';
 import { logger } from '../utils/logger.js';
 
 export class CompanyController {
@@ -77,6 +76,7 @@ export class CompanyController {
         plan,
         maxUsers,
         maxControls,
+        createdBy: req.userId, // Adicionando o admin que criou
       });
 
       logger.info(`Empresa criada por ${req.user?.email}: ${company.name}`);
@@ -94,7 +94,7 @@ export class CompanyController {
   }
 
   /**
-   * Atualizar empresa - CORRIGIDO COM TRATAMENTO PARA consultantId
+   * Atualizar empresa
    */
   static async updateCompany(
     req: AuthenticatedRequest,
@@ -104,11 +104,11 @@ export class CompanyController {
     try {
       const { id } = req.params;
       
-      // Extrair todos os campos do body, incluindo consultantId
+      // Extrair todos os campos do body
       const { name, cnpj, plan, maxUsers, maxControls, status, consultantId } = req.body;
 
       // Validar e tratar consultantId
-      let validatedConsultantId = consultantId;
+      let validatedConsultantId: string | null | undefined = consultantId;
       
       // Se consultantId for null, undefined, string vazia ou "null", definir como null
       if (consultantId === null || 
@@ -118,9 +118,6 @@ export class CompanyController {
           consultantId === 'undefined') {
         validatedConsultantId = null;
       }
-
-      // Se consultantId for um ObjectId válido, manter
-      // Caso contrário, o service vai validar
 
       const company = await CompanyService.updateCompany(id, {
         name,

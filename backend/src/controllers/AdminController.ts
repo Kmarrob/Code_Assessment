@@ -1,5 +1,5 @@
 // backend/src/controllers/AdminController.ts
-import { Request, Response, NextFunction } from 'express';
+import { Response, NextFunction } from 'express';
 import { AdminService } from '../services/AdminService.js';
 import { logger } from '../utils/logger.js';
 import { validate } from '../utils/validation.js';
@@ -143,8 +143,13 @@ export class AdminController {
 
       // Garantir que role seja do tipo correto usando enum
       const userData = {
-        ...validation.data,
-        role: validation.data.role as UserRole
+        name: validation.data.name,
+        email: validation.data.email,
+        password: validation.data.password,
+        role: validation.data.role as UserRole,
+        company: validation.data.company ?? undefined,
+        companyId: validation.data.companyId ?? undefined,
+        department: validation.data.department ?? undefined,
       };
 
       const user = await AdminService.createUser(userData);
@@ -212,14 +217,14 @@ export class AdminController {
         throw new ValidationError(validation.errors || {});
       }
 
-      // Preparar dados para atualização
+      // Preparar dados para atualização com conversão de null para undefined
       const updateData: any = {
         name: validation.data.name,
         email: validation.data.email,
         isActive: validation.data.isActive,
-        company: validation.data.company,
-        companyId: validation.data.companyId,
-        department: validation.data.department,
+        company: validation.data.company ?? undefined,
+        companyId: validation.data.companyId ?? undefined,
+        department: validation.data.department ?? undefined,
       };
 
       if (validation.data.role) {

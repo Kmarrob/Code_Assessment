@@ -1,6 +1,6 @@
 // backend/src/models/Response.ts
 import mongoose, { Schema, Model } from 'mongoose';
-import { IResponse, MaturityLevel } from '../types/index.js';
+import { IResponse } from '../types/index.js';
 
 const responseSchema = new Schema<IResponse>(
   {
@@ -31,19 +31,15 @@ const responseSchema = new Schema<IResponse>(
       maxlength: [2000, 'Descrição deve ter no máximo 2000 caracteres'],
     },
     evidence: {
-      type: String,
-      default: '',
+      type: [String],
+      default: [],
     },
     observations: {
       type: String,
       default: '',
       maxlength: [1000, 'Observações devem ter no máximo 1000 caracteres'],
     },
-    respondedAt: {
-      type: Date,
-      default: Date.now,
-    },
-    lastUpdatedAt: {
+    submittedAt: {
       type: Date,
       default: Date.now,
     },
@@ -70,7 +66,7 @@ responseSchema.index({ controlId: 1, maturityLevel: 1 });
 responseSchema.statics.findByUser = function(userId: string) {
   return this.find({ userId })
     .populate('controlId', 'id nome')
-    .sort({ respondedAt: -1 });
+    .sort({ submittedAt: -1 });
 };
 
 // Buscar respostas de um preposto (via atribuições)
@@ -95,7 +91,7 @@ responseSchema.statics.findByRep = function(repId: string) {
       },
     },
     { $unwind: '$control' },
-    { $sort: { respondedAt: -1 } },
+    { $sort: { submittedAt: -1 } },
   ]);
 };
 

@@ -1,5 +1,5 @@
 // backend/src/controllers/ControlController.ts
-import { Request, Response, NextFunction } from 'express';
+import { Response, NextFunction } from 'express';
 import { Control } from '../models/Control.js';
 import { logger } from '../utils/logger.js';
 import { AuthenticatedRequest } from '../types/index.js';

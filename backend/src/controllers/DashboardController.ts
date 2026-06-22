@@ -4,8 +4,8 @@ import { DashboardService } from '../services/DashboardService.js';
 import { AuthenticatedRequest } from '../types/index.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { logger } from '../utils/logger.js';
-import { Company } from '../models/Company.js'; // <-- IMPORTAÇÃO ADICIONADA
-import { User } from '../models/User.js'; // <-- IMPORTAÇÃO ADICIONADA
+import { Company } from '../models/Company.js';
+import { User } from '../models/User.js';
 
 export class DashboardController {
   /**

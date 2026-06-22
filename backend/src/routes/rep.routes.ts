@@ -1,16 +1,17 @@
 // backend/src/routes/rep.routes.ts
 import { Router } from 'express';
 import { RepController } from '../controllers/RepController.js';
-import { DashboardController } from '../controllers/DashboardController.js'; // Importado para a nova rota
+import { DashboardController } from '../controllers/DashboardController.js';
 import { authenticate, authorize } from '../middleware/auth.js';
 import { sanitizeAdminInputs } from '../middleware/sanitizeAdmin.js';
-import { adminRateLimiter, authenticatedRateLimiter } from '../middleware/rateLimit.js'; // Garantindo a importação do rate limiter solicitado
+import { adminRateLimiter, authenticatedRateLimiter } from '../middleware/rateLimit.js';
+import { UserRole } from '../types/index.js';
 
 const router = Router();
 
 // Todas as rotas exigem autenticação e role REP
 router.use(authenticate);
-router.use(authorize('rep'));
+router.use(authorize(UserRole.REP));
 
 // ============================================
 // ROTAS DO PREPOSTO

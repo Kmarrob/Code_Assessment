@@ -10,6 +10,7 @@ import {
   sensitiveRateLimiter
 } from '../middleware/rateLimit.js';
 import { noCache, privateCache } from '../middleware/cache.js';
+import { UserRole } from '../types/index.js';
 
 const router = Router();
 
@@ -25,10 +26,10 @@ router.post('/logout', authenticatedRateLimiter, noCache, AuthController.logout)
 router.get('/profile', authenticatedRateLimiter, privateCache, AuthController.getProfile);
 router.put('/profile', sensitiveRateLimiter, noCache, AuthController.updateProfile);
 
-// Rotas admin (sem cache) - Usando strings literais
+// Rotas admin (sem cache)
 router.get(
   '/users', 
-  authorize('admin'),  // <-- Substituído UserRole.ADMIN por 'admin'
+  authorize(UserRole.ADMIN),
   authenticatedRateLimiter, 
   noCache,
   AuthController.listUsers
@@ -36,7 +37,7 @@ router.get(
 
 router.get(
   '/users/:id', 
-  authorize('admin'),  // <-- Substituído UserRole.ADMIN por 'admin'
+  authorize(UserRole.ADMIN),
   authenticatedRateLimiter, 
   noCache,
   AuthController.getUserById

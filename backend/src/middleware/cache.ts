@@ -10,7 +10,7 @@ export const CacheControl = {
 };
 
 export function cacheControl(directive: string) {
-  return (req: Request, res: Response, next: NextFunction): void => {
+  return (_req: Request, res: Response, next: NextFunction): void => {
     res.setHeader('Cache-Control', directive);
     next();
   };

@@ -12,8 +12,6 @@ import {
   repCreateUserSchema,
   repAssignControlsSchema,
   repListUsersSchema,
-  repUpdateUserSchema,
-  repResponseSchema,
 } from '../utils/repValidation.js';
 
 export class RepController {

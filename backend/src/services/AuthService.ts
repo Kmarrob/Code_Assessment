@@ -15,7 +15,7 @@ export interface AuthTokens {
 
 export class AuthService {
   static generateTokens(userId: string, email: string, role: UserRole): AuthTokens {
-    const payload: IJWTPayload = { userId, email, role };
+    const payload: IJWTPayload = { id: userId, email, role };
     
     const accessToken = jwt.sign(payload, config.JWT_SECRET as jwt.Secret, {
       expiresIn: config.JWT_ACCESS_EXPIRES_IN,
@@ -125,7 +125,7 @@ export class AuthService {
 
       const decoded = TokenService.verifyToken(refreshToken, config.JWT_REFRESH_SECRET);
       
-      const user = await User.findById(decoded.userId)
+      const user = await User.findById(decoded.id)
         .select('_id email role refreshToken isActive')
         .exec();
       

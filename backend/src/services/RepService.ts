@@ -166,7 +166,7 @@ export class RepService {
       department: userData.department || '',
       role: UserRole.USER,
       createdBy: repId,
-      companyId: companyId, // Usando o companyId verificado/corrigido
+      companyId: companyId,
       isActive: true,
     });
 
@@ -356,14 +356,17 @@ export class RepService {
     // Calcular porcentagem
     const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
 
-    // Detalhar cada atribuição
-    const details = assignments.map((assignment) => ({
-      assignmentId: assignment._id,
-      controlId: assignment.controlId._id,
-      controlName: assignment.controlId.nome,
-      status: assignment.status,
-      response: responseMap.get(assignment._id.toString()) || null,
-    }));
+    // Detalhar cada atribuição - CORRIGIDO: verificar se controlId existe
+    const details = assignments.map((assignment) => {
+      const control = assignment.controlId as any;
+      return {
+        assignmentId: assignment._id,
+        controlId: control?._id || assignment.controlId,
+        controlName: control?.nome || 'Controle não encontrado',
+        status: assignment.status,
+        response: responseMap.get(assignment._id.toString()) || null,
+      };
+    });
 
     return {
       userId: user._id,

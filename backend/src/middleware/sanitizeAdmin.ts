@@ -7,7 +7,7 @@ import { logger } from '../utils/logger.js';
  * Middleware para sanitizar inputs das rotas admin
  * Previne NoSQL Injection e ataques de injeção
  */
-export function sanitizeAdminInputs(req: Request, res: Response, next: NextFunction): void {
+export function sanitizeAdminInputs(req: Request, _res: Response, next: NextFunction): void {
   try {
     if (req.body && typeof req.body === 'object') {
       req.body = sanitizeInput(req.body);
@@ -39,7 +39,7 @@ export function sanitizeAdminInputs(req: Request, res: Response, next: NextFunct
 /**
  * Middleware específico para sanitizar apenas campos sensíveis
  */
-export function sanitizeSensitiveFields(req: Request, res: Response, next: NextFunction): void {
+export function sanitizeSensitiveFields(req: Request, _res: Response, next: NextFunction): void {
   if (req.body && typeof req.body === 'object') {
     const sensitiveFields = ['name', 'email', 'company', 'department', 'search'];
     

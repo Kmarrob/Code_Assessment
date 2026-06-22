@@ -4,8 +4,6 @@ import { ConsultantService } from '../services/ConsultantService.js';
 import { AuthenticatedRequest } from '../types/index.js';
 import { AppError, ValidationError } from '../middleware/errorHandler.js';
 import { ErrorLogger } from '../utils/errorLogger.js';
-import { logger } from '../utils/logger.js';
-import { z } from 'zod';
 
 export class ConsultantController {
   /**

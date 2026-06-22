@@ -1,11 +1,17 @@
 // backend/src/models/User.ts
-import mongoose, { Schema, Model } from 'mongoose';
+import mongoose, { Schema, Model, Document } from 'mongoose';
 import bcrypt from 'bcryptjs';
 import { IUser, UserRole } from '../types/index.js';
 import { logger } from '../utils/logger.js';
 import { passwordPolicy } from '../services/PasswordPolicy.js';
 
-const userSchema = new Schema<IUser>(
+// Interface para o documento com métodos
+interface IUserDocument extends IUser, Document {
+  comparePassword(candidatePassword: string): Promise<boolean>;
+  needsPasswordChange(): boolean;
+}
+
+const userSchema = new Schema<IUserDocument>(
   {
     name: {
       type: String,
@@ -30,8 +36,8 @@ const userSchema = new Schema<IUser>(
     },
     role: {
       type: String,
-      enum: ['admin', 'rep', 'consultant', 'user'],
-      default: 'user',
+      enum: Object.values(UserRole),
+      default: UserRole.USER,
     },
     company: {
       type: String,
@@ -58,7 +64,6 @@ const userSchema = new Schema<IUser>(
       type: Schema.Types.ObjectId,
       ref: 'User',
       required: false,
-      // index: true, // REMOVIDO - índice centralizado abaixo
     },
     department: {
       type: String,
@@ -126,7 +131,7 @@ userSchema.methods.needsPasswordChange = function(): boolean {
 // MIDDLEWARES
 // ============================================
 
-userSchema.pre<IUser>('save', async function (next) {
+userSchema.pre<IUserDocument>('save', async function (next) {
   try {
     if (!this.isModified('password')) {
       return next();
@@ -159,9 +164,9 @@ userSchema.pre<IUser>('save', async function (next) {
   }
 });
 
-userSchema.pre<IUser>('save', async function (next) {
+userSchema.pre<IUserDocument>('save', async function (next) {
   try {
-    const UserModel = mongoose.model<IUser>('User');
+    const UserModel = mongoose.model<IUserDocument>('User');
     const existingUser = await UserModel.findOne({
       email: this.email,
       _id: { $ne: this._id },
@@ -222,4 +227,4 @@ userSchema.statics.findConsultants = function() {
   return this.find({ role: 'consultant', isActive: true });
 };
 
-export const User: Model<IUser> = mongoose.model<IUser>('User', userSchema);
+export const User: Model<IUserDocument> = mongoose.model<IUserDocument>('User', userSchema);

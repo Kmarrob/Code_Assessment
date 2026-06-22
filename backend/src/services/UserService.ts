@@ -1,12 +1,10 @@
 // backend/src/services/UserService.ts
-import mongoose from 'mongoose';
 import { Assignment } from '../models/Assignment.js';
 import { Response } from '../models/Response.js';
-import { Control } from '../models/Control.js';
 import { User } from '../models/User.js';
 import { NotFoundError, AppError } from '../middleware/errorHandler.js';
 import { logger } from '../utils/logger.js';
-import { ResponseStatus } from '../types/index.js';
+import { ResponseStatus, MaturityLevel } from '../types/index.js';
 
 export class UserService {
   /**
@@ -92,13 +90,13 @@ export class UserService {
   }
 
   /**
-   * Salvar resposta de um controle - CORRIGIDO
+   * Salvar resposta de um controle
    */
   static async saveResponse(
     userId: string,
     data: {
       assignmentId: string;
-      maturityLevel: string;
+      maturityLevel: MaturityLevel;
       scenarioDescription?: string;
       evidence?: string | string[];
       notes?: string;
@@ -135,7 +133,6 @@ export class UserService {
       response.scenarioDescription = scenarioDescription || '';
       response.evidence = evidenceString;
       response.observations = notes || '';
-      response.lastUpdatedAt = new Date();
       await response.save();
     } else {
       // Criar nova resposta
@@ -147,8 +144,7 @@ export class UserService {
         scenarioDescription: scenarioDescription || '',
         evidence: evidenceString,
         observations: notes || '',
-        respondedAt: new Date(),
-        lastUpdatedAt: new Date(),
+        submittedAt: new Date(),
       });
       await response.save();
 

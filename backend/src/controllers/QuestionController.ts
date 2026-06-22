@@ -63,6 +63,10 @@ export class QuestionController {
     try {
       const { controlId } = req.params;
 
+      if (!controlId) {
+        throw new AppError('ID do controle é obrigatório', 400);
+      }
+
       const questions = await QuestionService.getQuestionsByControl(controlId);
 
       res.json({
@@ -86,6 +90,10 @@ export class QuestionController {
   ): Promise<void> {
     try {
       const { id } = req.params;
+
+      if (!id) {
+        throw new AppError('ID da pergunta é obrigatório', 400);
+      }
 
       const question = await QuestionService.getQuestionById(id);
 
@@ -146,6 +154,11 @@ export class QuestionController {
   ): Promise<void> {
     try {
       const { id } = req.params;
+
+      if (!id) {
+        throw new AppError('ID da pergunta é obrigatório', 400);
+      }
+
       const validatedData = questionSchema.partial().parse(req.body);
 
       const question = await QuestionService.updateQuestion(id, validatedData);
@@ -184,6 +197,10 @@ export class QuestionController {
     try {
       const { id } = req.params;
 
+      if (!id) {
+        throw new AppError('ID da pergunta é obrigatório', 400);
+      }
+
       await QuestionService.deleteQuestion(id);
 
       logger.info(`Pergunta ${id} deletada por ${req.user?.email}`);
@@ -209,6 +226,10 @@ export class QuestionController {
   ): Promise<void> {
     try {
       const { id } = req.params;
+
+      if (!id) {
+        throw new AppError('ID da pergunta é obrigatório', 400);
+      }
 
       const question = await QuestionService.toggleActive(id);
 

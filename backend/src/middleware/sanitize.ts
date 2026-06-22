@@ -6,14 +6,14 @@ import { sanitizeInput } from '../utils/validation.js';
  * Middleware global para sanitizar todos os inputs
  * Previne NoSQL Injection e ataques de injeção
  */
-export function sanitizeRequestBody(req: Request, res: Response, next: NextFunction): void {
+export function sanitizeRequestBody(req: Request, _res: Response, next: NextFunction): void {
   if (req.body && typeof req.body === 'object') {
     req.body = sanitizeInput(req.body);
   }
   next();
 }
 
-export function sanitizeQueryParams(req: Request, res: Response, next: NextFunction): void {
+export function sanitizeQueryParams(req: Request, _res: Response, next: NextFunction): void {
   if (req.query && typeof req.query === 'object') {
     // req.query é imutável, então criamos um novo objeto
     const sanitized: Record<string, any> = {};
@@ -25,7 +25,7 @@ export function sanitizeQueryParams(req: Request, res: Response, next: NextFunct
   next();
 }
 
-export function sanitizeUrlParams(req: Request, res: Response, next: NextFunction): void {
+export function sanitizeUrlParams(req: Request, _res: Response, next: NextFunction): void {
   if (req.params && typeof req.params === 'object') {
     const sanitized: Record<string, any> = {};
     for (const [key, value] of Object.entries(req.params)) {

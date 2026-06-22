@@ -8,7 +8,7 @@ const tokenBlacklist = new Map<string, { revokedAt: Date; reason: string }>();
 
 export class TokenService {
   static generateAccessToken(userId: string, email: string, role: UserRole): string {
-    const payload: IJWTPayload = { userId, email, role };
+    const payload: IJWTPayload = { id: userId, email, role };
     return jwt.sign(payload, config.JWT_SECRET as jwt.Secret, {
       expiresIn: config.JWT_ACCESS_EXPIRES_IN,
       algorithm: 'HS256',
@@ -16,7 +16,7 @@ export class TokenService {
   }
 
   static generateRefreshToken(userId: string, email: string, role: UserRole): string {
-    const payload: IJWTPayload = { userId, email, role };
+    const payload: IJWTPayload = { id: userId, email, role };
     return jwt.sign(payload, config.JWT_REFRESH_SECRET as jwt.Secret, {
       expiresIn: config.JWT_REFRESH_EXPIRES_IN,
       algorithm: 'HS256',
@@ -58,7 +58,7 @@ export class TokenService {
     for (const [key] of tokenBlacklist) {
       try {
         const decoded = jwt.decode(key) as any;
-        if (decoded && decoded.userId === userId) {
+        if (decoded && decoded.id === userId) {
           tokenBlacklist.delete(key);
         }
       } catch (error) {

@@ -5,7 +5,6 @@ import { Control } from '../models/Control.js';
 import { User } from '../models/User.js';
 import { Company } from '../models/Company.js';
 import { NotFoundError } from '../middleware/errorHandler.js';
-import { logger } from '../utils/logger.js';
 
 export class DashboardService {
   /**

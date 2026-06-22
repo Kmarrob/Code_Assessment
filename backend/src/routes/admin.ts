@@ -2,8 +2,8 @@
 import { Router } from 'express';
 import { AdminController } from '../controllers/AdminController.js';
 import { CompanyController } from '../controllers/CompanyController.js';
-import { QuestionController } from '../controllers/QuestionController.js'; // <-- NOVA IMPORTAÇÃO
-import { DashboardController } from '../controllers/DashboardController.js'; // Importado para as novas rotas de dashboard
+import { QuestionController } from '../controllers/QuestionController.js';
+import { DashboardController } from '../controllers/DashboardController.js';
 import { authenticate, authorize } from '../middleware/auth.js';
 import { 
   authenticatedRateLimiter, 
@@ -14,6 +14,7 @@ import { noCache } from '../middleware/cache.js';
 import { sanitizeAdminInputs, sanitizeSensitiveFields } from '../middleware/sanitizeAdmin.js';
 import { adminPerformanceMiddleware } from '../middleware/adminPerformance.js';
 import { ControlController } from '../controllers/ControlController.js';
+import { UserRole } from '../types/index.js';
 
 const router = Router();
 
@@ -21,7 +22,7 @@ const router = Router();
 // MIDDLEWARES - Todas as rotas admin exigem autenticação e role ADMIN
 // ============================================
 router.use(authenticate);
-router.use(authorize('admin'));
+router.use(authorize(UserRole.ADMIN));
 router.use(sanitizeAdminInputs);
 router.use(sanitizeSensitiveFields);
 router.use(adminPerformanceMiddleware);

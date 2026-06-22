@@ -1326,9 +1326,7 @@ const questionsData = [
     order: 1,
     active: true,
   },
-];
-
-// ============================================
+];// ============================================
 // FUNÇÃO PARA POPULAR O BANCO
 // ============================================
 async function seedQuestions() {
@@ -1357,7 +1355,8 @@ async function seedQuestions() {
 
     logger.info('📋 Resumo por controle:');
     Object.keys(grouped).forEach((key) => {
-      logger.info(`  - ${key}: ${grouped[key].length} pergunta(s)`);
+      const count = grouped[key]?.length || 0;
+      logger.info(`  - ${key}: ${count} pergunta(s)`);
     });
 
     logger.info('✅ Seed de perguntas concluído com sucesso!');

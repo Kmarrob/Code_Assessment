@@ -1,10 +1,9 @@
 // backend/src/controllers/AuthController.ts
 import { Request, Response, NextFunction } from 'express';
 import { AuthService } from '../services/AuthService.js';
-import { logger } from '../utils/logger.js';
 import { validate, registerSchema, loginSchema, refreshTokenSchema, updateProfileSchema } from '../utils/validation.js';
 import { User } from '../models/User.js';
-import { AuthenticatedRequest } from '../types/index.js';
+import { AuthenticatedRequest, UserRole } from '../types/index.js';
 import { AppError, ValidationError } from '../middleware/errorHandler.js';
 
 export class AuthController {
@@ -15,7 +14,13 @@ export class AuthController {
         throw new ValidationError(validation.errors || {});
       }
 
-      const user = await AuthService.register(validation.data);
+      // Garantir que role seja do tipo correto
+      const userData = {
+        ...validation.data,
+        role: validation.data.role as UserRole,
+      };
+
+      const user = await AuthService.register(userData);
 
       res.status(201).json({
         success: true,

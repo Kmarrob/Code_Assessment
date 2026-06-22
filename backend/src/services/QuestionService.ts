@@ -1,6 +1,6 @@
 // backend/src/services/QuestionService.ts
 import { Question, IQuestion } from '../models/Question.js';
-import { AppError, NotFoundError, ValidationError } from '../middleware/errorHandler.js';
+import { NotFoundError, ValidationError } from '../middleware/errorHandler.js';
 import { logger } from '../utils/logger.js';
 
 export class QuestionService {

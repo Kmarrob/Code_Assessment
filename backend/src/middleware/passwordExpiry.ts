@@ -1,5 +1,5 @@
 // backend/src/middleware/passwordExpiry.ts
-import { Request, Response, NextFunction } from 'express';
+import { Response, NextFunction } from 'express';
 import { AuthenticatedRequest } from '../types/index.js';
 import { logger } from '../utils/logger.js';
 
@@ -15,7 +15,9 @@ export async function checkPasswordExpiry(
       return next();
     }
 
-    if (user.needsPasswordChange && user.needsPasswordChange()) {
+    // Verificar se o método existe e se a senha expirou
+    // O método needsPasswordChange está definido no schema do User
+    if (typeof user.needsPasswordChange === 'function' && user.needsPasswordChange()) {
       const isPasswordChangeRoute = req.path === '/profile' && req.method === 'PUT';
       
       if (!isPasswordChangeRoute) {

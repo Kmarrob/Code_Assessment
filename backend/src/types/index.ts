@@ -1,6 +1,6 @@
 // backend/src/types/index.ts
 import { Request } from 'express';
-import { Types } from 'mongoose';
+import { Types, Document } from 'mongoose';
 
 // ============================================
 // ENUMS
