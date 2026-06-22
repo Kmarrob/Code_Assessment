@@ -9,19 +9,20 @@ services:
       - key: NODE_ENV
         value: production
       - key: MONGODB_URI
-        sync: false
+        value: mongodb+srv://Code_Assessment:28108610@cluster0.fznrq7c.mongodb.net/?appName=Cluster0
       - key: JWT_SECRET
-        sync: false
+        value: code_assessment_super_secret_jwt_key_2026_change_in_production
       - key: JWT_REFRESH_SECRET
-        sync: false
+        value: code_assessment_super_secret_refresh_key_2026_change_in_production
       - key: PORT
         value: 3000
 
-  - type: static
+  - type: web
     name: code-assessment-frontend
+    runtime: static
     rootDir: frontend
     buildCommand: npm install && npm run build
     publishPath: dist
     envVars:
       - key: VITE_API_URL
-        sync: false
+        value: https://code-assessment-backend.onrender.com
