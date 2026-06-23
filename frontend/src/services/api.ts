@@ -4,7 +4,9 @@ import { API_ENDPOINTS, STORAGE_KEYS } from '../utils/constants.js';
 import { formatError } from '../utils/helpers.js';
 
 const api: AxiosInstance = axios.create({
-  baseURL: '/api',  // <-- CORRIGIDO: usa o proxy do Vite
+  baseURL: import.meta.env.VITE_API_URL 
+    ? `${import.meta.env.VITE_API_URL}/api` 
+    : '/api',
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
@@ -29,7 +31,6 @@ api.interceptors.response.use(
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
     
-    // Se for erro 401 e não for retry, tentar refresh
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
       
@@ -41,7 +42,9 @@ api.interceptors.response.use(
         }
         
         const response = await axios.post<ApiResponse<{ tokens: AuthTokens }>>(
-          API_ENDPOINTS.AUTH.REFRESH,
+          import.meta.env.VITE_API_URL 
+            ? `${import.meta.env.VITE_API_URL}${API_ENDPOINTS.AUTH.REFRESH}`
+            : API_ENDPOINTS.AUTH.REFRESH,
           { refreshToken }
         );
         
@@ -50,14 +53,12 @@ api.interceptors.response.use(
         localStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, tokens.accessToken);
         localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, tokens.refreshToken);
         
-        // Retry original request
         if (originalRequest.headers) {
           originalRequest.headers.Authorization = `Bearer ${tokens.accessToken}`;
         }
         return api(originalRequest);
         
       } catch (refreshError) {
-        // Refresh failed, logout
         localStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
         localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
         localStorage.removeItem(STORAGE_KEYS.USER);
