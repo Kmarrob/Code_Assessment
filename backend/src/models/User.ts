@@ -7,7 +7,7 @@ import { passwordPolicy } from '../services/PasswordPolicy.js';
 
 // Interface para o documento estendendo de forma compatível com IUser
 export interface IUserDocument extends IUser, Document {
-  password: string; // Mantido obrigatório para manter compatibilidade estrita com a interface IUser
+  password?: string; // Mantido obrigatório para manter compatibilidade estrita com a interface IUser
   refreshToken?: string;
   passwordHistory?: string[];
   passwordExpiresAt?: Date;
