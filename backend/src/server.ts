@@ -40,7 +40,15 @@ app.use(helmet({
       styleSrc: ["'self'", "'unsafe-inline'", "fonts.googleapis.com"],
       styleSrcElem: ["'self'", "'unsafe-inline'", "fonts.googleapis.com"],
       imgSrc: ["'self'", "data:", "https:"],
-      connectSrc: ["'self'", ...(config.CORS_ORIGIN ? config.CORS_ORIGIN.split(',').map(o => o.trim()) : ["http://localhost:5173"])],
+      connectSrc: [
+        "'self'",
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "https://code-assessment-frontend.onrender.com",
+        "https://cisatool.com.br",
+        "https://code-assessment-898z.onrender.com",
+        ...(config.CORS_ORIGIN ? config.CORS_ORIGIN.split(',').map(o => o.trim()) : [])
+      ],
       fontSrc: ["'self'", "https:", "data:", "fonts.gstatic.com"],
       objectSrc: ["'none'"],
       mediaSrc: ["'self'"],
