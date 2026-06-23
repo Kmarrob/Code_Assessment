@@ -33,6 +33,24 @@ app.use(compression({
 }));
 
 app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      connectSrc: [
+        "'self'",
+        "https://cisatool.com.br",
+        "https://code-assessment-frontend.onrender.com",
+        "https://code-assessment-898z.onrender.com",
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "https://api.code-assessment.com"
+      ],
+      fontSrc: ["'self'", "https:", "data:"],
+      imgSrc: ["'self'", "data:", "https:"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "https:", "'unsafe-inline'"],
+    },
+  },
   crossOriginEmbedderPolicy: true,
   crossOriginOpenerPolicy: true,
   crossOriginResourcePolicy: { policy: "cross-origin" },
