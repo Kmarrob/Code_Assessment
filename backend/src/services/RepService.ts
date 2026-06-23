@@ -462,7 +462,7 @@ export class RepService {
   }
 
   /**
-   * Obter estatísticas do preposto
+   * Obter estatísticas do preposto - CORRIGIDO
    */
   static async getStats(repId: string) {
     // Verificar se o preposto existe
@@ -471,26 +471,36 @@ export class RepService {
       throw new NotFoundError('Preposto não encontrado');
     }
 
-    // Total de usuários do preposto (mesma empresa)
+    // Buscar usuários ATIVOS do preposto (mesma empresa)
     const filter: any = {
       createdBy: repId,
       role: UserRole.USER,
+      isActive: true, // APENAS USUÁRIOS ATIVOS
     };
 
     if (rep.companyId) {
       filter.companyId = rep.companyId;
     }
 
+    const activeUsers = await User.find(filter).select('_id');
+    const activeUserIds = activeUsers.map(u => u._id);
+
     const totalUsers = await User.countDocuments(filter);
 
-    // Total de atribuições
+    // Total de atribuições APENAS para usuários ativos
     const totalAssignments = await Assignment.countDocuments({
       assignedBy: repId,
+      userId: { $in: activeUserIds },
     });
 
-    // Atribuições por status
+    // Atribuições por status (apenas usuários ativos)
     const statusCounts = await Assignment.aggregate([
-      { $match: { assignedBy: new mongoose.Types.ObjectId(repId) } },
+      { 
+        $match: { 
+          assignedBy: new mongoose.Types.ObjectId(repId),
+          userId: { $in: activeUserIds }
+        } 
+      },
       { $group: { _id: '$status', count: { $sum: 1 } } },
     ]);
 
@@ -499,7 +509,7 @@ export class RepService {
       statusMap[item._id] = item.count;
     });
 
-    // Total de respostas
+    // Total de respostas (apenas usuários ativos)
     const totalResponses = await Response.aggregate([
       {
         $lookup: {
@@ -510,11 +520,16 @@ export class RepService {
         },
       },
       { $unwind: '$assignment' },
-      { $match: { 'assignment.assignedBy': new mongoose.Types.ObjectId(repId) } },
+      { 
+        $match: { 
+          'assignment.assignedBy': new mongoose.Types.ObjectId(repId),
+          'assignment.userId': { $in: activeUserIds }
+        } 
+      },
       { $count: 'total' },
     ]);
 
-    // Média de maturidade
+    // Média de maturidade (apenas usuários ativos)
     const maturityAvg = await Response.aggregate([
       {
         $lookup: {
@@ -525,7 +540,12 @@ export class RepService {
         },
       },
       { $unwind: '$assignment' },
-      { $match: { 'assignment.assignedBy': new mongoose.Types.ObjectId(repId) } },
+      { 
+        $match: { 
+          'assignment.assignedBy': new mongoose.Types.ObjectId(repId),
+          'assignment.userId': { $in: activeUserIds }
+        } 
+      },
       {
         $group: {
           _id: null,
@@ -534,15 +554,20 @@ export class RepService {
       },
     ]);
 
+    const totalResponsesCount = totalResponses[0]?.total || 0;
+
+    // CORREÇÃO: Completion Rate baseado APENAS em usuários ativos
+    const completionRate = totalAssignments > 0
+      ? Math.round((totalResponsesCount / totalAssignments) * 100)
+      : 0;
+
     return {
       totalUsers,
       totalAssignments,
-      totalResponses: totalResponses[0]?.total || 0,
+      totalResponses: totalResponsesCount,
       statusDistribution: statusMap,
       averageMaturity: maturityAvg[0]?.avgMaturity || 0,
-      completionRate: totalAssignments > 0
-        ? Math.round(((totalResponses[0]?.total || 0) / totalAssignments) * 100)
-        : 0,
+      completionRate,
     };
   }
 }
