@@ -66,19 +66,17 @@ app.use(helmet({
 }));
 
 // ============================================
-// CONFIGURAÇÃO CORS CORRIGIDA - MÚLTIPLAS ORIGENS
+// CONFIGURAÇÃO CORS CORRIGIDA - PERMITE REQUISIÇÕES SEM ORIGIN
 // ============================================
 // Processar CORS_ORIGIN como array de origens permitidas
 const corsOrigins = config.CORS_ORIGIN.split(',').map(origin => origin.trim());
 
 app.use(cors({
   origin: function (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
-    // Permitir requisições sem origin (como Postman) em desenvolvimento
+    // Permitir requisições sem origin (health checks, ferramentas, etc.)
+    // Render faz health checks sem header Origin
     if (!origin) {
-      if (config.NODE_ENV === 'development') {
-        return callback(null, true);
-      }
-      return callback(new Error('Not allowed by CORS'));
+      return callback(null, true);
     }
     
     // Verificar se a origem está na lista de permitidas
