@@ -99,9 +99,11 @@ export const RepDashboard: React.FC = () => {
   };
 
   // ============================================
-  // NOVO HANDLER: DASHBOARD DE MATURIDADE
+  // CORREÇÃO: DASHBOARD DE MATURIDADE - ROTA SEM companyId
   // ============================================
   const handleNavigateToDashboard = () => {
+    // O backend obtém o companyId do preposto logado
+    // Portanto, navegamos para a rota base do dashboard do preposto
     navigate('/rep/dashboard');
   };
 
@@ -159,7 +161,7 @@ export const RepDashboard: React.FC = () => {
           <div className="flex gap-2">
             <Button onClick={handleNavigateToDashboard} variant="outline">
               <LayoutDashboard className="h-4 w-4 mr-2" />
-              Dashboard
+              Dashboard de Maturidade
             </Button>
             <Button onClick={handleCreateUser}>
               <UserPlus className="h-4 w-4 mr-2" />
@@ -230,7 +232,9 @@ export const RepDashboard: React.FC = () => {
                     <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
                   ) : (
                     <p className="text-2xl font-bold text-yellow-600">
-                      {stats?.completionRate ? `${Math.round(stats.completionRate)}%` : '0%'}
+                      {stats?.completionRate !== undefined && stats?.completionRate !== null
+                        ? `${Math.round(stats.completionRate)}%` 
+                        : '0%'}
                     </p>
                   )}
                 </div>
@@ -293,35 +297,47 @@ export const RepDashboard: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {users.map((u) => (
-                      <tr key={u._id} className="hover:bg-gray-50">
-                        <td className="py-3 px-4 font-medium text-gray-900">{u.name}</td>
-                        <td className="py-3 px-4 text-gray-600">{u.email}</td>
-                        <td className="py-3 px-4 text-gray-500">{u.department || '-'}</td>
-                        <td className="py-3 px-4 text-gray-500">{u.assignmentsCount || 0}</td>
-                        <td className="py-3 px-4">
-                          <div className="flex items-center gap-2">
-                            <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
-                              <div 
-                                className="h-full bg-blue-600 rounded-full transition-all duration-500" 
-                                style={{ width: `${u.responsesCount || 0}%` }}
-                              />
+                    {users.map((u) => {
+                      // CORREÇÃO: Calcular progresso baseado nos controles atribuídos
+                      const progress = u.assignmentsCount > 0 
+                        ? Math.round((u.responsesCount / u.assignmentsCount) * 100) 
+                        : 0;
+                      
+                      // CORREÇÃO: Definir cor da barra baseada no progresso
+                      let barColor = 'bg-red-500';
+                      if (progress >= 67) barColor = 'bg-green-500';
+                      else if (progress >= 34) barColor = 'bg-yellow-500';
+                      
+                      return (
+                        <tr key={u._id} className="hover:bg-gray-50">
+                          <td className="py-3 px-4 font-medium text-gray-900">{u.name}</td>
+                          <td className="py-3 px-4 text-gray-600">{u.email}</td>
+                          <td className="py-3 px-4 text-gray-500">{u.department || '-'}</td>
+                          <td className="py-3 px-4 text-gray-500">{u.assignmentsCount || 0}</td>
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-2">
+                              <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
+                                <div 
+                                  className={`h-full ${barColor} rounded-full transition-all duration-500`} 
+                                  style={{ width: `${progress}%` }}
+                                />
+                              </div>
+                              <span className="text-sm text-gray-500">{progress}%</span>
                             </div>
-                            <span className="text-sm text-gray-500">{u.responsesCount || 0}%</span>
-                          </div>
-                        </td>
-                        <td className="py-3 px-4">
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={() => handleAssignControls(u._id)}
-                          >
-                            <ClipboardList className="h-4 w-4 mr-1" />
-                            Atribuir
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
+                          </td>
+                          <td className="py-3 px-4">
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => handleAssignControls(u._id)}
+                            >
+                              <ClipboardList className="h-4 w-4 mr-1" />
+                              Atribuir
+                            </Button>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
 

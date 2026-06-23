@@ -52,6 +52,27 @@ export const UserDashboard: React.FC = () => {
   }, []);
 
   // ============================================
+  // CORREÇÃO: Calcular progresso baseado nos controles atribuídos
+  // ============================================
+  const calculateProgress = () => {
+    const total = stats.total || 0;
+    const completed = stats.completed || 0;
+    if (total === 0) return 0;
+    return Math.round((completed / total) * 100);
+  };
+
+  const progress = calculateProgress();
+
+  // CORREÇÃO: Definir cor da barra baseada no progresso
+  const getProgressBarColor = () => {
+    if (progress >= 67) return 'bg-green-500';
+    if (progress >= 34) return 'bg-yellow-500';
+    return 'bg-red-500';
+  };
+
+  const progressBarColor = getProgressBarColor();
+
+  // ============================================
   // RENDER
   // ============================================
   if (isLoading) {
@@ -114,6 +135,33 @@ export const UserDashboard: React.FC = () => {
           <p className="text-gray-600 mt-1">
             Gerencie seus controles atribuídos e acompanhe seu progresso
           </p>
+        </div>
+
+        {/* CORREÇÃO: Barra de Progresso Geral */}
+        <div className="mb-8">
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500">Seu Progresso Geral</h3>
+                  <div className="flex items-center gap-3 mt-1">
+                    <span className="text-3xl font-bold text-gray-900">{progress}%</span>
+                    <span className="text-sm text-gray-500">
+                      ({stats.completed} de {stats.total} controles respondidos)
+                    </span>
+                  </div>
+                </div>
+                <div className="w-full md:w-1/2">
+                  <div className="w-full h-4 bg-gray-200 rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full ${progressBarColor} rounded-full transition-all duration-700`}
+                      style={{ width: `${progress}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Stats */}
