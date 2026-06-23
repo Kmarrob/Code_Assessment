@@ -12,7 +12,7 @@ const envSchema = z.object({
   JWT_REFRESH_SECRET: z.string().min(32, 'JWT_REFRESH_SECRET deve ter pelo menos 32 caracteres'),
   JWT_ACCESS_EXPIRES_IN: z.string().default('15m'),
   JWT_REFRESH_EXPIRES_IN: z.string().default('7d'),
-  CORS_ORIGIN: z.string().url().default('http://localhost:5173'),
+  CORS_ORIGIN: z.string().default('http://localhost:5173,https://cisatool.com.br,https://code-assessment-frontend.onrender.com,https://code-assessment-898z.onrender.com'),
   RATE_LIMIT_WINDOW_MS: z.string().transform(Number).default('900000'),
   RATE_LIMIT_MAX: z.string().transform(Number).default('100'),
 });

@@ -4,6 +4,14 @@ exports.AuditService = void 0;
 // backend/src/services/AuditService.ts
 const logger_js_1 = require("../utils/logger.js");
 class AuditService {
+    static async log(entry) {
+        try {
+            logger_js_1.logger.info(`[AUDIT] Action: ${entry.action} | User: ${entry.userEmail} | Resource: ${entry.resource} | Success: ${entry.success}`);
+        }
+        catch (error) {
+            logger_js_1.logger.error('Erro ao gravar log de auditoria:', error);
+        }
+    }
     static async logUserCreation(userId, userEmail, targetUserId, targetUserEmail, targetRole, ip, userAgent, success) {
         const entry = {
             userId,
@@ -79,15 +87,6 @@ class AuditService {
         };
         await this.log(entry);
     }
-    static async log(entry) {
-        try {
-            logger_js_1.logger.info(`[AUDIT] ${entry.action} - ${entry.userEmail} - ${entry.resource}`, entry);
-        }
-        catch (error) {
-            logger_js_1.logger.error('Erro ao salvar log de auditoria:', error);
-        }
-    }
 }
 exports.AuditService = AuditService;
-exports.default = AuditService;
 //# sourceMappingURL=AuditService.js.map

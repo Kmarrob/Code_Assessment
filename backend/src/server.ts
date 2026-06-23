@@ -1,4 +1,3 @@
-// backend/src/server.ts
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -66,12 +65,33 @@ app.use(helmet({
   xssFilter: true,
 }));
 
+// ============================================
+// CONFIGURAÇÃO CORS CORRIGIDA - MÚLTIPLAS ORIGENS
+// ============================================
+// Processar CORS_ORIGIN como array de origens permitidas
+const corsOrigins = config.CORS_ORIGIN.split(',').map(origin => origin.trim());
+
 app.use(cors({
-  origin: config.CORS_ORIGIN,
+  origin: function (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
+    // Permitir requisições sem origin (como Postman) em desenvolvimento
+    if (!origin) {
+      if (config.NODE_ENV === 'development') {
+        return callback(null, true);
+      }
+      return callback(new Error('Not allowed by CORS'));
+    }
+    
+    // Verificar se a origem está na lista de permitidas
+    if (corsOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error(`Origin ${origin} not allowed by CORS`));
+    }
+  },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-  exposedHeaders: ['X-Total-Count', 'X-Page', 'X-Limit'],
+  exposedHeaders: ['X-Total-Count', 'X-Page', 'X-Limit', 'Authorization'],
   optionsSuccessStatus: 200,
 }));
 

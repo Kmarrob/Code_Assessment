@@ -15,12 +15,8 @@ const TokenService_js_1 = require("./TokenService.js");
 class AuthService {
     static generateTokens(userId, email, role) {
         const payload = { id: userId, email, role };
-        const accessToken = jsonwebtoken_1.default.sign(payload, env_js_1.config.JWT_SECRET, {
-            expiresIn: env_js_1.config.JWT_ACCESS_EXPIRES_IN,
-        });
-        const refreshToken = jsonwebtoken_1.default.sign(payload, env_js_1.config.JWT_REFRESH_SECRET, {
-            expiresIn: env_js_1.config.JWT_REFRESH_EXPIRES_IN,
-        });
+        const accessToken = jsonwebtoken_1.default.sign(payload, env_js_1.config.JWT_SECRET, { expiresIn: env_js_1.config.JWT_ACCESS_EXPIRES_IN });
+        const refreshToken = jsonwebtoken_1.default.sign(payload, env_js_1.config.JWT_REFRESH_SECRET, { expiresIn: env_js_1.config.JWT_REFRESH_EXPIRES_IN });
         return {
             accessToken,
             refreshToken,

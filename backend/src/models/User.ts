@@ -5,9 +5,9 @@ import { IUser, UserRole } from '../types/index.js';
 import { logger } from '../utils/logger.js';
 import { passwordPolicy } from '../services/PasswordPolicy.js';
 
-// Interface para o documento com métodos e propriedades estendidas de forma estrita
+// Interface para o documento estendendo de forma compatível com IUser
 export interface IUserDocument extends IUser, Document {
-  password?: string;
+  password: string; // Mantido obrigatório para manter compatibilidade estrita com a interface IUser
   refreshToken?: string;
   passwordHistory?: string[];
   passwordExpiresAt?: Date;

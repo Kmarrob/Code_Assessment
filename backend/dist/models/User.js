@@ -134,6 +134,8 @@ const userSchema = new mongoose_1.Schema({
 // ============================================
 userSchema.methods.comparePassword = async function (candidatePassword) {
     try {
+        if (!this.password)
+            return false;
         return await bcryptjs_1.default.compare(candidatePassword, this.password);
     }
     catch (error) {
@@ -154,6 +156,9 @@ userSchema.pre('save', async function (next) {
         if (!this.isModified('password')) {
             return next();
         }
+        if (!this.password) {
+            return next(new Error('Senha não fornecida para modificação'));
+        }
         const validation = PasswordPolicy_js_1.passwordPolicy.validate(this.password, {
             name: this.name,
             email: this.email,
@@ -161,13 +166,10 @@ userSchema.pre('save', async function (next) {
         if (!validation.valid) {
             throw new Error(`Senha inválida: ${validation.errors.join(', ')}`);
         }
-        if (this.isModified('password')) {
-            const doc = this;
-            if (doc.passwordHistory) {
-                doc.passwordHistory.push('previous_hash_placeholder');
-                if (doc.passwordHistory.length > 5) {
-                    doc.passwordHistory.shift();
-                }
+        if (this.passwordHistory) {
+            this.passwordHistory.push('previous_hash_placeholder');
+            if (this.passwordHistory.length > 5) {
+                this.passwordHistory.shift();
             }
         }
         this.passwordChangedAt = new Date();

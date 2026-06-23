@@ -3,7 +3,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-// backend/src/server.ts
 const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
 const helmet_1 = __importDefault(require("helmet"));
@@ -38,15 +37,19 @@ app.use((0, helmet_1.default)({
     contentSecurityPolicy: {
         directives: {
             defaultSrc: ["'self'"],
-            scriptSrc: ["'self'", "'unsafe-inline'"],
-            styleSrc: ["'self'", "'unsafe-inline'", "fonts.googleapis.com"],
-            styleSrcElem: ["'self'", "'unsafe-inline'", "fonts.googleapis.com"],
+            connectSrc: [
+                "'self'",
+                "https://cisatool.com.br",
+                "https://code-assessment-frontend.onrender.com",
+                "https://code-assessment-898z.onrender.com",
+                "http://localhost:3000",
+                "http://localhost:5173",
+                "https://api.code-assessment.com"
+            ],
+            fontSrc: ["'self'", "https:", "data:"],
             imgSrc: ["'self'", "data:", "https:"],
-            connectSrc: ["'self'", env_js_1.config.CORS_ORIGIN],
-            fontSrc: ["'self'", "https:", "data:", "fonts.gstatic.com"],
-            objectSrc: ["'none'"],
-            mediaSrc: ["'self'"],
-            frameSrc: ["'none'"],
+            scriptSrc: ["'self'", "'unsafe-inline'"],
+            styleSrc: ["'self'", "https:", "'unsafe-inline'"],
         },
     },
     crossOriginEmbedderPolicy: true,
@@ -63,12 +66,32 @@ app.use((0, helmet_1.default)({
     referrerPolicy: { policy: "strict-origin-when-cross-origin" },
     xssFilter: true,
 }));
+// ============================================
+// CONFIGURAÇÃO CORS CORRIGIDA - MÚLTIPLAS ORIGENS
+// ============================================
+// Processar CORS_ORIGIN como array de origens permitidas
+const corsOrigins = env_js_1.config.CORS_ORIGIN.split(',').map(origin => origin.trim());
 app.use((0, cors_1.default)({
-    origin: env_js_1.config.CORS_ORIGIN,
+    origin: function (origin, callback) {
+        // Permitir requisições sem origin (como Postman) em desenvolvimento
+        if (!origin) {
+            if (env_js_1.config.NODE_ENV === 'development') {
+                return callback(null, true);
+            }
+            return callback(new Error('Not allowed by CORS'));
+        }
+        // Verificar se a origem está na lista de permitidas
+        if (corsOrigins.indexOf(origin) !== -1) {
+            callback(null, true);
+        }
+        else {
+            callback(new Error(`Origin ${origin} not allowed by CORS`));
+        }
+    },
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-    exposedHeaders: ['X-Total-Count', 'X-Page', 'X-Limit'],
+    exposedHeaders: ['X-Total-Count', 'X-Page', 'X-Limit', 'Authorization'],
     optionsSuccessStatus: 200,
 }));
 app.use(express_1.default.json({ limit: '10mb' }));
