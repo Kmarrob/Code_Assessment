@@ -17,13 +17,17 @@ export class AuthService {
   static generateTokens(userId: string, email: string, role: UserRole): AuthTokens {
     const payload: IJWTPayload = { id: userId, email, role };
 
-    const accessToken = jwt.sign(payload, config.JWT_SECRET as string, {
-      expiresIn: config.JWT_ACCESS_EXPIRES_IN,
-    });
+    const accessToken = jwt.sign(
+      payload,
+      config.JWT_SECRET,
+      { expiresIn: config.JWT_ACCESS_EXPIRES_IN } as jwt.SignOptions
+    );
 
-    const refreshToken = jwt.sign(payload, config.JWT_REFRESH_SECRET as string, {
-      expiresIn: config.JWT_REFRESH_EXPIRES_IN,
-    });
+    const refreshToken = jwt.sign(
+      payload,
+      config.JWT_REFRESH_SECRET,
+      { expiresIn: config.JWT_REFRESH_EXPIRES_IN } as jwt.SignOptions
+    );
 
     return {
       accessToken,
