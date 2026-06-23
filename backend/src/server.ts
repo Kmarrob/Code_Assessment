@@ -42,11 +42,12 @@ app.use(helmet({
       imgSrc: ["'self'", "data:", "https:"],
       connectSrc: [
         "'self'",
-        "http://localhost:5173",
         "http://localhost:3000",
+        "http://localhost:5173",
+        "https://api.code-assessment.com",
+        "https://code-assessment-898z.onrender.com",
         "https://code-assessment-frontend.onrender.com",
         "https://cisatool.com.br",
-        "https://code-assessment-898z.onrender.com",
         ...(config.CORS_ORIGIN ? config.CORS_ORIGIN.split(',').map(o => o.trim()) : [])
       ],
       fontSrc: ["'self'", "https:", "data:", "fonts.gstatic.com"],
