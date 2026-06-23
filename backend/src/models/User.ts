@@ -96,9 +96,16 @@ const userSchema = new Schema<IUserDocument>(
     timestamps: true,
     toJSON: {
       transform: (_, ret) => {
-        delete ret.password;
-        delete ret.refreshToken;
-        delete ret.passwordHistory;
+        // Usar exclusão condicional para propriedades que podem existir
+        if (ret.password) {
+          delete ret.password;
+        }
+        if (ret.refreshToken) {
+          delete ret.refreshToken;
+        }
+        if (ret.passwordHistory) {
+          delete ret.passwordHistory;
+        }
         return ret;
       },
     },
