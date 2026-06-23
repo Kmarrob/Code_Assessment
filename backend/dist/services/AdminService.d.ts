@@ -5,6 +5,7 @@ export interface CreateUserData {
     password: string;
     role: UserRole;
     company?: string;
+    companyId?: string;
     department?: string;
 }
 export interface UpdateUserData {
@@ -12,6 +13,7 @@ export interface UpdateUserData {
     email?: string;
     role?: UserRole;
     company?: string;
+    companyId?: string;
     department?: string;
     isActive?: boolean;
 }
@@ -20,6 +22,7 @@ export interface UserFilters {
     isActive?: boolean;
     search?: string;
     company?: string;
+    companyId?: string;
     department?: string;
 }
 export declare class AdminService {

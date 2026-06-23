@@ -8,28 +8,32 @@ export declare const adminCreateUserSchema: z.ZodObject<{
     email: z.ZodString;
     password: z.ZodString;
     role: z.ZodDefault<z.ZodEnum<["admin", "rep", "consultant", "user"]>>;
-    company: z.ZodOptional<z.ZodString>;
-    department: z.ZodOptional<z.ZodString>;
+    company: z.ZodNullable<z.ZodOptional<z.ZodString>>;
+    companyId: z.ZodEffects<z.ZodUnion<[z.ZodNullable<z.ZodOptional<z.ZodString>>, z.ZodLiteral<"">]>, string | null | undefined, string | null | undefined>;
+    department: z.ZodNullable<z.ZodOptional<z.ZodString>>;
 }, "strip", z.ZodTypeAny, {
     password: string;
     name: string;
     email: string;
     role: "admin" | "rep" | "consultant" | "user";
-    company?: string | undefined;
-    department?: string | undefined;
+    company?: string | null | undefined;
+    companyId?: string | null | undefined;
+    department?: string | null | undefined;
 }, {
     password: string;
     name: string;
     email: string;
     role?: "admin" | "rep" | "consultant" | "user" | undefined;
-    company?: string | undefined;
-    department?: string | undefined;
+    company?: string | null | undefined;
+    companyId?: string | null | undefined;
+    department?: string | null | undefined;
 }>;
 export declare const adminUpdateUserSchema: z.ZodObject<{
     name: z.ZodOptional<z.ZodString>;
     email: z.ZodOptional<z.ZodString>;
     role: z.ZodOptional<z.ZodEnum<["admin", "rep", "consultant", "user"]>>;
     company: z.ZodNullable<z.ZodOptional<z.ZodString>>;
+    companyId: z.ZodEffects<z.ZodUnion<[z.ZodNullable<z.ZodOptional<z.ZodString>>, z.ZodLiteral<"">]>, string | null | undefined, string | null | undefined>;
     department: z.ZodNullable<z.ZodOptional<z.ZodString>>;
     isActive: z.ZodOptional<z.ZodBoolean>;
 }, "strip", z.ZodTypeAny, {
@@ -37,6 +41,7 @@ export declare const adminUpdateUserSchema: z.ZodObject<{
     email?: string | undefined;
     role?: "admin" | "rep" | "consultant" | "user" | undefined;
     company?: string | null | undefined;
+    companyId?: string | null | undefined;
     department?: string | null | undefined;
     isActive?: boolean | undefined;
 }, {
@@ -44,6 +49,7 @@ export declare const adminUpdateUserSchema: z.ZodObject<{
     email?: string | undefined;
     role?: "admin" | "rep" | "consultant" | "user" | undefined;
     company?: string | null | undefined;
+    companyId?: string | null | undefined;
     department?: string | null | undefined;
     isActive?: boolean | undefined;
 }>;
@@ -54,12 +60,14 @@ export declare const adminListUsersSchema: z.ZodObject<{
     isActive: z.ZodOptional<z.ZodBoolean>;
     search: z.ZodOptional<z.ZodString>;
     company: z.ZodOptional<z.ZodString>;
+    companyId: z.ZodOptional<z.ZodString>;
     department: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
     limit: number;
     page: number;
     role?: "admin" | "rep" | "consultant" | "user" | undefined;
     company?: string | undefined;
+    companyId?: string | undefined;
     department?: string | undefined;
     isActive?: boolean | undefined;
     search?: string | undefined;
@@ -67,6 +75,7 @@ export declare const adminListUsersSchema: z.ZodObject<{
     limit?: number | undefined;
     role?: "admin" | "rep" | "consultant" | "user" | undefined;
     company?: string | undefined;
+    companyId?: string | undefined;
     department?: string | undefined;
     isActive?: boolean | undefined;
     search?: string | undefined;

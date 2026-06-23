@@ -12,7 +12,12 @@ class AuthController {
             if (!validation.success) {
                 throw new errorHandler_js_1.ValidationError(validation.errors || {});
             }
-            const user = await AuthService_js_1.AuthService.register(validation.data);
+            // Garantir que role seja do tipo correto
+            const userData = {
+                ...validation.data,
+                role: validation.data.role,
+            };
+            const user = await AuthService_js_1.AuthService.register(userData);
             res.status(201).json({
                 success: true,
                 message: 'Usuário registrado com sucesso',

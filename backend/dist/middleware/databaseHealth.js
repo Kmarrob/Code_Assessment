@@ -5,7 +5,7 @@ exports.withDatabaseRetry = withDatabaseRetry;
 const database_js_1 = require("../config/database.js");
 const logger_js_1 = require("../utils/logger.js");
 const errorHandler_js_1 = require("./errorHandler.js");
-async function checkDatabaseHealth(req, res, next) {
+async function checkDatabaseHealth(req, _res, next) {
     try {
         const isConnected = database_js_1.db.getConnectionState();
         if (!isConnected) {

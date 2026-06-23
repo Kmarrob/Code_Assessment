@@ -41,17 +41,17 @@ const assignmentSchema = new mongoose_1.Schema({
     userId: {
         type: mongoose_1.Schema.Types.ObjectId,
         ref: 'User',
-        required: true,
+        required: [true, 'Usuário é obrigatório'],
     },
     controlId: {
         type: mongoose_1.Schema.Types.ObjectId,
         ref: 'Control',
-        required: true,
+        required: [true, 'Controle é obrigatório'],
     },
     assignedBy: {
         type: mongoose_1.Schema.Types.ObjectId,
         ref: 'User',
-        required: true,
+        required: [true, 'Preposto que atribuiu é obrigatório'],
     },
     assignedAt: {
         type: Date,
@@ -68,8 +68,44 @@ const assignmentSchema = new mongoose_1.Schema({
 }, {
     timestamps: true,
 });
+// ============================================
+// ÍNDICES OTIMIZADOS PARA REP
+// ============================================
+// Garantir que um controle não seja atribuído duas vezes ao mesmo usuário
 assignmentSchema.index({ userId: 1, controlId: 1 }, { unique: true });
-assignmentSchema.index({ assignedBy: 1 });
-assignmentSchema.index({ status: 1 });
+// Para consultas do preposto
+assignmentSchema.index({ assignedBy: 1, userId: 1 });
+assignmentSchema.index({ assignedBy: 1, status: 1 });
+assignmentSchema.index({ userId: 1, status: 1 });
+// Para consultas de progresso
+assignmentSchema.index({ assignedBy: 1, assignedAt: -1 });
+// ============================================
+// MÉTODOS ESTÁTICOS
+// ============================================
+// Buscar atribuições de um preposto
+assignmentSchema.statics.findByRep = function (repId) {
+    return this.find({ assignedBy: repId })
+        .populate('userId', 'name email')
+        .populate('controlId', 'id nome')
+        .sort({ assignedAt: -1 });
+};
+// Buscar atribuições de um usuário
+assignmentSchema.statics.findByUser = function (userId) {
+    return this.find({ userId })
+        .populate('controlId', 'id nome')
+        .sort({ assignedAt: -1 });
+};
+// Contar atribuições por status
+assignmentSchema.statics.countByStatus = function (repId) {
+    return this.aggregate([
+        { $match: { assignedBy: new mongoose_1.default.Types.ObjectId(repId) } },
+        { $group: { _id: '$status', count: { $sum: 1 } } },
+    ]);
+};
+// Verificar se um controle já foi atribuído a um usuário
+assignmentSchema.statics.isControlAssigned = async function (userId, controlId) {
+    const assignment = await this.findOne({ userId, controlId });
+    return !!assignment;
+};
 exports.Assignment = mongoose_1.default.model('Assignment', assignmentSchema);
 //# sourceMappingURL=Assignment.js.map

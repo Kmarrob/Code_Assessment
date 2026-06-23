@@ -11,7 +11,7 @@ const circuitBreaker_js_1 = require("../utils/circuitBreaker.js");
 const mongoose_1 = __importDefault(require("mongoose"));
 class HealthController {
     static startTime = Date.now();
-    static async basic(req, res) {
+    static async basic(_req, res) {
         const isConnected = database_js_1.db.getConnectionState();
         const status = isConnected ? 'ok' : 'degraded';
         res.json({
@@ -22,13 +22,12 @@ class HealthController {
             uptime: process.uptime(),
         });
     }
-    static async detailed(req, res) {
+    static async detailed(_req, res) {
         try {
             const startTime = Date.now();
             let dbStatus = 'up';
             let dbLatency = 0;
             try {
-                // Verificar se db existe antes de chamar admin().ping()
                 if (mongoose_1.default.connection.db) {
                     await mongoose_1.default.connection.db.admin().ping();
                     dbLatency = Date.now() - startTime;
@@ -46,7 +45,6 @@ class HealthController {
             const memoryUsage = process.memoryUsage();
             const totalMemory = memoryUsage.heapTotal / 1024 / 1024;
             const usedMemory = memoryUsage.heapUsed / 1024 / 1024;
-            // Obter estatísticas do banco com fallback
             let dbStats;
             try {
                 dbStats = database_js_1.db.getStats();
@@ -103,7 +101,7 @@ class HealthController {
             });
         }
     }
-    static async readiness(req, res) {
+    static async readiness(_req, res) {
         const isConnected = database_js_1.db.getConnectionState();
         const isReady = isConnected && mongoose_1.default.connection.readyState === 1;
         if (isReady) {
@@ -113,7 +111,7 @@ class HealthController {
             res.status(503).json({ status: 'not ready' });
         }
     }
-    static async liveness(req, res) {
+    static async liveness(_req, res) {
         res.status(200).json({ status: 'alive' });
     }
     static formatUptime(seconds) {

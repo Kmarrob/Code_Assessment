@@ -75,6 +75,21 @@ const userSchema = new mongoose_1.Schema({
         trim: true,
         maxlength: [100, 'Empresa deve ter no máximo 100 caracteres'],
     },
+    companyId: {
+        type: mongoose_1.Schema.Types.ObjectId,
+        ref: 'Company',
+        required: false,
+    },
+    createdBy: {
+        type: mongoose_1.Schema.Types.ObjectId,
+        ref: 'User',
+        required: false,
+    },
+    consultantId: {
+        type: mongoose_1.Schema.Types.ObjectId,
+        ref: 'User',
+        required: false,
+    },
     department: {
         type: String,
         trim: true,
@@ -84,7 +99,7 @@ const userSchema = new mongoose_1.Schema({
         type: Boolean,
         default: true,
     },
-    lastLoginAt: {
+    lastLogin: {
         type: Date,
     },
     refreshToken: {
@@ -110,7 +125,6 @@ const userSchema = new mongoose_1.Schema({
             delete ret.password;
             delete ret.refreshToken;
             delete ret.passwordHistory;
-            // Removido delete ret.__v;
             return ret;
         },
     },
@@ -147,10 +161,13 @@ userSchema.pre('save', async function (next) {
         if (!validation.valid) {
             throw new Error(`Senha inválida: ${validation.errors.join(', ')}`);
         }
-        if (this.isModified('password') && this.passwordHistory) {
-            this.passwordHistory.push('previous_hash_placeholder');
-            if (this.passwordHistory.length > 5) {
-                this.passwordHistory.shift();
+        if (this.isModified('password')) {
+            const doc = this;
+            if (doc.passwordHistory) {
+                doc.passwordHistory.push('previous_hash_placeholder');
+                if (doc.passwordHistory.length > 5) {
+                    doc.passwordHistory.shift();
+                }
             }
         }
         this.passwordChangedAt = new Date();
@@ -187,8 +204,13 @@ userSchema.index({ role: 1 });
 userSchema.index({ isActive: 1 });
 userSchema.index({ role: 1, isActive: 1, createdAt: -1 });
 userSchema.index({ company: 1, department: 1 });
+userSchema.index({ companyId: 1 });
+userSchema.index({ createdBy: 1 });
+userSchema.index({ consultantId: 1 });
+userSchema.index({ companyId: 1, role: 1 });
+userSchema.index({ consultantId: 1, role: 1 });
 userSchema.index({ name: 'text', email: 'text' });
-userSchema.index({ lastLoginAt: -1 });
+userSchema.index({ lastLogin: -1 });
 userSchema.index({ passwordExpiresAt: 1 });
 // ============================================
 // MÉTODOS ESTÁTICOS
@@ -198,6 +220,18 @@ userSchema.statics.findActive = function () {
 };
 userSchema.statics.findByRole = function (role) {
     return this.find({ role, isActive: true });
+};
+userSchema.statics.findByCompany = function (companyId) {
+    return this.find({ companyId, isActive: true });
+};
+userSchema.statics.findByCreator = function (createdBy) {
+    return this.find({ createdBy, isActive: true });
+};
+userSchema.statics.findByConsultant = function (consultantId) {
+    return this.find({ consultantId, isActive: true });
+};
+userSchema.statics.findConsultants = function () {
+    return this.find({ role: 'consultant', isActive: true });
 };
 exports.User = mongoose_1.default.model('User', userSchema);
 //# sourceMappingURL=User.js.map

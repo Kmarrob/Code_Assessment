@@ -62,7 +62,7 @@ function updateAdminMetrics(metric) {
 function getAdminMetrics() {
     return { ...adminMetrics };
 }
-function adminMetricsHandler(req, res) {
+function adminMetricsHandler(_req, res) {
     res.json({
         success: true,
         data: {

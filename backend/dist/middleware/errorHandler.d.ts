@@ -24,6 +24,6 @@ export declare class DatabaseError extends AppError {
 export declare class ServiceUnavailableError extends AppError {
     constructor(message?: string);
 }
-export declare function errorHandler(err: Error | AppError, req: Request, res: Response, next: NextFunction): void;
+export declare function errorHandler(err: Error | AppError, req: Request, res: Response, _next: NextFunction): void;
 export declare function notFoundHandler(req: Request, res: Response, next: NextFunction): void;
 //# sourceMappingURL=errorHandler.d.ts.map

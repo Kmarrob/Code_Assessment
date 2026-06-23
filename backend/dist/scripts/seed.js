@@ -8,6 +8,8 @@ const mongoose_1 = __importDefault(require("mongoose"));
 const env_js_1 = require("../config/env.js");
 const logger_js_1 = require("../utils/logger.js");
 const Control_js_1 = require("../models/Control.js");
+const Company_js_1 = require("../models/Company.js");
+const User_js_1 = require("../models/User.js");
 const controlsData = [
     // Controles Organizacionais (5.1 a 5.37)
     { id: '5.1', nome: 'Políticas de segurança da informação', tiposDeControles: ['Organizacionais'], nota: 'Parcialmente implementado', tipoDeControle: ['Preventivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Identificar'], capacidadesOperacionais: ['Governança'], dominioDeSI: ['Governança e ecossistema'] },
@@ -20,7 +22,6 @@ const controlsData = [
     { id: '5.8', nome: 'Gestão de projetos de segurança da informação', tiposDeControles: ['Organizacionais'], nota: 'Parcialmente implementado', tipoDeControle: ['Preventivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Identificar'], capacidadesOperacionais: ['Governança'], dominioDeSI: ['Governança e ecossistema'] },
     { id: '5.9', nome: 'Inventário de ativos de informação e outros ativos associados', tiposDeControles: ['Organizacionais'], nota: 'Implementado', tipoDeControle: ['Preventivo', 'Detectivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Identificar'], capacidadesOperacionais: ['Gestão de ativos'], dominioDeSI: ['Defesa'] },
     { id: '5.10', nome: 'Classificação da informação', tiposDeControles: ['Organizacionais'], nota: 'Implementado', tipoDeControle: ['Preventivo', 'Detectivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Identificar', 'Proteger'], capacidadesOperacionais: ['Gestão de ativos'], dominioDeSI: ['Defesa'] },
-    // ... continuar com mais controles
     { id: '5.11', nome: 'Etiquetagem de ativos', tiposDeControles: ['Organizacionais'], nota: 'Implementado', tipoDeControle: ['Preventivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Identificar'], capacidadesOperacionais: ['Gestão de ativos'], dominioDeSI: ['Defesa'] },
     { id: '5.12', nome: 'Gestão da capacidade', tiposDeControles: ['Organizacionais'], nota: 'Parcialmente implementado', tipoDeControle: ['Preventivo', 'Detectivo', 'Corretivo'], propriedadeDeSI: ['Disponibilidade'], conceitoDeSegurancaCibernetica: ['Proteger'], capacidadesOperacionais: ['Gestão de continuidade do negócio'], dominioDeSI: ['Resiliência'] },
     { id: '5.13', nome: 'Registro, inventário e controle de mídias', tiposDeControles: ['Organizacionais'], nota: 'Implementado', tipoDeControle: ['Preventivo', 'Detectivo'], propriedadeDeSI: ['Confidencialidade', 'Integridade', 'Disponibilidade'], conceitoDeSegurancaCibernetica: ['Identificar', 'Proteger'], capacidadesOperacionais: ['Gestão de ativos'], dominioDeSI: ['Defesa'] },
@@ -114,14 +115,79 @@ async function seedControls() {
             dbName: env_js_1.config.MONGODB_DB_NAME,
         });
         logger_js_1.logger.info('📦 Conectado ao MongoDB');
+        // ============================================
+        // 1. POPULAR CONTROLES
+        // ============================================
         await Control_js_1.Control.deleteMany({});
         logger_js_1.logger.info('🗑️ Controles existentes removidos');
         const result = await Control_js_1.Control.insertMany(controlsData);
         logger_js_1.logger.info(`✅ ${result.length} controles inseridos com sucesso`);
+        // ============================================
+        // 2. CRIAR EMPRESA PADRÃO
+        // ============================================
+        logger_js_1.logger.info('🏢 Verificando empresa padrão...');
+        let defaultCompany = await Company_js_1.Company.findOne({ name: 'Empresa Padrão' });
+        if (!defaultCompany) {
+            defaultCompany = await Company_js_1.Company.create({
+                name: 'Empresa Padrão',
+                cnpj: '00.000.000/0001-00',
+                plan: 'enterprise',
+                status: 'active',
+                maxUsers: 100,
+                maxControls: 93,
+            });
+            logger_js_1.logger.info(`✅ Empresa padrão criada: ${defaultCompany.name} (ID: ${defaultCompany._id})`);
+        }
+        else {
+            logger_js_1.logger.info(`✅ Empresa padrão já existe: ${defaultCompany.name} (ID: ${defaultCompany._id})`);
+        }
+        // ============================================
+        // 3. ASSOCIAR USUÁRIOS EXISTENTES À EMPRESA PADRÃO
+        // ============================================
+        logger_js_1.logger.info('👤 Atualizando usuários existentes...');
+        const usersWithoutCompany = await User_js_1.User.find({
+            $or: [
+                { companyId: { $exists: false } },
+                { companyId: null }
+            ]
+        });
+        if (usersWithoutCompany.length > 0) {
+            const updateResult = await User_js_1.User.updateMany({
+                $or: [
+                    { companyId: { $exists: false } },
+                    { companyId: null }
+                ]
+            }, { companyId: defaultCompany._id });
+            logger_js_1.logger.info(`✅ ${updateResult.modifiedCount} usuários associados à empresa padrão`);
+            // Listar usuários atualizados
+            const updatedUsers = await User_js_1.User.find({ companyId: defaultCompany._id })
+                .select('name email role')
+                .lean();
+            logger_js_1.logger.info(`📋 Total de usuários na empresa padrão: ${updatedUsers.length}`);
+            updatedUsers.forEach((user) => {
+                logger_js_1.logger.info(`  - ${user.name} (${user.email}) - ${user.role}`);
+            });
+        }
+        else {
+            logger_js_1.logger.info('✅ Todos os usuários já estão associados a uma empresa');
+        }
+        // ============================================
+        // 4. RESULTADO FINAL
+        // ============================================
+        const totalUsers = await User_js_1.User.countDocuments();
+        const totalCompanies = await Company_js_1.Company.countDocuments();
+        const totalControls = await Control_js_1.Control.countDocuments();
+        logger_js_1.logger.info('=========================================');
+        logger_js_1.logger.info('📊 RESUMO DO SEED');
+        logger_js_1.logger.info('=========================================');
+        logger_js_1.logger.info(`🏢 Empresas: ${totalCompanies}`);
+        logger_js_1.logger.info(`👤 Usuários: ${totalUsers}`);
+        logger_js_1.logger.info(`📋 Controles: ${totalControls}`);
+        logger_js_1.logger.info('=========================================');
         process.exit(0);
     }
     catch (error) {
-        logger_js_1.logger.error('❌ Erro ao popular controles:', error);
+        logger_js_1.logger.error('❌ Erro ao popular banco de dados:', error);
         process.exit(1);
     }
 }

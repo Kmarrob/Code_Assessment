@@ -14,7 +14,7 @@ const errorHandler_js_1 = require("../middleware/errorHandler.js");
 const TokenService_js_1 = require("./TokenService.js");
 class AuthService {
     static generateTokens(userId, email, role) {
-        const payload = { userId, email, role };
+        const payload = { id: userId, email, role };
         const accessToken = jsonwebtoken_1.default.sign(payload, env_js_1.config.JWT_SECRET, {
             expiresIn: env_js_1.config.JWT_ACCESS_EXPIRES_IN,
         });
@@ -64,7 +64,7 @@ class AuthService {
             if (!isPasswordValid) {
                 throw new errorHandler_js_1.AuthenticationError('Email ou senha inválidos');
             }
-            user.lastLoginAt = new Date();
+            user.lastLogin = new Date();
             await user.save();
             const tokens = AuthService.generateTokens(user._id.toString(), user.email, user.role);
             user.refreshToken = tokens.refreshToken;
@@ -73,13 +73,15 @@ class AuthService {
                 _id: user._id,
                 name: user.name,
                 email: user.email,
+                password: '',
                 role: user.role,
                 company: user.company,
                 department: user.department,
                 isActive: user.isActive,
-                lastLoginAt: user.lastLoginAt,
                 createdAt: user.createdAt,
                 updatedAt: user.updatedAt,
+                lastLogin: user.lastLogin,
+                passwordChangedAt: user.passwordChangedAt,
             };
             return { user: userResponse, tokens };
         }
@@ -96,7 +98,7 @@ class AuthService {
                 throw new errorHandler_js_1.AuthenticationError('Refresh token revogado');
             }
             const decoded = TokenService_js_1.TokenService.verifyToken(refreshToken, env_js_1.config.JWT_REFRESH_SECRET);
-            const user = await User_js_1.User.findById(decoded.userId)
+            const user = await User_js_1.User.findById(decoded.id)
                 .select('_id email role refreshToken isActive')
                 .exec();
             if (!user || !user.isActive) {
@@ -167,13 +169,13 @@ class AuthService {
     }
     static async getUserById(userId) {
         return User_js_1.User.findById(userId)
-            .select('_id name email role company department isActive lastLoginAt')
+            .select('_id name email role company department isActive lastLogin')
             .lean()
             .exec();
     }
     static async getUserByEmail(email) {
         return User_js_1.User.findOne({ email })
-            .select('_id name email role company department isActive lastLoginAt')
+            .select('_id name email role company department isActive lastLogin')
             .lean()
             .exec();
     }

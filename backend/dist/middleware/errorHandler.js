@@ -29,7 +29,6 @@ class AppError extends Error {
 }
 exports.AppError = AppError;
 class ValidationError extends AppError {
-    // Mantido o overload original
     constructor(errors) {
         if (typeof errors === 'string') {
             super(errors, 400, true, undefined, 'VALIDATION_ERROR');
@@ -108,10 +107,8 @@ function mapJWTError(error) {
 // ============================================
 // MIDDLEWARE DE TRATAMENTO DE ERROS
 // ============================================
-function errorHandler(err, req, res, next // Mantido para compatibilidade
-) {
+function errorHandler(err, req, res, _next) {
     let error = err;
-    // Mapear erros específicos
     if (err instanceof mongoose_1.default.Error) {
         error = mapMongoDBError(err);
     }
@@ -121,7 +118,6 @@ function errorHandler(err, req, res, next // Mantido para compatibilidade
     else if (!(err instanceof AppError)) {
         error = new AppError(err.message || 'Erro interno do servidor', 500, false, undefined, 'UNKNOWN_ERROR');
     }
-    // Log detalhado
     const logData = {
         eventType: 'ERROR',
         message: error.message,
@@ -137,9 +133,7 @@ function errorHandler(err, req, res, next // Mantido para compatibilidade
         query: env_js_1.config.NODE_ENV !== 'production' ? req.query : undefined,
         params: env_js_1.config.NODE_ENV !== 'production' ? req.params : undefined,
     };
-    // Log de erro de segurança
     if (error.statusCode === 401 || error.statusCode === 403) {
-        // Usando o enum correto ou fallback para string
         const eventType = error.statusCode === 401
             ? (securityLogger_js_1.SecurityEventType.LOGIN_FAILED || 'LOGIN_FAILED')
             : (securityLogger_js_1.SecurityEventType.ACCESS_DENIED || 'ACCESS_DENIED');
@@ -160,7 +154,6 @@ function errorHandler(err, req, res, next // Mantido para compatibilidade
     else {
         logger_js_1.logger.error(`[CRITICAL ERROR] ${error.message}`, logData);
     }
-    // Resposta
     const response = {
         success: false,
         message: error.message,
@@ -174,16 +167,7 @@ function errorHandler(err, req, res, next // Mantido para compatibilidade
         }),
     };
     res.status(error.statusCode).json(response);
-    // Chamar next para garantir que o fluxo continue (se necessário)
-    // Em alguns frameworks, é necessário chamar next para erros não tratados
-    // Mantido para compatibilidade
-    if (next) {
-        next();
-    }
 }
-// ============================================
-// MIDDLEWARE DE ROTAS NÃO ENCONTRADAS
-// ============================================
 function notFoundHandler(req, res, next) {
     const error = new AppError(`Rota ${req.method} ${req.path} não encontrada`, 404, true, undefined, 'ROUTE_NOT_FOUND');
     next(error);

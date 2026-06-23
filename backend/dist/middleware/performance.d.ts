@@ -12,7 +12,7 @@ declare let metrics: {
 };
 export declare function performanceMiddleware(req: Request, res: Response, next: NextFunction): void;
 export declare function getPerformanceMetrics(): typeof metrics;
-export declare function performanceMetricsHandler(req: Request, res: Response): void;
+export declare function performanceMetricsHandler(_req: Request, res: Response): void;
 export declare function resetMetrics(): void;
 export {};
 //# sourceMappingURL=performance.d.ts.map

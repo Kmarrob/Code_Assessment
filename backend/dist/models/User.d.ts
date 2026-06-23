@@ -1,4 +1,8 @@
-import { Model } from 'mongoose';
+import { Model, Document } from 'mongoose';
 import { IUser } from '../types/index.js';
-export declare const User: Model<IUser>;
+export interface IUserDocument extends IUser, Document {
+    comparePassword(candidatePassword: string): Promise<boolean>;
+    needsPasswordChange(): boolean;
+}
+export declare const User: Model<IUserDocument>;
 //# sourceMappingURL=User.d.ts.map

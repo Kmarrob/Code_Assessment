@@ -5,8 +5,12 @@ import { IUser, UserRole } from '../types/index.js';
 import { logger } from '../utils/logger.js';
 import { passwordPolicy } from '../services/PasswordPolicy.js';
 
-// Interface para o documento com métodos
+// Interface para o documento com métodos e propriedades estendidas explicitamente para o TypeScript
 export interface IUserDocument extends IUser, Document {
+  password?: string;
+  refreshToken?: string;
+  passwordHistory?: string[];
+  passwordExpiresAt?: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
   needsPasswordChange(): boolean;
 }
@@ -109,6 +113,7 @@ userSchema.methods.comparePassword = async function (
   candidatePassword: string
 ): Promise<boolean> {
   try {
+    if (!this.password) return false;
     return await bcrypt.compare(candidatePassword, this.password);
   } catch (error) {
     logger.error('Error comparing passwords:', error);
@@ -131,6 +136,10 @@ userSchema.pre<IUserDocument>('save', async function (next) {
       return next();
     }
 
+    if (!this.password) {
+      return next(new Error('Senha não fornecida para modificação'));
+    }
+
     const validation = passwordPolicy.validate(this.password, {
       name: this.name,
       email: this.email,
@@ -140,10 +149,12 @@ userSchema.pre<IUserDocument>('save', async function (next) {
       throw new Error(`Senha inválida: ${validation.errors.join(', ')}`);
     }
 
-    if (this.isModified('password') && this.passwordHistory) {
-      this.passwordHistory.push('previous_hash_placeholder');
-      if (this.passwordHistory.length > 5) {
-        this.passwordHistory.shift();
+    if (this.isModified('password')) {
+      if (this.passwordHistory) {
+        this.passwordHistory.push('previous_hash_placeholder');
+        if (this.passwordHistory.length > 5) {
+          this.passwordHistory.shift();
+        }
       }
     }
 

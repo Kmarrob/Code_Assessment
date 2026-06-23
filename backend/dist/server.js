@@ -15,6 +15,9 @@ const errorHandler_js_1 = require("./middleware/errorHandler.js");
 const rateLimit_js_1 = require("./middleware/rateLimit.js");
 const auth_js_1 = __importDefault(require("./routes/auth.js"));
 const admin_js_1 = __importDefault(require("./routes/admin.js"));
+const rep_routes_js_1 = __importDefault(require("./routes/rep.routes.js"));
+const user_routes_js_1 = __importDefault(require("./routes/user.routes.js"));
+const consultant_routes_js_1 = __importDefault(require("./routes/consultant.routes.js"));
 const cache_js_1 = require("./middleware/cache.js");
 const SitemapController_js_1 = require("./controllers/SitemapController.js");
 const adminPerformance_js_1 = require("./middleware/adminPerformance.js");
@@ -36,10 +39,11 @@ app.use((0, helmet_1.default)({
         directives: {
             defaultSrc: ["'self'"],
             scriptSrc: ["'self'", "'unsafe-inline'"],
-            styleSrc: ["'self'", "'unsafe-inline'"],
+            styleSrc: ["'self'", "'unsafe-inline'", "fonts.googleapis.com"],
+            styleSrcElem: ["'self'", "'unsafe-inline'", "fonts.googleapis.com"],
             imgSrc: ["'self'", "data:", "https:"],
             connectSrc: ["'self'", env_js_1.config.CORS_ORIGIN],
-            fontSrc: ["'self'", "https:", "data:"],
+            fontSrc: ["'self'", "https:", "data:", "fonts.gstatic.com"],
             objectSrc: ["'none'"],
             mediaSrc: ["'self'"],
             frameSrc: ["'none'"],
@@ -71,9 +75,15 @@ app.use(express_1.default.json({ limit: '10mb' }));
 app.use(express_1.default.urlencoded({ extended: true, limit: '10mb' }));
 app.use(logger_js_1.httpLogger);
 app.use(rateLimit_js_1.publicRateLimiter);
+// ============================================
+// ROTAS DA API
+// ============================================
 app.use('/api/auth', auth_js_1.default);
 app.use('/api/admin', admin_js_1.default);
-app.get('/health', cache_js_1.noCache, (req, res) => {
+app.use('/api/rep', rep_routes_js_1.default);
+app.use('/api/user', user_routes_js_1.default);
+app.use('/api/consultant', consultant_routes_js_1.default);
+app.get('/health', cache_js_1.noCache, (_req, res) => {
     res.json({
         status: 'ok',
         timestamp: new Date().toISOString(),
@@ -83,7 +93,7 @@ app.get('/health', cache_js_1.noCache, (req, res) => {
 });
 // SEO Routes
 app.get('/sitemap.xml', SitemapController_js_1.SitemapController.generate);
-app.get('/robots.txt', (req, res) => {
+app.get('/robots.txt', (_req, res) => {
     res.type('text/plain');
     res.send(`# https://www.robotstxt.org/robotstxt.html
 User-agent: *
@@ -132,6 +142,9 @@ async function startServer() {
             logger_js_1.logger.info(`🗺️ Sitemap: http://localhost:${PORT}/sitemap.xml`);
             logger_js_1.logger.info(`🤖 Robots: http://localhost:${PORT}/robots.txt`);
             logger_js_1.logger.info(`📊 Admin Metrics: http://localhost:${PORT}/admin/metrics`);
+            logger_js_1.logger.info(`👤 Rep Routes: http://localhost:${PORT}/api/rep`);
+            logger_js_1.logger.info(`👤 User Routes: http://localhost:${PORT}/api/user`);
+            logger_js_1.logger.info(`👤 Consultant Routes: http://localhost:${PORT}/api/consultant`);
         });
     }
     catch (error) {

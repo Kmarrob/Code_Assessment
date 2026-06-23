@@ -131,7 +131,7 @@ export class UserService {
       // Atualizar resposta existente
       response.maturityLevel = maturityLevel;
       response.scenarioDescription = scenarioDescription || '';
-      response.evidence = evidenceString;
+response.evidence = evidenceString ? [evidenceString] : [];
       response.observations = notes || '';
       await response.save();
     } else {

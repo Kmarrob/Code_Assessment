@@ -5,8 +5,8 @@ const express_1 = require("express");
 const AuthController_js_1 = require("../controllers/AuthController.js");
 const auth_js_1 = require("../middleware/auth.js");
 const rateLimit_js_1 = require("../middleware/rateLimit.js");
-const index_js_1 = require("../types/index.js");
 const cache_js_1 = require("../middleware/cache.js");
+const index_js_1 = require("../types/index.js");
 const router = (0, express_1.Router)();
 // Rotas públicas (sem cache)
 router.post('/register', rateLimit_js_1.registerRateLimiter, cache_js_1.noCache, AuthController_js_1.AuthController.register);

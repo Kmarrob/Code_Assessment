@@ -8,7 +8,8 @@ async function checkPasswordExpiry(req, res, next) {
         if (!user) {
             return next();
         }
-        if (user.needsPasswordChange && user.needsPasswordChange()) {
+        // Verificar se o método existe e se a senha expirou
+        if (typeof user.needsPasswordChange === 'function' && user.needsPasswordChange()) {
             const isPasswordChangeRoute = req.path === '/profile' && req.method === 'PUT';
             if (!isPasswordChangeRoute) {
                 logger_js_1.logger.warn(`Senha expirada para usuário: ${user.email}`);

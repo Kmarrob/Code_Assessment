@@ -64,7 +64,7 @@ function updateMetrics(metric) {
 function getPerformanceMetrics() {
     return { ...metrics };
 }
-function performanceMetricsHandler(req, res) {
+function performanceMetricsHandler(_req, res) {
     res.json({
         success: true,
         data: {

@@ -2,123 +2,92 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuditService = void 0;
 // backend/src/services/AuditService.ts
-const securityLogger_js_1 = require("../utils/securityLogger.js");
+const logger_js_1 = require("../utils/logger.js");
 class AuditService {
-    static logAdminAction(userId, email, action, ip, userAgent, success, details) {
-        securityLogger_js_1.SecurityLogger.log({
-            eventType: securityLogger_js_1.SecurityEventType.USER_UPDATED,
-            timestamp: new Date(),
+    static async logUserCreation(userId, userEmail, targetUserId, targetUserEmail, targetRole, ip, userAgent, success) {
+        const entry = {
             userId,
-            email,
+            userEmail,
+            action: 'USER_CREATED',
+            resource: 'User',
+            resourceId: targetUserId,
+            details: { targetUserEmail, targetRole },
             ip,
             userAgent,
             success,
-            message: `Ação administrativa: ${action}`,
-            details,
-        });
-    }
-    static logUserCreation(adminId, adminEmail, targetUserId, targetEmail, role, ip, userAgent, success) {
-        securityLogger_js_1.SecurityLogger.log({
-            eventType: securityLogger_js_1.SecurityEventType.USER_CREATED,
             timestamp: new Date(),
-            userId: targetUserId,
-            email: targetEmail,
-            ip,
-            userAgent,
-            success,
-            message: `Usuário criado por ${adminEmail} com papel: ${role}`,
-            details: {
-                adminId,
-                adminEmail,
-                role,
-            },
-        });
-    }
-    static logUserUpdate(adminId, adminEmail, targetUserId, targetEmail, changes, ip, userAgent, success) {
-        securityLogger_js_1.SecurityLogger.log({
-            eventType: securityLogger_js_1.SecurityEventType.USER_UPDATED,
-            timestamp: new Date(),
-            userId: targetUserId,
-            email: targetEmail,
-            ip,
-            userAgent,
-            success,
-            message: `Usuário atualizado por ${adminEmail}`,
-            details: {
-                adminId,
-                adminEmail,
-                changes,
-            },
-        });
-    }
-    static logUserDeactivation(adminId, adminEmail, targetUserId, targetEmail, ip, userAgent, success) {
-        securityLogger_js_1.SecurityLogger.log({
-            eventType: securityLogger_js_1.SecurityEventType.USER_DELETED,
-            timestamp: new Date(),
-            userId: targetUserId,
-            email: targetEmail,
-            ip,
-            userAgent,
-            success,
-            message: `Usuário desativado por ${adminEmail}`,
-            details: {
-                adminId,
-                adminEmail,
-            },
-        });
-    }
-    static logUserReactivation(adminId, adminEmail, targetUserId, targetEmail, ip, userAgent, success) {
-        securityLogger_js_1.SecurityLogger.log({
-            eventType: securityLogger_js_1.SecurityEventType.USER_UPDATED,
-            timestamp: new Date(),
-            userId: targetUserId,
-            email: targetEmail,
-            ip,
-            userAgent,
-            success,
-            message: `Usuário reativado por ${adminEmail}`,
-            details: {
-                adminId,
-                adminEmail,
-            },
-        });
-    }
-    static logPasswordReset(adminId, adminEmail, targetUserId, targetEmail, ip, userAgent, success) {
-        securityLogger_js_1.SecurityLogger.log({
-            eventType: securityLogger_js_1.SecurityEventType.PASSWORD_CHANGE,
-            timestamp: new Date(),
-            userId: targetUserId,
-            email: targetEmail,
-            ip,
-            userAgent,
-            success,
-            message: `Senha resetada por ${adminEmail}`,
-            details: {
-                adminId,
-                adminEmail,
-            },
-        });
-    }
-    static logAccessDenied(userId, email, action, ip, userAgent, reason) {
-        securityLogger_js_1.SecurityLogger.log({
-            eventType: securityLogger_js_1.SecurityEventType.ACCESS_DENIED,
-            timestamp: new Date(),
-            userId,
-            email,
-            ip,
-            userAgent,
-            success: false,
-            message: `Acesso negado: ${action}`,
-            details: { reason },
-        });
-    }
-    static async getAuditLogs(_filter, _page = 1, _limit = 50) {
-        // Em produção, isso seria uma consulta ao banco de dados
-        return {
-            logs: [],
-            total: 0,
         };
+        await this.log(entry);
+    }
+    static async logUserUpdate(userId, userEmail, targetUserId, targetUserEmail, changes, ip, userAgent, success) {
+        const entry = {
+            userId,
+            userEmail,
+            action: 'USER_UPDATED',
+            resource: 'User',
+            resourceId: targetUserId,
+            details: { targetUserEmail, changes },
+            ip,
+            userAgent,
+            success,
+            timestamp: new Date(),
+        };
+        await this.log(entry);
+    }
+    static async logUserDeactivation(userId, userEmail, targetUserId, targetUserEmail, ip, userAgent, success) {
+        const entry = {
+            userId,
+            userEmail,
+            action: 'USER_DEACTIVATED',
+            resource: 'User',
+            resourceId: targetUserId,
+            details: { targetUserEmail },
+            ip,
+            userAgent,
+            success,
+            timestamp: new Date(),
+        };
+        await this.log(entry);
+    }
+    static async logUserReactivation(userId, userEmail, targetUserId, targetUserEmail, ip, userAgent, success) {
+        const entry = {
+            userId,
+            userEmail,
+            action: 'USER_REACTIVATED',
+            resource: 'User',
+            resourceId: targetUserId,
+            details: { targetUserEmail },
+            ip,
+            userAgent,
+            success,
+            timestamp: new Date(),
+        };
+        await this.log(entry);
+    }
+    static async logPasswordReset(userId, userEmail, targetUserId, targetUserEmail, ip, userAgent, success) {
+        const entry = {
+            userId,
+            userEmail,
+            action: 'PASSWORD_RESET',
+            resource: 'User',
+            resourceId: targetUserId,
+            details: { targetUserEmail },
+            ip,
+            userAgent,
+            success,
+            timestamp: new Date(),
+        };
+        await this.log(entry);
+    }
+    static async log(entry) {
+        try {
+            logger_js_1.logger.info(`[AUDIT] ${entry.action} - ${entry.userEmail} - ${entry.resource}`, entry);
+        }
+        catch (error) {
+            logger_js_1.logger.error('Erro ao salvar log de auditoria:', error);
+        }
     }
 }
 exports.AuditService = AuditService;
+exports.default = AuditService;
 //# sourceMappingURL=AuditService.js.map

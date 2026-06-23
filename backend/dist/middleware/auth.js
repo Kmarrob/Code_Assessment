@@ -25,7 +25,8 @@ async function authenticate(req, res, next) {
         }
         const token = authHeader.split(' ')[1];
         const decoded = jsonwebtoken_1.default.verify(token, env_js_1.config.JWT_SECRET);
-        const user = await User_js_1.User.findById(decoded.userId).select('+refreshToken');
+        // Usar 'id' em vez de 'userId' (corresponde ao IJWTPayload)
+        const user = await User_js_1.User.findById(decoded.id).select('+refreshToken');
         if (!user) {
             res.status(401).json({
                 success: false,

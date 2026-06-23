@@ -4,6 +4,7 @@ exports.AdminService = void 0;
 // backend/src/services/AdminService.ts
 const mongoose_1 = require("mongoose");
 const User_js_1 = require("../models/User.js");
+const Company_js_1 = require("../models/Company.js");
 const logger_js_1 = require("../utils/logger.js");
 const errorHandler_js_1 = require("../middleware/errorHandler.js");
 const index_js_1 = require("../types/index.js");
@@ -24,6 +25,9 @@ class AdminService {
                         if (filters.company) {
                             filter.company = { $regex: filters.company, $options: 'i' };
                         }
+                        if (filters.companyId) {
+                            filter.companyId = new mongoose_1.Types.ObjectId(filters.companyId);
+                        }
                         if (filters.department) {
                             filter.department = { $regex: filters.department, $options: 'i' };
                         }
@@ -36,7 +40,7 @@ class AdminService {
                         const skip = (page - 1) * limit;
                         const [users, total] = await Promise.all([
                             User_js_1.User.find(filter)
-                                .select('_id name email role company department isActive lastLoginAt createdAt')
+                                .select('_id name email role company companyId department isActive lastLoginAt createdAt')
                                 .lean()
                                 .skip(skip)
                                 .limit(limit)
@@ -70,7 +74,7 @@ class AdminService {
                             throw new errorHandler_js_1.AppError('ID de usuário inválido', 400);
                         }
                         const user = await User_js_1.User.findById(userId)
-                            .select('_id name email role company department isActive lastLoginAt createdAt')
+                            .select('_id name email role company companyId department isActive lastLoginAt createdAt')
                             .lean()
                             .exec();
                         if (!user) {
@@ -97,17 +101,29 @@ class AdminService {
                         if (existingUser) {
                             throw new errorHandler_js_1.AppError('Email já está em uso', 400);
                         }
+                        // Validar companyId se fornecido
+                        let companyId = data.companyId;
+                        if (companyId) {
+                            if (!mongoose_1.Types.ObjectId.isValid(companyId)) {
+                                throw new errorHandler_js_1.AppError('ID da empresa inválido', 400);
+                            }
+                            const company = await Company_js_1.Company.findById(companyId);
+                            if (!company) {
+                                throw new errorHandler_js_1.AppError('Empresa não encontrada', 404);
+                            }
+                        }
                         const user = new User_js_1.User({
                             name: data.name,
                             email: data.email,
                             password: data.password,
                             role: data.role || index_js_1.UserRole.USER,
                             company: data.company,
+                            companyId: companyId ? new mongoose_1.Types.ObjectId(companyId) : undefined,
                             department: data.department,
                             isActive: true,
                         });
                         await user.save();
-                        logger_js_1.logger.info(`Usuário criado pelo admin: ${user.email} (${user.role})`);
+                        logger_js_1.logger.info(`Usuário criado pelo admin: ${user.email} (${user.role}) - Empresa: ${companyId || 'Nenhuma'}`);
                         return user.toJSON();
                     }, 'AdminService.createUser');
                 }, 'AdminService.createUser');
@@ -139,6 +155,22 @@ class AdminService {
                             }
                             user.email = data.email;
                         }
+                        // Validar companyId se fornecido
+                        if (data.companyId !== undefined) {
+                            if (data.companyId && !mongoose_1.Types.ObjectId.isValid(data.companyId)) {
+                                throw new errorHandler_js_1.AppError('ID da empresa inválido', 400);
+                            }
+                            if (data.companyId) {
+                                const company = await Company_js_1.Company.findById(data.companyId);
+                                if (!company) {
+                                    throw new errorHandler_js_1.AppError('Empresa não encontrada', 404);
+                                }
+                                user.companyId = new mongoose_1.Types.ObjectId(data.companyId);
+                            }
+                            else {
+                                user.companyId = undefined;
+                            }
+                        }
                         if (data.name)
                             user.name = data.name;
                         if (data.role)
@@ -150,7 +182,7 @@ class AdminService {
                         if (data.isActive !== undefined)
                             user.isActive = data.isActive;
                         await user.save();
-                        logger_js_1.logger.info(`Usuário atualizado pelo admin: ${user.email}`);
+                        logger_js_1.logger.info(`Usuário atualizado pelo admin: ${user.email} - Empresa: ${user.companyId || 'Nenhuma'}`);
                         return user.toJSON();
                     }, 'AdminService.updateUser');
                 }, 'AdminService.updateUser');

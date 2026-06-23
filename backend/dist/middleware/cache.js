@@ -12,7 +12,7 @@ exports.CacheControl = {
     PRIVATE: 'private, max-age=300',
 };
 function cacheControl(directive) {
-    return (req, res, next) => {
+    return (_req, res, next) => {
         res.setHeader('Cache-Control', directive);
         next();
     };

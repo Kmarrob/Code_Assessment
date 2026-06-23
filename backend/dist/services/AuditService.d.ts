@@ -1,33 +1,22 @@
-export interface AuditLog {
+export interface AuditLogEntry {
     userId: string;
-    email: string;
+    userEmail: string;
     action: string;
-    targetUserId?: string;
-    targetEmail?: string;
-    details?: Record<string, any>;
+    resource: string;
+    resourceId?: string;
+    details?: any;
     ip: string;
     userAgent: string;
     success: boolean;
     timestamp: Date;
 }
-export interface AuditFilter {
-    userId?: string;
-    action?: string;
-    startDate?: Date;
-    endDate?: Date;
-    success?: boolean;
-}
 export declare class AuditService {
-    static logAdminAction(userId: string, email: string, action: string, ip: string, userAgent: string, success: boolean, details?: Record<string, any>): void;
-    static logUserCreation(adminId: string, adminEmail: string, targetUserId: string, targetEmail: string, role: string, ip: string, userAgent: string, success: boolean): void;
-    static logUserUpdate(adminId: string, adminEmail: string, targetUserId: string, targetEmail: string, changes: Record<string, any>, ip: string, userAgent: string, success: boolean): void;
-    static logUserDeactivation(adminId: string, adminEmail: string, targetUserId: string, targetEmail: string, ip: string, userAgent: string, success: boolean): void;
-    static logUserReactivation(adminId: string, adminEmail: string, targetUserId: string, targetEmail: string, ip: string, userAgent: string, success: boolean): void;
-    static logPasswordReset(adminId: string, adminEmail: string, targetUserId: string, targetEmail: string, ip: string, userAgent: string, success: boolean): void;
-    static logAccessDenied(userId: string, email: string, action: string, ip: string, userAgent: string, reason: string): void;
-    static getAuditLogs(_filter?: AuditFilter, _page?: number, _limit?: number): Promise<{
-        logs: AuditLog[];
-        total: number;
-    }>;
+    static logUserCreation(userId: string, userEmail: string, targetUserId: string, targetUserEmail: string, targetRole: string, ip: string, userAgent: string, success: boolean): Promise<void>;
+    static logUserUpdate(userId: string, userEmail: string, targetUserId: string, targetUserEmail: string, changes: any, ip: string, userAgent: string, success: boolean): Promise<void>;
+    static logUserDeactivation(userId: string, userEmail: string, targetUserId: string, targetUserEmail: string, ip: string, userAgent: string, success: boolean): Promise<void>;
+    static logUserReactivation(userId: string, userEmail: string, targetUserId: string, targetUserEmail: string, ip: string, userAgent: string, success: boolean): Promise<void>;
+    static logPasswordReset(userId: string, userEmail: string, targetUserId: string, targetUserEmail: string, ip: string, userAgent: string, success: boolean): Promise<void>;
+    static log(entry: AuditLogEntry): Promise<void>;
 }
+export default AuditService;
 //# sourceMappingURL=AuditService.d.ts.map

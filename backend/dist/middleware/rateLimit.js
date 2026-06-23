@@ -9,10 +9,6 @@ exports.createRateLimiter = createRateLimiter;
 const express_rate_limit_1 = __importDefault(require("express-rate-limit"));
 const env_js_1 = require("../config/env.js");
 const logger_js_1 = require("../utils/logger.js");
-// ============================================
-// RATE LIMITERS POR ENDPOINT
-// ============================================
-// 1. Login - Restrito (5 tentativas / 15 min)
 exports.authRateLimiter = (0, express_rate_limit_1.default)({
     windowMs: 15 * 60 * 1000,
     max: 5,
@@ -25,7 +21,7 @@ exports.authRateLimiter = (0, express_rate_limit_1.default)({
     },
     standardHeaders: true,
     legacyHeaders: false,
-    skip: (req) => env_js_1.config.NODE_ENV === 'test',
+    skip: (_req) => env_js_1.config.NODE_ENV === 'test',
     handler: (req, res) => {
         logger_js_1.logger.warn(`Rate limit exceeded for IP: ${req.ip} - Login attempt`);
         res.status(429).json({
@@ -36,7 +32,6 @@ exports.authRateLimiter = (0, express_rate_limit_1.default)({
         });
     },
 });
-// 2. Register - Moderado (10 tentativas / 1 hora)
 exports.registerRateLimiter = (0, express_rate_limit_1.default)({
     windowMs: 60 * 60 * 1000,
     max: 10,
@@ -58,7 +53,6 @@ exports.registerRateLimiter = (0, express_rate_limit_1.default)({
         });
     },
 });
-// 3. Refresh Token - Restrito (10 tentativas / 15 min)
 exports.refreshRateLimiter = (0, express_rate_limit_1.default)({
     windowMs: 15 * 60 * 1000,
     max: 10,
@@ -71,7 +65,6 @@ exports.refreshRateLimiter = (0, express_rate_limit_1.default)({
     standardHeaders: true,
     legacyHeaders: false,
 });
-// 4. APIs Autenticadas - Médio (100 tentativas / 1 minuto)
 exports.authenticatedRateLimiter = (0, express_rate_limit_1.default)({
     windowMs: 60 * 1000,
     max: 100,
@@ -96,7 +89,6 @@ exports.authenticatedRateLimiter = (0, express_rate_limit_1.default)({
         });
     },
 });
-// 5. APIs Públicas - Leve (50 tentativas / 1 minuto)
 exports.publicRateLimiter = (0, express_rate_limit_1.default)({
     windowMs: 60 * 1000,
     max: 50,
@@ -109,7 +101,6 @@ exports.publicRateLimiter = (0, express_rate_limit_1.default)({
     standardHeaders: true,
     legacyHeaders: false,
 });
-// 6. Health Check - Sem limite
 exports.healthRateLimiter = (0, express_rate_limit_1.default)({
     windowMs: 60 * 1000,
     max: 1000,
@@ -123,7 +114,6 @@ exports.healthRateLimiter = (0, express_rate_limit_1.default)({
     legacyHeaders: false,
     skip: () => true,
 });
-// 7. Rate Limiter para rotas sensíveis
 exports.sensitiveRateLimiter = (0, express_rate_limit_1.default)({
     windowMs: 60 * 60 * 1000,
     max: 5,
@@ -136,13 +126,12 @@ exports.sensitiveRateLimiter = (0, express_rate_limit_1.default)({
     standardHeaders: true,
     legacyHeaders: false,
 });
-// 8. Admin - Restrito (20 tentativas / 1 hora)
 exports.adminRateLimiter = (0, express_rate_limit_1.default)({
-    windowMs: 60 * 60 * 1000,
-    max: 20,
+    windowMs: 60 * 1000,
+    max: 100,
     message: {
         success: false,
-        message: 'Muitas tentativas de operações administrativas. Tente novamente em 1 hora.',
+        message: 'Muitas tentativas de operações. Tente novamente em 1 minuto.',
         statusCode: 429,
         timestamp: new Date().toISOString(),
     },
@@ -152,7 +141,7 @@ exports.adminRateLimiter = (0, express_rate_limit_1.default)({
         logger_js_1.logger.warn(`Rate limit exceeded for admin operation: ${req.user?.email || req.ip}`);
         res.status(429).json({
             success: false,
-            message: 'Muitas tentativas de operações administrativas. Tente novamente em 1 hora.',
+            message: 'Muitas tentativas de operações. Tente novamente em 1 minuto.',
             statusCode: 429,
             timestamp: new Date().toISOString(),
         });

@@ -117,8 +117,13 @@ class AdminController {
             }
             // Garantir que role seja do tipo correto usando enum
             const userData = {
-                ...validation.data,
-                role: validation.data.role
+                name: validation.data.name,
+                email: validation.data.email,
+                password: validation.data.password,
+                role: validation.data.role,
+                company: validation.data.company ?? undefined,
+                companyId: validation.data.companyId ?? undefined,
+                department: validation.data.department ?? undefined,
             };
             const user = await AdminService_js_1.AdminService.createUser(userData);
             // Verificar se userId existe antes de usar
@@ -170,13 +175,14 @@ class AdminController {
             if (!validation.success) {
                 throw new errorHandler_js_1.ValidationError(validation.errors || {});
             }
-            // Preparar dados para atualização
+            // Preparar dados para atualização com conversão de null para undefined
             const updateData = {
                 name: validation.data.name,
                 email: validation.data.email,
                 isActive: validation.data.isActive,
-                company: validation.data.company,
-                department: validation.data.department,
+                company: validation.data.company ?? undefined,
+                companyId: validation.data.companyId ?? undefined,
+                department: validation.data.department ?? undefined,
             };
             if (validation.data.role) {
                 updateData.role = validation.data.role;

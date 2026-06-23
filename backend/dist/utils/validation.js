@@ -80,13 +80,22 @@ function validate(schema, data) {
         return { success: false, errors: { _error: ['Erro inesperado na validação'] } };
     }
 }
+// ============================================
+// SANITIZAÇÃO CORRIGIDA - PRESERVA ARRAYS
+// ============================================
 function sanitizeInput(input) {
+    // Se for string, sanitizar
     if (typeof input === 'string') {
         let sanitized = input.replace(/\$/g, '');
         sanitized = sanitized.replace(/[\x00-\x1F\x7F]/g, '');
         sanitized = sanitized.replace(/<[^>]*>/g, '');
         return sanitized;
     }
+    // Se for array, sanitizar cada elemento e manter como array
+    if (Array.isArray(input)) {
+        return input.map(item => sanitizeInput(item));
+    }
+    // Se for objeto, sanitizar cada propriedade
     if (typeof input === 'object' && input !== null) {
         const sanitized = {};
         for (const [key, value] of Object.entries(input)) {

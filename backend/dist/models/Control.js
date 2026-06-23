@@ -54,7 +54,7 @@ const controlSchema = new mongoose_1.Schema({
     },
     nota: {
         type: String,
-        required: true,
+        default: '',
     },
     controles: {
         type: String,
@@ -87,8 +87,11 @@ const controlSchema = new mongoose_1.Schema({
 }, {
     timestamps: true,
 });
+// Índices
 controlSchema.index({ id: 1 }, { unique: true });
 controlSchema.index({ nome: 1 });
 controlSchema.index({ nota: 1 });
+controlSchema.index({ dominioDeSI: 1 });
+controlSchema.index({ tipoDeControle: 1 });
 exports.Control = mongoose_1.default.model('Control', controlSchema);
 //# sourceMappingURL=Control.js.map
