@@ -5,7 +5,7 @@ import { IUser, UserRole } from '../types/index.js';
 import { logger } from '../utils/logger.js';
 import { passwordPolicy } from '../services/PasswordPolicy.js';
 
-// Interface para o documento com métodos e propriedades estendidas explicitamente para o TypeScript
+// Interface para o documento com métodos e propriedades estendidas de forma estrita
 export interface IUserDocument extends IUser, Document {
   password?: string;
   refreshToken?: string;
@@ -149,12 +149,10 @@ userSchema.pre<IUserDocument>('save', async function (next) {
       throw new Error(`Senha inválida: ${validation.errors.join(', ')}`);
     }
 
-    if (this.isModified('password')) {
-      if (this.passwordHistory) {
-        this.passwordHistory.push('previous_hash_placeholder');
-        if (this.passwordHistory.length > 5) {
-          this.passwordHistory.shift();
-        }
+    if (this.passwordHistory) {
+      this.passwordHistory.push('previous_hash_placeholder');
+      if (this.passwordHistory.length > 5) {
+        this.passwordHistory.shift();
       }
     }
 

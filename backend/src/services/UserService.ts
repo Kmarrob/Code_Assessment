@@ -142,7 +142,7 @@ response.evidence = evidenceString ? [evidenceString] : [];
         controlId: assignment.controlId,
         maturityLevel,
         scenarioDescription: scenarioDescription || '',
-        evidence: evidenceString,
+        evidence: evidenceString ? [evidenceString] : [], // Correção aqui: envolvendo em array string[]
         observations: notes || '',
         submittedAt: new Date(),
       });

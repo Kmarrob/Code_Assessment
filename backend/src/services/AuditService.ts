@@ -15,6 +15,14 @@ export interface AuditLogEntry {
 }
 
 export class AuditService {
+  private static async log(entry: AuditLogEntry): Promise<void> {
+    try {
+      logger.info(`[AUDIT] Action: ${entry.action} | User: ${entry.userEmail} | Resource: ${entry.resource} | Success: ${entry.success}`);
+    } catch (error) {
+      logger.error('Erro ao gravar log de auditoria:', error);
+    }
+  }
+
   static async logUserCreation(
     userId: string,
     userEmail: string,
@@ -136,14 +144,4 @@ export class AuditService {
     };
     await this.log(entry);
   }
-
-  static async log(entry: AuditLogEntry): Promise<void> {
-    try {
-      logger.info(`[AUDIT] ${entry.action} - ${entry.userEmail} - ${entry.resource}`, entry);
-    } catch (error) {
-      logger.error('Erro ao salvar log de auditoria:', error);
-    }
-  }
 }
-
-export default AuditService;
