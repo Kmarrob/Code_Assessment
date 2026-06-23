@@ -29,7 +29,6 @@ export class TokenService {
         algorithm: 'HS256',
       } as jwt.SignOptions
     );
-      return jwt.sign(payload, config.JWT_REFRESH_SECRET as string, options);
   }
 
   static verifyToken(token: string, secret: string): IJWTPayload {
@@ -64,6 +63,16 @@ export class TokenService {
   }
 
   static async revokeAllUserTokens(userId: string): Promise<void> {
-    logger.info(`Todos os tokens do usuário ${userId} foram marcados para revogação`);
+    for (const [key] of tokenBlacklist) {
+      try {
+        const decoded = jwt.decode(key) as any;
+        if (decoded && decoded.id === userId) {
+          tokenBlacklist.delete(key);
+        }
+      } catch (error) {
+        // Ignorar erros de decodificação
+      }
+    }
+    logger.info(`Todos os tokens do usuário ${userId} foram revogados`);
   }
 }
