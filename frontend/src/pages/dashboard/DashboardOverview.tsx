@@ -1,7 +1,7 @@
 // frontend/src/pages/dashboard/DashboardOverview.tsx
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Loader2, AlertCircle, Building2, Users, ClipboardList, TrendingUp, CheckCircle, Clock } from 'lucide-react';
+import { Loader2, AlertCircle, Building2, Users, ClipboardList, TrendingUp, CheckCircle, Clock, Info } from 'lucide-react';
 import { Card, CardContent } from '../../components/ui/Card.js';
 import { DashboardLayout } from '../../components/dashboard/DashboardLayout.js';
 import { dashboardService, DashboardData } from '../../services/dashboard.service.js';
@@ -18,12 +18,40 @@ const STATUS_COLORS = {
 };
 
 export const DashboardOverview: React.FC = () => {
-  const { companyId } = useParams<{ companyId: string }>();
+  const { companyId: paramCompanyId } = useParams<{ companyId: string }>();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // ============================================
+  // CORREÇÃO: Obter companyId da URL ou do usuário
+  // ============================================
+  const getCompanyId = (): string | undefined => {
+    // 1. Prioridade: da URL (admin)
+    if (paramCompanyId) {
+      return paramCompanyId;
+    }
+
+    // 2. Do usuário logado (preposto)
+    if (user) {
+      const userAny = user as any;
+      // Tentar diferentes campos onde o companyId pode estar
+      const id = userAny.companyId || 
+                 userAny.company?._id || 
+                 userAny.company || 
+                 null;
+      if (id) {
+        console.log('🔍 DashboardOverview - companyId obtido do usuário:', id);
+        return id;
+      }
+    }
+
+    return undefined;
+  };
+
+  const companyId = getCompanyId();
 
   // Se for admin e não tiver companyId, listar empresas para selecionar
   useEffect(() => {
@@ -31,12 +59,23 @@ export const DashboardOverview: React.FC = () => {
       if (!companyId) {
         // Se for admin sem companyId, pode mostrar lista de empresas ou redirecionar
         if (user?.role === 'admin') {
-          // TODO: Implementar página de seleção de empresas
           setError('Selecione uma empresa para visualizar o dashboard');
           setLoading(false);
           return;
         }
-        setError('ID da empresa não informado');
+        // Para preposto, tentar obter do usuário novamente
+        if (user?.role === 'rep' && user) {
+          const userAny = user as any;
+          const id = userAny.companyId || userAny.company?._id || userAny.company || null;
+          if (id) {
+            // Recarregar com o companyId encontrado
+            setLoading(false);
+            // Forçar recarga
+            window.location.reload();
+            return;
+          }
+        }
+        setError('ID da empresa não informado. Faça logout e login novamente.');
         setLoading(false);
         return;
       }
@@ -124,12 +163,34 @@ export const DashboardOverview: React.FC = () => {
   return (
     <DashboardLayout companyId={companyId}>
       <div className="space-y-6">
-        {/* Header */}
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Dashboard de Maturidade</h1>
-          <div className="flex items-center gap-2 mt-1">
-            <Building2 className="w-4 h-4 text-gray-400" />
-            <span className="text-sm text-gray-600">{company.name}</span>
+        {/* Header com Ícone de Metodologia */}
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Visão Geral</h1>
+            <div className="flex items-center gap-2 mt-1">
+              <Building2 className="w-4 h-4 text-gray-400" />
+              <span className="text-sm text-gray-600">{company?.name || 'Carregando...'}</span>
+            </div>
+          </div>
+          <div className="relative group">
+            <button 
+              className="p-2 text-gray-400 hover:text-gray-600 transition-colors rounded-full hover:bg-gray-100"
+              aria-label="Metodologia de cálculo"
+              title="Clique para ver a metodologia"
+            >
+              <Info className="w-5 h-5" />
+            </button>
+            {/* Tooltip de Metodologia */}
+            <div className="absolute right-0 top-full mt-2 w-80 p-4 bg-white rounded-lg shadow-lg border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+              <h4 className="text-sm font-semibold text-gray-900 mb-2">📊 Metodologia de Cálculo</h4>
+              <ul className="text-xs text-gray-600 space-y-1">
+                <li>• <strong>Implementado:</strong> Controles com nível de maturidade <strong>2</strong></li>
+                <li>• <strong>Parcial:</strong> Controles com nível de maturidade <strong>1</strong></li>
+                <li>• <strong>Não Implementado:</strong> Controles com nível de maturidade <strong>0</strong></li>
+                <li>• <strong>Não se Aplica:</strong> Controles com nível <strong>N/A</strong></li>
+                <li>• <strong>Taxa de Conclusão:</strong> (Implementados / Total) × 100</li>
+              </ul>
+            </div>
           </div>
         </div>
 
