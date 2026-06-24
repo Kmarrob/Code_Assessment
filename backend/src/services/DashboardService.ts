@@ -8,7 +8,7 @@ import { NotFoundError } from '../middleware/errorHandler.js';
 
 export class DashboardService {
   /**
-   * Obter dados de maturidade de uma empresa - CORRIGIDO
+   * Obter dados de maturidade de uma empresa
    */
   static async getCompanyMaturity(
     companyId: string,
@@ -16,13 +16,11 @@ export class DashboardService {
       userId?: string;
     }
   ) {
-    // Verificar se a empresa existe
     const company = await Company.findById(companyId);
     if (!company) {
       throw new NotFoundError('Empresa não encontrada');
     }
 
-    // Buscar usuários da empresa
     const userFilter: any = { companyId, isActive: true };
     if (filters?.userId) {
       userFilter._id = new mongoose.Types.ObjectId(filters.userId);
@@ -35,23 +33,19 @@ export class DashboardService {
       return this.getEmptyMaturityData();
     }
 
-    // Buscar todas as atribuições dos usuários da empresa
     const assignments = await Assignment.find({
       userId: { $in: userIds }
     }).populate('controlId').lean();
 
-    // Buscar todas as respostas dos usuários
     const responses = await Response.find({
       userId: { $in: userIds }
     }).lean();
 
-    // Criar mapa de respostas por assignmentId
     const responseMap = new Map();
     responses.forEach(r => {
       responseMap.set(r.assignmentId.toString(), r);
     });
 
-    // Extrair IDs dos controles únicos das atribuições
     const assignedControlIds = new Set();
     assignments.forEach(a => {
       const control = a.controlId as any;
@@ -60,12 +54,10 @@ export class DashboardService {
       }
     });
 
-    // Buscar os controles completos que estão atribuídos
     const allControls = await Control.find({
       _id: { $in: Array.from(assignedControlIds) }
     }).lean();
 
-    // Mapear status de cada controle com base nas respostas
     const controlsWithStatus = assignments.map(a => {
       const response = responseMap.get(a._id.toString());
       const control = a.controlId as any;
@@ -101,7 +93,6 @@ export class DashboardService {
       };
     });
 
-    // Mapear status para todos os controles
     const controlStatusMap = new Map();
     allControls.forEach(c => {
       const assigned = controlsWithStatus.find(
@@ -116,8 +107,6 @@ export class DashboardService {
     });
 
     const controls = Array.from(controlStatusMap.values());
-
-    // Calcular summary
     const summary = this.calculateMaturityStats({ controls });
 
     return {
@@ -141,9 +130,6 @@ export class DashboardService {
     };
   }
 
-  /**
-   * Obter dados vazios (quando não há usuários)
-   */
   private static getEmptyMaturityData() {
     return {
       company: { id: null, name: null },
@@ -168,9 +154,6 @@ export class DashboardService {
     };
   }
 
-  /**
-   * Calcular estatísticas de maturidade
-   */
   static calculateMaturityStats(maturityData: any) {
     const controls = maturityData.controls || [];
     const total = controls.length;
@@ -204,9 +187,6 @@ export class DashboardService {
     };
   }
 
-  /**
-   * Calcular níveis de maturidade
-   */
   private static calculateMaturityLevels(controls: any[]) {
     const levels: Record<string, number> = {
       'N/A': 0,
@@ -225,9 +205,6 @@ export class DashboardService {
     return levels;
   }
 
-  /**
-   * Agrupar controles por domínio
-   */
   static groupByDomain(controls: any[]) {
     const domains = ['Defesa', 'Resiliência', 'Governança e ecossistema', 'Proteção'];
     const result: any = {};
@@ -241,7 +218,7 @@ export class DashboardService {
         }
         return dominios === d;
       });
-      result[d] = {
+      result[d as string] = { // CORREÇÃO: adicionado as string
         total: filtered.length,
         implemented: filtered.filter(c => c.status === 'Implementado').length,
         partial: filtered.filter(c => c.status === 'Parcialmente implementado').length,
@@ -253,9 +230,6 @@ export class DashboardService {
     return result;
   }
 
-  /**
-   * Agrupar controles por categoria
-   */
   static groupByCategory(controls: any[]) {
     const categories = [
       'Controles Organizacionais',
@@ -274,7 +248,7 @@ export class DashboardService {
         }
         return tipos === cat;
       });
-      result[cat] = {
+      result[cat as string] = { // CORREÇÃO: adicionado as string
         total: filtered.length,
         implemented: filtered.filter(c => c.status === 'Implementado').length,
         partial: filtered.filter(c => c.status === 'Parcialmente implementado').length,
@@ -286,9 +260,6 @@ export class DashboardService {
     return result;
   }
 
-  /**
-   * Agrupar controles por tipo - Evita dupla contagem
-   */
   static groupByType(controls: any[]) {
     const types = ['Preventivo', 'Detectivo', 'Corretivo'];
     const result: any = {};
@@ -321,7 +292,7 @@ export class DashboardService {
         return uniqueControlIds.has(id);
       });
 
-      result[t] = {
+      result[t as string] = { // CORREÇÃO: adicionado as string
         total: filtered.length,
         implemented: filtered.filter(c => c.status === 'Implementado').length,
         partial: filtered.filter(c => c.status === 'Parcialmente implementado').length,
@@ -333,9 +304,6 @@ export class DashboardService {
     return result;
   }
 
-  /**
-   * Agrupar controles por conceito cibernético
-   */
   static groupByCyberConcept(controls: any[]) {
     const concepts = ['Identificar', 'Proteger', 'Detectar', 'Responder', 'Restaurar'];
     const result: any = {};
@@ -349,7 +317,7 @@ export class DashboardService {
         }
         return conceitos === concept;
       });
-      result[concept] = {
+      result[concept as string] = { // CORREÇÃO: adicionado as string
         total: filtered.length,
         implemented: filtered.filter(c => c.status === 'Implementado').length,
         partial: filtered.filter(c => c.status === 'Parcialmente implementado').length,
@@ -361,9 +329,6 @@ export class DashboardService {
     return result;
   }
 
-  /**
-   * Agrupar controles por capacidade operacional
-   */
   static groupByCapability(controls: any[]) {
     const capabilities = [
       'Governança',
@@ -393,7 +358,7 @@ export class DashboardService {
         }
         return capacidades === cap;
       });
-      result[cap] = {
+      result[cap as string] = { // CORREÇÃO: adicionado as string
         total: filtered.length,
         implemented: filtered.filter(c => c.status === 'Implementado').length,
         partial: filtered.filter(c => c.status === 'Parcialmente implementado').length,
