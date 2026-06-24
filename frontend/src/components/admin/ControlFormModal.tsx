@@ -53,13 +53,25 @@ const CONCEITOS = [
   'Restaurar'
 ];
 
+// ============================================
+// CORREÇÃO: Lista completa das 15 Capacidades Operacionais
+// ============================================
 const CAPACIDADES = [
   'Governança',
   'Gestão de ativos',
   'Proteção da informação',
   'Gestão de identidade e acesso',
   'Segurança nas relações com fornecedores',
-  'Gestão de evento de segurança da informação'
+  'Gestão de evento de segurança da informação',
+  'Gestão de ameaças e vulnerabilidades',
+  'Gestão de continuidade do negócio',
+  'Segurança física',
+  'Desenvolvimento seguro',
+  'Gestão de redes',
+  'Monitoramento e análise',
+  'Gestão de pessoas',
+  'Gestão de criptografia',
+  'Garantia de segurança da información',
 ];
 
 export const ControlFormModal: React.FC<ControlFormModalProps> = ({
@@ -300,6 +312,7 @@ export const ControlFormModal: React.FC<ControlFormModalProps> = ({
             </div>
           </div>
 
+          {/* CORREÇÃO: Capacidades Operacionais com 15 itens */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Capacidades Operacionais
