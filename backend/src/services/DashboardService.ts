@@ -207,7 +207,7 @@ export class DashboardService {
 
   static groupByDomain(controls: any[]) {
     const domains = ['Defesa', 'Resiliência', 'Governança e ecossistema', 'Proteção'];
-    const result: Record<string, any> = {};
+    const result: any = {};
 
     domains.forEach(d => {
       const filtered = controls.filter(c => {
@@ -218,13 +218,16 @@ export class DashboardService {
         }
         return dominios === d;
       });
-      result[d] = {
+      // CORREÇÃO: Usar uma variável temporária para evitar erro de tipo
+      const domainData = {
         total: filtered.length,
         implemented: filtered.filter(c => c.status === 'Implementado').length,
         partial: filtered.filter(c => c.status === 'Parcialmente implementado').length,
         notImpl: filtered.filter(c => c.status === 'Não implementado').length,
         na: filtered.filter(c => c.status === 'Não se aplica').length,
       };
+      // Atribuir a chave de forma segura
+      Object.assign(result, { [d]: domainData });
     });
 
     return result;
@@ -237,7 +240,7 @@ export class DashboardService {
       'Controles Físicos',
       'Controles Tecnológicos'
     ];
-    const result: Record<string, any> = {};
+    const result: any = {};
 
     categories.forEach(cat => {
       const filtered = controls.filter(c => {
@@ -248,13 +251,14 @@ export class DashboardService {
         }
         return tipos === cat;
       });
-      result[cat] = {
+      const categoryData = {
         total: filtered.length,
         implemented: filtered.filter(c => c.status === 'Implementado').length,
         partial: filtered.filter(c => c.status === 'Parcialmente implementado').length,
         notImpl: filtered.filter(c => c.status === 'Não implementado').length,
         na: filtered.filter(c => c.status === 'Não se aplica').length,
       };
+      Object.assign(result, { [cat]: categoryData });
     });
 
     return result;
@@ -262,7 +266,7 @@ export class DashboardService {
 
   static groupByType(controls: any[]) {
     const types = ['Preventivo', 'Detectivo', 'Corretivo'];
-    const result: Record<string, any> = {};
+    const result: any = {};
 
     types.forEach(t => {
       const uniqueControlIds = new Set();
@@ -292,13 +296,14 @@ export class DashboardService {
         return uniqueControlIds.has(id);
       });
 
-      result[t] = {
+      const typeData = {
         total: filtered.length,
         implemented: filtered.filter(c => c.status === 'Implementado').length,
         partial: filtered.filter(c => c.status === 'Parcialmente implementado').length,
         notImpl: filtered.filter(c => c.status === 'Não implementado').length,
         na: filtered.filter(c => c.status === 'Não se aplica').length,
       };
+      Object.assign(result, { [t]: typeData });
     });
 
     return result;
@@ -306,7 +311,7 @@ export class DashboardService {
 
   static groupByCyberConcept(controls: any[]) {
     const concepts = ['Identificar', 'Proteger', 'Detectar', 'Responder', 'Restaurar'];
-    const result: Record<string, any> = {};
+    const result: any = {};
 
     concepts.forEach(concept => {
       const filtered = controls.filter(c => {
@@ -317,13 +322,14 @@ export class DashboardService {
         }
         return conceitos === concept;
       });
-      result[concept] = {
+      const conceptData = {
         total: filtered.length,
         implemented: filtered.filter(c => c.status === 'Implementado').length,
         partial: filtered.filter(c => c.status === 'Parcialmente implementado').length,
         notImpl: filtered.filter(c => c.status === 'Não implementado').length,
         na: filtered.filter(c => c.status === 'Não se aplica').length,
       };
+      Object.assign(result, { [concept]: conceptData });
     });
 
     return result;
@@ -347,7 +353,7 @@ export class DashboardService {
       'Gestão de criptografia',
       'Garantia de segurança da informação',
     ];
-    const result: Record<string, any> = {};
+    const result: any = {};
 
     capabilities.forEach(cap => {
       const filtered = controls.filter(c => {
@@ -358,7 +364,7 @@ export class DashboardService {
         }
         return capacidades === cap;
       });
-      result[cap] = {
+      const capabilityData = {
         total: filtered.length,
         implemented: filtered.filter(c => c.status === 'Implementado').length,
         partial: filtered.filter(c => c.status === 'Parcialmente implementado').length,
@@ -368,6 +374,7 @@ export class DashboardService {
           ? Math.round((filtered.filter(c => c.status === 'Implementado').length / filtered.length) * 100)
           : 0,
       };
+      Object.assign(result, { [cap]: capabilityData });
     });
 
     return result;
