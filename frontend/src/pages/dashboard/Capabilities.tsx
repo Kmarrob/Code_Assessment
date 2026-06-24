@@ -6,10 +6,12 @@ import { DashboardPageWrapper } from '../../components/dashboard/DashboardPageWr
 import { DataTable } from '../../components/dashboard/DataTable.js';
 import { RadarChart } from '../../components/dashboard/RadarChart.js';
 import { DashboardData } from '../../services/dashboard.service.js';
-import { AlertTriangle, CheckCircle, Info, X, Lightbulb, Target, Clock } from 'lucide-react';
+import { 
+  AlertTriangle, CheckCircle, Info, X, Lightbulb, Target, Clock, 
+  ClipboardList, ChevronRight 
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// CORREÇÃO: Adicionar altKeys para compatibilidade com os valores do banco
 const CAPABILITIES = [
   { key: 'Governança', label: 'Governança', altKeys: ['Governança'] },
   { key: 'Gestão de ativos', label: 'Gestão de ativos', altKeys: ['Gestão de ativos'] },
@@ -28,15 +30,28 @@ const CAPABILITIES = [
   { key: 'Garantia de segurança da informação', label: 'Garantia de SI', altKeys: ['Garantia de SI'] },
 ];
 
-// Definição das cores para o Radar Chart
 const RADAR_COLORS = {
-  Implementado: '#10b981', // verde
-  Recomendado: '#94a3b8', // cinza
+  Implementado: '#10b981',
+  Recomendado: '#94a3b8',
 };
 
 const CapabilitiesContent: React.FC<{ data: DashboardData }> = ({ data }) => {
   const [selectedCapability, setSelectedCapability] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  
+  const [listModal, setListModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    controls: any[];
+    status: string;
+    capKey: string;
+  }>({
+    isOpen: false,
+    title: '',
+    controls: [],
+    status: '',
+    capKey: '',
+  });
 
   const controls = data?.controls || [];
 
@@ -81,7 +96,6 @@ const CapabilitiesContent: React.FC<{ data: DashboardData }> = ({ data }) => {
   const totalAderente = totals.total > 0 ? Math.round((totals.implemented / totals.total) * 100) : 0;
   const totalNaoAderente = totals.total > 0 ? Math.round(((totals.partial + totals.notImpl) / totals.total) * 100) : 0;
 
-  // Radar com cores diferenciadas
   const radarData = capData.map(c => ({
     subject: c.name.length > 28 ? c.name.substring(0, 28) + '…' : c.name,
     fullLabel: c.name,
@@ -91,7 +105,6 @@ const CapabilitiesContent: React.FC<{ data: DashboardData }> = ({ data }) => {
 
   const attentionPoints = capData.filter(c => c.aderente < 50).sort((a, b) => a.aderente - b.aderente);
 
-  // CORREÇÃO: Removida coluna "Não se aplica"
   const columns = [
     { key: 'name', label: 'Capacidades Operacionais' },
     { key: 'notImpl', label: 'Não Impl.', align: 'center' as const },
@@ -116,10 +129,30 @@ const CapabilitiesContent: React.FC<{ data: DashboardData }> = ({ data }) => {
     },
   ];
 
-  // Handler para abrir o modal com detalhes da capacidade
   const handleCardClick = (cap: any) => {
     setSelectedCapability(cap);
     setIsModalOpen(true);
+  };
+
+  const openControlList = (capKey: string, status: string, statusLabel: string) => {
+    const capability = capData.find(c => c.key === capKey);
+    
+    const filtered = controls.filter(c => {
+      const control = c.control || c;
+      const capacidades = control?.capacidadesOperacionais || [];
+      const hasCapability = Array.isArray(capacidades) 
+        ? capacidades.some((cap: string) => cap === capKey)
+        : capacidades === capKey;
+      return hasCapability && c.status === status;
+    });
+    
+    setListModal({
+      isOpen: true,
+      title: `${statusLabel} - ${capability?.name || capKey}`,
+      controls: filtered,
+      status: status,
+      capKey: capKey,
+    });
   };
 
   const getRecommendations = (cap: any): string[] => {
@@ -156,7 +189,7 @@ const CapabilitiesContent: React.FC<{ data: DashboardData }> = ({ data }) => {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
-      {/* Header com Ícone de Metodologia */}
+      {/* Header */}
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Capacidades Operacionais</h1>
@@ -205,7 +238,7 @@ const CapabilitiesContent: React.FC<{ data: DashboardData }> = ({ data }) => {
         </div>
       </div>
 
-      {/* CORREÇÃO: DataTable sem coluna "Não se aplica" */}
+      {/* DataTable */}
       <DataTable 
         data={capData} 
         columns={columns}
@@ -222,7 +255,7 @@ const CapabilitiesContent: React.FC<{ data: DashboardData }> = ({ data }) => {
         }
       />
 
-      {/* Radar Chart - CORRIGIDO com cores diferenciadas */}
+      {/* Radar Chart */}
       <RadarChart
         data={radarData}
         title="Radar de Capacidades Operacionais"
@@ -231,9 +264,7 @@ const CapabilitiesContent: React.FC<{ data: DashboardData }> = ({ data }) => {
         colors={RADAR_COLORS}
       />
 
-      {/* ============================================== */}
-      {/* PONTOS DE ATENÇÃO - CARDS REFORMULADOS */}
-      {/* ============================================== */}
+      {/* Pontos de Atenção */}
       <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
         <div className="flex items-center gap-2 mb-4">
           <AlertTriangle className="w-5 h-5 text-amber-500" />
@@ -242,46 +273,23 @@ const CapabilitiesContent: React.FC<{ data: DashboardData }> = ({ data }) => {
             {attentionPoints.length} capacidades em estado crítico
           </span>
         </div>
+
         {attentionPoints.length === 0 ? (
           <div className="flex items-center gap-2 text-emerald-600 text-sm bg-emerald-50 rounded-lg p-4">
             <CheckCircle className="w-5 h-5" />
-            <span>Todas as capacidades operacionais estão com aderência acima de 50%. Parabéns!</span>
+            <span>Todas as capacidades operacionais estão com aderência acima de 50%.</span>
           </div>
         ) : (
           <div className="space-y-4">
             {attentionPoints.map((cap, index) => {
-              // Determina o nível de criticidade
               const isCritical = cap.aderente === 0;
               const isHigh = cap.aderente > 0 && cap.aderente < 25;
-              const isMedium = cap.aderente >= 25 && cap.aderente < 50;
-
-              // Define cores e ícones
               const severity = isCritical ? 'critical' : isHigh ? 'high' : 'medium';
+              
               const colors = {
                 critical: { bg: 'bg-red-50', border: 'border-red-300', text: 'text-red-700', badge: 'bg-red-500' },
                 high: { bg: 'bg-orange-50', border: 'border-orange-300', text: 'text-orange-700', badge: 'bg-orange-500' },
                 medium: { bg: 'bg-amber-50', border: 'border-amber-300', text: 'text-amber-700', badge: 'bg-amber-500' },
-              };
-
-              // Gera uma recomendação específica baseada nos dados
-              const getAction = () => {
-                if (cap.total === 0) return 'Nenhum controle atribuído. Verifique o escopo.';
-                if (cap.implemented === 0 && cap.partial === 0) 
-                  return `Inicie pelo controle mais crítico da capacidade.`;
-                if (cap.partial > 0) 
-                  return `Complete os ${cap.partial} controle(s) parcial(is) para evoluir rapidamente.`;
-                return `Priorize os ${cap.notImpl} controle(s) não implementados.`;
-              };
-
-              // Busca o primeiro controle da capacidade (exemplo - precisa ser integrado com dados reais)
-              const getExampleControl = () => {
-                const controls = data?.controls?.filter(c => {
-                  const control = c.control || c;
-                  const capacidades = control?.capacidadesOperacionais || [];
-                  return capacidades.includes(cap.key);
-                }) || [];
-                const firstControl = controls[0]?.control || controls[0];
-                return firstControl?.id || 'Consultar lista';
               };
 
               return (
@@ -294,7 +302,6 @@ const CapabilitiesContent: React.FC<{ data: DashboardData }> = ({ data }) => {
                   onClick={() => handleCardClick(cap)}
                 >
                   <div className="flex flex-wrap items-start justify-between gap-3">
-                    {/* Esquerda: Diagnóstico e Ação */}
                     <div className="flex-1 min-w-[200px]">
                       <div className="flex items-center gap-2 mb-1.5">
                         <span className={`w-2.5 h-2.5 rounded-full ${colors[severity].badge}`} />
@@ -303,40 +310,51 @@ const CapabilitiesContent: React.FC<{ data: DashboardData }> = ({ data }) => {
                           {cap.aderente}% de aderência
                         </span>
                       </div>
-                      <p className="text-sm text-gray-700 mb-1">
+                      <p className="text-sm text-gray-700">
                         <span className="font-medium">Diagnóstico:</span> 
-                        {' '}{cap.implemented} implementados, {cap.partial} parciais, {cap.notImpl} não implementados 
-                        ({cap.total} controles no total)
+                        {' '}{cap.implemented} implementados, {cap.partial} parciais, {cap.notImpl} não implementados
                       </p>
-                      <div className="flex flex-wrap items-center gap-3 mt-2">
-                        <span className="text-xs font-medium text-gray-600 bg-white/60 px-2.5 py-1 rounded-full">
-                          🎯 {getAction()}
-                        </span>
-                        <span className="text-xs text-blue-600 flex items-center gap-1">
-                          <Info className="w-3.5 h-3.5" />
-                          <span>Clique para detalhes</span>
-                        </span>
-                      </div>
                     </div>
-                    {/* Direita: Métricas Rápidas */}
-                    <div className="flex items-center gap-3 text-xs text-gray-600 bg-white/50 px-3 py-1.5 rounded-lg">
-                      <div className="text-center">
-                        <div className="font-bold text-gray-900">{cap.implemented}</div>
-                        <div className="text-[10px]">✅ OK</div>
-                      </div>
-                      <div className="w-px h-6 bg-gray-300" />
-                      <div className="text-center">
-                        <div className="font-bold text-amber-600">{cap.partial}</div>
-                        <div className="text-[10px]">🔄 Parcial</div>
-                      </div>
-                      <div className="w-px h-6 bg-gray-300" />
-                      <div className="text-center">
-                        <div className="font-bold text-red-500">{cap.notImpl}</div>
-                        <div className="text-[10px]">❌ Pendente</div>
-                      </div>
+
+                    <div className="flex items-center gap-1 text-xs bg-white/60 px-2 py-1.5 rounded-lg">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openControlList(cap.key, 'Implementado', 'Implementados');
+                        }}
+                        className="flex items-center gap-1 px-2 py-1 rounded hover:bg-emerald-100 transition-colors"
+                        title="Ver controles implementados"
+                      >
+                        <span className="font-bold text-emerald-600">{cap.implemented}</span>
+                        <span className="text-emerald-600">✅</span>
+                      </button>
+                      <div className="w-px h-4 bg-gray-300" />
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openControlList(cap.key, 'Parcialmente implementado', 'Parciais');
+                        }}
+                        className="flex items-center gap-1 px-2 py-1 rounded hover:bg-amber-100 transition-colors"
+                        title="Ver controles parciais"
+                      >
+                        <span className="font-bold text-amber-600">{cap.partial}</span>
+                        <span className="text-amber-600">🔄</span>
+                      </button>
+                      <div className="w-px h-4 bg-gray-300" />
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openControlList(cap.key, 'Não implementado', 'Não Implementados');
+                        }}
+                        className="flex items-center gap-1 px-2 py-1 rounded hover:bg-red-100 transition-colors"
+                        title="Ver controles não implementados"
+                      >
+                        <span className="font-bold text-red-500">{cap.notImpl}</span>
+                        <span className="text-red-500">❌</span>
+                      </button>
                     </div>
                   </div>
-                  {/* Barra de progresso da capacidade */}
+
                   <div className="mt-3">
                     <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
                       <div
@@ -347,11 +365,6 @@ const CapabilitiesContent: React.FC<{ data: DashboardData }> = ({ data }) => {
                         style={{ width: `${cap.aderente}%` }}
                       />
                     </div>
-                    <div className="flex justify-between mt-0.5">
-                      <span className="text-[10px] text-gray-400">0%</span>
-                      <span className="text-[10px] text-gray-400">50%</span>
-                      <span className="text-[10px] text-gray-400">100%</span>
-                    </div>
                   </div>
                 </motion.div>
               );
@@ -360,7 +373,90 @@ const CapabilitiesContent: React.FC<{ data: DashboardData }> = ({ data }) => {
         )}
       </div>
 
-      {/* Modal de Detalhes */}
+      {/* Modal: Lista de Controles por Status */}
+      <AnimatePresence>
+        {listModal.isOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+            onClick={() => setListModal({ ...listModal, isOpen: false })}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-xl max-w-2xl w-full max-h-[80vh] overflow-hidden shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between p-6 border-b border-gray-200">
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900">{listModal.title}</h3>
+                  <p className="text-sm text-gray-500">{listModal.controls.length} controles encontrados</p>
+                </div>
+                <button
+                  onClick={() => setListModal({ ...listModal, isOpen: false })}
+                  className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                >
+                  <X className="w-5 h-5 text-gray-500" />
+                </button>
+              </div>
+
+              <div className="p-6 overflow-y-auto max-h-[60vh]">
+                {listModal.controls.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <ClipboardList className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                    <p>Nenhum controle encontrado com este status.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {listModal.controls.map((item, idx) => {
+                      const control = item.control || item;
+                      return (
+                        <div
+                          key={idx}
+                          className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                        >
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-mono text-gray-500 bg-gray-200 px-2 py-0.5 rounded">
+                                {control?.id || 'N/A'}
+                              </span>
+                              <span className="text-sm font-medium text-gray-900">
+                                {control?.nome || 'Controle sem nome'}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
+                              <span>
+                                Status: {item.status === 'Implementado' ? '✅' : 
+                                         item.status === 'Parcialmente implementado' ? '🔄' : '❌'}
+                                {' '}{item.status}
+                              </span>
+                            </div>
+                          </div>
+                          <ChevronRight className="w-4 h-4 text-gray-400" />
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex justify-end p-4 border-t border-gray-200 bg-gray-50">
+                <button
+                  onClick={() => setListModal({ ...listModal, isOpen: false })}
+                  className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                >
+                  Fechar
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal: Detalhes da Capacidade */}
       <AnimatePresence>
         {isModalOpen && selectedCapability && (
           <motion.div
@@ -377,7 +473,6 @@ const CapabilitiesContent: React.FC<{ data: DashboardData }> = ({ data }) => {
               className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl"
               onClick={(e) => e.stopPropagation()}
             >
-              {/* Header do Modal */}
               <div className="flex items-start justify-between mb-4">
                 <div>
                   <h3 className="text-xl font-bold text-gray-900">{selectedCapability.name}</h3>
@@ -391,7 +486,6 @@ const CapabilitiesContent: React.FC<{ data: DashboardData }> = ({ data }) => {
                 </button>
               </div>
 
-              {/* Métricas */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
                 <div className="bg-gray-50 rounded-lg p-3 text-center">
                   <div className="text-2xl font-bold text-gray-900">{selectedCapability.total}</div>
@@ -411,7 +505,6 @@ const CapabilitiesContent: React.FC<{ data: DashboardData }> = ({ data }) => {
                 </div>
               </div>
 
-              {/* Status */}
               <div className="mb-4">
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-sm font-medium text-gray-700">Aderência</span>
@@ -427,7 +520,6 @@ const CapabilitiesContent: React.FC<{ data: DashboardData }> = ({ data }) => {
                 </div>
               </div>
 
-              {/* Recomendações */}
               <div className="bg-blue-50 rounded-lg p-4 mb-4">
                 <div className="flex items-center gap-2 mb-2">
                   <Lightbulb className="w-4 h-4 text-blue-600" />
@@ -443,7 +535,6 @@ const CapabilitiesContent: React.FC<{ data: DashboardData }> = ({ data }) => {
                 </ul>
               </div>
 
-              {/* Ações Sugeridas */}
               <div className="bg-amber-50 rounded-lg p-4">
                 <div className="flex items-center gap-2 mb-2">
                   <Target className="w-4 h-4 text-amber-600" />
@@ -452,7 +543,7 @@ const CapabilitiesContent: React.FC<{ data: DashboardData }> = ({ data }) => {
                 <ul className="space-y-2">
                   <li className="flex items-start gap-2 text-sm text-gray-700">
                     <Clock className="w-4 h-4 text-amber-500 mt-0.5" />
-                    <span>Priorizar controls com maior impacto para esta capacidade.</span>
+                    <span>Priorizar controles com maior impacto para esta capacidade.</span>
                   </li>
                   <li className="flex items-start gap-2 text-sm text-gray-700">
                     <Clock className="w-4 h-4 text-amber-500 mt-0.5" />
