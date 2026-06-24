@@ -1,13 +1,13 @@
-// frontend/src/pages/dashboard/DashboardOverview.tsx
+// frontend/src/pages/DashboardOverview.tsx
 import React from 'react';
 import { useParams } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext.js';
-import { DashboardPageWrapper } from '../../components/dashboard/DashboardPageWrapper.js';
-import { Building2, Users, ClipboardList, TrendingUp, AlertCircle, CheckCircle, Clock } from 'lucide-react';
-import { Card, CardContent } from '../../components/ui/Card.js';
-import { PieChart } from '../../components/dashboard/PieChart.js';
-import { BarChart } from '../../components/dashboard/BarChart.js';
-import { DashboardData } from '../../services/dashboard.service.js';
+import { useAuth } from '../contexts/AuthContext.js';
+import { DashboardPageWrapper } from '../components/dashboard/DashboardPageWrapper.js';
+import { Building2, ClipboardList, TrendingUp, AlertCircle, CheckCircle, Clock } from 'lucide-react';
+import { Card, CardContent } from '../components/ui/Card.js';
+import { PieChart } from '../components/dashboard/PieChart.js';
+import { BarChart } from '../components/dashboard/BarChart.js';
+import { DashboardData } from '../services/dashboard.service.js';
 
 const STATUS_COLORS = {
   'Implementado': 'hsl(142,70%,45%)',
@@ -43,7 +43,7 @@ const DashboardOverviewContent: React.FC<{ data: DashboardData }> = ({ data }) =
         <h1 className="text-2xl font-bold text-gray-900">Dashboard de Maturidade</h1>
         <div className="flex items-center gap-2 mt-1">
           <Building2 className="w-4 h-4 text-gray-400" />
-          <span className="text-sm text-gray-600">{company.name}</span>
+          <span className="text-sm text-gray-600">{company?.name || 'Carregando...'}</span>
         </div>
       </div>
 
@@ -141,8 +141,39 @@ export const DashboardOverview: React.FC = () => {
   const { companyId: paramCompanyId } = useParams<{ companyId: string }>();
   const { user } = useAuth();
   
-  // Para admin: usa da URL; para rep: usa do usuário
-  const companyId = paramCompanyId || user?.companyId;
+  // CORREÇÃO: Buscar companyId de diferentes locais no objeto user
+  let companyId = paramCompanyId;
+  
+  if (!companyId && user) {
+    // Tentar obter companyId de diferentes campos
+    const userAny = user as any;
+    companyId = userAny.companyId || 
+                userAny.company?._id || 
+                userAny.company || 
+                null;
+    
+    // Log para debug (remover em produção)
+    console.log('🔍 DashboardOverview - user:', user);
+    console.log('🔍 DashboardOverview - companyId obtido:', companyId);
+  }
+
+  // Se não encontrou companyId, exibir mensagem de erro
+  if (!companyId) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-gray-900">Empresa não identificada</h3>
+          <p className="text-gray-600 mt-2">
+            Não foi possível identificar a empresa associada ao seu perfil.
+          </p>
+          <p className="text-sm text-gray-500 mt-1">
+            Entre em contato com o administrador para configurar sua empresa.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <DashboardPageWrapper
