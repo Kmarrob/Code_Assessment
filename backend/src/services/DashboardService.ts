@@ -188,7 +188,7 @@ export class DashboardService {
   }
 
   /**
-   * CORREÇÃO: Usa Object.hasOwn para verificação segura de chaves
+   * CORREÇÃO: Usa Object.hasOwn e garante tratamento de undefined para o compilador do TS
    */
   private static calculateMaturityLevels(controls: any[]) {
     const levels: Record<string, number> = {
@@ -201,7 +201,7 @@ export class DashboardService {
     controls.forEach(c => {
       const level = c.maturityLevel || 'N/A';
       if (Object.hasOwn(levels, level)) {
-        levels[level]++;
+        levels[level] = (levels[level] ?? 0) + 1;
       }
     });
 
