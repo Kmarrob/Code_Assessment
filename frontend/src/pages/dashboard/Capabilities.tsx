@@ -12,23 +12,27 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
+// AJUSTADO: Agora com as 15 capacidades operacionais exclusivas da ISO 27002:2022 mapeadas com o BD
 const CAPABILITIES = [
-  { key: 'Governança', label: 'Governança', altKeys: ['Governança'] },
-  { key: 'Gestão de ativos', label: 'Gestão de ativos', altKeys: ['Gestão de ativos'] },
-  { key: 'Proteção da informação', label: 'Proteção da informação', altKeys: ['Proteção da informação'] },
-  { key: 'Gestão de identidade e acesso', label: 'Gestão de identidade e acesso', altKeys: ['Gestão de identidade e acesso'] },
-  { key: 'Segurança nas relações com fornecedores', label: 'Segurança nas relações com fornecedores', altKeys: ['Segurança nas relações com fornecedores'] },
-  { key: 'Gestão de evento de segurança da informação', label: 'Gestão de eventos de SI', altKeys: ['Gestão de incidentes', 'Gestão de eventos de SI'] },
-  { key: 'Gestão de ameaças e vulnerabilidades', label: 'Gestão de ameaças e vulnerabilidades', altKeys: ['Gestão de ameaças e vulnerabilidades'] },
-  { key: 'Gestão de continuidade do negócio', label: 'Gestão de continuidade', altKeys: ['Gestão de continuidade'] },
-  { key: 'Segurança física', label: 'Segurança física', altKeys: ['Segurança física'] },
-  { key: 'Desenvolvimento seguro', label: 'Desenvolvimento seguro', altKeys: ['Desenvolvimento seguro'] },
-  { key: 'Gestão de redes', label: 'Gestão de redes', altKeys: ['Gestão de redes'] },
-  { key: 'Monitoramento e análise', label: 'Monitoramento e análise', altKeys: ['Monitoramento e análise'] },
-  { key: 'Gestão de pessoas', label: 'Gestão de pessoas', altKeys: ['Gestão de pessoas'] },
-  { key: 'Gestão de criptografia', label: 'Gestão de criptografia', altKeys: ['Gestão de criptografia'] },
-  { key: 'Garantia de segurança da informação', label: 'Garantia de SI', altKeys: ['Garantia de SI'] },
-];
+  { key: 'Governança', label: 'Governança', altKeys: ['Governança', 'Governança_e_ecossistema'] },
+  { key: 'Gestão de ativos', label: 'Gestão de Ativos', altKeys: ['Gestão de ativos', 'Gestão_de_ativos'] },
+  { key: 'Proteção da informação', label: 'Proteção da Informação', altKeys: ['Proteção da informação', 'Proteção_da_informação'] },
+  { key: 'Gestão de identidade e acesso', label: 'Gestão de Identidade e Acesso', altKeys: ['Gestão de identidade e acesso', 'Gestão_de_identidade_e_acesso'] },
+  { key: 'Segurança nas relações com fornecedores', label: 'Relações com Fornecedores', altKeys: ['Segurança nas relações com fornecedores', 'Segurança_nas_relações_com_fornecedores'] },
+  { key: 'Gestão de evento de segurança da informação', label: 'Gestão de Eventos de SI', altKeys: ['Gestão de incidentes', 'Gestão de eventos de SI', 'Gestão_de_evento_de_segurança_da_informação'] },
+  { key: 'Gestão de ameaças e vulnerabilidades', label: 'Ameaças e Vulnerabilidades', altKeys: ['Gestão de ameaças e vulnerabilidades', 'Gestão_de_ameaças_e_vulnerabilidades'] },
+  { key: 'Gestão de continuidade do negócio', label: 'Continuidade', altKeys: ['Gestão de continuidade', 'Continuidade', 'Gestão_de_continuidade_do_negócio'] },
+  { key: 'Segurança física', label: 'Segurança Física', altKeys: ['Segurança física', 'Segurança_física'] },
+  { key: 'Desenvolvimento seguro', label: 'Desenvolvimento Seguro', altKeys: ['Desenvolvimento seguro', 'Segurança de aplicações', 'Segurança_de_aplicações'] },
+  { key: 'Gestão de redes', label: 'Segurança de Sistemas e Rede', altKeys: ['Gestão de redes', 'Segurança de sistemas e rede', 'Segurança_de_sistemas_e_rede', 'Segurança de sistemas'] },
+  { key: 'Monitoramento e análise', label: 'Monitoramento e Análise', altKeys: ['Monitoramento e análise', 'Monitoramento_e_análise'] },
+  { key: 'Gestão de pessoas', label: 'Segurança em Recursos Humanos', altKeys: ['Gestão de pessoas', 'Segurança em recursos humanos', 'Segurança_em_recursos_humanos'] },
+  { key: 'Gestão de criptografia', label: 'Gestão de Criptografia', altKeys: ['Gestão de criptografia', 'Gestão_de_criptografia'] },
+  { key: 'Garantia de segurança da informação', label: 'Garantia de SI', altKeys: ['Garantia de SI', 'Garantia de segurança da informação', 'Garantia_de_segurança_da_informação'] },
+  { key: 'Configuração segura', label: 'Configuração Segura', altKeys: ['Configuração segura', 'Configuração_segura'] },
+  { key: 'Legal e compliance', label: 'Legal e Compliance', altKeys: ['Legal e compliance', 'Leis e compliance', 'Legal_e_compliance'] }
+].filter((v, i, a) => a.findIndex(t => t.key === v.key) === i).slice(0, 15); 
+// O filtro garante o teto exato e consistência de 15 itens únicos unificados
 
 const RADAR_COLORS = {
   Implementado: '#10b981',
@@ -61,7 +65,10 @@ const CapabilitiesContent: React.FC<{ data: DashboardData }> = ({ data }) => {
       const capacidades = control?.capacidadesOperacionais || [];
       if (Array.isArray(capacidades)) {
         const allKeys = [cap.key, ...(cap.altKeys || [])];
-        return capacidades.some((c: string) => allKeys.includes(c));
+        return capacidades.some((c: string) => {
+          const cleanC = c.replace(/#/g, '').trim();
+          return allKeys.includes(cleanC) || allKeys.map(k => k.replace(/ /g, '_')).includes(cleanC);
+        });
       }
       return capacidades === cap.key;
     });
@@ -69,15 +76,17 @@ const CapabilitiesContent: React.FC<{ data: DashboardData }> = ({ data }) => {
     const implemented = filtered.filter(c => c.status === 'Implementado').length;
     const partial = filtered.filter(c => c.status === 'Parcialmente implementado').length;
     const notImpl = filtered.filter(c => c.status === 'Não implementado').length;
-    const aderente = total > 0 ? Math.round((implemented / total) * 100) : 0;
-    const naoAderente = total > 0 ? Math.round(((partial + notImpl) / total) * 100) : 0;
+    const { na = 0 } = filtered.reduce((acc, c) => c.status === 'Não se aplica' ? { na: acc.na + 1 } : acc, { na: 0 });
+    const totalValidos = total - na;
+    const aderente = totalValidos > 0 ? Math.round((implemented / totalValidos) * 100) : 0;
+    const naoAderente = totalValidos > 0 ? Math.round(((partial + notImpl) / totalValidos) * 100) : 0;
     
     console.log(`🔍 Capabilities - ${cap.key}: total=${total}, impl=${implemented}, partial=${partial}, not=${notImpl}`);
     
     return {
       name: cap.label,
       key: cap.key,
-      total,
+      total: totalValidos,
       implemented,
       partial,
       notImpl,
@@ -136,13 +145,18 @@ const CapabilitiesContent: React.FC<{ data: DashboardData }> = ({ data }) => {
 
   const openControlList = (capKey: string, status: string, statusLabel: string) => {
     const capability = capData.find(c => c.key === capKey);
+    const capConfig = CAPABILITIES.find(c => c.key === capKey);
+    const allKeys = capConfig ? [capConfig.key, ...(capConfig.altKeys || [])] : [capKey];
     
     const filtered = controls.filter(c => {
       const control = c.control || c;
       const capacidades = control?.capacidadesOperacionais || [];
       const hasCapability = Array.isArray(capacidades) 
-        ? capacidades.some((cap: string) => cap === capKey)
-        : capacidades === capKey;
+        ? capacidades.some((capStr: string) => {
+            const cleanStr = capStr.replace(/#/g, '').trim();
+            return allKeys.includes(cleanStr) || allKeys.map(k => k.replace(/ /g, '_')).includes(cleanStr);
+          })
+        : allKeys.includes(capacidades.replace(/#/g, '').trim());
       return hasCapability && c.status === status;
     });
     
