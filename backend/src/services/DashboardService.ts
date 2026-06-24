@@ -107,13 +107,25 @@ export class DashboardService {
       });
     });
 
+    const controls = Array.from(controlStatusMap.values());
+
+    // CORREÇÃO: Calcular summary com base nos controles
+    const summary = this.calculateMaturityStats({ controls });
+
     return {
       company: {
         id: company._id,
         name: company.name,
       },
-      totalControls: allControls.length,
-      controls: Array.from(controlStatusMap.values()),
+      summary: {
+        totalControls: controls.length,
+        Implementado: summary.statusCounts.Implementado || 0,
+        Parcialmente: summary.statusCounts['Parcialmente implementado'] || 0,
+        NaoImplementado: summary.statusCounts['Não implementado'] || 0,
+        NaoSeAplica: summary.statusCounts['Não se aplica'] || 0,
+      },
+      totalControls: controls.length,
+      controls: controls,
       assignments: controlsWithStatus,
       users: users.length,
     };
@@ -125,6 +137,13 @@ export class DashboardService {
   private static getEmptyMaturityData() {
     return {
       company: { id: null, name: null },
+      summary: {
+        totalControls: 0,
+        Implementado: 0,
+        Parcialmente: 0,
+        NaoImplementado: 0,
+        NaoSeAplica: 0,
+      },
       totalControls: 0,
       controls: [],
       assignments: [],
@@ -200,9 +219,14 @@ export class DashboardService {
     const result: any = {};
 
     domains.forEach(d => {
-      const filtered = controls.filter(c => 
-        c.control?.dominioDeSI?.includes(d)
-      );
+      const filtered = controls.filter(c => {
+        const control = c.control || c;
+        const dominios = control?.dominioDeSI || [];
+        if (Array.isArray(dominios)) {
+          return dominios.includes(d);
+        }
+        return dominios === d;
+      });
       result[d] = {
         total: filtered.length,
         implemented: filtered.filter(c => c.status === 'Implementado').length,
@@ -216,7 +240,7 @@ export class DashboardService {
   }
 
   /**
-   * Agrupar controles por categoria
+   * Agrupar controles por categoria - CORRIGIDO
    */
   static groupByCategory(controls: any[]) {
     const categories = [
@@ -228,9 +252,14 @@ export class DashboardService {
     const result: any = {};
 
     categories.forEach(cat => {
-      const filtered = controls.filter(c => 
-        c.control?.tiposDeControles?.includes(cat)
-      );
+      const filtered = controls.filter(c => {
+        const control = c.control || c;
+        const tipos = control?.tiposDeControles || control?.tipoDeControle || [];
+        if (Array.isArray(tipos)) {
+          return tipos.includes(cat);
+        }
+        return tipos === cat;
+      });
       result[cat] = {
         total: filtered.length,
         implemented: filtered.filter(c => c.status === 'Implementado').length,
@@ -244,16 +273,41 @@ export class DashboardService {
   }
 
   /**
-   * Agrupar controles por tipo
+   * Agrupar controles por tipo - CORRIGIDO (evita dupla contagem)
    */
   static groupByType(controls: any[]) {
     const types = ['Preventivo', 'Detectivo', 'Corretivo'];
     const result: any = {};
 
     types.forEach(t => {
-      const filtered = controls.filter(c => 
-        c.control?.tipoDeControle?.includes(t)
-      );
+      // CORREÇÃO: Usar Set para garantir contagem única
+      const uniqueControlIds = new Set();
+      
+      controls.forEach(c => {
+        const control = c.control || c;
+        const tipoDeControle = control?.tipoDeControle || [];
+        
+        let hasType = false;
+        if (Array.isArray(tipoDeControle)) {
+          hasType = tipoDeControle.includes(t);
+        } else {
+          hasType = tipoDeControle === t;
+        }
+        
+        if (hasType) {
+          const id = control?._id?.toString() || c.controlId?.toString();
+          if (id) {
+            uniqueControlIds.add(id);
+          }
+        }
+      });
+
+      const filtered = controls.filter(c => {
+        const control = c.control || c;
+        const id = control?._id?.toString() || c.controlId?.toString();
+        return uniqueControlIds.has(id);
+      });
+
       result[t] = {
         total: filtered.length,
         implemented: filtered.filter(c => c.status === 'Implementado').length,
@@ -274,9 +328,14 @@ export class DashboardService {
     const result: any = {};
 
     concepts.forEach(concept => {
-      const filtered = controls.filter(c => 
-        c.control?.conceitoDeSegurancaCibernetica?.includes(concept)
-      );
+      const filtered = controls.filter(c => {
+        const control = c.control || c;
+        const conceitos = control?.conceitoDeSegurancaCibernetica || [];
+        if (Array.isArray(conceitos)) {
+          return conceitos.includes(concept);
+        }
+        return conceitos === concept;
+      });
       result[concept] = {
         total: filtered.length,
         implemented: filtered.filter(c => c.status === 'Implementado').length,
@@ -313,9 +372,14 @@ export class DashboardService {
     const result: any = {};
 
     capabilities.forEach(cap => {
-      const filtered = controls.filter(c => 
-        c.control?.capacidadesOperacionais?.includes(cap)
-      );
+      const filtered = controls.filter(c => {
+        const control = c.control || c;
+        const capacidades = control?.capacidadesOperacionais || [];
+        if (Array.isArray(capacidades)) {
+          return capacidades.includes(cap);
+        }
+        return capacidades === cap;
+      });
       result[cap] = {
         total: filtered.length,
         implemented: filtered.filter(c => c.status === 'Implementado').length,
