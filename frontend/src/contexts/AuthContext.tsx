@@ -10,7 +10,7 @@ interface AuthContextType {
   user: IUser | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<IUser | undefined>; // <-- MUDADO
+  login: (email: string, password: string) => Promise<IUser | undefined>;
   register: (data: any) => Promise<void>;
   logout: () => Promise<void>;
   updateProfile: (data: Partial<IUser>) => Promise<void>;
@@ -53,7 +53,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setIsLoading(false);
   }, []);
 
-  // Atualizar usuário no localStorage
+  // Atualizar usuário no localStorage - CORRIGIDO
   const updateStoredUser = useCallback((userData: IUser | null) => {
     if (userData && typeof userData === 'object' && userData._id) {
       const safeUser = {
@@ -62,6 +62,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         email: userData.email || '',
         role: userData.role || 'user',
         company: userData.company || '',
+        companyId: (userData as any).companyId || null, // ✅ ADICIONADO
         department: userData.department || '',
         isActive: userData.isActive !== undefined ? userData.isActive : true,
         lastLoginAt: userData.lastLoginAt || null,
@@ -87,7 +88,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       updateStoredUser(userData);
       
       toast.success('Login realizado com sucesso!');
-      return userData; // <-- RETORNAR O USUÁRIO
+      return userData;
     } catch (error) {
       toast.error(formatError(error));
       throw error;
