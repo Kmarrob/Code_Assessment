@@ -205,32 +205,32 @@ export class DashboardService {
     return levels;
   }
 
+  // ============================================
+  // MÉTODOS DE AGRUPAMENTO - CORRIGIDOS
+  // ============================================
+
   static groupByDomain(controls: any[]) {
     const domains = ['Defesa', 'Resiliência', 'Governança e ecossistema', 'Proteção'];
-    const result: any = {};
-
-    domains.forEach(d => {
+    
+    return domains.reduce<Record<string, any>>((acc, domain) => {
       const filtered = controls.filter(c => {
         const control = c.control || c;
         const dominios = control?.dominioDeSI || [];
         if (Array.isArray(dominios)) {
-          return dominios.includes(d);
+          return dominios.includes(domain);
         }
-        return dominios === d;
+        return dominios === domain;
       });
-      // CORREÇÃO: Usar uma variável temporária para evitar erro de tipo
-      const domainData = {
+      
+      acc[domain] = {
         total: filtered.length,
         implemented: filtered.filter(c => c.status === 'Implementado').length,
         partial: filtered.filter(c => c.status === 'Parcialmente implementado').length,
         notImpl: filtered.filter(c => c.status === 'Não implementado').length,
         na: filtered.filter(c => c.status === 'Não se aplica').length,
       };
-      // Atribuir a chave de forma segura
-      Object.assign(result, { [d]: domainData });
-    });
-
-    return result;
+      return acc;
+    }, {});
   }
 
   static groupByCategory(controls: any[]) {
@@ -240,35 +240,32 @@ export class DashboardService {
       'Controles Físicos',
       'Controles Tecnológicos'
     ];
-    const result: any = {};
-
-    categories.forEach(cat => {
+    
+    return categories.reduce<Record<string, any>>((acc, category) => {
       const filtered = controls.filter(c => {
         const control = c.control || c;
         const tipos = control?.tiposDeControles || control?.tipoDeControle || [];
         if (Array.isArray(tipos)) {
-          return tipos.includes(cat);
+          return tipos.includes(category);
         }
-        return tipos === cat;
+        return tipos === category;
       });
-      const categoryData = {
+      
+      acc[category] = {
         total: filtered.length,
         implemented: filtered.filter(c => c.status === 'Implementado').length,
         partial: filtered.filter(c => c.status === 'Parcialmente implementado').length,
         notImpl: filtered.filter(c => c.status === 'Não implementado').length,
         na: filtered.filter(c => c.status === 'Não se aplica').length,
       };
-      Object.assign(result, { [cat]: categoryData });
-    });
-
-    return result;
+      return acc;
+    }, {});
   }
 
   static groupByType(controls: any[]) {
     const types = ['Preventivo', 'Detectivo', 'Corretivo'];
-    const result: any = {};
-
-    types.forEach(t => {
+    
+    return types.reduce<Record<string, any>>((acc, type) => {
       const uniqueControlIds = new Set();
       
       controls.forEach(c => {
@@ -277,9 +274,9 @@ export class DashboardService {
         
         let hasType = false;
         if (Array.isArray(tipoDeControle)) {
-          hasType = tipoDeControle.includes(t);
+          hasType = tipoDeControle.includes(type);
         } else {
-          hasType = tipoDeControle === t;
+          hasType = tipoDeControle === type;
         }
         
         if (hasType) {
@@ -296,24 +293,21 @@ export class DashboardService {
         return uniqueControlIds.has(id);
       });
 
-      const typeData = {
+      acc[type] = {
         total: filtered.length,
         implemented: filtered.filter(c => c.status === 'Implementado').length,
         partial: filtered.filter(c => c.status === 'Parcialmente implementado').length,
         notImpl: filtered.filter(c => c.status === 'Não implementado').length,
         na: filtered.filter(c => c.status === 'Não se aplica').length,
       };
-      Object.assign(result, { [t]: typeData });
-    });
-
-    return result;
+      return acc;
+    }, {});
   }
 
   static groupByCyberConcept(controls: any[]) {
     const concepts = ['Identificar', 'Proteger', 'Detectar', 'Responder', 'Restaurar'];
-    const result: any = {};
-
-    concepts.forEach(concept => {
+    
+    return concepts.reduce<Record<string, any>>((acc, concept) => {
       const filtered = controls.filter(c => {
         const control = c.control || c;
         const conceitos = control?.conceitoDeSegurancaCibernetica || [];
@@ -322,17 +316,16 @@ export class DashboardService {
         }
         return conceitos === concept;
       });
-      const conceptData = {
+      
+      acc[concept] = {
         total: filtered.length,
         implemented: filtered.filter(c => c.status === 'Implementado').length,
         partial: filtered.filter(c => c.status === 'Parcialmente implementado').length,
         notImpl: filtered.filter(c => c.status === 'Não implementado').length,
         na: filtered.filter(c => c.status === 'Não se aplica').length,
       };
-      Object.assign(result, { [concept]: conceptData });
-    });
-
-    return result;
+      return acc;
+    }, {});
   }
 
   static groupByCapability(controls: any[]) {
@@ -353,18 +346,18 @@ export class DashboardService {
       'Gestão de criptografia',
       'Garantia de segurança da informação',
     ];
-    const result: any = {};
-
-    capabilities.forEach(cap => {
+    
+    return capabilities.reduce<Record<string, any>>((acc, capability) => {
       const filtered = controls.filter(c => {
         const control = c.control || c;
         const capacidades = control?.capacidadesOperacionais || [];
         if (Array.isArray(capacidades)) {
-          return capacidades.includes(cap);
+          return capacidades.includes(capability);
         }
-        return capacidades === cap;
+        return capacidades === capability;
       });
-      const capabilityData = {
+      
+      acc[capability] = {
         total: filtered.length,
         implemented: filtered.filter(c => c.status === 'Implementado').length,
         partial: filtered.filter(c => c.status === 'Parcialmente implementado').length,
@@ -374,9 +367,7 @@ export class DashboardService {
           ? Math.round((filtered.filter(c => c.status === 'Implementado').length / filtered.length) * 100)
           : 0,
       };
-      Object.assign(result, { [cap]: capabilityData });
-    });
-
-    return result;
+      return acc;
+    }, {});
   }
 }
