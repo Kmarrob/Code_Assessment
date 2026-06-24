@@ -8,7 +8,7 @@ import { NotFoundError } from '../middleware/errorHandler.js';
 
 export class DashboardService {
   /**
-   * Obter dados de maturidade de uma empresa
+   * Obter dados de maturidade de uma empresa - CORRIGIDO
    */
   static async getCompanyMaturity(
     companyId: string,
@@ -35,7 +35,7 @@ export class DashboardService {
       return this.getEmptyMaturityData();
     }
 
-    // Buscar todas as atribuições dos usuários
+    // Buscar todas as atribuições dos usuários da empresa
     const assignments = await Assignment.find({
       userId: { $in: userIds }
     }).populate('controlId').lean();
@@ -51,12 +51,25 @@ export class DashboardService {
       responseMap.set(r.assignmentId.toString(), r);
     });
 
-    // Mapear status de cada controle com base no maturityLevel
+    // Extrair IDs dos controles únicos das atribuições
+    const assignedControlIds = new Set();
+    assignments.forEach(a => {
+      const control = a.controlId as any;
+      if (control?._id) {
+        assignedControlIds.add(control._id.toString());
+      }
+    });
+
+    // Buscar os controles completos que estão atribuídos
+    const allControls = await Control.find({
+      _id: { $in: Array.from(assignedControlIds) }
+    }).lean();
+
+    // Mapear status de cada controle com base nas respostas
     const controlsWithStatus = assignments.map(a => {
       const response = responseMap.get(a._id.toString());
       const control = a.controlId as any;
 
-      // Mapear maturityLevel para status
       let status = 'Não implementado';
       if (response) {
         switch (response.maturityLevel) {
@@ -88,11 +101,6 @@ export class DashboardService {
       };
     });
 
-    // Buscar todos os controles da empresa (atribuídos ou não)
-    const allControls = await Control.find({
-      _id: { $in: company.assignedControls || [] }
-    }).lean();
-
     // Mapear status para todos os controles
     const controlStatusMap = new Map();
     allControls.forEach(c => {
@@ -109,7 +117,7 @@ export class DashboardService {
 
     const controls = Array.from(controlStatusMap.values());
 
-    // CORREÇÃO: Calcular summary com base nos controles
+    // Calcular summary
     const summary = this.calculateMaturityStats({ controls });
 
     return {
@@ -123,6 +131,8 @@ export class DashboardService {
         Parcialmente: summary.statusCounts['Parcialmente implementado'] || 0,
         NaoImplementado: summary.statusCounts['Não implementado'] || 0,
         NaoSeAplica: summary.statusCounts['Não se aplica'] || 0,
+        percentages: summary.percentages,
+        maturityLevels: summary.maturityLevels,
       },
       totalControls: controls.length,
       controls: controls,
@@ -143,6 +153,13 @@ export class DashboardService {
         Parcialmente: 0,
         NaoImplementado: 0,
         NaoSeAplica: 0,
+        percentages: {
+          Implementado: 0,
+          Parcialmente: 0,
+          NaoImplementado: 0,
+          NaoSeAplica: 0,
+        },
+        maturityLevels: {},
       },
       totalControls: 0,
       controls: [],
@@ -191,20 +208,17 @@ export class DashboardService {
    * Calcular níveis de maturidade
    */
   private static calculateMaturityLevels(controls: any[]) {
-    const levels = {
+    const levels: Record<string, number> = {
       'N/A': 0,
       '0': 0,
       '1': 0,
       '2': 0,
-      '3': 0,
-      '4': 0,
-      '5': 0,
     };
 
     controls.forEach(c => {
       const level = c.maturityLevel || 'N/A';
       if (level in levels) {
-        levels[level as keyof typeof levels]++;
+        levels[level]++;
       }
     });
 
@@ -240,7 +254,7 @@ export class DashboardService {
   }
 
   /**
-   * Agrupar controles por categoria - CORRIGIDO
+   * Agrupar controles por categoria
    */
   static groupByCategory(controls: any[]) {
     const categories = [
@@ -273,14 +287,13 @@ export class DashboardService {
   }
 
   /**
-   * Agrupar controles por tipo - CORRIGIDO (evita dupla contagem)
+   * Agrupar controles por tipo - Evita dupla contagem
    */
   static groupByType(controls: any[]) {
     const types = ['Preventivo', 'Detectivo', 'Corretivo'];
     const result: any = {};
 
     types.forEach(t => {
-      // CORREÇÃO: Usar Set para garantir contagem única
       const uniqueControlIds = new Set();
       
       controls.forEach(c => {
