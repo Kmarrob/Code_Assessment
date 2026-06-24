@@ -187,6 +187,9 @@ export class DashboardService {
     };
   }
 
+  /**
+   * CORREÇÃO: Usa Object.hasOwn para verificação segura de chaves
+   */
   private static calculateMaturityLevels(controls: any[]) {
     const levels: Record<string, number> = {
       'N/A': 0,
@@ -197,7 +200,7 @@ export class DashboardService {
 
     controls.forEach(c => {
       const level = c.maturityLevel || 'N/A';
-      if (level in levels) {
+      if (Object.hasOwn(levels, level)) {
         levels[level]++;
       }
     });
@@ -206,7 +209,7 @@ export class DashboardService {
   }
 
   // ============================================
-  // MÉTODOS DE AGRUPAMENTO - CORRIGIDOS COM Map
+  // MÉTODOS DE AGRUPAMENTO
   // ============================================
 
   static groupByDomain(controls: any[]) {
