@@ -206,13 +206,14 @@ export class DashboardService {
   }
 
   // ============================================
-  // MÉTODOS DE AGRUPAMENTO - CORRIGIDOS
+  // MÉTODOS DE AGRUPAMENTO - CORRIGIDOS COM Map
   // ============================================
 
   static groupByDomain(controls: any[]) {
     const domains = ['Defesa', 'Resiliência', 'Governança e ecossistema', 'Proteção'];
-    
-    return domains.reduce<Record<string, any>>((acc, domain) => {
+    const result = new Map<string, any>();
+
+    domains.forEach(domain => {
       const filtered = controls.filter(c => {
         const control = c.control || c;
         const dominios = control?.dominioDeSI || [];
@@ -221,16 +222,17 @@ export class DashboardService {
         }
         return dominios === domain;
       });
-      
-      acc[domain] = {
+
+      result.set(domain, {
         total: filtered.length,
         implemented: filtered.filter(c => c.status === 'Implementado').length,
         partial: filtered.filter(c => c.status === 'Parcialmente implementado').length,
         notImpl: filtered.filter(c => c.status === 'Não implementado').length,
         na: filtered.filter(c => c.status === 'Não se aplica').length,
-      };
-      return acc;
-    }, {});
+      });
+    });
+
+    return Object.fromEntries(result);
   }
 
   static groupByCategory(controls: any[]) {
@@ -240,8 +242,9 @@ export class DashboardService {
       'Controles Físicos',
       'Controles Tecnológicos'
     ];
-    
-    return categories.reduce<Record<string, any>>((acc, category) => {
+    const result = new Map<string, any>();
+
+    categories.forEach(category => {
       const filtered = controls.filter(c => {
         const control = c.control || c;
         const tipos = control?.tiposDeControles || control?.tipoDeControle || [];
@@ -250,35 +253,37 @@ export class DashboardService {
         }
         return tipos === category;
       });
-      
-      acc[category] = {
+
+      result.set(category, {
         total: filtered.length,
         implemented: filtered.filter(c => c.status === 'Implementado').length,
         partial: filtered.filter(c => c.status === 'Parcialmente implementado').length,
         notImpl: filtered.filter(c => c.status === 'Não implementado').length,
         na: filtered.filter(c => c.status === 'Não se aplica').length,
-      };
-      return acc;
-    }, {});
+      });
+    });
+
+    return Object.fromEntries(result);
   }
 
   static groupByType(controls: any[]) {
     const types = ['Preventivo', 'Detectivo', 'Corretivo'];
-    
-    return types.reduce<Record<string, any>>((acc, type) => {
+    const result = new Map<string, any>();
+
+    types.forEach(type => {
       const uniqueControlIds = new Set();
-      
+
       controls.forEach(c => {
         const control = c.control || c;
         const tipoDeControle = control?.tipoDeControle || [];
-        
+
         let hasType = false;
         if (Array.isArray(tipoDeControle)) {
           hasType = tipoDeControle.includes(type);
         } else {
           hasType = tipoDeControle === type;
         }
-        
+
         if (hasType) {
           const id = control?._id?.toString() || c.controlId?.toString();
           if (id) {
@@ -293,21 +298,23 @@ export class DashboardService {
         return uniqueControlIds.has(id);
       });
 
-      acc[type] = {
+      result.set(type, {
         total: filtered.length,
         implemented: filtered.filter(c => c.status === 'Implementado').length,
         partial: filtered.filter(c => c.status === 'Parcialmente implementado').length,
         notImpl: filtered.filter(c => c.status === 'Não implementado').length,
         na: filtered.filter(c => c.status === 'Não se aplica').length,
-      };
-      return acc;
-    }, {});
+      });
+    });
+
+    return Object.fromEntries(result);
   }
 
   static groupByCyberConcept(controls: any[]) {
     const concepts = ['Identificar', 'Proteger', 'Detectar', 'Responder', 'Restaurar'];
-    
-    return concepts.reduce<Record<string, any>>((acc, concept) => {
+    const result = new Map<string, any>();
+
+    concepts.forEach(concept => {
       const filtered = controls.filter(c => {
         const control = c.control || c;
         const conceitos = control?.conceitoDeSegurancaCibernetica || [];
@@ -316,16 +323,17 @@ export class DashboardService {
         }
         return conceitos === concept;
       });
-      
-      acc[concept] = {
+
+      result.set(concept, {
         total: filtered.length,
         implemented: filtered.filter(c => c.status === 'Implementado').length,
         partial: filtered.filter(c => c.status === 'Parcialmente implementado').length,
         notImpl: filtered.filter(c => c.status === 'Não implementado').length,
         na: filtered.filter(c => c.status === 'Não se aplica').length,
-      };
-      return acc;
-    }, {});
+      });
+    });
+
+    return Object.fromEntries(result);
   }
 
   static groupByCapability(controls: any[]) {
@@ -346,8 +354,9 @@ export class DashboardService {
       'Gestão de criptografia',
       'Garantia de segurança da informação',
     ];
-    
-    return capabilities.reduce<Record<string, any>>((acc, capability) => {
+    const result = new Map<string, any>();
+
+    capabilities.forEach(capability => {
       const filtered = controls.filter(c => {
         const control = c.control || c;
         const capacidades = control?.capacidadesOperacionais || [];
@@ -356,18 +365,19 @@ export class DashboardService {
         }
         return capacidades === capability;
       });
-      
-      acc[capability] = {
+
+      result.set(capability, {
         total: filtered.length,
         implemented: filtered.filter(c => c.status === 'Implementado').length,
         partial: filtered.filter(c => c.status === 'Parcialmente implementado').length,
         notImpl: filtered.filter(c => c.status === 'Não implementado').length,
         na: filtered.filter(c => c.status === 'Não se aplica').length,
-        aderente: filtered.length > 0 
+        aderente: filtered.length > 0
           ? Math.round((filtered.filter(c => c.status === 'Implementado').length / filtered.length) * 100)
           : 0,
-      };
-      return acc;
-    }, {});
+      });
+    });
+
+    return Object.fromEntries(result);
   }
 }
