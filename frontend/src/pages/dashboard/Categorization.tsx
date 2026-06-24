@@ -9,11 +9,12 @@ import { BarChart } from '../../components/dashboard/BarChart.js';
 import { DashboardData } from '../../services/dashboard.service.js';
 import { Info } from 'lucide-react';
 
+// CORREÇÃO: Categorias com suporte a múltiplos nomes (plural e singular)
 const CATEGORIES = [
-  { key: 'Controles Organizacionais', label: 'Controles Organizacionais' },
-  { key: 'Controles de Pessoas', label: 'Controles de Pessoas' },
-  { key: 'Controles Físicos', label: 'Controles Físicos' },
-  { key: 'Controles Tecnológicos', label: 'Controles Tecnológicos' },
+  { key: 'Controles Organizacionais', label: 'Controles Organizacionais', altKeys: ['Organizacionais'] },
+  { key: 'Controles de Pessoas', label: 'Controles de Pessoas', altKeys: ['Pessoas'] },
+  { key: 'Controles Físicos', label: 'Controles Físicos', altKeys: ['Físicos'] },
+  { key: 'Controles Tecnológicos', label: 'Controles Tecnológicos', altKeys: ['Tecnológicos'] },
 ];
 
 const STATUS_COLORS = {
@@ -24,24 +25,29 @@ const STATUS_COLORS = {
 };
 
 const CategorizationContent: React.FC<{ data: DashboardData }> = ({ data }) => {
-  // Debug: verificar dados recebidos
-  console.log('🔍 Categorization - data recebido:', data);
-  console.log('🔍 Categorization - controls:', data?.controls);
+  console.log('🔍 CategorizationContent - data recebido:', data);
+  console.log('🔍 CategorizationContent - controls:', data?.controls);
 
-  // CORREÇÃO: Verificar se data.controls existe e é um array
   const controls = data?.controls || [];
 
+  // CORREÇÃO: Verificar a estrutura do primeiro controle
+  if (controls.length > 0) {
+    console.log('🔍 CategorizationContent - primeiro controle:', controls[0]);
+    console.log('🔍 CategorizationContent - tiposDeControles:', controls[0]?.control?.tiposDeControles);
+  }
+
   const categoryData = CATEGORIES.map(cat => {
-    // CORREÇÃO: Buscar controles que pertencem à categoria
-    // O campo pode ser 'tiposDeControles' ou 'tipoDeControle' (singular)
+    // CORREÇÃO: Buscar controles que pertencem à categoria (com suporte a altKeys)
     const filtered = controls.filter(c => {
       const control = c.control || c;
-      // Verificar em tiposDeControles (array) ou tipoDeControle (string)
       const tipos = control?.tiposDeControles || control?.tipoDeControle || [];
-      if (Array.isArray(tipos)) {
-        return tipos.includes(cat.key);
-      }
-      return tipos === cat.key;
+      
+      // Converter para array se for string
+      let tiposArray = Array.isArray(tipos) ? tipos : [tipos];
+      
+      // Verificar se algum dos tipos corresponde à categoria principal ou às alternativas
+      const allKeys = [cat.key, ...(cat.altKeys || [])];
+      return tiposArray.some((t: string) => allKeys.includes(t));
     });
 
     const total = filtered.length;
@@ -116,7 +122,6 @@ const CategorizationContent: React.FC<{ data: DashboardData }> = ({ data }) => {
 
   return (
     <>
-      {/* Header com Ícone de Metodologia */}
       <div className="flex items-start justify-between mb-4">
         <div>
           <h2 className="text-xl font-semibold text-gray-900">Análise por Categoria</h2>
@@ -178,10 +183,14 @@ const CategorizationContent: React.FC<{ data: DashboardData }> = ({ data }) => {
 };
 
 export const Categorization: React.FC = () => {
+  console.log('🚀 Categorization - componente renderizado!');
+  
   const { companyId: paramCompanyId } = useParams<{ companyId: string }>();
   const { user } = useAuth();
   
-  // CORREÇÃO: Buscar companyId de diferentes locais no objeto user
+  console.log('🔍 Categorization - paramCompanyId:', paramCompanyId);
+  console.log('🔍 Categorization - user:', user);
+  
   let companyId = paramCompanyId;
   
   if (!companyId && user) {
@@ -191,11 +200,11 @@ export const Categorization: React.FC = () => {
                 userAny.company || 
                 null;
     
-    console.log('🔍 Categorization - user:', user);
     console.log('🔍 Categorization - companyId obtido:', companyId);
   }
 
   if (!companyId) {
+    console.error('❌ Categorization - companyId não encontrado!');
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
@@ -205,6 +214,8 @@ export const Categorization: React.FC = () => {
       </div>
     );
   }
+
+  console.log('✅ Categorization - companyId final:', companyId);
 
   return (
     <DashboardPageWrapper
