@@ -207,7 +207,7 @@ export class DashboardService {
 
   static groupByDomain(controls: any[]) {
     const domains = ['Defesa', 'Resiliência', 'Governança e ecossistema', 'Proteção'];
-    const result: any = {};
+    const result: Record<string, any> = {};
 
     domains.forEach(d => {
       const filtered = controls.filter(c => {
@@ -218,7 +218,7 @@ export class DashboardService {
         }
         return dominios === d;
       });
-      result[d as string] = { // CORREÇÃO: adicionado as string
+      result[d] = {
         total: filtered.length,
         implemented: filtered.filter(c => c.status === 'Implementado').length,
         partial: filtered.filter(c => c.status === 'Parcialmente implementado').length,
@@ -237,7 +237,7 @@ export class DashboardService {
       'Controles Físicos',
       'Controles Tecnológicos'
     ];
-    const result: any = {};
+    const result: Record<string, any> = {};
 
     categories.forEach(cat => {
       const filtered = controls.filter(c => {
@@ -248,7 +248,7 @@ export class DashboardService {
         }
         return tipos === cat;
       });
-      result[cat as string] = { // CORREÇÃO: adicionado as string
+      result[cat] = {
         total: filtered.length,
         implemented: filtered.filter(c => c.status === 'Implementado').length,
         partial: filtered.filter(c => c.status === 'Parcialmente implementado').length,
@@ -262,7 +262,7 @@ export class DashboardService {
 
   static groupByType(controls: any[]) {
     const types = ['Preventivo', 'Detectivo', 'Corretivo'];
-    const result: any = {};
+    const result: Record<string, any> = {};
 
     types.forEach(t => {
       const uniqueControlIds = new Set();
@@ -292,7 +292,7 @@ export class DashboardService {
         return uniqueControlIds.has(id);
       });
 
-      result[t as string] = { // CORREÇÃO: adicionado as string
+      result[t] = {
         total: filtered.length,
         implemented: filtered.filter(c => c.status === 'Implementado').length,
         partial: filtered.filter(c => c.status === 'Parcialmente implementado').length,
@@ -306,7 +306,7 @@ export class DashboardService {
 
   static groupByCyberConcept(controls: any[]) {
     const concepts = ['Identificar', 'Proteger', 'Detectar', 'Responder', 'Restaurar'];
-    const result: any = {};
+    const result: Record<string, any> = {};
 
     concepts.forEach(concept => {
       const filtered = controls.filter(c => {
@@ -317,7 +317,7 @@ export class DashboardService {
         }
         return conceitos === concept;
       });
-      result[concept as string] = { // CORREÇÃO: adicionado as string
+      result[concept] = {
         total: filtered.length,
         implemented: filtered.filter(c => c.status === 'Implementado').length,
         partial: filtered.filter(c => c.status === 'Parcialmente implementado').length,
@@ -347,7 +347,7 @@ export class DashboardService {
       'Gestão de criptografia',
       'Garantia de segurança da informação',
     ];
-    const result: any = {};
+    const result: Record<string, any> = {};
 
     capabilities.forEach(cap => {
       const filtered = controls.filter(c => {
@@ -358,7 +358,7 @@ export class DashboardService {
         }
         return capacidades === cap;
       });
-      result[cap as string] = { // CORREÇÃO: adicionado as string
+      result[cap] = {
         total: filtered.length,
         implemented: filtered.filter(c => c.status === 'Implementado').length,
         partial: filtered.filter(c => c.status === 'Parcialmente implementado').length,
