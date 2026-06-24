@@ -28,17 +28,30 @@ const CAPABILITIES = [
 ];
 
 const CapabilitiesContent: React.FC<{ data: DashboardData }> = ({ data }) => {
+  // Debug: verificar dados recebidos
+  console.log('🔍 Capabilities - data recebido:', data);
+  console.log('🔍 Capabilities - controls:', data?.controls);
+
+  const controls = data?.controls || [];
+
   const capData = CAPABILITIES.map(cap => {
-    const controls = data.controls.filter(c => 
-      c.control?.capacidadesOperacionais?.includes(cap.key)
-    );
-    const total = controls.length;
-    const implemented = controls.filter(c => c.status === 'Implementado').length;
-    const partial = controls.filter(c => c.status === 'Parcialmente implementado').length;
-    const notImpl = controls.filter(c => c.status === 'Não implementado').length;
-    const na = controls.filter(c => c.status === 'Não se aplica').length;
+    const filtered = controls.filter(c => {
+      const control = c.control || c;
+      const capacidades = control?.capacidadesOperacionais || [];
+      if (Array.isArray(capacidades)) {
+        return capacidades.includes(cap.key);
+      }
+      return capacidades === cap.key;
+    });
+    const total = filtered.length;
+    const implemented = filtered.filter(c => c.status === 'Implementado').length;
+    const partial = filtered.filter(c => c.status === 'Parcialmente implementado').length;
+    const notImpl = filtered.filter(c => c.status === 'Não implementado').length;
+    const na = filtered.filter(c => c.status === 'Não se aplica').length;
     const aderente = total > 0 ? Math.round((implemented / total) * 100) : 0;
     const naoAderente = total > 0 ? Math.round(((partial + notImpl) / total) * 100) : 0;
+    
+    console.log(`🔍 Capabilities - ${cap.key}: total=${total}, impl=${implemented}, partial=${partial}, not=${notImpl}, na=${na}`);
     
     return {
       name: cap.label,
@@ -100,11 +113,33 @@ const CapabilitiesContent: React.FC<{ data: DashboardData }> = ({ data }) => {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Capacidades Operacionais</h1>
-        <p className="text-sm text-gray-500 mt-1">
-          Análise das 15 capacidades ISO/IEC 27002:2022 com percentual de aderência
-        </p>
+      {/* Header com Ícone de Metodologia */}
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Capacidades Operacionais</h1>
+          <p className="text-sm text-gray-500 mt-1">
+            Análise das 15 capacidades ISO/IEC 27002:2022 com percentual de aderência
+          </p>
+        </div>
+        <div className="relative group">
+          <button 
+            className="p-2 text-gray-400 hover:text-gray-600 transition-colors rounded-full hover:bg-gray-100"
+            aria-label="Metodologia de cálculo"
+            title="Clique para ver a metodologia"
+          >
+            <Info className="w-5 h-5" />
+          </button>
+          <div className="absolute right-0 top-full mt-2 w-80 p-4 bg-white rounded-lg shadow-lg border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+            <h4 className="text-sm font-semibold text-gray-900 mb-2">📊 Metodologia de Cálculo</h4>
+            <ul className="text-xs text-gray-600 space-y-1">
+              <li>• <strong>Aderente:</strong> (Implementados / Total) × 100</li>
+              <li>• <strong>Não Aderente:</strong> ((Parciais + Não Implementados) / Total) × 100</li>
+              <li>• <strong>Implementado:</strong> Nível de maturidade <strong>2</strong></li>
+              <li>• <strong>Parcial:</strong> Nível de maturidade <strong>1</strong></li>
+              <li>• <strong>Não Implementado:</strong> Nível de maturidade <strong>0</strong></li>
+            </ul>
+          </div>
+        </div>
       </div>
 
       {/* Summary Cards */}
@@ -127,7 +162,22 @@ const CapabilitiesContent: React.FC<{ data: DashboardData }> = ({ data }) => {
         </div>
       </div>
 
-      <DataTable data={capData} columns={columns} />
+      <DataTable 
+        data={capData} 
+        columns={columns}
+        footer={
+          <>
+            <td className="px-4 py-3 text-gray-900 font-bold">Total</td>
+            <td className="px-3 py-3 text-center text-gray-500">{totals.na}</td>
+            <td className="px-3 py-3 text-center text-red-400 font-bold">{totals.notImpl}</td>
+            <td className="px-3 py-3 text-center text-amber-400 font-bold">{totals.partial}</td>
+            <td className="px-3 py-3 text-center text-emerald-400 font-bold">{totals.implemented}</td>
+            <td className="px-3 py-3 text-center text-gray-900 font-bold">{totals.total}</td>
+            <td className="px-3 py-3 text-center text-blue-600 font-bold">{totalAderente}%</td>
+            <td className="px-3 py-3 text-center text-red-400 font-bold">{totalNaoAderente}%</td>
+          </>
+        }
+      />
 
       {/* Radar Chart */}
       <RadarChart
@@ -207,8 +257,30 @@ export const Capabilities: React.FC = () => {
   const { companyId: paramCompanyId } = useParams<{ companyId: string }>();
   const { user } = useAuth();
   
-  // Para admin: usa da URL; para rep: usa do usuário
-  const companyId = paramCompanyId || user?.companyId;
+  // CORREÇÃO: Buscar companyId de diferentes locais no objeto user
+  let companyId = paramCompanyId;
+  
+  if (!companyId && user) {
+    const userAny = user as any;
+    companyId = userAny.companyId || 
+                userAny.company?._id || 
+                userAny.company || 
+                null;
+    
+    console.log('🔍 Capabilities - user:', user);
+    console.log('🔍 Capabilities - companyId obtido:', companyId);
+  }
+
+  if (!companyId) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <p className="text-red-600">ID da empresa não informado</p>
+          <p className="text-sm text-gray-500 mt-2">Faça logout e login novamente para atualizar seus dados.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <DashboardPageWrapper
