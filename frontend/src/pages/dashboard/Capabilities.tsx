@@ -1,36 +1,42 @@
 // frontend/src/pages/dashboard/Capabilities.tsx
-import React from 'react';
+import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext.js';
 import { DashboardPageWrapper } from '../../components/dashboard/DashboardPageWrapper.js';
 import { DataTable } from '../../components/dashboard/DataTable.js';
 import { RadarChart } from '../../components/dashboard/RadarChart.js';
 import { DashboardData } from '../../services/dashboard.service.js';
-import { AlertTriangle, CheckCircle, Info } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { AlertTriangle, CheckCircle, Info, X, Lightbulb, Target, Clock } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
+// CORREÇÃO: Adicionar altKeys para compatibilidade com os valores do banco
 const CAPABILITIES = [
-  { key: 'Governança', label: 'Governança' },
-  { key: 'Gestão de ativos', label: 'Gestão de ativos' },
-  { key: 'Proteção da informação', label: 'Proteção da informação' },
-  { key: 'Gestão de identidade e acesso', label: 'Gestão de identidade e acesso' },
-  { key: 'Segurança nas relações com fornecedores', label: 'Segurança nas relações com fornecedores' },
-  { key: 'Gestão de evento de segurança da informação', label: 'Gestão de eventos de SI' },
-  { key: 'Gestão de ameaças e vulnerabilidades', label: 'Gestão de ameaças e vulnerabilidades' },
-  { key: 'Gestão de continuidade do negócio', label: 'Gestão de continuidade' },
-  { key: 'Segurança física', label: 'Segurança física' },
-  { key: 'Desenvolvimento seguro', label: 'Desenvolvimento seguro' },
-  { key: 'Gestão de redes', label: 'Gestão de redes' },
-  { key: 'Monitoramento e análise', label: 'Monitoramento e análise' },
-  { key: 'Gestão de pessoas', label: 'Gestão de pessoas' },
-  { key: 'Gestão de criptografia', label: 'Gestão de criptografia' },
-  { key: 'Garantia de segurança da informação', label: 'Garantia de SI' },
+  { key: 'Governança', label: 'Governança', altKeys: ['Governança'] },
+  { key: 'Gestão de ativos', label: 'Gestão de ativos', altKeys: ['Gestão de ativos'] },
+  { key: 'Proteção da informação', label: 'Proteção da informação', altKeys: ['Proteção da informação'] },
+  { key: 'Gestão de identidade e acesso', label: 'Gestão de identidade e acesso', altKeys: ['Gestão de identidade e acesso'] },
+  { key: 'Segurança nas relações com fornecedores', label: 'Segurança nas relações com fornecedores', altKeys: ['Segurança nas relações com fornecedores'] },
+  { key: 'Gestão de evento de segurança da informação', label: 'Gestão de eventos de SI', altKeys: ['Gestão de incidentes', 'Gestão de eventos de SI'] },
+  { key: 'Gestão de ameaças e vulnerabilidades', label: 'Gestão de ameaças e vulnerabilidades', altKeys: ['Gestão de ameaças e vulnerabilidades'] },
+  { key: 'Gestão de continuidade do negócio', label: 'Gestão de continuidade', altKeys: ['Gestão de continuidade'] },
+  { key: 'Segurança física', label: 'Segurança física', altKeys: ['Segurança física'] },
+  { key: 'Desenvolvimento seguro', label: 'Desenvolvimento seguro', altKeys: ['Desenvolvimento seguro'] },
+  { key: 'Gestão de redes', label: 'Gestão de redes', altKeys: ['Gestão de redes'] },
+  { key: 'Monitoramento e análise', label: 'Monitoramento e análise', altKeys: ['Monitoramento e análise'] },
+  { key: 'Gestão de pessoas', label: 'Gestão de pessoas', altKeys: ['Gestão de pessoas'] },
+  { key: 'Gestão de criptografia', label: 'Gestão de criptografia', altKeys: ['Gestão de criptografia'] },
+  { key: 'Garantia de segurança da informação', label: 'Garantia de SI', altKeys: ['Garantia de SI'] },
 ];
 
+// Definição das cores para o Radar Chart
+const RADAR_COLORS = {
+  Implementado: '#10b981', // verde
+  Recomendado: '#94a3b8', // cinza
+};
+
 const CapabilitiesContent: React.FC<{ data: DashboardData }> = ({ data }) => {
-  // Debug: verificar dados recebidos
-  console.log('🔍 Capabilities - data recebido:', data);
-  console.log('🔍 Capabilities - controls:', data?.controls);
+  const [selectedCapability, setSelectedCapability] = useState<any>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const controls = data?.controls || [];
 
@@ -39,7 +45,8 @@ const CapabilitiesContent: React.FC<{ data: DashboardData }> = ({ data }) => {
       const control = c.control || c;
       const capacidades = control?.capacidadesOperacionais || [];
       if (Array.isArray(capacidades)) {
-        return capacidades.includes(cap.key);
+        const allKeys = [cap.key, ...(cap.altKeys || [])];
+        return capacidades.some((c: string) => allKeys.includes(c));
       }
       return capacidades === cap.key;
     });
@@ -47,11 +54,10 @@ const CapabilitiesContent: React.FC<{ data: DashboardData }> = ({ data }) => {
     const implemented = filtered.filter(c => c.status === 'Implementado').length;
     const partial = filtered.filter(c => c.status === 'Parcialmente implementado').length;
     const notImpl = filtered.filter(c => c.status === 'Não implementado').length;
-    const na = filtered.filter(c => c.status === 'Não se aplica').length;
     const aderente = total > 0 ? Math.round((implemented / total) * 100) : 0;
     const naoAderente = total > 0 ? Math.round(((partial + notImpl) / total) * 100) : 0;
     
-    console.log(`🔍 Capabilities - ${cap.key}: total=${total}, impl=${implemented}, partial=${partial}, not=${notImpl}, na=${na}`);
+    console.log(`🔍 Capabilities - ${cap.key}: total=${total}, impl=${implemented}, partial=${partial}, not=${notImpl}`);
     
     return {
       name: cap.label,
@@ -60,7 +66,6 @@ const CapabilitiesContent: React.FC<{ data: DashboardData }> = ({ data }) => {
       implemented,
       partial,
       notImpl,
-      na,
       aderente,
       naoAderente,
     };
@@ -70,13 +75,13 @@ const CapabilitiesContent: React.FC<{ data: DashboardData }> = ({ data }) => {
     implemented: acc.implemented + c.implemented,
     partial: acc.partial + c.partial,
     notImpl: acc.notImpl + c.notImpl,
-    na: acc.na + c.na,
     total: acc.total + c.total,
-  }), { implemented: 0, partial: 0, notImpl: 0, na: 0, total: 0 });
+  }), { implemented: 0, partial: 0, notImpl: 0, total: 0 });
 
   const totalAderente = totals.total > 0 ? Math.round((totals.implemented / totals.total) * 100) : 0;
   const totalNaoAderente = totals.total > 0 ? Math.round(((totals.partial + totals.notImpl) / totals.total) * 100) : 0;
 
+  // Radar com cores diferenciadas
   const radarData = capData.map(c => ({
     subject: c.name.length > 28 ? c.name.substring(0, 28) + '…' : c.name,
     fullLabel: c.name,
@@ -86,9 +91,9 @@ const CapabilitiesContent: React.FC<{ data: DashboardData }> = ({ data }) => {
 
   const attentionPoints = capData.filter(c => c.aderente < 50).sort((a, b) => a.aderente - b.aderente);
 
+  // CORREÇÃO: Removida coluna "Não se aplica"
   const columns = [
     { key: 'name', label: 'Capacidades Operacionais' },
-    { key: 'na', label: 'Não se aplica', align: 'center' as const },
     { key: 'notImpl', label: 'Não Impl.', align: 'center' as const },
     { key: 'partial', label: 'Parcial', align: 'center' as const },
     { key: 'implemented', label: 'Implementados', align: 'center' as const },
@@ -110,6 +115,44 @@ const CapabilitiesContent: React.FC<{ data: DashboardData }> = ({ data }) => {
       format: (v: number) => <span className="text-red-400 font-medium">{v}%</span>
     },
   ];
+
+  // Handler para abrir o modal com detalhes da capacidade
+  const handleCardClick = (cap: any) => {
+    setSelectedCapability(cap);
+    setIsModalOpen(true);
+  };
+
+  const getRecommendations = (cap: any): string[] => {
+    const recommendations: string[] = [];
+    
+    if (cap.aderente === 0) {
+      recommendations.push('Nenhum controle implementado. Ação imediata necessária.');
+      recommendations.push('Realizar diagnóstico completo da capacidade.');
+      recommendations.push('Elaborar plano de ação prioritário.');
+    } else if (cap.aderente < 25) {
+      recommendations.push('Aderência crítica. Priorize a implementação.');
+      recommendations.push('Identificar controles mais simples de implementar.');
+      recommendations.push('Estabelecer metas de curto prazo.');
+    } else if (cap.aderente < 50) {
+      recommendations.push('Aderência abaixo do esperado.');
+      recommendations.push('Revisar os controles parciais e não implementados.');
+      recommendations.push('Alocar recursos para acelerar a implementação.');
+    }
+    
+    if (cap.partial > 0) {
+      recommendations.push(`${cap.partial} controle(s) parcial(is) - revisar e completar.`);
+    }
+    
+    if (cap.notImpl > 0) {
+      recommendations.push(`${cap.notImpl} controle(s) não implementado(s) - priorizar.`);
+    }
+    
+    if (recommendations.length === 0) {
+      recommendations.push('Capacidade em conformidade. Manter monitoramento.');
+    }
+    
+    return recommendations;
+  };
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
@@ -162,13 +205,13 @@ const CapabilitiesContent: React.FC<{ data: DashboardData }> = ({ data }) => {
         </div>
       </div>
 
+      {/* CORREÇÃO: DataTable sem coluna "Não se aplica" */}
       <DataTable 
         data={capData} 
         columns={columns}
         footer={
           <>
             <td className="px-4 py-3 text-gray-900 font-bold">Total</td>
-            <td className="px-3 py-3 text-center text-gray-500">{totals.na}</td>
             <td className="px-3 py-3 text-center text-red-400 font-bold">{totals.notImpl}</td>
             <td className="px-3 py-3 text-center text-amber-400 font-bold">{totals.partial}</td>
             <td className="px-3 py-3 text-center text-emerald-400 font-bold">{totals.implemented}</td>
@@ -179,76 +222,261 @@ const CapabilitiesContent: React.FC<{ data: DashboardData }> = ({ data }) => {
         }
       />
 
-      {/* Radar Chart */}
+      {/* Radar Chart - CORRIGIDO com cores diferenciadas */}
       <RadarChart
         data={radarData}
         title="Radar de Capacidades Operacionais"
         subtitle="Comparação entre o nível implementado e o recomendado (100%) por capacidade"
         height={520}
+        colors={RADAR_COLORS}
       />
 
-      {/* Points of Attention */}
-      <div className="bg-white border border-gray-200 rounded-xl p-6">
+      {/* ============================================== */}
+      {/* PONTOS DE ATENÇÃO - CARDS REFORMULADOS */}
+      {/* ============================================== */}
+      <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
         <div className="flex items-center gap-2 mb-4">
-          <AlertTriangle className="w-5 h-5 text-amber-400" />
-          <h3 className="text-base font-semibold text-gray-900">Pontos de Atenção</h3>
-          <span className="ml-auto text-xs text-gray-500">{attentionPoints.length} capacidades com aderência abaixo de 50%</span>
+          <AlertTriangle className="w-5 h-5 text-amber-500" />
+          <h3 className="text-base font-semibold text-gray-900">📋 Plano de Ação Prioritário</h3>
+          <span className="ml-auto text-xs font-medium text-amber-600 bg-amber-50 px-3 py-1 rounded-full">
+            {attentionPoints.length} capacidades em estado crítico
+          </span>
         </div>
         {attentionPoints.length === 0 ? (
-          <div className="flex items-center gap-2 text-emerald-400 text-sm">
-            <CheckCircle className="w-4 h-4" />
-            Todas as capacidades estão com aderência acima de 50%.
+          <div className="flex items-center gap-2 text-emerald-600 text-sm bg-emerald-50 rounded-lg p-4">
+            <CheckCircle className="w-5 h-5" />
+            <span>Todas as capacidades operacionais estão com aderência acima de 50%. Parabéns!</span>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {attentionPoints.map((cap, i) => (
-              <motion.div
-                key={cap.key}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05 }}
-                className={`rounded-lg border p-4 ${cap.aderente === 0 ? 'border-red-500/30 bg-red-50' : 'border-amber-500/30 bg-amber-50'}`}
-              >
-                <div className="flex items-start gap-3">
-                  <div className={`mt-0.5 shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${cap.aderente === 0 ? 'bg-red-500/20 text-red-600' : 'bg-amber-500/20 text-amber-600'}`}>
-                    {i + 1}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between mb-1.5">
-                      <p className="text-sm font-semibold text-gray-900">{cap.name}</p>
-                      <span className={`text-sm font-bold ml-2 ${cap.aderente === 0 ? 'text-red-500' : 'text-amber-500'}`}>{cap.aderente}%</span>
+          <div className="space-y-4">
+            {attentionPoints.map((cap, index) => {
+              // Determina o nível de criticidade
+              const isCritical = cap.aderente === 0;
+              const isHigh = cap.aderente > 0 && cap.aderente < 25;
+              const isMedium = cap.aderente >= 25 && cap.aderente < 50;
+
+              // Define cores e ícones
+              const severity = isCritical ? 'critical' : isHigh ? 'high' : 'medium';
+              const colors = {
+                critical: { bg: 'bg-red-50', border: 'border-red-300', text: 'text-red-700', badge: 'bg-red-500' },
+                high: { bg: 'bg-orange-50', border: 'border-orange-300', text: 'text-orange-700', badge: 'bg-orange-500' },
+                medium: { bg: 'bg-amber-50', border: 'border-amber-300', text: 'text-amber-700', badge: 'bg-amber-500' },
+              };
+
+              // Gera uma recomendação específica baseada nos dados
+              const getAction = () => {
+                if (cap.total === 0) return 'Nenhum controle atribuído. Verifique o escopo.';
+                if (cap.implemented === 0 && cap.partial === 0) 
+                  return `Inicie pelo controle mais crítico da capacidade.`;
+                if (cap.partial > 0) 
+                  return `Complete os ${cap.partial} controle(s) parcial(is) para evoluir rapidamente.`;
+                return `Priorize os ${cap.notImpl} controle(s) não implementados.`;
+              };
+
+              // Busca o primeiro controle da capacidade (exemplo - precisa ser integrado com dados reais)
+              const getExampleControl = () => {
+                const controls = data?.controls?.filter(c => {
+                  const control = c.control || c;
+                  const capacidades = control?.capacidadesOperacionais || [];
+                  return capacidades.includes(cap.key);
+                }) || [];
+                const firstControl = controls[0]?.control || controls[0];
+                return firstControl?.id || 'Consultar lista';
+              };
+
+              return (
+                <motion.div
+                  key={cap.key}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.08 }}
+                  className={`rounded-lg border-2 ${colors[severity].border} ${colors[severity].bg} p-5 hover:shadow-md transition-shadow cursor-pointer`}
+                  onClick={() => handleCardClick(cap)}
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    {/* Esquerda: Diagnóstico e Ação */}
+                    <div className="flex-1 min-w-[200px]">
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <span className={`w-2.5 h-2.5 rounded-full ${colors[severity].badge}`} />
+                        <h4 className="text-sm font-bold text-gray-900">{cap.name}</h4>
+                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full bg-white/70 text-gray-700`}>
+                          {cap.aderente}% de aderência
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-700 mb-1">
+                        <span className="font-medium">Diagnóstico:</span> 
+                        {' '}{cap.implemented} implementados, {cap.partial} parciais, {cap.notImpl} não implementados 
+                        ({cap.total} controles no total)
+                      </p>
+                      <div className="flex flex-wrap items-center gap-3 mt-2">
+                        <span className="text-xs font-medium text-gray-600 bg-white/60 px-2.5 py-1 rounded-full">
+                          🎯 {getAction()}
+                        </span>
+                        <span className="text-xs text-blue-600 flex items-center gap-1">
+                          <Info className="w-3.5 h-3.5" />
+                          <span>Clique para detalhes</span>
+                        </span>
+                      </div>
                     </div>
-                    <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden mb-2">
+                    {/* Direita: Métricas Rápidas */}
+                    <div className="flex items-center gap-3 text-xs text-gray-600 bg-white/50 px-3 py-1.5 rounded-lg">
+                      <div className="text-center">
+                        <div className="font-bold text-gray-900">{cap.implemented}</div>
+                        <div className="text-[10px]">✅ OK</div>
+                      </div>
+                      <div className="w-px h-6 bg-gray-300" />
+                      <div className="text-center">
+                        <div className="font-bold text-amber-600">{cap.partial}</div>
+                        <div className="text-[10px]">🔄 Parcial</div>
+                      </div>
+                      <div className="w-px h-6 bg-gray-300" />
+                      <div className="text-center">
+                        <div className="font-bold text-red-500">{cap.notImpl}</div>
+                        <div className="text-[10px]">❌ Pendente</div>
+                      </div>
+                    </div>
+                  </div>
+                  {/* Barra de progresso da capacidade */}
+                  <div className="mt-3">
+                    <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
                       <div
-                        className={`h-full rounded-full transition-all ${cap.aderente === 0 ? 'bg-red-500' : 'bg-amber-500'}`}
+                        className={`h-full rounded-full transition-all duration-700 ${
+                          cap.aderente >= 70 ? 'bg-emerald-500' :
+                          cap.aderente >= 40 ? 'bg-amber-500' : 'bg-red-500'
+                        }`}
                         style={{ width: `${cap.aderente}%` }}
                       />
                     </div>
-                    <div className="flex flex-wrap gap-3 text-[10px] text-gray-500">
-                      <span>✅ {cap.implemented} implementados</span>
-                      <span>🔄 {cap.partial} parciais</span>
-                      <span>❌ {cap.notImpl} não implementados</span>
-                      <span className="ml-auto">{cap.total} controles</span>
+                    <div className="flex justify-between mt-0.5">
+                      <span className="text-[10px] text-gray-400">0%</span>
+                      <span className="text-[10px] text-gray-400">50%</span>
+                      <span className="text-[10px] text-gray-400">100%</span>
                     </div>
-                    {cap.aderente === 0 && (
-                      <div className="flex items-start gap-1.5 mt-2 text-[10px] text-red-600 bg-red-100 rounded px-2 py-1.5">
-                        <Info className="w-3 h-3 mt-0.5 shrink-0" />
-                        <span>Nenhum controle implementado. Ação imediata necessária.</span>
-                      </div>
-                    )}
-                    {cap.aderente > 0 && cap.aderente < 25 && (
-                      <div className="flex items-start gap-1.5 mt-2 text-[10px] text-amber-600 bg-amber-100 rounded px-2 py-1.5">
-                        <Info className="w-3 h-3 mt-0.5 shrink-0" />
-                        <span>Aderência crítica. Priorize a implementação.</span>
-                      </div>
-                    )}
                   </div>
-                </div>
-              </motion.div>
-            ))}
+                </motion.div>
+              );
+            })}
           </div>
         )}
       </div>
+
+      {/* Modal de Detalhes */}
+      <AnimatePresence>
+        {isModalOpen && selectedCapability && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+            onClick={() => setIsModalOpen(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header do Modal */}
+              <div className="flex items-start justify-between mb-4">
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900">{selectedCapability.name}</h3>
+                  <p className="text-sm text-gray-500">Análise detalhada da capacidade</p>
+                </div>
+                <button
+                  onClick={() => setIsModalOpen(false)}
+                  className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                >
+                  <X className="w-5 h-5 text-gray-500" />
+                </button>
+              </div>
+
+              {/* Métricas */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                <div className="bg-gray-50 rounded-lg p-3 text-center">
+                  <div className="text-2xl font-bold text-gray-900">{selectedCapability.total}</div>
+                  <div className="text-xs text-gray-500">Total</div>
+                </div>
+                <div className="bg-emerald-50 rounded-lg p-3 text-center">
+                  <div className="text-2xl font-bold text-emerald-600">{selectedCapability.implemented}</div>
+                  <div className="text-xs text-gray-500">Implementados</div>
+                </div>
+                <div className="bg-amber-50 rounded-lg p-3 text-center">
+                  <div className="text-2xl font-bold text-amber-600">{selectedCapability.partial}</div>
+                  <div className="text-xs text-gray-500">Parciais</div>
+                </div>
+                <div className="bg-red-50 rounded-lg p-3 text-center">
+                  <div className="text-2xl font-bold text-red-600">{selectedCapability.notImpl}</div>
+                  <div className="text-xs text-gray-500">Não Impl.</div>
+                </div>
+              </div>
+
+              {/* Status */}
+              <div className="mb-4">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-sm font-medium text-gray-700">Aderência</span>
+                  <span className={`text-sm font-bold ${selectedCapability.aderente >= 70 ? 'text-emerald-600' : selectedCapability.aderente >= 40 ? 'text-amber-600' : 'text-red-600'}`}>
+                    {selectedCapability.aderente}%
+                  </span>
+                </div>
+                <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all ${selectedCapability.aderente >= 70 ? 'bg-emerald-500' : selectedCapability.aderente >= 40 ? 'bg-amber-500' : 'bg-red-500'}`}
+                    style={{ width: `${selectedCapability.aderente}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Recomendações */}
+              <div className="bg-blue-50 rounded-lg p-4 mb-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Lightbulb className="w-4 h-4 text-blue-600" />
+                  <h4 className="text-sm font-semibold text-gray-900">Recomendações</h4>
+                </div>
+                <ul className="space-y-2">
+                  {getRecommendations(selectedCapability).map((rec, idx) => (
+                    <li key={idx} className="flex items-start gap-2 text-sm text-gray-700">
+                      <span className="text-blue-500 mt-0.5">•</span>
+                      <span>{rec}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* Ações Sugeridas */}
+              <div className="bg-amber-50 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Target className="w-4 h-4 text-amber-600" />
+                  <h4 className="text-sm font-semibold text-gray-900">Próximos Passos</h4>
+                </div>
+                <ul className="space-y-2">
+                  <li className="flex items-start gap-2 text-sm text-gray-700">
+                    <Clock className="w-4 h-4 text-amber-500 mt-0.5" />
+                    <span>Priorizar controls com maior impacto para esta capacidade.</span>
+                  </li>
+                  <li className="flex items-start gap-2 text-sm text-gray-700">
+                    <Clock className="w-4 h-4 text-amber-500 mt-0.5" />
+                    <span>Revisar controles parciais para identificar gargalos.</span>
+                  </li>
+                  <li className="flex items-start gap-2 text-sm text-gray-700">
+                    <Clock className="w-4 h-4 text-amber-500 mt-0.5" />
+                    <span>Estabelecer metas de curto, médio e longo prazo.</span>
+                  </li>
+                </ul>
+              </div>
+
+              <div className="mt-4 flex justify-end">
+                <button
+                  onClick={() => setIsModalOpen(false)}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Fechar
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
@@ -257,7 +485,6 @@ export const Capabilities: React.FC = () => {
   const { companyId: paramCompanyId } = useParams<{ companyId: string }>();
   const { user } = useAuth();
   
-  // CORREÇÃO: Buscar companyId de diferentes locais no objeto user
   let companyId = paramCompanyId;
   
   if (!companyId && user) {
