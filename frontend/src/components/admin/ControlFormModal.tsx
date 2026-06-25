@@ -25,12 +25,16 @@ interface ControlFormModalProps {
   isLoading?: boolean;
 }
 
+// ============================================
+// CORREÇÃO: Domínios de SI (apenas os 4 da ISO/IEC 27002:2022)
+// Removido "Garantia de segurança da informação" - é uma capacidade operacional
+// ============================================
+
 const DOMINIOS = [
   'Governança e ecossistema',
   'Proteção',
   'Defesa',
-  'Resiliência',
-  'Garantia de segurança da informação'
+  'Resiliência'
 ];
 
 const TIPOS_CONTROLE = [
@@ -55,7 +59,10 @@ const CONCEITOS = [
 
 // ============================================
 // CORREÇÃO: Lista completa das 15 Capacidades Operacionais
+// Corrigido termo em espanhol "Garantia de seguridad da información"
+// para "Garantia de segurança da informação"
 // ============================================
+
 const CAPACIDADES = [
   'Governança',
   'Gestão de ativos',
@@ -71,7 +78,7 @@ const CAPACIDADES = [
   'Monitoramento e análise',
   'Gestão de pessoas',
   'Gestão de criptografia',
-  'Garantia de segurança da información',
+  'Garantia de segurança da informação', // CORRIGIDO: estava em espanhol
 ];
 
 export const ControlFormModal: React.FC<ControlFormModalProps> = ({
@@ -224,6 +231,7 @@ export const ControlFormModal: React.FC<ControlFormModalProps> = ({
             />
           </div>
 
+          {/* CORREÇÃO: Domínios de SI - 4 domínios da ISO/IEC 27002:2022 */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Domínios de SI
