@@ -48,7 +48,7 @@ const CAPABILITIES_GUIDE_DATA = {
           ['8', 'Gestão de continuidade do negócio', 'Planos para manter operações durante crises', '5.29, 5.30, 8.6, 8.13, 8.14'],
           ['9', 'Segurança física', 'Proteção de instalações e equipamentos', '7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 7.7, 7.8, 7.9, 7.10, 7.11, 7.12, 7.13, 7.14, 8.1'],
           ['10', 'Desenvolvimento seguro', 'Práticas de segurança no ciclo de vida do software', '8.25, 8.26, 8.27, 8.28, 8.29, 8.30, 8.31'],
-          ['11', 'Gestão de redes', 'Segurança de infraestrutura de rede e sistemas', '6.7, 8.18, 8.19, 8.20, 8.21, 8.22, 8.23, 8.31, 8.32, 8.34'],
+          ['11', 'Segurança de redes', 'Segurança de infraestrutura de rede e sistemas', '6.7, 8.18, 8.19, 8.20, 8.21, 8.22, 8.23, 8.31, 8.32, 8.34'],
           ['12', 'Monitoramento e análise', 'Observação contínua de sistemas e atividades', '8.16, 8.15, 8.17'],
           ['13', 'Gestão de pessoas', 'Treinamento, conscientização e disciplina em SI', '6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 6.7, 6.8'],
           ['14', 'Gestão de criptografia', 'Uso seguro de criptografia e chaves', '8.24'],
@@ -124,7 +124,7 @@ const CAPABILITIES_GUIDE_DATA = {
 };
 
 // ============================================
-// COMPONENTE DA CARTILHA (CORRIGIDO)
+// COMPONENTE DA CARTILHA
 // ============================================
 
 interface CapabilitiesGuideProps {
@@ -471,28 +471,49 @@ const CapabilitiesGuide: React.FC<CapabilitiesGuideProps> = ({ isOpen, onClose }
 };
 
 // ============================================
-// CONFIGURAÇÕES EXISTENTES (MANTIDAS)
+// CAPACIDADES OPERACIONAIS - ISO/IEC 27002:2022
 // ============================================
 
+// Lista completa das 17 capacidades que podem aparecer no banco
 const CAPABILITIES = [
   { key: 'Governança', label: 'Governança', altKeys: ['Governança', 'Governança_e_ecossistema'] },
   { key: 'Gestão de ativos', label: 'Gestão de Ativos', altKeys: ['Gestão de ativos', 'Gestão_de_ativos'] },
   { key: 'Proteção da informação', label: 'Proteção da Informação', altKeys: ['Proteção da informação', 'Proteção_da_informação'] },
   { key: 'Gestão de identidade e acesso', label: 'Gestão de Identidade e Acesso', altKeys: ['Gestão de identidade e acesso', 'Gestão_de_identidade_e_acesso'] },
-  { key: 'Segurança nas relações com fornecedores', label: 'Relações com Fornecedores', altKeys: ['Segurança nas relações com fornecedores', 'Segurança_nas_relações_com_fornecedores'] },
+  { key: 'Segurança nas relações com fornecedores', label: 'Segurança nas Relações com Fornecedores', altKeys: ['Segurança nas relações com fornecedores', 'Segurança_nas_relações_com_fornecedores'] },
   { key: 'Gestão de evento de segurança da informação', label: 'Gestão de Eventos de SI', altKeys: ['Gestão de incidentes', 'Gestão de eventos de SI', 'Gestão_de_evento_de_segurança_da_informação'] },
-  { key: 'Gestão de ameaças e vulnerabilidades', label: 'Ameaças e Vulnerabilidades', altKeys: ['Gestão de ameaças e vulnerabilidades', 'Gestão_de_ameaças_e_vulnerabilidades'] },
-  { key: 'Gestão de continuidade do negócio', label: 'Continuidade', altKeys: ['Gestão de continuidade', 'Continuidade', 'Gestão_de_continuidade_do_negócio'] },
+  { key: 'Gestão de ameaças e vulnerabilidades', label: 'Gestão de Ameaças e Vulnerabilidades', altKeys: ['Gestão de ameaças e vulnerabilidades', 'Gestão_de_ameaças_e_vulnerabilidades'] },
+  { key: 'Gestão de continuidade do negócio', label: 'Gestão de Continuidade do Negócio', altKeys: ['Gestão de continuidade', 'Continuidade', 'Gestão_de_continuidade_do_negócio'] },
   { key: 'Segurança física', label: 'Segurança Física', altKeys: ['Segurança física', 'Segurança_física'] },
   { key: 'Desenvolvimento seguro', label: 'Desenvolvimento Seguro', altKeys: ['Desenvolvimento seguro', 'Segurança de aplicações', 'Segurança_de_aplicações'] },
-  { key: 'Gestão de redes', label: 'Segurança de Sistemas e Rede', altKeys: ['Gestão de redes', 'Segurança de sistemas e rede', 'Segurança_de_sistemas_e_rede', 'Segurança de sistemas'] },
+  { key: 'Segurança de redes', label: 'Segurança de Redes', altKeys: ['Gestão de redes', 'Segurança de sistemas e rede', 'Segurança_de_sistemas_e_rede', 'Segurança de sistemas'] },
   { key: 'Monitoramento e análise', label: 'Monitoramento e Análise', altKeys: ['Monitoramento e análise', 'Monitoramento_e_análise'] },
   { key: 'Gestão de pessoas', label: 'Segurança em Recursos Humanos', altKeys: ['Gestão de pessoas', 'Segurança em recursos humanos', 'Segurança_em_recursos_humanos'] },
   { key: 'Gestão de criptografia', label: 'Gestão de Criptografia', altKeys: ['Gestão de criptografia', 'Gestão_de_criptografia'] },
   { key: 'Garantia de segurança da informação', label: 'Garantia de SI', altKeys: ['Garantia de SI', 'Garantia de segurança da informação', 'Garantia_de_segurança_da_informação'] },
+  // Itens adicionais (não são capacidades primárias, mas podem aparecer no banco)
   { key: 'Configuração segura', label: 'Configuração Segura', altKeys: ['Configuração segura', 'Configuração_segura'] },
   { key: 'Legal e compliance', label: 'Legal e Compliance', altKeys: ['Legal e compliance', 'Leis e compliance', 'Legal_e_compliance'] }
-].filter((v, i, a) => a.findIndex(t => t.key === v.key) === i).slice(0, 15);
+];
+
+// CORREÇÃO: As 15 capacidades operacionais primárias da ISO/IEC 27002:2022
+const MAIN_CAPABILITIES = [
+  { key: 'Governança', label: 'Governança', altKeys: ['Governança', 'Governança_e_ecossistema'] },
+  { key: 'Gestão de ativos', label: 'Gestão de Ativos', altKeys: ['Gestão de ativos', 'Gestão_de_ativos'] },
+  { key: 'Proteção da informação', label: 'Proteção da Informação', altKeys: ['Proteção da informação', 'Proteção_da_informação'] },
+  { key: 'Gestão de identidade e acesso', label: 'Gestão de Identidade e Acesso', altKeys: ['Gestão de identidade e acesso', 'Gestão_de_identidade_e_acesso'] },
+  { key: 'Segurança nas relações com fornecedores', label: 'Segurança nas Relações com Fornecedores', altKeys: ['Segurança nas relações com fornecedores', 'Segurança_nas_relações_com_fornecedores'] },
+  { key: 'Gestão de evento de segurança da informação', label: 'Gestão de Eventos de SI', altKeys: ['Gestão de incidentes', 'Gestão de eventos de SI', 'Gestão_de_evento_de_segurança_da_informação'] },
+  { key: 'Gestão de ameaças e vulnerabilidades', label: 'Gestão de Ameaças e Vulnerabilidades', altKeys: ['Gestão de ameaças e vulnerabilidades', 'Gestão_de_ameaças_e_vulnerabilidades'] },
+  { key: 'Gestão de continuidade do negócio', label: 'Gestão de Continuidade do Negócio', altKeys: ['Gestão de continuidade', 'Continuidade', 'Gestão_de_continuidade_do_negócio'] },
+  { key: 'Segurança física', label: 'Segurança Física', altKeys: ['Segurança física', 'Segurança_física'] },
+  { key: 'Desenvolvimento seguro', label: 'Desenvolvimento Seguro', altKeys: ['Desenvolvimento seguro', 'Segurança de aplicações', 'Segurança_de_aplicações'] },
+  { key: 'Segurança de redes', label: 'Segurança de Redes', altKeys: ['Gestão de redes', 'Segurança de sistemas e rede', 'Segurança_de_sistemas_e_rede', 'Segurança de sistemas'] },
+  { key: 'Monitoramento e análise', label: 'Monitoramento e Análise', altKeys: ['Monitoramento e análise', 'Monitoramento_e_análise'] },
+  { key: 'Gestão de pessoas', label: 'Segurança em Recursos Humanos', altKeys: ['Gestão de pessoas', 'Segurança em recursos humanos', 'Segurança_em_recursos_humanos'] },
+  { key: 'Gestão de criptografia', label: 'Gestão de Criptografia', altKeys: ['Gestão de criptografia', 'Gestão_de_criptografia'] },
+  { key: 'Garantia de segurança da informação', label: 'Garantia de SI', altKeys: ['Garantia de SI', 'Garantia de segurança da informação', 'Garantia_de_segurança_da_informação'] }
+];
 
 const RADAR_COLORS = {
   Implementado: '#10b981',
@@ -500,7 +521,7 @@ const RADAR_COLORS = {
 };
 
 // ============================================
-// COMPONENTE PRINCIPAL (MANTIDO)
+// COMPONENTE PRINCIPAL
 // ============================================
 
 const CapabilitiesContent: React.FC<{ data: DashboardData }> = ({ data }) => {
@@ -524,7 +545,8 @@ const CapabilitiesContent: React.FC<{ data: DashboardData }> = ({ data }) => {
 
   const controls = data?.controls || [];
 
-  const capData = CAPABILITIES.map(cap => {
+  // CORREÇÃO: Usar MAIN_CAPABILITIES em vez de CAPABILITIES
+  const capData = MAIN_CAPABILITIES.map(cap => {
     const filtered = controls.filter(c => {
       const control = c.control || c;
       const capacidades = control?.capacidadesOperacionais || [];
@@ -610,7 +632,8 @@ const CapabilitiesContent: React.FC<{ data: DashboardData }> = ({ data }) => {
 
   const openControlList = (capKey: string, status: string, statusLabel: string) => {
     const capability = capData.find(c => c.key === capKey);
-    const capConfig = CAPABILITIES.find(c => c.key === capKey);
+    // CORREÇÃO: Usar MAIN_CAPABILITIES em vez de CAPABILITIES
+    const capConfig = MAIN_CAPABILITIES.find(c => c.key === capKey);
     const allKeys = capConfig ? [capConfig.key, ...(capConfig.altKeys || [])] : [capKey];
     
     const filtered = controls.filter(c => {
@@ -677,7 +700,6 @@ const CapabilitiesContent: React.FC<{ data: DashboardData }> = ({ data }) => {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          {/* NOVO BOTÃO: CARTILHA */}
           <button
             onClick={() => setIsGuideOpen(true)}
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm hover:shadow-md"
