@@ -129,9 +129,24 @@ const ControlTypesContent: React.FC<{ data: DashboardData }> = ({ data }) => {
               <li>• <strong>Não Implementado:</strong> Nível de maturidade <strong>0</strong></li>
               <li>• <strong>Não se Aplica:</strong> Nível <strong>N/A</strong></li>
               <li>• <strong>Tipos:</strong> Preventivo, Detectivo, Corretivo</li>
+              <li className="mt-2 text-gray-400 text-[10px] border-t border-gray-200 pt-2">
+                ⚠️ Um mesmo controle pode ser classificado em mais de um tipo. 
+                Por isso, a soma dos totais por tipo pode ser maior que o total de controles únicos (93).
+              </li>
             </ul>
           </div>
         </div>
+      </div>
+
+      {/* CORREÇÃO: Nota explicativa sobre dupla contagem */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+        <p className="text-xs text-blue-700">
+          <span className="font-medium">ℹ️ Sobre os totais:</span> 
+          Um mesmo controle pode ser classificado em <strong>mais de um tipo</strong> 
+          (Preventivo, Detectivo ou Corretivo). 
+          Por isso, a soma dos totais por tipo pode ser <strong>maior que o total de controles únicos (93)</strong>.
+          Isso é esperado e reflete a natureza dos controles da ISO 27001.
+        </p>
       </div>
 
       <DataTable 
