@@ -51,6 +51,7 @@ export const AdminControls: React.FC = () => {
       const params = new URLSearchParams();
       params.append('page', String(pageToLoad));
       params.append('limit', String(limit));
+      // CORREÇÃO: Ordenar por ID para exibição em ordem crescente (5.1, 5.2, 5.3...)
       params.append('sort', 'id');
       if (search) params.append('search', search);
       if (dominio) params.append('dominio', dominio);
@@ -97,28 +98,59 @@ export const AdminControls: React.FC = () => {
     setIsDeleteModalOpen(true);
   };
 
-  // Salvar controle (criar ou atualizar)
+  // ============================================
+  // ADICIONADO LOGS AVANÇADOS: Salvar controle (criar ou atualizar)
+  // ============================================
   const handleSaveControl = async (data: Partial<Control>) => {
+    console.log('🟢 handleSaveControl - INICIADO');
+    console.log('🟢 Dados brutos recebidos do modal:', data);
+    
     setIsSubmitting(true);
+    
+    // Declarando o escopo do payload fora do try para que o catch consiga usá-lo se necessário
+    let payload;
+    
     try {
+      payload = {
+        ...data,
+        dominioDeSI: Array.isArray(data.dominioDeSI) ? data.dominioDeSI : [],
+        tipoDeControle: Array.isArray(data.tipoDeControle) ? data.tipoDeControle : [],
+        propriedadeDeSI: Array.isArray(data.propriedadeDeSI) ? data.propriedadeDeSI : [],
+        conceitoDeSegurancaCibernetica: Array.isArray(data.conceitoDeSegurancaCibernetica) ? data.conceitoDeSegurancaCibernetica : [],
+        capacidadesOperacionais: Array.isArray(data.capacidadesOperacionais) ? data.capacidadesOperacionais : [],
+      };
+      
+      console.log('🟢 Payload final estruturado:', JSON.stringify(payload, null, 2));
+      
       if (editingControl) {
-        // Atualizar
-        await api.put(`/admin/controls/${editingControl._id}`, data);
-        console.log('✅ Controle atualizado com sucesso');
+        console.log(`🟢 Atualizando controle existente ID: ${editingControl._id}...`);
+        const response = await api.put(`/admin/controls/${editingControl._id}`, payload);
+        console.log('🟢 Resposta de sucesso do backend (PUT):', response.data);
       } else {
-        // Criar
-        await api.post('/admin/controls', data);
-        console.log('✅ Controle criado com sucesso');
+        console.log('🟢 Criando novo controle...');
+        const response = await api.post('/admin/controls', payload);
+        console.log('🟢 Resposta de sucesso do backend (POST):', response.data);
       }
+      
+      console.log('✅ Controle salvo com sucesso no banco!');
       setIsModalOpen(false);
       setEditingControl(null);
+      
       // Recarregar a lista
       await loadControls(page);
     } catch (error: any) {
-      console.error('❌ Erro ao salvar controle:', error);
+      console.error('🔴 ERRO CRÍTICO ao salvar controle:');
+      console.error('🔴 Mensagem do Erro:', error.message);
+      console.error('🔴 Response Data do Backend:', error.response?.data);
+      console.error('🔴 Status HTTP:', error.response?.status);
+      console.error('🔴 Payload que tentou ser enviado:', payload);
+      
+      // Exibe um alerta visual imediato na tela caso o console suma rápido devido ao piscar da tela
+      alert(`Erro ao salvar: ${error.response?.data?.message || error.message}`);
       throw error;
     } finally {
       setIsSubmitting(false);
+      console.log('🟢 handleSaveControl - FINALIZADO');
     }
   };
 
