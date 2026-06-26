@@ -3,6 +3,17 @@ import rateLimit from 'express-rate-limit';
 import { config } from '../config/env.js';
 import { logger } from '../utils/logger.js';
 
+// ============================================
+// CORREÇÃO: Função auxiliar para verificar se é admin
+// ============================================
+function isAdmin(req: any): boolean {
+  return req.user && req.user.role === 'admin';
+}
+
+// ============================================
+// MIDDLEWARES DE RATE LIMIT
+// ============================================
+
 export const authRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 5,
@@ -62,6 +73,10 @@ export const refreshRateLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+// ============================================
+// CORREÇÃO: authenticatedRateLimiter com isenção para admin
+// ============================================
+
 export const authenticatedRateLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 100,
@@ -74,7 +89,12 @@ export const authenticatedRateLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   skip: (req) => {
-    return config.NODE_ENV === 'development' && (req as any).user?.role === 'admin';
+    // CORREÇÃO: Admin tem acesso ilimitado
+    if (isAdmin(req)) {
+      return true;
+    }
+    // Desenvolvimento também pode ser ignorado
+    return config.NODE_ENV === 'development';
   },
   handler: (req, res) => {
     logger.warn(`Rate limit exceeded for authenticated user: ${(req as any).user?.email || req.ip}`);
@@ -127,9 +147,19 @@ export const sensitiveRateLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+// ============================================
+// CORREÇÃO: adminRateLimiter com isenção total para admin
+// ============================================
+
 export const adminRateLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: 100,
+  max: (req) => {
+    // CORREÇÃO: Admin não tem limite
+    if (isAdmin(req)) {
+      return Infinity;
+    }
+    return 100;
+  },
   message: {
     success: false,
     message: 'Muitas tentativas de operações. Tente novamente em 1 minuto.',
@@ -138,6 +168,13 @@ export const adminRateLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req) => {
+    // CORREÇÃO: Pular rate limit para admin
+    if (isAdmin(req)) {
+      return true;
+    }
+    return false;
+  },
   handler: (req, res) => {
     logger.warn(`Rate limit exceeded for admin operation: ${(req as any).user?.email || req.ip}`);
     res.status(429).json({
@@ -157,7 +194,13 @@ export function createRateLimiter(options: {
 }) {
   return rateLimit({
     windowMs: options.windowMs || 60 * 1000,
-    max: options.max || 100,
+    max: (req) => {
+      // CORREÇÃO: Se for admin e não tiver skip específico, permitir ilimitado
+      if (isAdmin(req) && !options.skip) {
+        return Infinity;
+      }
+      return options.max || 100;
+    },
     message: {
       success: false,
       message: options.message || 'Muitas requisições. Tente novamente mais tarde.',
@@ -166,7 +209,13 @@ export function createRateLimiter(options: {
     },
     standardHeaders: true,
     legacyHeaders: false,
-    skip: options.skip,
+    skip: (req) => {
+      // CORREÇÃO: Admin sempre pula o rate limit
+      if (isAdmin(req)) {
+        return true;
+      }
+      return options.skip ? options.skip(req) : false;
+    },
     handler: (req, res) => {
       logger.warn(`Rate limit exceeded: ${req.ip}`);
       res.status(429).json({

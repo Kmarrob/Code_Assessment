@@ -6,7 +6,7 @@ import { config } from './config/env.js';
 import { db } from './config/database.js';
 import { logger, httpLogger } from './utils/logger.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
-import { publicRateLimiter } from './middleware/rateLimit.js';
+import { publicRateLimiter, adminRateLimiter } from './middleware/rateLimit.js';
 import authRoutes from './routes/auth.js';
 import adminRoutes from './routes/admin.js';
 import repRoutes from './routes/rep.routes.js';
@@ -96,13 +96,19 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(httpLogger);
+
+// ============================================
+// CORREÇÃO: Rate Limit com isenção para admin
+// ============================================
+// Public rate limiter para rotas públicas (menos restritivo)
 app.use(publicRateLimiter);
 
 // ============================================
 // ROTAS DA API
 // ============================================
 app.use('/api/auth', authRoutes);
-app.use('/api/admin', adminRoutes);
+// CORREÇÃO: Rotas admin com adminRateLimiter (admin tem acesso ilimitado)
+app.use('/api/admin', adminRateLimiter, adminRoutes);
 app.use('/api/rep', repRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/consultant', consultantRoutes);

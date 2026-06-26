@@ -34,13 +34,13 @@ router.use(adminPerformanceMiddleware);
 // Dashboard das empresas
 router.get(
   '/dashboard/companies',
-  authenticatedRateLimiter,
+  adminRateLimiter, // CORREÇÃO: adminRateLimiter em vez de authenticatedRateLimiter
   DashboardController.listCompaniesSummary
 );
 
 router.get(
   '/dashboard/companies/:companyId',
-  authenticatedRateLimiter,
+  adminRateLimiter, // CORREÇÃO: adminRateLimiter em vez de authenticatedRateLimiter
   DashboardController.getAdminCompanyDashboard
 );
 
@@ -51,7 +51,7 @@ router.get(
 // Listar usuários
 router.get(
   '/users',
-  authenticatedRateLimiter,
+  adminRateLimiter, // CORREÇÃO: adminRateLimiter em vez de authenticatedRateLimiter
   noCache,
   AdminController.listUsers
 );
@@ -59,7 +59,7 @@ router.get(
 // Buscar usuário por ID
 router.get(
   '/users/:id',
-  authenticatedRateLimiter,
+  adminRateLimiter, // CORREÇÃO: adminRateLimiter em vez de authenticatedRateLimiter
   noCache,
   AdminController.getUserById
 );
@@ -111,7 +111,7 @@ router.post(
 // Listar controles (com filtros e paginação)
 router.get(
   '/controls',
-  authenticatedRateLimiter,
+  adminRateLimiter, // CORREÇÃO: adminRateLimiter em vez de authenticatedRateLimiter
   noCache,
   ControlController.listControls
 );
@@ -119,7 +119,7 @@ router.get(
 // Buscar controle por ID
 router.get(
   '/controls/:id',
-  authenticatedRateLimiter,
+  adminRateLimiter, // CORREÇÃO: adminRateLimiter em vez de authenticatedRateLimiter
   noCache,
   ControlController.getControlById
 );
@@ -127,7 +127,7 @@ router.get(
 // Buscar controles por domínio
 router.get(
   '/controls/domain/:dominio',
-  authenticatedRateLimiter,
+  adminRateLimiter, // CORREÇÃO: adminRateLimiter em vez de authenticatedRateLimiter
   noCache,
   ControlController.getControlsByDomain
 );
@@ -135,7 +135,7 @@ router.get(
 // Estatísticas dos controles
 router.get(
   '/controls/stats',
-  authenticatedRateLimiter,
+  adminRateLimiter, // CORREÇÃO: adminRateLimiter em vez de authenticatedRateLimiter
   noCache,
   ControlController.getControlStats
 );
@@ -147,7 +147,7 @@ router.get(
 // Criar novo controle
 router.post(
   '/controls',
-  sensitiveRateLimiter,
+  adminRateLimiter, // CORREÇÃO: adminRateLimiter em vez de sensitiveRateLimiter
   noCache,
   ControlController.createControl
 );
@@ -155,7 +155,7 @@ router.post(
 // Atualizar controle existente
 router.put(
   '/controls/:id',
-  sensitiveRateLimiter,
+  adminRateLimiter, // CORREÇÃO: adminRateLimiter em vez de sensitiveRateLimiter
   noCache,
   ControlController.updateControl
 );
@@ -163,7 +163,7 @@ router.put(
 // Deletar controle
 router.delete(
   '/controls/:id',
-  sensitiveRateLimiter,
+  adminRateLimiter, // CORREÇÃO: adminRateLimiter em vez de sensitiveRateLimiter
   noCache,
   ControlController.deleteControl
 );
@@ -175,7 +175,7 @@ router.delete(
 // Listar empresas
 router.get(
   '/companies',
-  authenticatedRateLimiter,
+  adminRateLimiter, // CORREÇÃO: adminRateLimiter em vez de authenticatedRateLimiter
   noCache,
   CompanyController.listCompanies
 );
@@ -183,7 +183,7 @@ router.get(
 // Buscar empresa por ID
 router.get(
   '/companies/:id',
-  authenticatedRateLimiter,
+  adminRateLimiter, // CORREÇÃO: adminRateLimiter em vez de authenticatedRateLimiter
   noCache,
   CompanyController.getCompanyById
 );
@@ -231,7 +231,7 @@ router.post(
 // Estatísticas das empresas
 router.get(
   '/companies/stats',
-  authenticatedRateLimiter,
+  adminRateLimiter, // CORREÇÃO: adminRateLimiter em vez de authenticatedRateLimiter
   noCache,
   CompanyController.getStats
 );
@@ -243,7 +243,7 @@ router.get(
 // Listar perguntas
 router.get(
   '/questions',
-  authenticatedRateLimiter,
+  adminRateLimiter, // CORREÇÃO: adminRateLimiter em vez de authenticatedRateLimiter
   noCache,
   QuestionController.listQuestions
 );
@@ -251,7 +251,7 @@ router.get(
 // Buscar perguntas por controle
 router.get(
   '/questions/control/:controlId',
-  authenticatedRateLimiter,
+  adminRateLimiter, // CORREÇÃO: adminRateLimiter em vez de authenticatedRateLimiter
   noCache,
   QuestionController.getQuestionsByControl
 );
@@ -259,7 +259,7 @@ router.get(
 // Buscar pergunta por ID
 router.get(
   '/questions/:id',
-  authenticatedRateLimiter,
+  adminRateLimiter, // CORREÇÃO: adminRateLimiter em vez de authenticatedRateLimiter
   noCache,
   QuestionController.getQuestionById
 );
