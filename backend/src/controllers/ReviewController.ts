@@ -4,13 +4,20 @@ import { ReviewService } from '../services/ReviewService.js';
 import { AppError } from '../utils/errors.js';
 import { IAttachment } from '../models/ReviewRequest.js';
 
+// 🔴 EXTENDER O TIPO REQUEST PARA INCLUIR USER
+interface AuthenticatedRequest extends Request {
+  user?: {
+    id: string;
+    companyId: string;
+    role: string;
+    name: string;
+    email: string;
+  };
+}
+
 export class ReviewController {
   
-  /**
-   * Criar uma nova solicitação de revisão
-   * POST /api/review
-   */
-  static async createReviewRequest(req: Request, res: Response, next: NextFunction) {
+  static async createReviewRequest(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const { 
         responseId, 
@@ -31,7 +38,6 @@ export class ReviewController {
         throw new AppError('Preposto não identificado', 401);
       }
 
-      // Validar campos obrigatórios
       if (!responseId || !userId || !controlId || !justification) {
         throw new AppError('Campos obrigatórios: responseId, userId, controlId, justification', 400);
       }
@@ -60,11 +66,7 @@ export class ReviewController {
     }
   }
 
-  /**
-   * Listar solicitações de revisão da empresa
-   * GET /api/review
-   */
-  static async getReviews(req: Request, res: Response, next: NextFunction) {
+  static async getReviews(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const companyId = req.user?.companyId || req.query.companyId as string;
       const page = parseInt(req.query.page as string) || 1;
@@ -97,11 +99,7 @@ export class ReviewController {
     }
   }
 
-  /**
-   * Buscar solicitações de revisão por usuário
-   * GET /api/review/user/:userId
-   */
-  static async getReviewsByUser(req: Request, res: Response, next: NextFunction) {
+  static async getReviewsByUser(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const { userId } = req.params;
       const companyId = req.user?.companyId || req.query.companyId as string;
@@ -110,6 +108,10 @@ export class ReviewController {
 
       if (!companyId) {
         throw new AppError('Empresa não identificada', 400);
+      }
+
+      if (!userId) {
+        throw new AppError('ID do usuário é obrigatório', 400);
       }
 
       const result = await ReviewService.getReviewRequestsByUser(
@@ -134,17 +136,17 @@ export class ReviewController {
     }
   }
 
-  /**
-   * Buscar uma solicitação de revisão por ID
-   * GET /api/review/:reviewId
-   */
-  static async getReviewById(req: Request, res: Response, next: NextFunction) {
+  static async getReviewById(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const { reviewId } = req.params;
       const companyId = req.user?.companyId || req.query.companyId as string;
 
       if (!companyId) {
         throw new AppError('Empresa não identificada', 400);
+      }
+
+      if (!reviewId) {
+        throw new AppError('ID da solicitação é obrigatório', 400);
       }
 
       const review = await ReviewService.getReviewRequestById(reviewId, companyId);
@@ -162,11 +164,7 @@ export class ReviewController {
     }
   }
 
-  /**
-   * Atualizar status de uma solicitação de revisão
-   * PATCH /api/review/:reviewId/status
-   */
-  static async updateReviewStatus(req: Request, res: Response, next: NextFunction) {
+  static async updateReviewStatus(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const { reviewId } = req.params;
       const { status } = req.body;
@@ -174,6 +172,10 @@ export class ReviewController {
 
       if (!companyId) {
         throw new AppError('Empresa não identificada', 400);
+      }
+
+      if (!reviewId) {
+        throw new AppError('ID da solicitação é obrigatório', 400);
       }
 
       if (!status || !['approved', 'rejected'].includes(status)) {
@@ -196,17 +198,17 @@ export class ReviewController {
     }
   }
 
-  /**
-   * Excluir uma solicitação de revisão (apenas se pendente)
-   * DELETE /api/review/:reviewId
-   */
-  static async deleteReview(req: Request, res: Response, next: NextFunction) {
+  static async deleteReview(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const { reviewId } = req.params;
       const companyId = req.user?.companyId || req.query.companyId as string;
 
       if (!companyId) {
         throw new AppError('Empresa não identificada', 400);
+      }
+
+      if (!reviewId) {
+        throw new AppError('ID da solicitação é obrigatório', 400);
       }
 
       await ReviewService.deleteReviewRequest(reviewId, companyId);
@@ -220,11 +222,7 @@ export class ReviewController {
     }
   }
 
-  /**
-   * Adicionar anexos a uma solicitação de revisão existente
-   * POST /api/review/:reviewId/attachments
-   */
-  static async addAttachments(req: Request, res: Response, next: NextFunction) {
+  static async addAttachments(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const { reviewId } = req.params;
       const companyId = req.user?.companyId || req.body.companyId;
@@ -232,6 +230,10 @@ export class ReviewController {
 
       if (!companyId) {
         throw new AppError('Empresa não identificada', 400);
+      }
+
+      if (!reviewId) {
+        throw new AppError('ID da solicitação é obrigatório', 400);
       }
 
       if (!attachments || attachments.length === 0) {
@@ -254,11 +256,7 @@ export class ReviewController {
     }
   }
 
-  /**
-   * Estatísticas de solicitações de revisão da empresa
-   * GET /api/review/stats
-   */
-  static async getReviewStats(req: Request, res: Response, next: NextFunction) {
+  static async getReviewStats(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const companyId = req.user?.companyId || req.query.companyId as string;
 
