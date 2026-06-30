@@ -350,6 +350,8 @@ export class RepController {
         throw new AppError('Preposto não possui empresa associada', 400);
       }
 
+      console.log('🔵 [getUsersWithResponses] companyId:', companyId);
+
       // Buscar todos os usuários do preposto
       const users = await User.find({
         createdBy: repId,
@@ -357,19 +359,20 @@ export class RepController {
         isActive: true,
       }).select('_id name email department');
 
-      // Buscar atribuições da empresa para obter os IDs
-      const assignments = await Assignment.find({
-        companyId: companyId,
-      }).select('_id');
+      console.log('🔵 [getUsersWithResponses] Usuários encontrados:', users.length);
+      console.log('🔵 [getUsersWithResponses] IDs dos usuários:', users.map(u => u._id));
 
-      const assignmentIds = assignments.map(a => a._id);
-
-      // Buscar respostas que correspondem a essas atribuições
+      // Buscar respostas por userId
+      const userIds = users.map(u => u._id);
+      
       const responses = await ResponseModel.find({
-        assignmentId: { $in: assignmentIds },
+        userId: { $in: userIds },
       })
         .populate('controlId', 'name id')
         .lean();
+
+      console.log('🔵 [getUsersWithResponses] Respostas encontradas:', responses.length);
+      console.log('🔵 [getUsersWithResponses] Primeira resposta:', responses[0] || 'Nenhuma resposta');
 
       // Mapear respostas por usuário
       const responsesByUser: Record<string, any[]> = {};
@@ -393,6 +396,8 @@ export class RepController {
         }
       });
 
+      console.log('🔵 [getUsersWithResponses] Respostas mapeadas por usuário:', Object.keys(responsesByUser));
+
       // Montar resultado
       const result = users.map((user: any) => {
         const userResponses = responsesByUser[user._id.toString()] || [];
@@ -412,6 +417,8 @@ export class RepController {
           progress: totalResponses > 0 ? Math.round((completedResponses / totalResponses) * 100) : 0,
         };
       });
+
+      console.log('🔵 [getUsersWithResponses] Resultado final:', JSON.stringify(result, null, 2).substring(0, 500));
 
       res.status(200).json({
         success: true,
