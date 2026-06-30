@@ -26,28 +26,8 @@ import { ReviewModal } from '../components/rep/ReviewModal.js';
 import { ReviewList } from '../components/rep/ReviewList.js';
 import { IAttachment } from '../types/review.js';
 import { reviewService } from '../services/review.service.js';
-import { repService, RepUser } from '../services/rep.service.js';
+import { repService, UserWithResponses } from '../services/rep.service.js';
 import toast from 'react-hot-toast';
-
-interface UserResponse {
-  _id: string;
-  controlId: string;
-  controlName: string;
-  maturityLevel: number;
-  scenario: string;
-  observations: string;
-  updatedAt: string;
-}
-
-interface UserWithResponses {
-  _id: string;
-  name: string;
-  email: string;
-  responses: UserResponse[];
-  totalResponses: number;
-  completedResponses: number;
-  progress: number;
-}
 
 export const RepResponses: React.FC = () => {
   const { user } = useAuth();
@@ -57,13 +37,10 @@ export const RepResponses: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUser, setSelectedUser] = useState<UserWithResponses | null>(null);
-  const [selectedResponse, setSelectedResponse] = useState<UserResponse | null>(null);
+  const [selectedResponse, setSelectedResponse] = useState<UserWithResponses['responses'][0] | null>(null);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<'responses' | 'reviews'>('responses');
-  const [page, setPage] = useState(1);
-  const [pagination, setPagination] = useState<any>(null);
-  const limit = 10;
 
   const companyId = (user as any)?.companyId || (user as any)?.company?._id || '';
 
@@ -72,74 +49,34 @@ export const RepResponses: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      // Buscar usuários da empresa
-      const response = await repService.listUsers({
-        page,
-        limit,
-        search: searchTerm || undefined,
-      });
-
-      const companyUsers = response.items || [];
-      const usersWithResponses: UserWithResponses[] = [];
-
-      for (const u of companyUsers) {
-        try {
-          // Buscar respostas do usuário via API
-          const userResponses = await repService.getUserResponses(u._id);
-          
-          const responses = userResponses.map((r: any) => ({
-            _id: r._id,
-            controlId: r.controlId?._id || r.controlId,
-            controlName: r.controlId?.name || 'Controle não identificado',
-            maturityLevel: r.maturityLevel,
-            scenario: r.scenario || '',
-            observations: r.observations || '',
-            updatedAt: r.updatedAt,
-          }));
-
-          const totalResponses = responses.length;
-          const completedResponses = responses.filter(
-            (r) => r.maturityLevel !== undefined && r.maturityLevel !== null && r.maturityLevel !== -1
-          ).length;
-
-          usersWithResponses.push({
-            _id: u._id,
-            name: u.name,
-            email: u.email,
-            responses,
-            totalResponses,
-            completedResponses,
-            progress: totalResponses > 0 ? Math.round((completedResponses / totalResponses) * 100) : 0,
-          });
-        } catch (err) {
-          console.error(`Erro ao carregar respostas do usuário ${u.name}:`, err);
-          usersWithResponses.push({
-            _id: u._id,
-            name: u.name,
-            email: u.email,
-            responses: [],
-            totalResponses: 0,
-            completedResponses: 0,
-            progress: 0,
-          });
-        }
+      const response = await repService.getUsersWithResponses();
+      
+      let filteredData = response.data;
+      if (searchTerm.trim()) {
+        const term = searchTerm.toLowerCase().trim();
+        filteredData = filteredData.filter(
+          (u) =>
+            u.name.toLowerCase().includes(term) ||
+            u.email.toLowerCase().includes(term)
+        );
       }
 
-      setUsers(usersWithResponses);
-      setPagination(response.pagination);
+      setUsers(filteredData);
     } catch (err: any) {
-      console.error('Erro ao carregar usuários:', err);
+      console.error('Erro ao carregar dados:', err);
       setError(err.message || 'Erro ao carregar dados');
     } finally {
       setLoading(false);
     }
   };
 
+  // 🔴 CORREÇÃO: Remover searchTerm das dependências
   useEffect(() => {
     if (companyId) {
       loadUsersWithResponses();
     }
-  }, [companyId, page, searchTerm]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [companyId]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -148,7 +85,7 @@ export const RepResponses: React.FC = () => {
     toast.success('Dados atualizados');
   };
 
-  const handleOpenReviewModal = (user: UserWithResponses, response: UserResponse) => {
+  const handleOpenReviewModal = (user: UserWithResponses, response: UserWithResponses['responses'][0]) => {
     setSelectedUser(user);
     setSelectedResponse(response);
     setShowReviewModal(true);
@@ -204,23 +141,11 @@ export const RepResponses: React.FC = () => {
       u.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const totalPages = pagination?.totalPages || 1;
-  const currentPage = pagination?.page || 1;
-  const hasPrevious = currentPage > 1;
-  const hasNext = currentPage < totalPages;
-
-  const handlePageChange = (newPage: number) => {
-    if (newPage < 1) return;
-    if (pagination && newPage > pagination.totalPages) return;
-    setPage(newPage);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
   const handleBack = () => {
     navigate('/rep');
   };
 
-  if (loading && page === 1) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -297,7 +222,6 @@ export const RepResponses: React.FC = () => {
                 value={searchTerm}
                 onChange={(e) => {
                   setSearchTerm(e.target.value);
-                  setPage(1);
                 }}
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
               />
@@ -331,6 +255,9 @@ export const RepResponses: React.FC = () => {
                         <div>
                           <h3 className="font-medium text-gray-900">{u.name}</h3>
                           <p className="text-sm text-gray-500">{u.email}</p>
+                          {u.department && u.department !== '-' && (
+                            <p className="text-xs text-gray-400">{u.department}</p>
+                          )}
                         </div>
                         <div className="flex items-center gap-4">
                           <div className="text-right">
@@ -409,31 +336,6 @@ export const RepResponses: React.FC = () => {
                     </div>
                   </div>
                 ))}
-              </div>
-            )}
-
-            {/* Paginação */}
-            {totalPages > 1 && (
-              <div className="flex items-center justify-between px-4 py-3 mt-4 bg-white rounded-lg border border-gray-200">
-                <div className="text-sm text-gray-500">
-                  Página {currentPage} de {totalPages}
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => handlePageChange(currentPage - 1)}
-                    disabled={!hasPrevious}
-                    className="px-3 py-1 rounded border border-gray-300 text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </button>
-                  <button
-                    onClick={() => handlePageChange(currentPage + 1)}
-                    disabled={!hasNext}
-                    className="px-3 py-1 rounded border border-gray-300 text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </button>
-                </div>
               </div>
             )}
           </>
