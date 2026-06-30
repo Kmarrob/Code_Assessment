@@ -1,0 +1,16 @@
+{
+  "name": "Code_Assessment",
+  "short_name": "Code_Assessment",
+  "description": "Sistema de Avaliação de Maturidade ISO 27001",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1e40af",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

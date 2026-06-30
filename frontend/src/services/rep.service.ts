@@ -63,6 +63,39 @@ export interface RepStats {
   completionRate: number;
 }
 
+/**
+ * 🔴 NOVO - Interface para resposta do endpoint otimizado
+ */
+export interface UserWithResponses {
+  _id: string;
+  name: string;
+  email: string;
+  department: string;
+  responses: Array<{
+    _id: string;
+    controlId: string;
+    controlName: string;
+    maturityLevel: number;
+    scenario: string;
+    observations: string;
+    updatedAt: string;
+  }>;
+  totalResponses: number;
+  completedResponses: number;
+  progress: number;
+}
+
+export interface UsersWithResponsesResponse {
+  success: boolean;
+  data: UserWithResponses[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
 export const repService = {
   /**
    * Listar usuários do preposto
@@ -165,5 +198,14 @@ export const repService = {
   async getStats(): Promise<RepStats> {
     const response = await api.get<ApiResponse<RepStats>>('/rep/stats');
     return response.data.data;
+  },
+
+  /**
+   * 🔴 NOVO - Buscar todos os usuários com suas respostas (otimizado)
+   * GET /api/rep/users-with-responses
+   */
+  async getUsersWithResponses(): Promise<UsersWithResponsesResponse> {
+    const response = await api.get<UsersWithResponsesResponse>('/rep/users-with-responses');
+    return response.data;
   },
 };
