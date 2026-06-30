@@ -69,12 +69,21 @@ router.get(
 );
 
 // ============================================
-// NOVA ROTA: Obter controles da empresa do preposto
+// ROTA: Obter controles da empresa do preposto
 // ============================================
 router.get(
   '/controls',
   adminRateLimiter,
   RepController.getCompanyControls
+);
+
+// ============================================
+// 🔴 NOVA ROTA: Obter usuários com respostas (otimizado)
+// ============================================
+router.get(
+  '/users-with-responses',
+  adminRateLimiter,
+  RepController.getUsersWithResponses
 );
 
 export default router;
