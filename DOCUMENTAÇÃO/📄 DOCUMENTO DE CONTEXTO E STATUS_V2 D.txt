@@ -1,0 +1,653 @@
+📄 DOCUMENTO DE CONTEXTO E STATUS DO PROJETO — VERSÃO COMPLETA
+Code_Assessment — Sistema de Avaliação de Maturidade ISO 27001
+1. OBJETIVO DO DOCUMENTO
+Este documento tem como objetivo registrar o estado atual do projeto Code_Assessment, descrevendo:
+
+O que foi implementado até o momento
+
+Como o sistema está organizado (estrutura de diretórios)
+
+As cláusulas contratuais que regem o desenvolvimento
+
+O fluxo de trabalho adotado
+
+O que será implementado nas próximas etapas
+
+2. VISÃO GERAL DO PROJETO
+2.1 O Que Estamos Construindo
+Estamos desenvolvendo um sistema web completo para automatizar o processo de assessment de maturidade em Segurança da Informação, baseado na norma ABNT NBR ISO/IEC 27001:2022.
+
+O sistema substitui um processo manual (planilhas Excel, PowerPoint e Word) por uma plataforma digital com:
+
+Landing Page institucional
+
+Sistema de Autenticação com 4 perfis (Admin, Preposto, Consultor, Usuário)
+
+Gestão de Usuários (CRUD completo)
+
+Cadastro e Atribuição dos 93 controles da ISO 27001
+
+Coleta de Respostas dos usuários
+
+Dashboards e Relatórios de maturidade
+
+Multi-tenancy (múltiplas empresas)
+
+Gestão de consultores independentes
+
+3. TECNOLOGIAS UTILIZADAS
+Camada	Tecnologia	Versão
+Frontend	React + Vite + TypeScript + Tailwind CSS	React 18, Vite 5
+Backend	Node.js + Express + TypeScript	Node 22
+Banco de Dados	MongoDB Atlas (Mongoose ODM)	-
+Autenticação	JWT com Refresh Token	-
+Validação	Zod	-
+Gerenciamento de Estado	TanStack React Query	-
+Automação	PowerShell Scripts	-
+Gráficos	Recharts	-
+UI/UX	Tailwind CSS, Lucide React, Framer Motion	-
+4. CONTRATO DE DESENVOLVIMENTO — AS 3 LEIS INVOLÁVEIS
+🔒 LEI 1 — MEMORY BANK (DOCUMENTAÇÃO ATIVA)
+Nunca confiar apenas na memória de contexto
+
+Antes de alterar QUALQUER linha de código, criar ou atualizar um relatório em docs/audits/
+
+A cada nova interação, reler os .md relevantes antes de agir
+
+🔒 LEI 2 — CORREÇÃO TOTAL (ZERO PARCIALIDADE)
+Nunca avançar para o próximo Pilar enquanto TODAS as não-conformidades do Pilar atual não estiverem corrigidas
+
+O relatório .md deve estar marcado como Validado antes de prosseguir
+
+Nunca avançar para o próximo Módulo antes do ciclo completo dos 7 Pilares do módulo atual
+
+🔒 LEI 3 — DIVISÃO DE CARGA (ANTI-TRUNCAMENTO)
+Se o plano de execução exceder ~300 linhas de código, dividir em blocos numerados
+
+Ao final de cada bloco, parar e aguardar o comando continuar
+
+Nunca entregar código truncado, com // ... resto igual, // TODO: completar, ou similares
+
+5. METODOLOGIA — OS 7 PILARES
+Seguimos rigorosamente uma metodologia de auditoria e refatoração baseada em 7 Pilares, aplicados a cada Módulo Lógico do sistema:
+
+#	Pilar	Descrição
+1	Clean Code	DRY, tipagem estrita, modularidade, SRP
+2	Segurança / AppSec	Validação, sanitização, rate limiting, logging
+3	Resiliência & Error Handling	Retry, circuit breaker, fallbacks, graceful shutdown
+4	UX & Usabilidade	Loading states, acessibilidade, feedback visual, responsividade
+5	Velocidade & Performance	Memoização, lazy loading, índices, virtualização
+6	SEO & Semântica	Tags semânticas, meta tags, schema markup, breadcrumbs
+7	Infraestrutura & Automação	Scripts PowerShell, seed, backup, deploy, health check
+6. MÓDULOS LÓGICOS DO SISTEMA
+#	Módulo	Descrição	Status
+1	Auth	Autenticação e autorização (login, logout, refresh, perfis)	✅ COMPLETO
+2	Admin	Gestão de usuários (CRUD, atribuição de perfis)	✅ COMPLETO
+3	Rep (Preposto)	Cadastro de usuários e atribuição de controles (sem repetição)	✅ COMPLETO
+4	User (Usuário)	Resposta aos controles atribuídos	✅ COMPLETO
+5	Consultant	Visualização de relatórios e insights	✅ COMPLETO
+6	Controls	Cadastro e gestão dos 93 controles da ISO 27001	✅ COMPLETO
+7	Questions	Banco de perguntas por controle	✅ COMPLETO
+8	Dashboard	Análise de maturidade com gráficos e métricas	✅ COMPLETO
+7. ESTRUTURA DE DIRETÓRIOS DO PROJETO
+7.1 Backend (backend/src/)
+text
+backend/src/
+├── config/
+│   ├── database.ts          # Conexão com MongoDB
+│   └── env.ts               # Variáveis de ambiente
+├── controllers/
+│   ├── AdminController.ts    # CRUD de usuários
+│   ├── AuthController.ts     # Login, logout, refresh
+│   ├── CompanyController.ts  # CRUD de empresas
+│   ├── ConsultantController.ts # Dashboard do consultor
+│   ├── ControlController.ts  # CRUD de controles
+│   ├── DashboardController.ts # Métricas e gráficos
+│   ├── HealthController.ts   # Health check
+│   ├── QuestionController.ts # Banco de perguntas
+│   ├── RepController.ts      # Operações do preposto
+│   ├── SitemapController.ts  # Sitemap SEO
+│   └── UserController.ts     # Operações do usuário
+├── middleware/
+│   ├── adminPerformance.ts   # Métricas de performance admin
+│   ├── auth.ts               # Autenticação e autorização
+│   ├── cache.ts              # Controle de cache
+│   ├── databaseHealth.ts     # Health check do banco
+│   ├── errorHandler.ts       # Tratamento de erros
+│   ├── passwordExpiry.ts     # Expiração de senha
+│   ├── performance.ts        # Métricas de performance
+│   ├── rateLimit.ts          # Rate limiting
+│   ├── sanitize.ts           # Sanitização de inputs
+│   ├── sanitizeAdmin.ts      # Sanitização admin
+│   ├── securityLog.ts        # Log de segurança
+│   └── timeout.ts            # Timeout de requisições
+├── models/
+│   ├── Assignment.ts         # Atribuições de controles
+│   ├── Company.ts            # Empresas (multi-tenancy)
+│   ├── Control.ts            # Controles ISO 27001
+│   ├── Question.ts           # Perguntas por controle
+│   ├── Response.ts           # Respostas dos usuários
+│   └── User.ts               # Usuários do sistema
+├── routes/
+│   ├── admin.ts              # Rotas administrativas
+│   ├── auth.ts               # Rotas de autenticação
+│   ├── consultant.routes.ts  # Rotas do consultor
+│   ├── rep.routes.ts         # Rotas do preposto
+│   └── user.routes.ts        # Rotas do usuário
+├── services/
+│   ├── AdminService.ts       # Lógica de negócio admin
+│   ├── AuditService.ts       # Auditoria de ações
+│   ├── AuthService.ts        # Lógica de autenticação
+│   ├── CompanyService.ts     # Lógica de empresas
+│   ├── ConsultantService.ts  # Lógica do consultor
+│   ├── DashboardService.ts   # Cálculo de maturidade
+│   ├── PasswordPolicy.ts     # Política de senhas
+│   ├── QuestionService.ts    # Lógica de perguntas
+│   ├── RepService.ts         # Lógica do preposto
+│   ├── TokenService.ts       # Gerenciamento de tokens
+│   └── UserService.ts        # Lógica do usuário
+├── types/
+│   └── index.ts              # Definições de tipos
+├── utils/
+│   ├── adminLogger.ts        # Logs administrativos
+│   ├── adminValidation.ts    # Validação admin
+│   ├── circuitBreaker.ts     # Circuit breaker
+│   ├── errorLogger.ts        # Logs de erro
+│   ├── logger.ts             # Logger principal
+│   ├── memoryMonitor.ts      # Monitoramento de memória
+│   ├── repValidation.ts      # Validação preposto
+│   ├── retry.ts              # Retry de operações
+│   ├── securityLogger.ts     # Logs de segurança
+│   ├── shutdown.ts           # Graceful shutdown
+│   └── validation.ts         # Validações gerais
+├── scripts/
+│   ├── associate-users.ts    # Associar usuários a empresas
+│   ├── ensure-indexes.ts     # Garantir índices do MongoDB
+│   ├── seed-controls.ts      # Popular controles
+│   ├── seed-questions.ts     # Popular perguntas
+│   └── seed.ts               # Seed principal
+├── server.ts                 # Ponto de entrada
+└── app.ts                    # Configuração do Express
+7.2 Frontend (frontend/src/)
+text
+frontend/src/
+├── components/
+│   ├── admin/
+│   │   ├── ActivityLog.tsx
+│   │   ├── AdminBreadcrumbs.tsx
+│   │   ├── AdminFallbacks.tsx
+│   │   ├── AdminLazyLoader.tsx
+│   │   ├── AdminLoadingOverlay.tsx
+│   │   ├── AdminMetaTags.tsx
+│   │   ├── AdminSchemaMarkup.tsx
+│   │   ├── CompanyFormModal.tsx
+│   │   ├── ConfirmDeleteModal.tsx
+│   │   ├── QuestionFormModal.tsx
+│   │   ├── SystemMetrics.tsx
+│   │   ├── UserForm.tsx
+│   │   └── UsersTable.tsx
+│   ├── dashboard/
+│   │   ├── BarChart.tsx
+│   │   ├── DashboardLayout.tsx
+│   │   ├── DashboardPageWrapper.tsx
+│   │   ├── DashboardSidebar.tsx
+│   │   ├── DataTable.tsx
+│   │   ├── PieChart.tsx
+│   │   └── RadarChart.tsx
+│   ├── ui/
+│   │   ├── AccessibleCard.tsx
+│   │   ├── Button.tsx
+│   │   ├── Card.tsx
+│   │   ├── ConfirmDialog.tsx
+│   │   ├── Container.tsx
+│   │   ├── EmailInput.tsx
+│   │   ├── EmptyState.tsx
+│   │   ├── Fallback.tsx
+│   │   ├── Form.tsx
+│   │   ├── FormField.tsx
+│   │   ├── Grid.tsx
+│   │   ├── Image.tsx
+│   │   ├── Input.tsx
+│   │   ├── LoadingButton.tsx
+│   │   ├── MemoizedCard.tsx
+│   │   ├── MicroInteractions.tsx
+│   │   ├── OptimizedImage.tsx
+│   │   ├── PageLoader.tsx
+│   │   ├── PasswordInput.tsx
+│   │   ├── PasswordStrength.tsx
+│   │   ├── Progress.tsx
+│   │   ├── SafeDisplay.tsx
+│   │   ├── SafeText.tsx
+│   │   ├── Skeleton.tsx
+│   │   ├── Spinner.tsx
+│   │   ├── Toast.tsx
+│   │   └── Transition.tsx
+│   ├── AccessibleNav.tsx
+│   ├── AdminErrorBoundary.tsx
+│   ├── ErrorBoundary.tsx
+│   ├── LiveRegion.tsx
+│   ├── MetaTags.tsx
+│   ├── ProtectedRoute.tsx
+│   ├── SchemaMarkup.tsx
+│   ├── SkipLink.tsx
+│   └── SuspenseWrapper.tsx
+├── contexts/
+│   └── AuthContext.tsx
+├── hooks/
+│   ├── useAdmin.ts
+│   ├── useAdminSecurity.ts
+│   ├── useMemoized.ts
+│   ├── useRep.ts
+│   ├── useResponsive.ts
+│   ├── useSanitize.ts
+│   └── useSEO.ts
+├── pages/
+│   ├── admin/
+│   │   ├── AdminCompanies.tsx
+│   │   ├── AdminConsultantForm.tsx
+│   │   ├── AdminConsultants.tsx
+│   │   ├── AdminConsultantView.tsx
+│   │   ├── AdminControls.tsx
+│   │   ├── AdminDashboard.tsx
+│   │   ├── AdminQuestions.tsx
+│   │   └── AdminUsers.tsx
+│   ├── dashboard/
+│   │   ├── AdminCompanySelector.tsx
+│   │   ├── Capabilities.tsx
+│   │   ├── Categorization.tsx
+│   │   ├── ControlTypes.tsx
+│   │   ├── CyberConcepts.tsx
+│   │   ├── DashboardOverview.tsx
+│   │   └── Domains.tsx
+│   ├── auth/
+│   │   ├── LandingPage.tsx
+│   │   ├── LoginPage.tsx
+│   │   └── RegisterPage.tsx
+│   ├── rep/
+│   │   ├── RepAssignControls.tsx
+│   │   ├── RepDashboard.tsx
+│   │   └── RepNewUser.tsx
+│   ├── user/
+│   │   ├── UserAnswer.tsx
+│   │   └── UserDashboard.tsx
+│   ├── ConsultantDashboard.tsx
+│   └── ProfilePage.tsx
+├── services/
+│   ├── admin.service.ts
+│   ├── api.ts
+│   ├── auth.service.ts
+│   ├── company.service.ts
+│   ├── consultant.service.ts
+│   ├── dashboard.service.ts
+│   ├── question.service.ts
+│   ├── rep.service.ts
+│   └── user.service.ts
+├── types/
+│   └── index.ts
+├── utils/
+│   ├── constants.ts
+│   └── helpers.ts
+├── App.tsx
+└── main.tsx
+8. FLUXO DE TRABALHO ADOTADO
+8.1 Metodologia de Desenvolvimento
+Cada módulo é desenvolvido seguindo a ordem dos 7 Pilares:
+
+Análise e Auditoria → Identificação de não-conformidades
+
+Criação de Relatório → Documento .md com escopo, achados e plano de correção
+
+Validação → Aguardar aprovação explícita do usuário
+
+Execução → Aplicar correções (dividir em partes se > 300 linhas)
+
+Fechamento → Atualizar relatório para Validado
+
+8.2 Fluxo de Dados do Sistema
+text
+┌─────────────────────────────────────────────────────────────────┐
+│                      ADMIN DO SISTEMA                          │
+│  ✅ Gerencia usuários                                          │
+│  ✅ Gerencia empresas (multi-tenancy)                          │
+│  ✅ Gerencia consultores                                       │
+│  ✅ Gerencia controles ISO 27001                              │
+│  ✅ Gerencia perguntas por controle                           │
+│  ✅ Visualiza dashboard de maturidade (todas empresas)        │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                     CONSULTOR INDEPENDENTE                      │
+│  ✅ Visualiza apenas empresas atribuídas                       │
+│  ✅ Vê estatísticas e maturidade das empresas                 │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                         PREPOSTO (REP)                         │
+│  ✅ Cria usuários finais                                       │
+│  ✅ Atribui controles aos usuários (sem repetição)            │
+│  ✅ Visualiza dashboard de maturidade da empresa              │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                       USUÁRIO (USER)                           │
+│  ✅ Visualiza controles atribuídos                            │
+│  ✅ Responde perguntas por controle                           │
+│  ✅ Edita respostas com confirmação                           │
+└─────────────────────────────────────────────────────────────────┘
+9. STATUS ATUAL DOS MÓDULOS
+Módulo	Status	Pilares Concluídos
+Auth	✅ COMPLETO	7/7
+Admin	✅ COMPLETO	7/7
+Rep (Preposto)	✅ COMPLETO	7/7
+User (Usuário)	✅ COMPLETO	7/7
+Consultant	✅ COMPLETO	7/7
+Controls	✅ COMPLETO	7/7
+Questions	✅ COMPLETO	7/7
+Dashboard	✅ COMPLETO	7/7
+Progresso Geral: 8/8 módulos concluídos (100%)
+
+10. O QUE FOI IMPLEMENTADO EM CADA MÓDULO
+10.1 Auth (Autenticação)
+✅ Login com JWT + Refresh Token
+
+✅ 4 perfis de usuário (Admin, Rep, Consultant, User)
+
+✅ Landing Page institucional
+
+✅ Register Page
+
+✅ Profile Page com edição e alteração de senha
+
+✅ Proteção de rotas por perfil
+
+✅ Logout com revogação de tokens
+
+10.2 Admin (Gestão de Usuários)
+✅ AdminService com CRUD completo de usuários
+
+✅ AdminController com validação Zod
+
+✅ Rotas admin RESTful (/api/admin/users)
+
+✅ Página de listagem de usuários com paginação e filtros
+
+✅ Formulário de criação/edição de usuários
+
+✅ Tabela virtualizada com react-window
+
+✅ ConfirmDialog para ações destrutivas
+
+✅ Breadcrumbs para navegação
+
+10.3 Rep (Preposto)
+✅ Cadastro de usuários pelo preposto
+
+✅ Atribuição inteligente de controles (sem repetição)
+
+✅ Dashboard do preposto com visão geral
+
+✅ Lista de usuários cadastrados
+
+✅ Histórico de atribuições
+
+✅ Acompanhamento de progresso
+
+✅ Substituição de controles com confirmação
+
+10.4 User (Usuário)
+✅ Visualização dos controles atribuídos
+
+✅ Resposta aos controles (nível de maturidade 0, 1, 2)
+
+✅ Descrição do cenário
+
+✅ Observações adicionais
+
+✅ Edição de respostas com modal de confirmação
+
+✅ Acompanhamento de progresso individual
+
+✅ Botão de logout
+
+10.5 Consultant (Consultor)
+✅ Modelo User com consultantId
+
+✅ Modelo Company com consultantId e createdBy
+
+✅ ConsultantService (backend)
+
+✅ ConsultantController (backend)
+
+✅ Rotas /api/consultant/*
+
+✅ Página ConsultantDashboard (frontend)
+
+✅ Página AdminConsultants (listagem)
+
+✅ Página AdminConsultantForm (criar/editar)
+
+✅ Página AdminConsultantView (visualizar)
+
+✅ Breadcrumbs para consultores
+
+✅ Confirmação de exclusão
+
+✅ Atribuição de empresas ao consultor
+
+✅ Card "Consultores" no Admin Dashboard
+
+10.6 Controls (Controles ISO 27001)
+✅ Cadastro dos 93 controles da ISO 27001
+
+✅ Atributos: ID, Nome, Tipos, Nota, Cenário, Propriedades de SI
+
+✅ Edição e atualização de controles
+
+✅ Paginação e ordenação
+
+✅ Filtros por domínio e busca
+
+10.7 Questions (Perguntas por Controle)
+✅ Modelo Question com todos os atributos
+
+✅ QuestionService e QuestionController
+
+✅ Rotas para admin e usuário
+
+✅ Página de gerenciamento de perguntas (Admin)
+
+✅ Agrupamento por controle
+
+✅ CRUD completo de perguntas
+
+✅ Ativação/Desativação de perguntas
+
+✅ Seed com perguntas pré-definidas para todos os controles
+
+✅ Perguntas para cada nível de maturidade (Implementado, Parcial, Não Implementado)
+
+10.8 Dashboard (Maturidade e Métricas)
+Backend
+✅ DashboardService com cálculos de maturidade
+
+✅ Agrupamento por domínio, categoria, tipo, conceito cibernético e capacidade
+
+✅ Estatísticas de implementação
+
+✅ Níveis de maturidade (0, 1, 2)
+
+✅ Rotas para Admin e Rep
+
+Frontend - Componentes
+✅ PieChart (gráfico de pizza)
+
+✅ BarChart (gráfico de barras)
+
+✅ RadarChart (gráfico radar)
+
+✅ DataTable (tabela de dados)
+
+✅ DashboardSidebar (menu lateral)
+
+✅ DashboardLayout (layout com sidebar)
+
+✅ DashboardPageWrapper (wrapper para páginas)
+
+Frontend - Páginas
+✅ AdminCompanySelector: Seletor de empresas (Admin)
+
+✅ DashboardOverview: Visão geral com cards e gráficos
+
+✅ Categorization: Análise por categoria (Organizacional, Pessoas, Físico, Tecnológico)
+
+✅ ControlTypes: Análise por tipo (Preventivo, Detectivo, Corretivo)
+
+✅ CyberConcepts: Análise por conceito (Identificar, Proteger, Detectar, Responder, Restaurar)
+
+✅ Capabilities: Análise por capacidade operacional (15 capacidades)
+
+✅ Domains: Análise por domínio (Defesa, Resiliência, Governança, Proteção)
+
+Frontend - Menus
+✅ Card "Dashboard" no AdminDashboard com ícone LayoutDashboard
+
+✅ Botão "Dashboard" no RepDashboard com ícone LayoutDashboard
+
+✅ Menu lateral com todas as abas de análise
+
+11. PRÓXIMOS PASSOS PLANEJADOS
+11.1 Refinamentos e Melhorias
+Tarefa	Prioridade	Descrição
+Exportação de Relatórios	Alta	Gerar PDF/Excel com os dados do dashboard
+Gráficos Interativos	Média	Adicionar filtros e drill-down nos gráficos
+Notificações	Média	Alertas para consultores e prepostos
+Benchmarking	Média	Comparação entre empresas do mesmo consultor
+Auditoria de Ações	Baixa	Histórico completo de ações dos usuários
+11.2 Funcionalidades Futuras
+Tarefa	Prioridade	Descrição
+Plano de Ação	Média	Gerar recomendações baseadas nas lacunas
+Matriz de Priorização	Média	Probabilidade vs Impacto
+CRM — Leads	Baixa	Gestão de clientes potenciais
+API Pública	Baixa	Expor dados para integração
+12. RELATÓRIOS DE AUDITORIA GERADOS
+Todos os relatórios estão disponíveis em docs/audits/:
+
+Módulo	Relatórios
+Auth	auth-01-clean-code.md a auth-07-infra-automacao.md (7)
+Admin	admin-01-clean-code.md a admin-07-infra-automacao.md (7)
+Rep	rep-01-clean-code.md a rep-07-infra-automacao.md (7)
+User	user-01-clean-code.md a user-07-infra-automacao.md (7)
+Consultant	consultant-01-clean-code.md a consultant-07-infra-automacao.md (7)
+Controls	controls-01-clean-code.md a controls-07-infra-automacao.md (7)
+Questions	questions-01-clean-code.md a questions-07-infra-automacao.md (7)
+Dashboard	dashboard-01-clean-code.md a dashboard-07-infra-automacao.md (7)
+Total: 56 relatórios de auditoria gerados e validados.
+
+13. INFRAESTRUTURA E SCRIPTS
+13.1 Scripts PowerShell
+Script	Descrição
+setup-complete.ps1	Configuração completa do ambiente
+mongodb-automation.ps1	Automação do MongoDB
+admin-bulk-create.ps1	Criação em massa de usuários
+admin-bulk-update.ps1	Atualização em massa de usuários
+admin-bulk-deactivate.ps1	Desativação em massa de usuários
+admin-seed.ps1	Seed de dados admin
+admin-backup.ps1	Backup do banco
+admin-restore.ps1	Restauração do banco
+admin-health-check.ps1	Health check do sistema
+admin-deploy.ps1	Deploy da aplicação
+13.2 Scripts Node.js (Seed)
+Script	Descrição
+seed.ts	Seed principal (controles e empresa padrão)
+seed-controls.ts	Seed dos 93 controles ISO 27001
+seed-questions.ts	Seed das perguntas por controle
+associate-users.ts	Associar usuários à empresa padrão
+ensure-indexes.ts	Garantir índices do MongoDB
+apply-schema-validation.ts	Aplicar validações de schema
+14. CONVENÇÕES E PADRÕES
+14.1 Estrutura de Arquivos
+Backend: MVC com Services
+
+Frontend: Componentes funcionais com Hooks
+
+APIs: RESTful com validação Zod
+
+Banco de Dados: Mongoose com índices otimizados
+
+14.2 Padrões de Código
+TypeScript: Tipagem estrita (strict: true)
+
+ESLint: Configuração padrão com regras adicionais
+
+Prettier: Formatação automática
+
+Nomenclatura: PascalCase para componentes, camelCase para funções
+
+14.3 Padrões de Commit
+feat: Nova funcionalidade
+
+fix: Correção de bug
+
+docs: Documentação
+
+style: Formatação
+
+refactor: Refatoração
+
+test: Testes
+
+chore: Manutenção
+
+15. CLAUSULAS CONTRATUAIS — RESUMO EXECUTIVO
+15.1 Identidade do Assistente
+O assistente atua como Arquiteto Chefe e Auditor Full-Stack do projeto, abandonando comportamento reativo de "codar rápido para agradar", assumindo papel de engenheiro sênior, metódico e rigoroso.
+
+15.2 Proibições Absolutas
+❌ Codar sem relatório .md previamente aprovado
+❌ Misturar pilares na mesma resposta
+❌ Pular o Passo 1 (mapeamento) "porque o projeto é pequeno"
+❌ Inventar dependências, bibliotecas, coleções ou integrações que não existem
+❌ Responder "vou fazer X, Y e Z de uma vez" — Uma etapa. Uma resposta.
+❌ Usar // TODO, // ..., "resto do código igual" ou qualquer forma de elipse
+
+15.3 Estrutura de Relatório Obrigatória
+markdown
+# Relatório de Auditoria — Pilar X: [Nome do Pilar]
+## Módulo: [Nome do Módulo]
+## Status: [Pendente | Em Execução | Validado]
+
+## 📌 ESCOPO
+## 🔍 ACHADOS (NÃO-CONFORMIDADES)
+## 🛠️ PLANO DE CORREÇÃO
+## 📊 STATUS
+16. CONCLUSÃO
+O projeto Code_Assessment encontra-se em estágio avançado de desenvolvimento, com todos os módulos planejados já implementados e validados.
+
+O sistema está pronto para:
+
+Gestão completa de usuários, empresas e consultores
+
+Atribuição e resposta de controles ISO 27001
+
+Análise detalhada de maturidade com dashboards interativos
+
+Multi-tenancy com isolamento de dados entre empresas
+
+Escalabilidade para múltiplos consultores e clientes
+
+Próximas etapas: Refinamentos, exportação de relatórios e funcionalidades avançadas.
+
+17. INFORMAÇÕES DE CONTATO
+Item	Detalhe
+Projeto	Code_Assessment
+Diretório	C:\Users\marcio.souza\Documents\MRS_CONSULTORIA\Code_Assessment
+Versão do Documento	3.0
+Data de Atualização	22/06/2026
+Status	✅ COMPLETO
+Documento elaborado por: Arquiteto Chefe e Auditor Full-Stack
+Data: 22 de Junho de 2026
+Versão: 3.0 (Completa e Detalhada)
+

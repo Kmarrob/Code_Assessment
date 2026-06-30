@@ -1,0 +1,458 @@
+DOCUMENTO DE STATUS DO PROJETO — VERSÃO 4.0
+Code_Assessment — Sistema de Avaliação de Maturidade ISO 27001
+📌 1. OBJETIVO DO DOCUMENTO
+Registrar o estado atual do projeto Code_Assessment, documentando:
+
+O que foi implementado até o momento
+
+Estrutura completa de diretórios
+
+Cláusulas contratuais em vigor
+
+Status atual dos módulos
+
+Problemas identificados no deploy
+
+Correções aplicadas e pendentes
+
+🔒 2. CONTRATO DE DESENVOLVIMENTO — AS 3 LEIS INVOLÁVEIS
+LEI 1 — MEMORY BANK (DOCUMENTAÇÃO ATIVA)
+Nunca confiar apenas na memória de contexto
+
+Antes de alterar QUALQUER linha de código, criar ou atualizar um relatório em docs/audits/
+
+A cada nova interação, reler os .md relevantes antes de agir
+
+LEI 2 — CORREÇÃO TOTAL (ZERO PARCIALIDADE)
+Nunca avançar para o próximo Pilar enquanto TODAS as não-conformidades do Pilar atual não estiverem corrigidas
+
+O relatório .md deve estar marcado como Validado antes de prosseguir
+
+Nunca avançar para o próximo Módulo antes do ciclo completo dos 7 Pilares do módulo atual
+
+LEI 3 — DIVISÃO DE CARGA (ANTI-TRUNCAMENTO)
+Se o plano de execução exceder ~300 linhas de código, dividir em blocos numerados
+
+Ao final de cada bloco, parar e aguardar o comando continuar
+
+Nunca entregar código truncado, com // ... resto igual, // TODO: completar, ou similares
+
+Contrato Assinado em: 23/06/2026
+Assinatura: Arquiteto Chefe e Auditor Full-Stack ✅
+
+🏗️ 3. TECNOLOGIAS UTILIZADAS
+Camada	Tecnologia	Versão
+Frontend	React + Vite + TypeScript + Tailwind CSS	React 18, Vite 5
+Backend	Node.js + Express + TypeScript	Node 22
+Banco de Dados	MongoDB Atlas (Mongoose ODM)	-
+Autenticação	JWT com Refresh Token	-
+Validação	Zod	-
+Gerenciamento de Estado	TanStack React Query	-
+Gráficos	Recharts	-
+UI/UX	Tailwind CSS, Lucide React, Framer Motion	-
+📁 4. ESTRUTURA COMPLETA DE DIRETÓRIOS
+4.1 Backend (backend/src/)
+text
+backend/src/
+├── config/
+│   ├── database.ts          # Conexão com MongoDB
+│   └── env.ts               # Variáveis de ambiente [CORRIGIDO]
+├── controllers/
+│   ├── AdminController.ts    # CRUD de usuários
+│   ├── AuthController.ts     # Login, logout, refresh
+│   ├── CompanyController.ts  # CRUD de empresas
+│   ├── ConsultantController.ts # Dashboard do consultor
+│   ├── ControlController.ts  # CRUD de controles
+│   ├── DashboardController.ts # Métricas e gráficos
+│   ├── HealthController.ts   # Health check
+│   ├── QuestionController.ts # Banco de perguntas
+│   ├── RepController.ts      # Operações do preposto
+│   ├── SitemapController.ts  # Sitemap SEO
+│   └── UserController.ts     # Operações do usuário
+├── middleware/
+│   ├── adminPerformance.ts   # Métricas de performance admin
+│   ├── auth.ts               # Autenticação e autorização
+│   ├── cache.ts              # Controle de cache
+│   ├── databaseHealth.ts     # Health check do banco
+│   ├── errorHandler.ts       # Tratamento de erros
+│   ├── passwordExpiry.ts     # Expiração de senha
+│   ├── performance.ts        # Métricas de performance
+│   ├── rateLimit.ts          # Rate limiting
+│   ├── sanitize.ts           # Sanitização de inputs
+│   ├── sanitizeAdmin.ts      # Sanitização admin
+│   ├── securityLog.ts        # Log de segurança
+│   └── timeout.ts            # Timeout de requisições
+├── models/
+│   ├── Assignment.ts         # Atribuições de controles
+│   ├── Company.ts            # Empresas (multi-tenancy)
+│   ├── Control.ts            # Controles ISO 27001
+│   ├── Question.ts           # Perguntas por controle
+│   ├── Response.ts           # Respostas dos usuários
+│   └── User.ts               # Usuários do sistema
+├── routes/
+│   ├── admin.ts              # Rotas administrativas
+│   ├── auth.ts               # Rotas de autenticação
+│   ├── consultant.routes.ts  # Rotas do consultor
+│   ├── rep.routes.ts         # Rotas do preposto
+│   └── user.routes.ts        # Rotas do usuário
+├── services/
+│   ├── AdminService.ts       # Lógica de negócio admin
+│   ├── AuditService.ts       # Auditoria de ações
+│   ├── AuthService.ts        # Lógica de autenticação
+│   ├── CompanyService.ts     # Lógica de empresas
+│   ├── ConsultantService.ts  # Lógica do consultor
+│   ├── DashboardService.ts   # Cálculo de maturidade
+│   ├── PasswordPolicy.ts     # Política de senhas
+│   ├── QuestionService.ts    # Lógica de perguntas
+│   ├── RepService.ts         # Lógica do preposto
+│   ├── TokenService.ts       # Gerenciamento de tokens
+│   └── UserService.ts        # Lógica do usuário
+├── types/
+│   └── index.ts              # Definições de tipos
+├── utils/
+│   ├── adminLogger.ts        # Logs administrativos
+│   ├── adminValidation.ts    # Validação admin
+│   ├── circuitBreaker.ts     # Circuit breaker
+│   ├── errorLogger.ts        # Logs de erro
+│   ├── logger.ts             # Logger principal
+│   ├── memoryMonitor.ts      # Monitoramento de memória
+│   ├── repValidation.ts      # Validação preposto
+│   ├── retry.ts              # Retry de operações
+│   ├── securityLogger.ts     # Logs de segurança
+│   ├── shutdown.ts           # Graceful shutdown
+│   └── validation.ts         # Validações gerais
+├── scripts/
+│   ├── apply-schema-validation.ts
+│   ├── associate-users.ts
+│   ├── ensure-indexes.ts
+│   ├── seed-controls.ts
+│   ├── seed-questions.ts
+│   └── seed.ts
+├── server.ts                 # Ponto de entrada [CORRIGIDO]
+└── app.ts                    # Configuração do Express
+4.2 Frontend (frontend/src/)
+text
+frontend/src/
+├── components/
+│   ├── admin/
+│   │   ├── ActivityLog.tsx
+│   │   ├── AdminBreadcrumbs.tsx
+│   │   ├── AdminFallbacks.tsx
+│   │   ├── AdminLazyLoader.tsx
+│   │   ├── AdminLoadingOverlay.tsx
+│   │   ├── AdminMetaTags.tsx
+│   │   ├── AdminSchemaMarkup.tsx
+│   │   ├── CompanyFormModal.tsx
+│   │   ├── ConfirmDeleteModal.tsx
+│   │   ├── QuestionFormModal.tsx
+│   │   ├── SystemMetrics.tsx
+│   │   ├── UserForm.tsx
+│   │   └── UsersTable.tsx
+│   ├── dashboard/
+│   │   ├── BarChart.tsx
+│   │   ├── DashboardLayout.tsx
+│   │   ├── DashboardPageWrapper.tsx
+│   │   ├── DashboardSidebar.tsx
+│   │   ├── DataTable.tsx
+│   │   ├── PieChart.tsx
+│   │   └── RadarChart.tsx
+│   ├── ui/
+│   │   ├── AccessibleCard.tsx
+│   │   ├── Button.tsx
+│   │   ├── Card.tsx
+│   │   ├── ConfirmDialog.tsx
+│   │   ├── Container.tsx
+│   │   ├── EmailInput.tsx
+│   │   ├── EmptyState.tsx
+│   │   ├── Fallback.tsx
+│   │   ├── Form.tsx
+│   │   ├── FormField.tsx
+│   │   ├── Grid.tsx
+│   │   ├── Image.tsx
+│   │   ├── Input.tsx
+│   │   ├── LoadingButton.tsx
+│   │   ├── MemoizedCard.tsx
+│   │   ├── MicroInteractions.tsx
+│   │   ├── OptimizedImage.tsx
+│   │   ├── PageLoader.tsx
+│   │   ├── PasswordInput.tsx
+│   │   ├── PasswordStrength.tsx
+│   │   ├── Progress.tsx
+│   │   ├── SafeDisplay.tsx
+│   │   ├── SafeText.tsx
+│   │   ├── Skeleton.tsx
+│   │   ├── Spinner.tsx
+│   │   ├── Toast.tsx
+│   │   └── Transition.tsx
+│   ├── AccessibleNav.tsx
+│   ├── AdminErrorBoundary.tsx
+│   ├── ErrorBoundary.tsx
+│   ├── LiveRegion.tsx
+│   ├── MetaTags.tsx
+│   ├── ProtectedRoute.tsx
+│   ├── SchemaMarkup.tsx
+│   ├── SkipLink.tsx
+│   └── SuspenseWrapper.tsx
+├── contexts/
+│   └── AuthContext.tsx
+├── hooks/
+│   ├── useAdmin.ts
+│   ├── useAdminSecurity.ts
+│   ├── useMemoized.ts
+│   ├── useRep.ts
+│   ├── useResponsive.ts
+│   ├── useSanitize.ts
+│   └── useSEO.ts
+├── pages/
+│   ├── admin/
+│   │   ├── AdminCompanies.tsx
+│   │   ├── AdminConsultantForm.tsx
+│   │   ├── AdminConsultants.tsx
+│   │   ├── AdminConsultantView.tsx
+│   │   ├── AdminControls.tsx
+│   │   ├── AdminDashboard.tsx
+│   │   ├── AdminQuestions.tsx
+│   │   └── AdminUsers.tsx
+│   ├── dashboard/
+│   │   ├── AdminCompanySelector.tsx
+│   │   ├── Capabilities.tsx
+│   │   ├── Categorization.tsx
+│   │   ├── ControlTypes.tsx
+│   │   ├── CyberConcepts.tsx
+│   │   ├── DashboardOverview.tsx
+│   │   └── Domains.tsx
+│   ├── auth/
+│   │   ├── LandingPage.tsx
+│   │   ├── LoginPage.tsx
+│   │   └── RegisterPage.tsx
+│   ├── rep/
+│   │   ├── RepAssignControls.tsx
+│   │   ├── RepDashboard.tsx
+│   │   └── RepNewUser.tsx
+│   ├── user/
+│   │   ├── UserAnswer.tsx
+│   │   └── UserDashboard.tsx
+│   ├── ConsultantDashboard.tsx
+│   └── ProfilePage.tsx
+├── services/
+│   ├── admin.service.ts
+│   ├── api.ts
+│   ├── auth.service.ts
+│   ├── company.service.ts
+│   ├── consultant.service.ts
+│   ├── dashboard.service.ts
+│   ├── question.service.ts
+│   ├── rep.service.ts
+│   └── user.service.ts
+├── types/
+│   └── index.ts
+├── utils/
+│   ├── constants.ts
+│   └── helpers.ts
+├── App.tsx
+└── main.tsx
+4.3 Arquivos de Configuração (Raiz)
+text
+frontend/
+├── index.html                 # Contém CSP [CORRIGIDO]
+├── vite.config.ts            # Configuração Vite
+├── .env.production           # Variáveis de ambiente produção
+├── .env.development          # Variáveis de ambiente desenvolvimento (não existe)
+└── package.json
+
+backend/
+├── package.json
+├── tsconfig.json
+└── .env.example
+📊 5. STATUS DOS MÓDULOS
+Módulo	Status	Pilares Concluídos	Observação
+Auth	✅ COMPLETO	7/7	Funcional
+Admin	✅ COMPLETO	7/7	Funcional
+Rep (Preposto)	✅ COMPLETO	7/7	Funcional
+User (Usuário)	✅ COMPLETO	7/7	Funcional
+Consultant	✅ COMPLETO	7/7	Funcional
+Controls	✅ COMPLETO	7/7	Funcional
+Questions	✅ COMPLETO	7/7	Funcional
+Dashboard	✅ COMPLETO	7/7	Funcional
+Progresso Geral: 8/8 módulos concluídos (100%)
+
+🚨 6. PROBLEMAS IDENTIFICADOS NO DEPLOY
+6.1 Problema 1: Content Security Policy (CSP) - ✅ CORRIGIDO
+Erro:
+
+text
+Connecting to 'https://code-assessment-898z.onrender.com/api/auth/login' 
+violates the following Content Security Policy directive: 
+"connect-src 'self' http://localhost:3000 https://api.code-assessment.com"
+Causa: O CSP no frontend/index.html não incluía os domínios do Render.
+
+Solução Aplicada:
+
+html
+connect-src 'self' http://localhost:3000 https://api.code-assessment.com https://code-assessment-898z.onrender.com https://*.onrender.com;
+Status: ✅ CORRIGIDO
+
+6.2 Problema 2: CORS - Múltiplos Valores - ✅ CORRIGIDO
+Erro:
+
+text
+The 'Access-Control-Allow-Origin' header contains multiple values 
+'https://cisatool.com.br,https://code-assessment-frontend.onrender.com,http://localhost:5173', 
+but only one is allowed.
+Causa: O CORS estava configurado com uma única string em config.CORS_ORIGIN, mas precisava aceitar múltiplas origens.
+
+Solução Aplicada:
+
+Arquivo backend/src/config/env.ts:
+
+typescript
+// Antes
+CORS_ORIGIN: z.string().url().default('http://localhost:5173'),
+
+// Depois
+CORS_ORIGIN: z.string().default('http://localhost:5173,https://cisatool.com.br,https://code-assessment-frontend.onrender.com,https://code-assessment-898z.onrender.com'),
+Arquivo backend/src/server.ts:
+
+typescript
+// Nova configuração CORS com função dinâmica
+const corsOrigins = config.CORS_ORIGIN.split(',').map(origin => origin.trim());
+
+app.use(cors({
+  origin: function (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
+    if (!origin) {
+      if (config.NODE_ENV === 'development') {
+        return callback(null, true);
+      }
+      return callback(new Error('Not allowed by CORS'));
+    }
+    if (corsOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error(`Origin ${origin} not allowed by CORS`));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  exposedHeaders: ['X-Total-Count', 'X-Page', 'X-Limit', 'Authorization'],
+  optionsSuccessStatus: 200,
+}));
+Status: ✅ CORRIGIDO
+
+📋 7. CORREÇÕES PENDENTES
+7.1 Verificação Pós-Deploy
+Tarefa: Aguardar o deploy no Render e testar o login novamente.
+
+Comandos para verificar:
+
+Acessar https://code-assessment-898z.onrender.com
+
+Tentar fazer login com admin@codeassessment.com / Admin@123456
+
+Verificar se não há erros de CSP ou CORS no console
+
+Status: ⏳ AGUARDANDO
+
+7.2 Configurar Variáveis de Ambiente no Render
+Tarefa: Garantir que as variáveis estejam configuradas no painel do Render.
+
+Variáveis necessárias:
+
+text
+MONGODB_URI = <URL do MongoDB Atlas>
+JWT_SECRET = <chave secreta JWT>
+JWT_REFRESH_SECRET = <chave secreta refresh>
+CORS_ORIGIN = http://localhost:5173,https://cisatool.com.br,https://code-assessment-frontend.onrender.com,https://code-assessment-898z.onrender.com
+Status: ⏳ PENDENTE (verificar no Render)
+
+7.3 Testar em Diferentes Ambientes
+Tarefa: Testar o login em:
+
+Localhost (desenvolvimento)
+
+Render (produção)
+
+Domínio personalizado (cisatool.com.br)
+
+Status: ⏳ PENDENTE
+
+📝 8. RELATÓRIOS DE AUDITORIA GERADOS
+Todos os relatórios estão disponíveis em docs/audits/:
+
+Módulo	Relatórios	Status
+Auth	auth-01 a auth-07 (7)	✅ Validado
+Admin	admin-01 a admin-07 (7)	✅ Validado
+Rep	rep-01 a rep-07 (7)	✅ Validado
+User	user-01 a user-07 (7)	✅ Validado
+Consultant	consultant-01 a consultant-07 (7)	✅ Validado
+Controls	controls-01 a controls-07 (7)	✅ Validado
+Questions	questions-01 a questions-07 (7)	✅ Validado
+Dashboard	dashboard-01 a dashboard-07 (7)	✅ Validado
+Deploy	deploy-login-error-01-diagnostico.md	✅ Validado
+Total: 57 relatórios de auditoria gerados e validados.
+
+🔧 9. PRÓXIMOS PASSOS
+Imediatos (Pós-Deploy)
+✅ Aguardar deploy no Render
+
+⏳ Testar login em produção
+
+⏳ Validar que CSP e CORS estão funcionando
+
+⏳ Documentar resultados dos testes
+
+Curto Prazo
+⏳ Exportação de Relatórios (PDF/Excel)
+
+⏳ Gráficos Interativos com filtros
+
+⏳ Notificações para consultores e prepostos
+
+⏳ Benchmarking entre empresas
+
+Médio Prazo
+⏳ Plano de Ação (recomendações baseadas nas lacunas)
+
+⏳ Matriz de Priorização (Probabilidade vs Impacto)
+
+⏳ CRM — Leads (gestão de clientes potenciais)
+
+📊 10. RESUMO EXECUTIVO
+O Que Foi Feito
+✅ Sistema completo com 8 módulos funcionais
+
+✅ 100% dos módulos validados com os 7 Pilares
+
+✅ 57 relatórios de auditoria gerados
+
+✅ Correção do CSP no frontend
+
+✅ Correção do CORS no backend
+
+✅ Configuração para múltiplas origens (local, Render, domínio personalizado)
+
+O Que Está Pendente
+⏳ Validação pós-deploy no Render
+
+⏳ Teste de login em produção
+
+⏳ Configuração de variáveis de ambiente no Render
+
+Status do Deploy
+Item	Status
+Código corrigido	✅ Pronto
+Build	⏳ Aguardando
+Deploy	⏳ Aguardando
+Teste	⏳ Pendente
+Validação	⏳ Pendente
+📌 11. INFORMAÇÕES DE CONTATO
+Item	Detalhe
+Projeto	Code_Assessment
+Diretório	C:\Users\marcio.souza\Documents\MRS_CONSULTORIA\Code_Assessment
+Versão do Documento	4.0
+Data de Atualização	23/06/2026
+Status	🟡 EM DEPLOY
+Documento elaborado por: Arquiteto Chefe e Auditor Full-Stack
+Data: 23 de Junho de 2026
+Versão: 4.0 (Atualizada com correções de CSP e CORS)
+
