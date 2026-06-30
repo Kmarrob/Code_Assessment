@@ -40,6 +40,12 @@ export class DashboardService {
     const users = await User.find(userFilter).select('_id');
     const userIds = users.map(u => u._id);
 
+    // Logs adicionados estrategicamente após a resolução dos usuários e IDs
+    console.log('🔍 DashboardService - companyId:', companyId);
+    console.log('🔍 DashboardService - company.name:', company.name);
+    console.log('🔍 DashboardService - users encontrados:', users.length);
+    console.log('🔍 DashboardService - userIds:', userIds);
+
     if (userIds.length === 0) {
       return this.getEmptyMaturityData();
     }
@@ -53,6 +59,10 @@ export class DashboardService {
     const responses = await Response.find({
       userId: { $in: userIds }
     }).lean();
+
+    // Logs adicionados após a busca de assignments e responses
+    console.log('🔍 DashboardService - assignments encontrados:', assignments.length);
+    console.log('🔍 DashboardService - responses encontrados:', responses.length);
 
     // Criar mapa de respostas por assignmentId
     const responseMap = new Map();
@@ -125,6 +135,12 @@ export class DashboardService {
     });
 
     const controls = Array.from(controlStatusMap.values());
+
+    // Logs adicionados antes do cálculo estatístico final
+    console.log('🔍 DashboardService - assignedControlIds encontrados:', assignedControlIds.size);
+    console.log('🔍 DashboardService - allControls encontrados:', allControls.length);
+    console.log('🔍 DashboardService - controls finais:', controls.length);
+
     const summary = this.calculateMaturityStats({ controls });
 
     return {
