@@ -107,7 +107,7 @@ export class ReviewService {
     page: number = 1,
     limit: number = 20,
     status?: string
-  ): Promise<{ reviews: IReviewRequest[]; total: number; page: number; totalPages: number }> {
+  ): Promise<{ reviews: any[]; total: number; page: number; totalPages: number }> {
     const skip = (page - 1) * limit;
 
     const filter: any = { companyId: new mongoose.Types.ObjectId(companyId) };
@@ -144,7 +144,7 @@ export class ReviewService {
     companyId: string,
     page: number = 1,
     limit: number = 20
-  ): Promise<{ reviews: IReviewRequest[]; total: number; page: number; totalPages: number }> {
+  ): Promise<{ reviews: any[]; total: number; page: number; totalPages: number }> {
     const skip = (page - 1) * limit;
 
     const filter = {
@@ -175,7 +175,7 @@ export class ReviewService {
   /**
    * Busca uma solicitação de revisão por ID
    */
-  static async getReviewRequestById(reviewId: string, companyId: string): Promise<IReviewRequest | null> {
+  static async getReviewRequestById(reviewId: string, companyId: string): Promise<any | null> {
     const review = await ReviewRequest.findOne({
       _id: reviewId,
       companyId: new mongoose.Types.ObjectId(companyId),
@@ -183,7 +183,8 @@ export class ReviewService {
       .populate('userId', 'name email')
       .populate('repId', 'name email')
       .populate('controlId', 'name id')
-      .populate('responseId');
+      .populate('responseId')
+      .lean();
 
     return review;
   }
@@ -284,5 +285,26 @@ export class ReviewService {
     await review.save();
 
     return review;
+  }
+
+  /**
+   * 🔴 MÉTODO ADICIONADO - Estatísticas de solicitações de revisão
+   */
+  static async getReviewStats(companyId: string): Promise<{
+    total: number;
+    pending: number;
+    approved: number;
+    rejected: number;
+  }> {
+    const filter = { companyId: new mongoose.Types.ObjectId(companyId) };
+
+    const [total, pending, approved, rejected] = await Promise.all([
+      ReviewRequest.countDocuments(filter),
+      ReviewRequest.countDocuments({ ...filter, status: 'pending' }),
+      ReviewRequest.countDocuments({ ...filter, status: 'approved' }),
+      ReviewRequest.countDocuments({ ...filter, status: 'rejected' }),
+    ]);
+
+    return { total, pending, approved, rejected };
   }
 }
