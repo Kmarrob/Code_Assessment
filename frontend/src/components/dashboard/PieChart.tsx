@@ -10,7 +10,15 @@ const renderLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }: an
   const x = cx + r * Math.cos(-midAngle * RADIAN);
   const y = cy + r * Math.sin(-midAngle * RADIAN);
   return (
-    <text x={x} y={y} fill="#fff" textAnchor="middle" dominantBaseline="central" fontSize={12} fontWeight="bold">
+    <text 
+      x={x} 
+      y={y} 
+      fill="#fff" 
+      textAnchor="middle" 
+      dominantBaseline="central" 
+      fontSize={12} 
+      fontWeight="bold"
+    >
       {`${Math.round(percent * 100)}%`}
     </text>
   );
@@ -21,19 +29,21 @@ interface PieChartProps {
   title?: string;
   subtitle?: string;
   height?: number;
+  isPrinting?: boolean;
 }
 
 export const PieChart: React.FC<PieChartProps> = ({ 
   data, 
   title, 
   subtitle, 
-  height = 280 
+  height = 280,
+  isPrinting = false
 }) => {
   const filteredData = data.filter(d => d.value > 0);
 
   if (filteredData.length === 0) {
     return (
-      <div className="bg-card border border-border rounded-xl p-6">
+      <div className={`bg-card border border-border rounded-xl ${isPrinting ? 'p-3' : 'p-6'}`}>
         {title && <h3 className="text-sm font-semibold text-foreground mb-1">{title}</h3>}
         {subtitle && <p className="text-xs text-muted-foreground mb-4">{subtitle}</p>}
         <div className="flex items-center justify-center h-[200px] text-muted-foreground text-sm">
@@ -43,38 +53,63 @@ export const PieChart: React.FC<PieChartProps> = ({
     );
   }
 
+  // 🔴 CORREÇÃO 1: outerRadius menor na impressão (78) vs tela (100)
+  // 🔴 CORREÇÃO 2: Tooltip não aparece na impressão
+  // 🔴 CORREÇÃO 3: Legenda com tamanho menor na impressão
+  // 🔴 CORREÇÃO 4: Largura do gráfico na impressão reduzida para 320px
+
+  const pieContent = (
+    <>
+      <Pie
+        data={filteredData}
+        cx="50%"
+        cy="50%"
+        outerRadius={isPrinting ? 78 : 100}
+        dataKey="value"
+        labelLine={false}
+        label={renderLabel}
+      >
+        {filteredData.map((entry, index) => (
+          <Cell key={`cell-${index}`} fill={entry.color} />
+        ))}
+      </Pie>
+      {!isPrinting && (
+        <Tooltip
+          contentStyle={{ 
+            background: 'hsl(222,44%,10%)', 
+            border: '1px solid hsl(222,30%,16%)', 
+            borderRadius: 8, 
+            color: '#fff', 
+            fontSize: 11 
+          }}
+          formatter={(v: any, n: any) => [v, n]}
+        />
+      )}
+      <Legend 
+        wrapperStyle={{ 
+          fontSize: isPrinting ? 9 : 11,
+          paddingTop: 10
+        }} 
+        iconSize={isPrinting ? 8 : 10}
+      />
+    </>
+  );
+
   return (
-    <div className="bg-card border border-border rounded-xl p-6">
+    <div className={`bg-card border border-border rounded-xl ${isPrinting ? 'p-3' : 'p-6'}`}>
       {title && <h3 className="text-sm font-semibold text-foreground mb-1">{title}</h3>}
       {subtitle && <p className="text-xs text-muted-foreground mb-4">{subtitle}</p>}
-      <ResponsiveContainer width="100%" height={height}>
-        <RechartsPieChart>
-          <Pie
-            data={filteredData}
-            cx="50%"
-            cy="50%"
-            outerRadius={100}
-            dataKey="value"
-            labelLine={false}
-            label={renderLabel}
-          >
-            {filteredData.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={entry.color} />
-            ))}
-          </Pie>
-          <Tooltip
-            contentStyle={{ 
-              background: 'hsl(222,44%,10%)', 
-              border: '1px solid hsl(222,30%,16%)', 
-              borderRadius: 8, 
-              color: '#fff', 
-              fontSize: 11 
-            }}
-            formatter={(v: any, n: any) => [v, n]}
-          />
-          <Legend wrapperStyle={{ fontSize: 11 }} />
+      
+      {!isPrinting ? (
+        <ResponsiveContainer width="100%" height={height}>
+          <RechartsPieChart>{pieContent}</RechartsPieChart>
+        </ResponsiveContainer>
+      ) : (
+        // 🔴 CORREÇÃO: largura reduzida para 320px
+        <RechartsPieChart width={320} height={height}>
+          {pieContent}
         </RechartsPieChart>
-      </ResponsiveContainer>
+      )}
     </div>
   );
 };

@@ -1,5 +1,5 @@
 // frontend/src/components/admin/ControlFormModal.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, Save, Loader2 } from 'lucide-react';
 import { Button } from '../ui/Button.js';
 import { Input } from '../ui/Input.js';
@@ -24,11 +24,6 @@ interface ControlFormModalProps {
   title: string;
   isLoading?: boolean;
 }
-
-// ============================================
-// CORREÇÃO: Domínios de SI (apenas os 4 da ISO/IEC 27002:2022)
-// Removido "Garantia de segurança da informação" - é uma capacidade operacional
-// ============================================
 
 const DOMINIOS = [
   'Governança e ecossistema',
@@ -57,12 +52,6 @@ const CONCEITOS = [
   'Restaurar'
 ];
 
-// ============================================
-// CORREÇÃO: Lista completa das 15 Capacidades Operacionais
-// Corrigido termo em espanhol "Garantia de seguridad da información"
-// para "Garantia de segurança da informação"
-// ============================================
-
 const CAPACIDADES = [
   'Governança',
   'Gestão de ativos',
@@ -78,7 +67,7 @@ const CAPACIDADES = [
   'Monitoramento e análise',
   'Gestão de pessoas',
   'Gestão de criptografia',
-  'Garantia de segurança da informação', // CORRIGIDO: estava em espanhol
+  'Garantia de segurança da informação',
 ];
 
 export const ControlFormModal: React.FC<ControlFormModalProps> = ({
@@ -100,18 +89,81 @@ export const ControlFormModal: React.FC<ControlFormModalProps> = ({
     capacidadesOperacionais: [],
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  
+  const isSavingRef = useRef(false);
 
+  // ============================================
+  // CARREGAMENTO SIMPLIFICADO E DIRETO
+  // ============================================
   useEffect(() => {
+    if (isSavingRef.current) {
+      console.log('🔄 Salvando em andamento - mantendo dados');
+      return;
+    }
+    
+    if (!isOpen) {
+      return;
+    }
+    
     if (control) {
+      console.log('🔍 ControlFormModal - control recebido:', control);
+      
+      // Garantir que dominioDeSI seja um array
+      let dominios = control.dominioDeSI || [];
+      if (typeof dominios === 'string') {
+        dominios = [dominios];
+      }
+      if (!Array.isArray(dominios)) {
+        dominios = [];
+      }
+      
+      // Garantir que tipoDeControle seja um array
+      let tipos = control.tipoDeControle || [];
+      if (typeof tipos === 'string') {
+        tipos = [tipos];
+      }
+      if (!Array.isArray(tipos)) {
+        tipos = [];
+      }
+      
+      // Garantir que propriedadeDeSI seja um array
+      let propriedades = control.propriedadeDeSI || [];
+      if (typeof propriedades === 'string') {
+        propriedades = [propriedades];
+      }
+      if (!Array.isArray(propriedades)) {
+        propriedades = [];
+      }
+      
+      // Garantir que conceitoDeSegurancaCibernetica seja um array
+      let conceitos = control.conceitoDeSegurancaCibernetica || [];
+      if (typeof conceitos === 'string') {
+        conceitos = [conceitos];
+      }
+      if (!Array.isArray(conceitos)) {
+        conceitos = [];
+      }
+      
+      // Garantir que capacidadesOperacionais seja um array
+      let capacidades = control.capacidadesOperacionais || [];
+      if (typeof capacidades === 'string') {
+        capacidades = [capacidades];
+      }
+      if (!Array.isArray(capacidades)) {
+        capacidades = [];
+      }
+      
+      console.log('🔍 Mapeamento inicial dos domínios carregados:', dominios);
+      
       setFormData({
         id: control.id || '',
         nome: control.nome || '',
         controles: control.controles || '',
-        dominioDeSI: control.dominioDeSI || [],
-        tipoDeControle: control.tipoDeControle || [],
-        propriedadeDeSI: control.propriedadeDeSI || [],
-        conceitoDeSegurancaCibernetica: control.conceitoDeSegurancaCibernetica || [],
-        capacidadesOperacionais: control.capacidadesOperacionais || [],
+        dominioDeSI: dominios,
+        tipoDeControle: tipos,
+        propriedadeDeSI: propriedades,
+        conceitoDeSegurancaCibernetica: conceitos,
+        capacidadesOperacionais: capacidades,
       });
     } else {
       setFormData({
@@ -143,16 +195,34 @@ export const ControlFormModal: React.FC<ControlFormModalProps> = ({
     const current = formData[field] as string[] || [];
     const index = current.indexOf(value);
     let newArray: string[];
+    
     if (index >= 0) {
       newArray = current.filter((item) => item !== value);
     } else {
       newArray = [...current, value];
     }
+    
+    console.log(`⚡ Alterando array do campo [${field}]:`, newArray);
     setFormData((prev) => ({ ...prev, [field]: newArray }));
   };
 
+  // ============================================
+  // CORREÇÃO: HandleSubmit com Logs Detalhados
+  // ============================================
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (isLoading) {
+      console.log('⏳ Aguardando salvamento anterior...');
+      return;
+    }
+    
+    // Logs de auditoria antes da validação
+    console.log('💾 [FormModal] Dados em cache (formData):', formData);
+    console.log('💾 [FormModal] dominioDeSI capturado:', formData.dominioDeSI);
+    console.log('💾 [FormModal] Tipo estrutural do domínio:', typeof formData.dominioDeSI);
+    console.log('💾 [FormModal] É uma instância de array?', Array.isArray(formData.dominioDeSI));
+    console.log('💾 [FormModal] Total de domínios validados na View:', formData.dominioDeSI?.length || 0);
     
     const newErrors: Record<string, string> = {};
     if (!formData.id?.trim()) newErrors.id = 'ID é obrigatório';
@@ -164,9 +234,23 @@ export const ControlFormModal: React.FC<ControlFormModalProps> = ({
     }
 
     try {
-      await onSave(formData);
+      isSavingRef.current = true;
+      
+      const payload = {
+        ...formData,
+        dominioDeSI: Array.isArray(formData.dominioDeSI) ? formData.dominioDeSI : [],
+        tipoDeControle: Array.isArray(formData.tipoDeControle) ? formData.tipoDeControle : [],
+        propriedadeDeSI: Array.isArray(formData.propriedadeDeSI) ? formData.propriedadeDeSI : [],
+        conceitoDeSegurancaCibernetica: Array.isArray(formData.conceitoDeSegurancaCibernetica) ? formData.conceitoDeSegurancaCibernetica : [],
+        capacidadesOperacionais: Array.isArray(formData.capacidadesOperacionais) ? formData.capacidadesOperacionais : [],
+      };
+      
+      console.log('🚀 [FormModal] Despachando Payload Final para o Handler:', payload);
+      await onSave(payload);
     } catch (error) {
-      // Erro já tratado no pai
+      console.error('❌ Erro crítico na pipeline de salvamento:', error);
+    } finally {
+      isSavingRef.current = false;
     }
   };
 
@@ -180,6 +264,7 @@ export const ControlFormModal: React.FC<ControlFormModalProps> = ({
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 transition-colors"
+            type="button"
             disabled={isLoading}
           >
             <X className="h-6 w-6" />
@@ -231,27 +316,34 @@ export const ControlFormModal: React.FC<ControlFormModalProps> = ({
             />
           </div>
 
-          {/* CORREÇÃO: Domínios de SI - 4 domínios da ISO/IEC 27002:2022 */}
+          {/* Domínios de SI com tratamento para multipla seleção */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Domínios de SI
             </label>
             <div className="flex flex-wrap gap-2">
-              {DOMINIOS.map((dominio) => (
-                <button
-                  key={dominio}
-                  type="button"
-                  onClick={() => handleArrayChange('dominioDeSI', dominio)}
-                  className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                    (formData.dominioDeSI || []).includes(dominio)
-                      ? 'bg-blue-600 text-white hover:bg-blue-700'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  {dominio}
-                </button>
-              ))}
+              {DOMINIOS.map((dominio) => {
+                const isSelected = (formData.dominioDeSI || []).includes(dominio);
+                return (
+                  <button
+                    key={dominio}
+                    type="button"
+                    onClick={() => handleArrayChange('dominioDeSI', dominio)}
+                    className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                      isSelected
+                        ? 'bg-blue-600 text-white hover:bg-blue-700 ring-2 ring-blue-300'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    {dominio}
+                    {isSelected && ' ✓'}
+                  </button>
+                );
+              })}
             </div>
+            <p className="text-xs text-gray-400 mt-1">
+              {formData.dominioDeSI?.length || 0} domínio(s) selecionado(s)
+            </p>
           </div>
 
           <div>
@@ -259,20 +351,23 @@ export const ControlFormModal: React.FC<ControlFormModalProps> = ({
               Tipos de Controle
             </label>
             <div className="flex flex-wrap gap-2">
-              {TIPOS_CONTROLE.map((tipo) => (
-                <button
-                  key={tipo}
-                  type="button"
-                  onClick={() => handleArrayChange('tipoDeControle', tipo)}
-                  className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                    (formData.tipoDeControle || []).includes(tipo)
-                      ? 'bg-blue-600 text-white hover:bg-blue-700'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  {tipo}
-                </button>
-              ))}
+              {TIPOS_CONTROLE.map((tipo) => {
+                const isSelected = (formData.tipoDeControle || []).includes(tipo);
+                return (
+                  <button
+                    key={tipo}
+                    type="button"
+                    onClick={() => handleArrayChange('tipoDeControle', tipo)}
+                    className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                      isSelected
+                        ? 'bg-blue-600 text-white hover:bg-blue-700'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    {tipo}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -281,20 +376,23 @@ export const ControlFormModal: React.FC<ControlFormModalProps> = ({
               Propriedades de SI
             </label>
             <div className="flex flex-wrap gap-2">
-              {PROPRIEDADES_SI.map((propriedade) => (
-                <button
-                  key={propriedade}
-                  type="button"
-                  onClick={() => handleArrayChange('propriedadeDeSI', propriedade)}
-                  className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                    (formData.propriedadeDeSI || []).includes(propriedade)
-                      ? 'bg-blue-600 text-white hover:bg-blue-700'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  {propriedade}
-                </button>
-              ))}
+              {PROPRIEDADES_SI.map((propriedade) => {
+                const isSelected = (formData.propriedadeDeSI || []).includes(propriedade);
+                return (
+                  <button
+                    key={propriedade}
+                    type="button"
+                    onClick={() => handleArrayChange('propriedadeDeSI', propriedade)}
+                    className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                      isSelected
+                        ? 'bg-blue-600 text-white hover:bg-blue-700'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    {propriedade}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -303,43 +401,48 @@ export const ControlFormModal: React.FC<ControlFormModalProps> = ({
               Conceitos de Segurança Cibernética
             </label>
             <div className="flex flex-wrap gap-2">
-              {CONCEITOS.map((conceito) => (
-                <button
-                  key={conceito}
-                  type="button"
-                  onClick={() => handleArrayChange('conceitoDeSegurancaCibernetica', conceito)}
-                  className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                    (formData.conceitoDeSegurancaCibernetica || []).includes(conceito)
-                      ? 'bg-blue-600 text-white hover:bg-blue-700'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  {conceito}
-                </button>
-              ))}
+              {CONCEITOS.map((conceito) => {
+                const isSelected = (formData.conceitoDeSegurancaCibernetica || []).includes(conceito);
+                return (
+                  <button
+                    key={conceito}
+                    type="button"
+                    onClick={() => handleArrayChange('conceitoDeSegurancaCibernetica', conceito)}
+                    className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                      isSelected
+                        ? 'bg-blue-600 text-white hover:bg-blue-700'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    {conceito}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
-          {/* CORREÇÃO: Capacidades Operacionais com 15 itens */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Capacidades Operacionais
             </label>
             <div className="flex flex-wrap gap-2">
-              {CAPACIDADES.map((capacidade) => (
-                <button
-                  key={capacidade}
-                  type="button"
-                  onClick={() => handleArrayChange('capacidadesOperacionais', capacidade)}
-                  className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                    (formData.capacidadesOperacionais || []).includes(capacidade)
-                      ? 'bg-blue-600 text-white hover:bg-blue-700'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  {capacidade}
-                </button>
-              ))}
+              {CAPACIDADES.map((capacidade) => {
+                const isSelected = (formData.capacidadesOperacionais || []).includes(capacidade);
+                return (
+                  <button
+                    key={capacidade}
+                    type="button"
+                    onClick={() => handleArrayChange('capacidadesOperacionais', capacidade)}
+                    className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                      isSelected
+                        ? 'bg-blue-600 text-white hover:bg-blue-700'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    {capacidade}
+                  </button>
+                );
+              })}
             </div>
           </div>
 

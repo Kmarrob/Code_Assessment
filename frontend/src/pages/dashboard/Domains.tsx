@@ -391,20 +391,20 @@ const STATUS_COLORS = {
 const DomainsContent: React.FC<{ data: DashboardData }> = ({ data }) => {
   const [isGuideOpen, setIsGuideOpen] = useState(false);
 
-  // Debug: verificar dados recebidos
   console.log('🔍 Domains - data recebido:', data);
   console.log('🔍 Domains - controls:', data?.controls);
   console.log('🔍 Domains - primeiro controle:', data?.controls?.[0]);
 
-  // CORREÇÃO: Garantir que data.controls existe
   const controls = data?.controls || [];
 
   const domainData = DOMAINS.map(domain => {
-    // CORREÇÃO: Suporte para dominioDeSI OU dominioDeSI
+    // ============================================
+    // CORREÇÃO: Remover duplicidade no campo dominioDeSI
+    // ============================================
     const filtered = controls.filter(c => {
       const control = c.control || c;
-      // Tentar buscar em dominioDeSI OU dominioDeSI
-      const dominios = control?.dominioDeSI || control?.dominioDeSI || [];
+      // CORREÇÃO: Apenas um campo, sem duplicidade
+      const dominios = control?.dominioDeSI || [];
       if (Array.isArray(dominios)) {
         return dominios.includes(domain);
       }
