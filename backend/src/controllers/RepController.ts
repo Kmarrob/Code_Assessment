@@ -8,6 +8,8 @@ import { ErrorLogger } from '../utils/errorLogger.js';
 import { AuditService } from '../services/AuditService.js';
 import { User } from '../models/User.js';
 import { Company } from '../models/Company.js';
+import { Response as ResponseModel } from '../models/Response.js';
+import { Assignment } from '../models/Assignment.js';
 import {
   repCreateUserSchema,
   repAssignControlsSchema,
@@ -308,6 +310,118 @@ export class RepController {
         data: controls,
         statusCode: 200,
         timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      ErrorLogger.logError(error as Error, {
+        userId: req.userId,
+        email: req.user?.email,
+        ip: req.ip,
+        userAgent: req.headers['user-agent'],
+        path: req.path,
+        method: req.method,
+      });
+      next(error);
+    }
+  }
+
+  /**
+   * Busca todos os usuários do preposto com suas respostas (otimizado)
+   * GET /api/rep/users-with-responses
+   */
+  static async getUsersWithResponses(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const repId = req.userId;
+      if (!repId) {
+        throw new AppError('Usuário não autenticado', 401);
+      }
+
+      // Buscar o preposto para obter a empresa
+      const rep = await User.findById(repId);
+      if (!rep) {
+        throw new NotFoundError('Preposto não encontrado');
+      }
+
+      const companyId = rep.companyId;
+      if (!companyId) {
+        throw new AppError('Preposto não possui empresa associada', 400);
+      }
+
+      // Buscar todos os usuários do preposto
+      const users = await User.find({
+        createdBy: repId,
+        role: 'user',
+        isActive: true,
+      }).select('_id name email department');
+
+      // Buscar atribuições da empresa para obter os IDs
+      const assignments = await Assignment.find({
+        companyId: companyId,
+      }).select('_id');
+
+      const assignmentIds = assignments.map(a => a._id);
+
+      // Buscar respostas que correspondem a essas atribuições
+      const responses = await ResponseModel.find({
+        assignmentId: { $in: assignmentIds },
+      })
+        .populate('controlId', 'name id')
+        .lean();
+
+      // Mapear respostas por usuário
+      const responsesByUser: Record<string, any[]> = {};
+      responses.forEach((r: any) => {
+        const userId = r.userId?.toString() || r.userId;
+        if (userId) {
+          if (!responsesByUser[userId]) {
+            responsesByUser[userId] = [];
+          }
+          responsesByUser[userId].push({
+            _id: r._id,
+            controlId: r.controlId?._id || r.controlId,
+            controlName: r.controlId?.name || 'Controle não identificado',
+            maturityLevel: r.maturityLevel !== undefined && r.maturityLevel !== null 
+              ? Number(r.maturityLevel) 
+              : -1,
+            scenario: r.scenarioDescription || r.scenario || '',
+            observations: r.observations || '',
+            updatedAt: r.updatedAt || r.lastUpdatedAt || r.createdAt,
+          });
+        }
+      });
+
+      // Montar resultado
+      const result = users.map((user: any) => {
+        const userResponses = responsesByUser[user._id.toString()] || [];
+        const totalResponses = userResponses.length;
+        const completedResponses = userResponses.filter(
+          (r) => r.maturityLevel !== undefined && r.maturityLevel !== null && r.maturityLevel !== -1
+        ).length;
+
+        return {
+          _id: user._id,
+          name: user.name,
+          email: user.email,
+          department: user.department || '-',
+          responses: userResponses,
+          totalResponses,
+          completedResponses,
+          progress: totalResponses > 0 ? Math.round((completedResponses / totalResponses) * 100) : 0,
+        };
+      });
+
+      res.status(200).json({
+        success: true,
+        data: result,
+        pagination: {
+          page: 1,
+          limit: result.length,
+          total: result.length,
+          totalPages: 1,
+        },
       });
     } catch (error) {
       ErrorLogger.logError(error as Error, {
