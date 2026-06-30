@@ -6,7 +6,7 @@ import {
   Users, UserPlus, ClipboardList, BarChart3, 
   CheckCircle, Clock, AlertCircle, LogOut,
   Search, ChevronLeft, ChevronRight, Plus, Loader2,
-  LayoutDashboard
+  LayoutDashboard, MessageSquare
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card.js';
 import { Button } from '../components/ui/Button.js';
@@ -102,9 +102,12 @@ export const RepDashboard: React.FC = () => {
   // CORREÇÃO: DASHBOARD DE MATURIDADE - ROTA SEM companyId
   // ============================================
   const handleNavigateToDashboard = () => {
-    // O backend obtém o companyId do preposto logado
-    // Portanto, navegamos para a rota base do dashboard do preposto
     navigate('/rep/dashboard');
+  };
+
+  // 🔴 NOVO: Gerenciar Respostas
+  const handleManageResponses = () => {
+    navigate('/rep/responses');
   };
 
   // ============================================
@@ -158,7 +161,7 @@ export const RepDashboard: React.FC = () => {
             <h1 className="text-3xl font-bold text-gray-900">Painel do Preposto</h1>
             <p className="text-gray-600 mt-1">Gerencie seus usuários e controles</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button onClick={handleNavigateToDashboard} variant="outline">
               <LayoutDashboard className="h-4 w-4 mr-2" />
               Dashboard de Maturidade
@@ -246,6 +249,77 @@ export const RepDashboard: React.FC = () => {
           </Card>
         </div>
 
+        {/* Cards de Navegação Rápida - 🔴 NOVO CARD ADICIONADO */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          {/* Card existente: Dashboard de Maturidade */}
+          <div
+            onClick={handleNavigateToDashboard}
+            className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Visualizar</p>
+                <p className="text-lg font-bold text-gray-900">Maturidade</p>
+              </div>
+              <div className="p-3 bg-green-100 rounded-full">
+                <LayoutDashboard className="w-6 h-6 text-green-600" />
+              </div>
+            </div>
+            <ChevronRight className="w-4 h-4 text-gray-400 mt-2" />
+          </div>
+
+          {/* 🔴 NOVO - Card: Gerenciar Respostas */}
+          <div
+            onClick={handleManageResponses}
+            className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Gerenciar</p>
+                <p className="text-lg font-bold text-gray-900">Respostas</p>
+              </div>
+              <div className="p-3 bg-purple-100 rounded-full">
+                <MessageSquare className="w-6 h-6 text-purple-600" />
+              </div>
+            </div>
+            <ChevronRight className="w-4 h-4 text-gray-400 mt-2" />
+          </div>
+
+          {/* Card existente: Cadastrar Usuário */}
+          <div
+            onClick={handleCreateUser}
+            className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Cadastrar</p>
+                <p className="text-lg font-bold text-gray-900">Novo Usuário</p>
+              </div>
+              <div className="p-3 bg-blue-100 rounded-full">
+                <UserPlus className="w-6 h-6 text-blue-600" />
+              </div>
+            </div>
+            <ChevronRight className="w-4 h-4 text-gray-400 mt-2" />
+          </div>
+
+          {/* Card existente: Atribuir Controles */}
+          <div
+            onClick={() => {}}
+            className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow cursor-pointer opacity-50 cursor-not-allowed"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Atribuir</p>
+                <p className="text-lg font-bold text-gray-900">Controles</p>
+              </div>
+              <div className="p-3 bg-indigo-100 rounded-full">
+                <ClipboardList className="w-6 h-6 text-indigo-600" />
+              </div>
+            </div>
+            <ChevronRight className="w-4 h-4 text-gray-400 mt-2" />
+          </div>
+        </div>
+
         {/* Users Table */}
         <Card>
           <CardHeader>
@@ -298,12 +372,10 @@ export const RepDashboard: React.FC = () => {
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {users.map((u) => {
-                      // CORREÇÃO: Calcular progresso baseado nos controles atribuídos
                       const progress = u.assignmentsCount > 0 
                         ? Math.round((u.responsesCount / u.assignmentsCount) * 100) 
                         : 0;
                       
-                      // CORREÇÃO: Definir cor da barra baseada no progresso
                       let barColor = 'bg-red-500';
                       if (progress >= 67) barColor = 'bg-green-500';
                       else if (progress >= 34) barColor = 'bg-yellow-500';

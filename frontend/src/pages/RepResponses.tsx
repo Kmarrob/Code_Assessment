@@ -1,0 +1,466 @@
+// frontend/src/pages/RepResponses.tsx
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext.js';
+import {
+  Users,
+  Search,
+  ChevronLeft,
+  ChevronRight,
+  Loader2,
+  AlertCircle,
+  FileText,
+  MessageSquare,
+  CheckCircle,
+  Clock,
+  XCircle,
+  RefreshCw,
+  ArrowLeft,
+  Eye,
+} from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card.js';
+import { Button } from '../components/ui/Button.js';
+import { Input } from '../components/ui/Input.js';
+import { EmptyState } from '../components/ui/EmptyState.js';
+import { ReviewModal } from '../components/rep/ReviewModal.js';
+import { ReviewList } from '../components/rep/ReviewList.js';
+import { IAttachment } from '../types/review.js';
+import { reviewService } from '../services/review.service.js';
+import { repService, RepUser } from '../services/rep.service.js';
+import toast from 'react-hot-toast';
+
+interface UserResponse {
+  _id: string;
+  controlId: string;
+  controlName: string;
+  maturityLevel: number;
+  scenario: string;
+  observations: string;
+  updatedAt: string;
+}
+
+interface UserWithResponses {
+  _id: string;
+  name: string;
+  email: string;
+  responses: UserResponse[];
+  totalResponses: number;
+  completedResponses: number;
+  progress: number;
+}
+
+export const RepResponses: React.FC = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [users, setUsers] = useState<UserWithResponses[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedUser, setSelectedUser] = useState<UserWithResponses | null>(null);
+  const [selectedResponse, setSelectedResponse] = useState<UserResponse | null>(null);
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [activeTab, setActiveTab] = useState<'responses' | 'reviews'>('responses');
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState<any>(null);
+  const limit = 10;
+
+  const companyId = (user as any)?.companyId || (user as any)?.company?._id || '';
+
+  const loadUsersWithResponses = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Buscar usuários da empresa
+      const response = await repService.listUsers({
+        page,
+        limit,
+        search: searchTerm || undefined,
+      });
+
+      const companyUsers = response.items || [];
+      const usersWithResponses: UserWithResponses[] = [];
+
+      for (const u of companyUsers) {
+        try {
+          // Buscar respostas do usuário via API
+          const userResponses = await repService.getUserResponses(u._id);
+          
+          const responses = userResponses.map((r: any) => ({
+            _id: r._id,
+            controlId: r.controlId?._id || r.controlId,
+            controlName: r.controlId?.name || 'Controle não identificado',
+            maturityLevel: r.maturityLevel,
+            scenario: r.scenario || '',
+            observations: r.observations || '',
+            updatedAt: r.updatedAt,
+          }));
+
+          const totalResponses = responses.length;
+          const completedResponses = responses.filter(
+            (r) => r.maturityLevel !== undefined && r.maturityLevel !== null && r.maturityLevel !== -1
+          ).length;
+
+          usersWithResponses.push({
+            _id: u._id,
+            name: u.name,
+            email: u.email,
+            responses,
+            totalResponses,
+            completedResponses,
+            progress: totalResponses > 0 ? Math.round((completedResponses / totalResponses) * 100) : 0,
+          });
+        } catch (err) {
+          console.error(`Erro ao carregar respostas do usuário ${u.name}:`, err);
+          usersWithResponses.push({
+            _id: u._id,
+            name: u.name,
+            email: u.email,
+            responses: [],
+            totalResponses: 0,
+            completedResponses: 0,
+            progress: 0,
+          });
+        }
+      }
+
+      setUsers(usersWithResponses);
+      setPagination(response.pagination);
+    } catch (err: any) {
+      console.error('Erro ao carregar usuários:', err);
+      setError(err.message || 'Erro ao carregar dados');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (companyId) {
+      loadUsersWithResponses();
+    }
+  }, [companyId, page, searchTerm]);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await loadUsersWithResponses();
+    setRefreshing(false);
+    toast.success('Dados atualizados');
+  };
+
+  const handleOpenReviewModal = (user: UserWithResponses, response: UserResponse) => {
+    setSelectedUser(user);
+    setSelectedResponse(response);
+    setShowReviewModal(true);
+  };
+
+  const handleSubmitReview = async (justification: string, attachments: IAttachment[]) => {
+    if (!selectedUser || !selectedResponse) {
+      throw new Error('Dados da solicitação incompletos');
+    }
+
+    try {
+      await reviewService.createReviewRequest({
+        responseId: selectedResponse._id,
+        userId: selectedUser._id,
+        controlId: selectedResponse.controlId,
+        justification,
+        attachments,
+        companyId,
+      });
+
+      toast.success('Solicitação de revisão enviada com sucesso!');
+      await loadUsersWithResponses();
+    } catch (err: any) {
+      console.error('Erro ao enviar solicitação:', err);
+      throw new Error(err.message || 'Erro ao enviar solicitação de revisão');
+    }
+  };
+
+  const getStatusIcon = (level: number) => {
+    if (level === 2) return <CheckCircle className="w-4 h-4 text-green-500" />;
+    if (level === 1) return <Clock className="w-4 h-4 text-yellow-500" />;
+    if (level === 0) return <XCircle className="w-4 h-4 text-red-500" />;
+    return <AlertCircle className="w-4 h-4 text-gray-400" />;
+  };
+
+  const getStatusLabel = (level: number) => {
+    if (level === 2) return 'Implementado';
+    if (level === 1) return 'Parcial';
+    if (level === 0) return 'Não Implementado';
+    return 'Não respondido';
+  };
+
+  const getStatusColor = (level: number) => {
+    if (level === 2) return 'text-green-600 bg-green-50';
+    if (level === 1) return 'text-yellow-600 bg-yellow-50';
+    if (level === 0) return 'text-red-600 bg-red-50';
+    return 'text-gray-400 bg-gray-50';
+  };
+
+  const filteredUsers = users.filter(
+    (u) =>
+      u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      u.email.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const totalPages = pagination?.totalPages || 1;
+  const currentPage = pagination?.page || 1;
+  const hasPrevious = currentPage > 1;
+  const hasNext = currentPage < totalPages;
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage < 1) return;
+    if (pagination && newPage > pagination.totalPages) return;
+    setPage(newPage);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleBack = () => {
+    navigate('/rep');
+  };
+
+  if (loading && page === 1) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin text-blue-500 mx-auto" />
+          <p className="mt-4 text-gray-500">Carregando respostas...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
+        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={handleBack}
+              className="text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <div className="flex items-center gap-2">
+              <MessageSquare className="h-6 w-6 text-purple-600" aria-hidden="true" />
+              <span className="text-lg font-semibold text-gray-900">Gerenciar Respostas</span>
+            </div>
+          </div>
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+          >
+            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+            Atualizar
+          </button>
+        </div>
+      </header>
+
+      <main className="container mx-auto px-4 py-6 max-w-7xl">
+        {/* Tabs */}
+        <div className="flex border-b border-gray-200 mb-6">
+          <button
+            onClick={() => setActiveTab('responses')}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'responses'
+                ? 'border-purple-600 text-purple-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            <FileText className="w-4 h-4 inline mr-2" />
+            Respostas dos Usuários
+          </button>
+          <button
+            onClick={() => setActiveTab('reviews')}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'reviews'
+                ? 'border-purple-600 text-purple-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            <MessageSquare className="w-4 h-4 inline mr-2" />
+            Solicitações de Revisão
+          </button>
+        </div>
+
+        {activeTab === 'responses' ? (
+          <>
+            {/* Barra de busca */}
+            <div className="relative mb-6">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Buscar usuário por nome ou e-mail..."
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setPage(1);
+                }}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+              />
+            </div>
+
+            {error && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-600 text-sm mb-6">
+                {error}
+              </div>
+            )}
+
+            {filteredUsers.length === 0 ? (
+              <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
+                <Users className="w-12 h-12 mx-auto text-gray-300 mb-3" />
+                <p className="text-gray-500">
+                  {searchTerm
+                    ? 'Nenhum usuário encontrado com este termo'
+                    : 'Nenhum usuário cadastrado na empresa'}
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {filteredUsers.map((u) => (
+                  <div
+                    key={u._id}
+                    className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden"
+                  >
+                    {/* Cabeçalho do usuário */}
+                    <div className="p-4 bg-gray-50 border-b border-gray-200">
+                      <div className="flex items-center justify-between flex-wrap gap-2">
+                        <div>
+                          <h3 className="font-medium text-gray-900">{u.name}</h3>
+                          <p className="text-sm text-gray-500">{u.email}</p>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <div className="text-right">
+                            <p className="text-sm text-gray-600">
+                              {u.completedResponses} / {u.totalResponses} respondidos
+                            </p>
+                            <div className="w-32 h-2 bg-gray-200 rounded-full overflow-hidden mt-1">
+                              <div
+                                className="h-full bg-purple-600 rounded-full transition-all"
+                                style={{ width: `${u.progress}%` }}
+                              />
+                            </div>
+                          </div>
+                          <span className="text-sm font-medium text-purple-600">
+                            {u.progress}%
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Lista de respostas */}
+                    <div className="divide-y divide-gray-100">
+                      {u.responses.length === 0 ? (
+                        <div className="p-4 text-center text-gray-400 text-sm">
+                          Nenhuma resposta atribuída
+                        </div>
+                      ) : (
+                        u.responses.map((response) => (
+                          <div
+                            key={response._id}
+                            className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+                          >
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-3 flex-wrap">
+                                <span className="font-medium text-gray-800 text-sm truncate">
+                                  {response.controlName}
+                                </span>
+                                <span
+                                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(
+                                    response.maturityLevel !== undefined && response.maturityLevel !== null
+                                      ? response.maturityLevel
+                                      : -1
+                                  )}`}
+                                >
+                                  {getStatusIcon(
+                                    response.maturityLevel !== undefined && response.maturityLevel !== null
+                                      ? response.maturityLevel
+                                      : -1
+                                  )}
+                                  {getStatusLabel(
+                                    response.maturityLevel !== undefined && response.maturityLevel !== null
+                                      ? response.maturityLevel
+                                      : -1
+                                  )}
+                                </span>
+                              </div>
+                              {response.scenario && (
+                                <p className="text-sm text-gray-500 truncate mt-0.5">
+                                  {response.scenario}
+                                </p>
+                              )}
+                              <p className="text-xs text-gray-400 mt-0.5">
+                                Atualizado em: {new Date(response.updatedAt).toLocaleDateString('pt-BR')}
+                              </p>
+                            </div>
+                            <button
+                              onClick={() => handleOpenReviewModal(u, response)}
+                              className="ml-4 flex items-center gap-1 px-3 py-1.5 text-sm text-purple-600 hover:text-purple-700 border border-purple-300 rounded-lg hover:bg-purple-50 transition-colors flex-shrink-0"
+                            >
+                              <MessageSquare className="w-3.5 h-3.5" />
+                              Solicitar Revisão
+                            </button>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Paginação */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between px-4 py-3 mt-4 bg-white rounded-lg border border-gray-200">
+                <div className="text-sm text-gray-500">
+                  Página {currentPage} de {totalPages}
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={!hasPrevious}
+                    className="px-3 py-1 rounded border border-gray-300 text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={!hasNext}
+                    className="px-3 py-1 rounded border border-gray-300 text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
+        ) : (
+          <ReviewList
+            companyId={companyId}
+            onReviewStatusChange={() => {
+              loadUsersWithResponses();
+            }}
+          />
+        )}
+      </main>
+
+      {/* Modal de Solicitação de Revisão */}
+      <ReviewModal
+        isOpen={showReviewModal}
+        onClose={() => {
+          setShowReviewModal(false);
+          setSelectedUser(null);
+          setSelectedResponse(null);
+        }}
+        onSubmit={handleSubmitReview}
+        userName={selectedUser?.name}
+        controlName={selectedResponse?.controlName}
+      />
+    </div>
+  );
+};
+
+export default RepResponses;
