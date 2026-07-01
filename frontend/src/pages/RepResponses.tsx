@@ -29,6 +29,19 @@ import { reviewService } from '../services/review.service.js';
 import { repService, UserWithResponses } from '../services/rep.service.js';
 import toast from 'react-hot-toast';
 
+// 🔴 INTERFACE ADICIONADA
+interface UserResponse {
+  _id: string;
+  controlId: string;
+  controlIdString: string;
+  controlName: string;
+  maturityLevel: number;
+  scenario: string;
+  scenarioDescription: string;
+  observations: string;
+  updatedAt: string;
+}
+
 export const RepResponses: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -70,12 +83,10 @@ export const RepResponses: React.FC = () => {
     }
   };
 
-  // 🔴 CORREÇÃO: Remover searchTerm das dependências
   useEffect(() => {
     if (companyId) {
       loadUsersWithResponses();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [companyId]);
 
   const handleRefresh = async () => {
@@ -158,7 +169,6 @@ export const RepResponses: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -185,7 +195,6 @@ export const RepResponses: React.FC = () => {
       </header>
 
       <main className="container mx-auto px-4 py-6 max-w-7xl">
-        {/* Tabs */}
         <div className="flex border-b border-gray-200 mb-6">
           <button
             onClick={() => setActiveTab('responses')}
@@ -213,7 +222,6 @@ export const RepResponses: React.FC = () => {
 
         {activeTab === 'responses' ? (
           <>
-            {/* Barra de busca */}
             <div className="relative mb-6">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
@@ -249,7 +257,6 @@ export const RepResponses: React.FC = () => {
                     key={u._id}
                     className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden"
                   >
-                    {/* Cabeçalho do usuário */}
                     <div className="p-4 bg-gray-50 border-b border-gray-200">
                       <div className="flex items-center justify-between flex-wrap gap-2">
                         <div>
@@ -278,20 +285,22 @@ export const RepResponses: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Lista de respostas */}
                     <div className="divide-y divide-gray-100">
                       {u.responses.length === 0 ? (
                         <div className="p-4 text-center text-gray-400 text-sm">
                           Nenhuma resposta atribuída
                         </div>
                       ) : (
-                        u.responses.map((response) => (
+                        u.responses.map((response: any) => (
                           <div
                             key={response._id}
                             className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
                           >
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-3 flex-wrap">
+                                <span className="text-xs font-mono text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
+                                  {response.controlIdString || 'N/A'}
+                                </span>
                                 <span className="font-medium text-gray-800 text-sm truncate">
                                   {response.controlName}
                                 </span>
@@ -314,9 +323,14 @@ export const RepResponses: React.FC = () => {
                                   )}
                                 </span>
                               </div>
-                              {response.scenario && (
-                                <p className="text-sm text-gray-500 truncate mt-0.5">
-                                  {response.scenario}
+                              {response.scenarioDescription && (
+                                <p className="text-sm text-gray-600 mt-0.5">
+                                  📝 {response.scenarioDescription}
+                                </p>
+                              )}
+                              {response.observations && (
+                                <p className="text-xs text-gray-400 mt-0.5">
+                                  💬 {response.observations}
                                 </p>
                               )}
                               <p className="text-xs text-gray-400 mt-0.5">
@@ -349,7 +363,6 @@ export const RepResponses: React.FC = () => {
         )}
       </main>
 
-      {/* Modal de Solicitação de Revisão */}
       <ReviewModal
         isOpen={showReviewModal}
         onClose={() => {
