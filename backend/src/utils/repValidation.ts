@@ -46,9 +46,46 @@ export const repUpdateUserSchema = z.object({
     .max(100, 'Nome deve ter no máximo 100 caracteres')
     .regex(/^[a-zA-ZÀ-ÿ\s]+$/, 'Nome deve conter apenas letras e espaços')
     .optional(),
-  company: z.string().max(100).optional(),
-  department: z.string().max(100).optional(),
-  isActive: z.boolean().optional(),
+  department: z.string()
+    .max(100, 'Departamento deve ter no máximo 100 caracteres')
+    .optional(),
+});
+
+// 🔴 NOVO: Schema para inativação de usuário
+export const repInactivateUserSchema = z.object({
+  reason: z.enum(['Desligado', 'Mudou de setor', 'Outros'], {
+    errorMap: () => ({ message: 'Motivo inválido. Use: Desligado, Mudou de setor ou Outros' })
+  }),
+  description: z.string()
+    .min(0, 'Descrição deve ter no mínimo 5 caracteres')
+    .max(500, 'Descrição deve ter no máximo 500 caracteres')
+    .optional()
+    .refine(
+      (val) => {
+        // Se motivo for "Outros", descrição é obrigatória
+        return true; // Validação feita no controller
+      },
+      { message: 'Descrição é obrigatória quando motivo for "Outros"' }
+    ),
+});
+
+// 🔴 NOVO: Schema para revogação de controle
+export const repRevokeControlSchema = z.object({
+  confirmRevoke: z.boolean({
+    required_error: 'Confirmação de revogação é obrigatória',
+    invalid_type_error: 'confirmRevoke deve ser true ou false',
+  }).refine(val => val === true, {
+    message: 'Você deve confirmar a revogação do controle',
+  }),
+  newUserId: z.string()
+    .optional()
+    .refine(
+      (val) => {
+        // Se fornecido, deve ser uma string válida (não vazia)
+        return !val || val.length > 0;
+      },
+      { message: 'ID do usuário destino inválido' }
+    ),
 });
 
 // Schema para resposta de controle

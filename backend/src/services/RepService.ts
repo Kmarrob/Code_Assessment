@@ -191,6 +191,241 @@ export class RepService {
   }
 
   /**
+   * 🔴 NOVO: Editar usuário pelo preposto
+   */
+  static async updateUser(
+    repId: string,
+    userId: string,
+    data: {
+      name?: string;
+      email?: string;
+      department?: string;
+    }
+  ) {
+    // Verificar se o preposto existe
+    const rep = await User.findById(repId);
+    if (!rep) {
+      throw new NotFoundError('Preposto não encontrado');
+    }
+
+    // Verificar se o usuário existe
+    const user = await User.findById(userId);
+    if (!user) {
+      throw new NotFoundError('Usuário não encontrado');
+    }
+
+    // Verificar se o usuário pertence ao preposto
+    if (user.createdBy?.toString() !== repId) {
+      throw new AppError('Usuário não pertence a este preposto', 403);
+    }
+
+    // Verificar se o usuário está na mesma empresa do preposto
+    if (rep.companyId && user.companyId?.toString() !== rep.companyId.toString()) {
+      throw new AppError('Usuário não pertence à mesma empresa do preposto', 403);
+    }
+
+    // Se email for alterado, verificar se já está em uso por outro usuário
+    if (data.email && data.email !== user.email) {
+      const existingUser = await User.findOne({
+        email: data.email,
+        _id: { $ne: userId },
+      });
+      if (existingUser) {
+        throw new ValidationError({ email: ['Email já está em uso por outro usuário'] });
+      }
+    }
+
+    // Atualizar usuário
+    const updateData: any = {};
+    if (data.name) updateData.name = data.name;
+    if (data.email) updateData.email = data.email;
+    if (data.department !== undefined) updateData.department = data.department;
+
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { $set: updateData },
+      { new: true, runValidators: true }
+    ).select('_id name email department role isActive');
+
+    logger.info(`Usuário ${user.email} atualizado pelo preposto ${rep.email}`);
+
+    return updatedUser;
+  }
+
+  /**
+   * 🔴 NOVO: Inativar usuário com justificativa
+   */
+  static async inactivateUser(
+    repId: string,
+    userId: string,
+    data: {
+      reason: 'Desligado' | 'Mudou de setor' | 'Outros';
+      description: string;
+    }
+  ) {
+    // Verificar se o preposto existe
+    const rep = await User.findById(repId);
+    if (!rep) {
+      throw new NotFoundError('Preposto não encontrado');
+    }
+
+    // Verificar se o usuário existe
+    const user = await User.findById(userId);
+    if (!user) {
+      throw new NotFoundError('Usuário não encontrado');
+    }
+
+    // Verificar se o usuário pertence ao preposto
+    if (user.createdBy?.toString() !== repId) {
+      throw new AppError('Usuário não pertence a este preposto', 403);
+    }
+
+    // Verificar se o usuário está na mesma empresa do preposto
+    if (rep.companyId && user.companyId?.toString() !== rep.companyId.toString()) {
+      throw new AppError('Usuário não pertence à mesma empresa do preposto', 403);
+    }
+
+    // Verificar se o usuário já está inativo
+    if (!user.isActive) {
+      throw new AppError('Usuário já está inativo', 400);
+    }
+
+    // Inativar usuário
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      {
+        $set: {
+          isActive: false,
+          inactivationReason: data.reason,
+          inactivationDescription: data.description || '',
+          inactivatedAt: new Date(),
+          inactivatedBy: repId,
+        },
+      },
+      { new: true }
+    ).select('_id name email role isActive inactivationReason inactivationDescription inactivatedAt');
+
+    logger.info(`Usuário ${user.email} inativado pelo preposto ${rep.email}. Motivo: ${data.reason}`);
+
+    // Opcional: Remover atribuições pendentes do usuário
+    await Assignment.updateMany(
+      { userId, status: ResponseStatus.PENDING },
+      { $set: { status: ResponseStatus.REVOKED } }
+    );
+
+    return updatedUser;
+  }
+
+  /**
+   * 🔴 NOVO: Revogar controle com reatribuição
+   */
+  static async revokeControl(
+    repId: string,
+    assignmentId: string,
+    newUserId: string | null
+  ) {
+    // Verificar se o preposto existe
+    const rep = await User.findById(repId);
+    if (!rep) {
+      throw new NotFoundError('Preposto não encontrado');
+    }
+
+    // Buscar a atribuição
+    const assignment = await Assignment.findById(assignmentId)
+      .populate('userId', 'name email')
+      .populate('controlId', 'id nome');
+
+    if (!assignment) {
+      throw new NotFoundError('Atribuição não encontrada');
+    }
+
+    // Verificar se a atribuição pertence à empresa do preposto
+    const currentUser = await User.findById(assignment.userId);
+    if (!currentUser || currentUser.companyId?.toString() !== rep.companyId?.toString()) {
+      throw new AppError('Atribuição não pertence à sua empresa', 403);
+    }
+
+    // Verificar se a atribuição está pendente (não respondida)
+    if (assignment.status === ResponseStatus.COMPLETED) {
+      throw new AppError('Não é possível revogar um controle já respondido', 400);
+    }
+
+    // Guardar informações para resposta
+    const oldUserId = assignment.userId;
+    const oldUser = currentUser;
+    const control = assignment.controlId as any;
+
+    // Remover a atribuição atual
+    await Assignment.findByIdAndDelete(assignmentId);
+
+    let newAssignment = null;
+
+    // Se novo usuário foi especificado, criar nova atribuição
+    if (newUserId) {
+      // Verificar se o novo usuário existe e pertence ao preposto
+      const newUser = await User.findOne({
+        _id: newUserId,
+        createdBy: repId,
+        role: UserRole.USER,
+        isActive: true,
+      });
+
+      if (!newUser) {
+        throw new NotFoundError('Usuário destino não encontrado ou inativo');
+      }
+
+      // Verificar se o novo usuário está na mesma empresa
+      if (newUser.companyId?.toString() !== rep.companyId?.toString()) {
+        throw new AppError('Usuário destino não pertence à mesma empresa', 403);
+      }
+
+      // Verificar se o controle já está atribuído ao novo usuário
+      const existingAssignment = await Assignment.findOne({
+        userId: newUserId,
+        controlId: assignment.controlId,
+      });
+
+      if (existingAssignment) {
+        throw new AppError('Este controle já está atribuído ao usuário destino', 400);
+      }
+
+      // Criar nova atribuição
+      newAssignment = new Assignment({
+        userId: newUserId,
+        controlId: assignment.controlId,
+        assignedBy: repId,
+        assignedAt: new Date(),
+        status: ResponseStatus.PENDING,
+        // Transferir metadados se existirem
+        notes: assignment.notes,
+        dueDate: assignment.dueDate,
+      });
+
+      await newAssignment.save();
+      await newAssignment.populate('userId', 'name email');
+      await newAssignment.populate('controlId', 'id nome');
+
+      logger.info(
+        `Controle ${control?.id || assignment.controlId} revogado do usuário ${oldUser?.email} e reatribuído para ${newUser.email} pelo preposto ${rep.email}`
+      );
+    } else {
+      logger.info(
+        `Controle ${control?.id || assignment.controlId} revogado do usuário ${oldUser?.email} pelo preposto ${rep.email}`
+      );
+    }
+
+    return {
+      revoked: true,
+      oldUserId,
+      oldUserEmail: oldUser?.email,
+      controlId: assignment.controlId,
+      controlName: control?.nome || 'Controle',
+      newUserId: newUserId || null,
+      newAssignment: newAssignment || null,
+    };
+  }
+
+  /**
    * Atribuir controles a um usuário (sem repetição)
    * Se um controle já estiver atribuído a outro usuário, pode ser movido com force=true
    */

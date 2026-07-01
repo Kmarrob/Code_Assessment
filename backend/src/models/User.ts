@@ -11,6 +11,11 @@ export interface IUserDocument extends IUser, Document {
   refreshToken?: string;
   passwordHistory?: string[];
   passwordExpiresAt?: Date;
+  // 🔴 ADICIONADO: Campos para inativação
+  inactivationReason?: 'Desligado' | 'Mudou de setor' | 'Outros';
+  inactivationDescription?: string;
+  inactivatedAt?: Date;
+  inactivatedBy?: mongoose.Types.ObjectId;
   comparePassword(candidatePassword: string): Promise<boolean>;
   needsPasswordChange(): boolean;
 }
@@ -90,6 +95,26 @@ const userSchema = new Schema<IUserDocument>(
     },
     passwordExpiresAt: {
       type: Date,
+    },
+    // 🔴 ADICIONADO: Campos para inativação
+    inactivationReason: {
+      type: String,
+      enum: ['Desligado', 'Mudou de setor', 'Outros'],
+      required: false,
+    },
+    inactivationDescription: {
+      type: String,
+      maxlength: [500, 'Descrição deve ter no máximo 500 caracteres'],
+      required: false,
+    },
+    inactivatedAt: {
+      type: Date,
+      required: false,
+    },
+    inactivatedBy: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      required: false,
     },
   },
   {
@@ -208,6 +233,9 @@ userSchema.index({ consultantId: 1, role: 1 });
 userSchema.index({ name: 'text', email: 'text' });
 userSchema.index({ lastLogin: -1 });
 userSchema.index({ passwordExpiresAt: 1 });
+// 🔴 ADICIONADO: Índices para inativação
+userSchema.index({ inactivatedBy: 1 });
+userSchema.index({ inactivationReason: 1 });
 
 // ============================================
 // MÉTODOS ESTÁTICOS

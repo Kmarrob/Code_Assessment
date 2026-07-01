@@ -64,7 +64,7 @@ export interface RepStats {
 }
 
 /**
- * 🔴 NOVO - Interface para resposta do endpoint otimizado
+ * Interface para resposta do endpoint otimizado
  */
 export interface UserWithResponses {
   _id: string;
@@ -94,6 +94,31 @@ export interface UsersWithResponsesResponse {
     total: number;
     totalPages: number;
   };
+}
+
+/**
+ * 🔴 NOVO: Interface para inativação de usuário
+ */
+export interface InactivateUserData {
+  reason: 'Desligado' | 'Mudou de setor' | 'Outros';
+  description: string;
+}
+
+/**
+ * 🔴 NOVO: Interface para revogação de controle
+ */
+export interface RevokeControlData {
+  confirmRevoke: boolean;
+  newUserId?: string;
+}
+
+/**
+ * 🔴 NOVO: Interface para edição de usuário
+ */
+export interface UpdateUserData {
+  name?: string;
+  email?: string;
+  department?: string;
 }
 
 export const repService = {
@@ -143,6 +168,32 @@ export const repService = {
   }): Promise<User> {
     const response = await api.post<ApiResponse<{ user: User }>>('/rep/users', data);
     return response.data.data.user;
+  },
+
+  /**
+   * 🔴 NOVO: Editar usuário
+   */
+  async updateUser(userId: string, data: UpdateUserData): Promise<User> {
+    const response = await api.put<ApiResponse<{ user: User }>>(`/rep/users/${userId}`, data);
+    return response.data.data.user;
+  },
+
+  /**
+   * 🔴 NOVO: Inativar usuário
+   */
+  async inactivateUser(userId: string, data: InactivateUserData): Promise<User> {
+    const response = await api.delete<ApiResponse<{ user: User }>>(`/rep/users/${userId}`, {
+      data: data
+    });
+    return response.data.data.user;
+  },
+
+  /**
+   * 🔴 NOVO: Revogar controle com reatribuição
+   */
+  async revokeControl(assignmentId: string, data: RevokeControlData): Promise<any> {
+    const response = await api.post<ApiResponse<any>>(`/rep/assignments/${assignmentId}/revoke`, data);
+    return response.data.data;
   },
 
   /**
@@ -201,7 +252,7 @@ export const repService = {
   },
 
   /**
-   * 🔴 NOVO - Buscar todos os usuários com suas respostas (otimizado)
+   * Buscar todos os usuários com suas respostas (otimizado)
    * GET /api/rep/users-with-responses
    */
   async getUsersWithResponses(): Promise<UsersWithResponsesResponse> {

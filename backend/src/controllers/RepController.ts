@@ -116,6 +116,196 @@ export class RepController {
   }
 
   /**
+   * 🔴 NOVO: Editar usuário pelo preposto
+   */
+  static async updateUser(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const repId = req.userId;
+      if (!repId) {
+        throw new AppError('Usuário não autenticado', 401);
+      }
+
+      const { userId } = req.params;
+      if (!userId) {
+        throw new ValidationError({ userId: ['ID do usuário é obrigatório'] });
+      }
+
+      const { name, email, department } = req.body;
+
+      // Validar se pelo menos um campo foi enviado
+      if (!name && !email && !department) {
+        throw new ValidationError({
+          fields: ['Pelo menos um campo (name, email, department) deve ser fornecido']
+        });
+      }
+
+      const updatedUser = await RepService.updateUser(repId, userId, {
+        name,
+        email,
+        department,
+      });
+
+      res.json({
+        success: true,
+        message: 'Usuário atualizado com sucesso',
+        data: { user: updatedUser },
+        statusCode: 200,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      ErrorLogger.logError(error as Error, {
+        userId: req.userId,
+        email: req.user?.email,
+        ip: req.ip,
+        userAgent: req.headers['user-agent'],
+        path: req.path,
+        method: req.method,
+        params: req.params,
+        body: req.body,
+      });
+      next(error);
+    }
+  }
+
+  /**
+   * 🔴 NOVO: Inativar usuário com justificativa
+   */
+  static async inactivateUser(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const repId = req.userId;
+      if (!repId) {
+        throw new AppError('Usuário não autenticado', 401);
+      }
+
+      const { userId } = req.params;
+      if (!userId) {
+        throw new ValidationError({ userId: ['ID do usuário é obrigatório'] });
+      }
+
+      const { reason, description } = req.body;
+
+      // Validar motivo
+      const validReasons = ['Desligado', 'Mudou de setor', 'Outros'];
+      if (!reason || !validReasons.includes(reason)) {
+        throw new ValidationError({
+          reason: [`Motivo inválido. Use: ${validReasons.join(', ')}`]
+        });
+      }
+
+      // Se motivo for "Outros", descrição é obrigatória
+      if (reason === 'Outros' && (!description || description.trim().length < 5)) {
+        throw new ValidationError({
+          description: ['Descrição é obrigatória e deve ter no mínimo 5 caracteres quando motivo for "Outros"']
+        });
+      }
+
+      const result = await RepService.inactivateUser(repId, userId, {
+        reason,
+        description: description || '',
+      });
+
+      res.json({
+        success: true,
+        message: 'Usuário inativado com sucesso',
+        data: result,
+        statusCode: 200,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      ErrorLogger.logError(error as Error, {
+        userId: req.userId,
+        email: req.user?.email,
+        ip: req.ip,
+        userAgent: req.headers['user-agent'],
+        path: req.path,
+        method: req.method,
+        params: req.params,
+        body: req.body,
+      });
+      next(error);
+    }
+  }
+
+  /**
+   * 🔴 NOVO: Revogar controle com reatribuição
+   */
+  static async revokeControl(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const repId = req.userId;
+      if (!repId) {
+        throw new AppError('Usuário não autenticado', 401);
+      }
+
+      const { assignmentId } = req.params;
+      if (!assignmentId) {
+        throw new ValidationError({ assignmentId: ['ID da atribuição é obrigatório'] });
+      }
+
+      const { newUserId, confirmRevoke } = req.body;
+
+      // Validar confirmação
+      if (confirmRevoke !== true) {
+        throw new ValidationError({
+          confirmRevoke: ['Você deve confirmar a revogação do controle']
+        });
+      }
+
+      // Se newUserId for fornecido, validar
+      if (newUserId) {
+        const userExists = await User.findOne({
+          _id: newUserId,
+          createdBy: repId,
+          role: 'user',
+          isActive: true,
+        });
+        if (!userExists) {
+          throw new NotFoundError('Usuário destino não encontrado ou inativo');
+        }
+      }
+
+      const result = await RepService.revokeControl(
+        repId,
+        assignmentId,
+        newUserId || null
+      );
+
+      res.json({
+        success: true,
+        message: result.newUserId
+          ? `Controle revogado e reatribuído com sucesso`
+          : 'Controle revogado com sucesso',
+        data: result,
+        statusCode: 200,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      ErrorLogger.logError(error as Error, {
+        userId: req.userId,
+        email: req.user?.email,
+        ip: req.ip,
+        userAgent: req.headers['user-agent'],
+        path: req.path,
+        method: req.method,
+        params: req.params,
+        body: req.body,
+      });
+      next(error);
+    }
+  }
+
+  /**
    * Atribuir controles a um usuário
    */
   static async assignControls(

@@ -51,6 +51,11 @@ export interface IUser {
   updatedAt: Date;
   lastLogin?: Date;
   passwordChangedAt?: Date;
+  // 🔴 ADICIONADO: Campos para inativação
+  inactivationReason?: 'Desligado' | 'Mudou de setor' | 'Outros';
+  inactivationDescription?: string;
+  inactivatedAt?: Date;
+  inactivatedBy?: Types.ObjectId;
 }
 
 export interface IUserDocument extends IUser, Document {

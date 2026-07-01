@@ -32,12 +32,36 @@ router.post(
   RepController.createUser
 );
 
+// 🔴 NOVO: Editar usuário
+router.put(
+  '/users/:userId',
+  adminRateLimiter,
+  sanitizeAdminInputs,
+  RepController.updateUser
+);
+
+// 🔴 NOVO: Inativar usuário
+router.delete(
+  '/users/:userId',
+  adminRateLimiter,
+  sanitizeAdminInputs,
+  RepController.inactivateUser
+);
+
 // Atribuir controles a um usuário
 router.post(
   '/assignments',
   adminRateLimiter,
   sanitizeAdminInputs,
   RepController.assignControls
+);
+
+// 🔴 NOVO: Revogar controle com reatribuição
+router.post(
+  '/assignments/:assignmentId/revoke',
+  adminRateLimiter,
+  sanitizeAdminInputs,
+  RepController.revokeControl
 );
 
 // Obter progresso de um usuário específico

@@ -6,7 +6,8 @@ import {
   Users, UserPlus, ClipboardList, BarChart3, 
   CheckCircle, Clock, AlertCircle, LogOut,
   Search, ChevronLeft, ChevronRight, Plus, Loader2,
-  LayoutDashboard, MessageSquare
+  LayoutDashboard, MessageSquare, Edit, Trash2, 
+  X, RefreshCw, AlertTriangle
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card.js';
 import { Button } from '../components/ui/Button.js';
@@ -27,6 +28,15 @@ export const RepDashboard: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [pagination, setPagination] = useState<any>(null);
   const limit = 10;
+
+  // 🔴 NOVO: Estados para modais
+  const [showInactivateModal, setShowInactivateModal] = useState(false);
+  const [showRevokeModal, setShowRevokeModal] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<RepUser | null>(null);
+  const [inactivateReason, setInactivateReason] = useState<'Desligado' | 'Mudou de setor' | 'Outros'>('Desligado');
+  const [inactivateDescription, setInactivateDescription] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   // ============================================
   // CARREGAR DADOS
@@ -86,6 +96,85 @@ export const RepDashboard: React.FC = () => {
     navigate(`/rep/users/${userId}/assign`);
   };
 
+  // 🔴 NOVO: Editar usuário
+  const handleEditUser = (userId: string) => {
+    navigate(`/rep/users/${userId}/edit`);
+  };
+
+  // 🔴 NOVO: Abrir modal de inativação
+  const handleOpenInactivate = (user: RepUser) => {
+    setSelectedUser(user);
+    setInactivateReason('Desligado');
+    setInactivateDescription('');
+    setActionError(null);
+    setShowInactivateModal(true);
+  };
+
+  // 🔴 NOVO: Confirmar inativação
+  const handleConfirmInactivate = async () => {
+    if (!selectedUser) return;
+
+    // Validar: se motivo for "Outros", descrição é obrigatória
+    if (inactivateReason === 'Outros' && !inactivateDescription.trim()) {
+      setActionError('Descrição é obrigatória quando motivo é "Outros"');
+      return;
+    }
+
+    if (inactivateReason !== 'Outros' && inactivateDescription.trim().length > 0) {
+      // Permite descrição opcional para outros motivos
+    }
+
+    setIsSubmitting(true);
+    setActionError(null);
+
+    try {
+      await repService.inactivateUser(selectedUser._id, {
+        reason: inactivateReason,
+        description: inactivateDescription.trim(),
+      });
+      
+      setShowInactivateModal(false);
+      setSelectedUser(null);
+      await loadUsers();
+      await loadStats();
+    } catch (err: any) {
+      console.error('Erro ao inativar usuário:', err);
+      setActionError(err.response?.data?.message || 'Erro ao inativar usuário');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // 🔴 NOVO: Abrir modal de revogação
+  const handleOpenRevoke = (user: RepUser) => {
+    setSelectedUser(user);
+    setActionError(null);
+    setShowRevokeModal(true);
+  };
+
+  // 🔴 NOVO: Confirmar revogação
+  const handleConfirmRevoke = async (assignmentId: string, newUserId?: string) => {
+    setIsSubmitting(true);
+    setActionError(null);
+
+    try {
+      await repService.revokeControl(assignmentId, {
+        confirmRevoke: true,
+        newUserId: newUserId || undefined,
+      });
+      
+      setShowRevokeModal(false);
+      setSelectedUser(null);
+      await loadUsers();
+      await loadStats();
+    } catch (err: any) {
+      console.error('Erro ao revogar controle:', err);
+      setActionError(err.response?.data?.message || 'Erro ao revogar controle');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setPage(1);
@@ -98,14 +187,10 @@ export const RepDashboard: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // ============================================
-  // CORREÇÃO: DASHBOARD DE MATURIDADE - ROTA SEM companyId
-  // ============================================
   const handleNavigateToDashboard = () => {
     navigate('/rep/dashboard');
   };
 
-  // 🔴 NOVO: Gerenciar Respostas
   const handleManageResponses = () => {
     navigate('/rep/responses');
   };
@@ -249,9 +334,8 @@ export const RepDashboard: React.FC = () => {
           </Card>
         </div>
 
-        {/* Cards de Navegação Rápida - 🔴 NOVO CARD ADICIONADO */}
+        {/* Cards de Navegação Rápida */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          {/* Card existente: Dashboard de Maturidade */}
           <div
             onClick={handleNavigateToDashboard}
             className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
@@ -268,7 +352,6 @@ export const RepDashboard: React.FC = () => {
             <ChevronRight className="w-4 h-4 text-gray-400 mt-2" />
           </div>
 
-          {/* 🔴 NOVO - Card: Gerenciar Respostas */}
           <div
             onClick={handleManageResponses}
             className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
@@ -285,7 +368,6 @@ export const RepDashboard: React.FC = () => {
             <ChevronRight className="w-4 h-4 text-gray-400 mt-2" />
           </div>
 
-          {/* Card existente: Cadastrar Usuário */}
           <div
             onClick={handleCreateUser}
             className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
@@ -302,7 +384,6 @@ export const RepDashboard: React.FC = () => {
             <ChevronRight className="w-4 h-4 text-gray-400 mt-2" />
           </div>
 
-          {/* Card existente: Atribuir Controles */}
           <div
             onClick={() => {}}
             className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow cursor-pointer opacity-50 cursor-not-allowed"
@@ -398,14 +479,34 @@ export const RepDashboard: React.FC = () => {
                             </div>
                           </td>
                           <td className="py-3 px-4">
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={() => handleAssignControls(u._id)}
-                            >
-                              <ClipboardList className="h-4 w-4 mr-1" />
-                              Atribuir
-                            </Button>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                onClick={() => handleAssignControls(u._id)}
+                              >
+                                <ClipboardList className="h-4 w-4 mr-1" />
+                                Atribuir
+                              </Button>
+                              {/* 🔴 NOVO: Botão Editar */}
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                                onClick={() => handleEditUser(u._id)}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              {/* 🔴 NOVO: Botão Inativar */}
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                className="text-red-600 border-red-200 hover:bg-red-50"
+                                onClick={() => handleOpenInactivate(u)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -442,6 +543,98 @@ export const RepDashboard: React.FC = () => {
           </CardContent>
         </Card>
       </main>
+
+      {/* 🔴 NOVO: Modal de Inativação */}
+      {showInactivateModal && selectedUser && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-xl">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-gray-900">Inativar Usuário</h2>
+              <button
+                onClick={() => setShowInactivateModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="mb-4">
+              <p className="text-gray-600">
+                Você está prestes a inativar o usuário <strong>{selectedUser.name}</strong>.
+                Esta ação pode ser revertida a qualquer momento.
+              </p>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Motivo da Inativação *
+              </label>
+              <select
+                value={inactivateReason}
+                onChange={(e) => setInactivateReason(e.target.value as any)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="Desligado">Desligado</option>
+                <option value="Mudou de setor">Mudou de setor</option>
+                <option value="Outros">Outros</option>
+              </select>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                {inactivateReason === 'Outros' ? 'Descrição *' : 'Descrição (opcional)'}
+              </label>
+              <textarea
+                value={inactivateDescription}
+                onChange={(e) => setInactivateDescription(e.target.value)}
+                placeholder={inactivateReason === 'Outros' ? 'Descreva o motivo da inativação...' : 'Descrição adicional (opcional)...'}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none h-20"
+                required={inactivateReason === 'Outros'}
+              />
+              {inactivateReason === 'Outros' && (
+                <p className="text-xs text-gray-500 mt-1">
+                  * Descrição obrigatória para motivo "Outros"
+                </p>
+              )}
+            </div>
+
+            {actionError && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm flex items-start gap-2">
+                <AlertCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />
+                <span>{actionError}</span>
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => setShowInactivateModal(false)}
+                disabled={isSubmitting}
+              >
+                Cancelar
+              </Button>
+              <Button
+                className="flex-1 bg-red-600 hover:bg-red-700"
+                onClick={handleConfirmInactivate}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Processando...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Inativar
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

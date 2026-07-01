@@ -40,7 +40,8 @@ import AdminControls from './pages/AdminControls.js';
 import RepDashboard from './pages/RepDashboard.js';
 import RepNewUser from './pages/RepNewUser.js';
 import RepAssignControls from './pages/RepAssignControls.js';
-import RepResponses from './pages/RepResponses.js'; // 🔴 NOVO
+import RepResponses from './pages/RepResponses.js';
+import RepEditUser from './pages/RepEditUser.js'; // 🔴 NOVO
 import ConsultantDashboard from './pages/ConsultantDashboard.js';
 import UserDashboard from './pages/UserDashboard.js';
 import ProfilePage from './pages/ProfilePage.js';
@@ -129,7 +130,8 @@ function App() {
                   <Route path="/rep" element={<RepDashboard />} />
                   <Route path="/rep/users/new" element={<RepNewUser />} />
                   <Route path="/rep/users/:userId/assign" element={<RepAssignControls />} />
-                  <Route path="/rep/responses" element={<RepResponses />} /> {/* 🔴 NOVO */}
+                  <Route path="/rep/users/:userId/edit" element={<RepEditUser />} /> {/* 🔴 NOVO */}
+                  <Route path="/rep/responses" element={<RepResponses />} />
                   
                   {/* Dashboard Rep - Visão da empresa do preposto */}
                   <Route path="/rep/dashboard" element={<DashboardOverview />} />
