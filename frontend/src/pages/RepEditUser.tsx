@@ -134,9 +134,9 @@ export const RepEditUser: React.FC = () => {
       
       setSuccessMessage('Usuário atualizado com sucesso!');
       
-      // Redirecionar após 2 segundos
+      // 🔴 CORRIGIDO: Redirecionar para o painel do preposto (lista de usuários)
       setTimeout(() => {
-        navigate('/rep/dashboard');
+        navigate('/rep');
       }, 2000);
     } catch (err: any) {
       console.error('Erro ao atualizar usuário:', err);
@@ -147,7 +147,8 @@ export const RepEditUser: React.FC = () => {
   };
 
   const handleCancel = () => {
-    navigate('/rep/dashboard');
+    // 🔴 CORRIGIDO: Redirecionar para o painel do preposto (lista de usuários)
+    navigate('/rep');
   };
 
   // ============================================
