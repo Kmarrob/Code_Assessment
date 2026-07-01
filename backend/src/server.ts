@@ -13,7 +13,8 @@ import adminRoutes from './routes/admin.js';
 import repRoutes from './routes/rep.routes.js';
 import userRoutes from './routes/user.routes.js';
 import consultantRoutes from './routes/consultant.routes.js';
-import reviewRoutes from './routes/review.routes.js'; // 🔴 NOVO
+import reviewRoutes from './routes/review.routes.js';
+import notificationRoutes from './routes/notification.routes.js'; // 🔴 NOVO
 import './services/EmailService.js';
 import { noCache } from './middleware/cache.js';
 import { SitemapController } from './controllers/SitemapController.js';
@@ -115,7 +116,8 @@ app.use('/api/admin', adminRateLimiter, adminRoutes);
 app.use('/api/rep', repRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/consultant', consultantRoutes);
-app.use('/api/review', reviewRoutes); // 🔴 NOVO - Rotas de revisão
+app.use('/api/review', reviewRoutes);
+app.use('/api/notifications', notificationRoutes); // 🔴 NOVO - Rotas de notificações
 
 app.get('/health', noCache, (_req, res) => {
   res.json({
@@ -185,7 +187,8 @@ async function startServer() {
       logger.info(`👤 Rep Routes: http://localhost:${PORT}/api/rep`);
       logger.info(`👤 User Routes: http://localhost:${PORT}/api/user`);
       logger.info(`👤 Consultant Routes: http://localhost:${PORT}/api/consultant`);
-      logger.info(`📋 Review Routes: http://localhost:${PORT}/api/review`); // 🔴 NOVO
+      logger.info(`📋 Review Routes: http://localhost:${PORT}/api/review`);
+      logger.info(`🔔 Notification Routes: http://localhost:${PORT}/api/notifications`); // 🔴 NOVO
     });
 
   } catch (error) {
