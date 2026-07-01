@@ -44,7 +44,7 @@ export interface IUser {
   company?: string;
   companyId?: Types.ObjectId;
   createdBy?: Types.ObjectId;
-  consultantId?: Types.ObjectId; // NOVO CAMPO
+  consultantId?: Types.ObjectId;
   department?: string;
   isActive: boolean;
   createdAt: Date;
@@ -71,8 +71,8 @@ export interface ICompany {
   maxUsers: number;
   maxControls: number;
   assignedControls: Types.ObjectId[];
-  consultantId?: Types.ObjectId; // NOVO CAMPO
-  createdBy?: Types.ObjectId; // NOVO CAMPO
+  consultantId?: Types.ObjectId;
+  createdBy?: Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -123,6 +123,7 @@ export interface IResponse {
   assignmentId: Types.ObjectId;
   userId: Types.ObjectId;
   controlId: Types.ObjectId;
+  companyId: Types.ObjectId;  // 🔴 ADICIONADO
   maturityLevel: MaturityLevel;
   scenarioDescription?: string;
   evidence?: string[];
