@@ -14,6 +14,8 @@ import { Button } from '../components/ui/Button.js';
 import { Input } from '../components/ui/Input.js';
 import { EmptyState } from '../components/ui/EmptyState.js';
 import { repService, RepUser, RepStats } from '../services/rep.service.js';
+// 🔴 NOVO: Import do modal de revogação
+import { RevokeControlModal } from '../components/rep/RevokeControlModal.js';
 
 export const RepDashboard: React.FC = () => {
   const { user, logout } = useAuth();
@@ -33,6 +35,9 @@ export const RepDashboard: React.FC = () => {
   const [showInactivateModal, setShowInactivateModal] = useState(false);
   const [showRevokeModal, setShowRevokeModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<RepUser | null>(null);
+  const [selectedAssignmentId, setSelectedAssignmentId] = useState<string>('');
+  const [selectedControlName, setSelectedControlName] = useState<string>('');
+  const [selectedControlId, setSelectedControlId] = useState<string>('');
   const [inactivateReason, setInactivateReason] = useState<'Desligado' | 'Mudou de setor' | 'Outros'>('Desligado');
   const [inactivateDescription, setInactivateDescription] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -96,7 +101,6 @@ export const RepDashboard: React.FC = () => {
     navigate(`/rep/users/${userId}/assign`);
   };
 
-  // 🔴 NOVO: Editar usuário
   const handleEditUser = (userId: string) => {
     navigate(`/rep/users/${userId}/edit`);
   };
@@ -114,14 +118,9 @@ export const RepDashboard: React.FC = () => {
   const handleConfirmInactivate = async () => {
     if (!selectedUser) return;
 
-    // Validar: se motivo for "Outros", descrição é obrigatória
     if (inactivateReason === 'Outros' && !inactivateDescription.trim()) {
       setActionError('Descrição é obrigatória quando motivo é "Outros"');
       return;
-    }
-
-    if (inactivateReason !== 'Outros' && inactivateDescription.trim().length > 0) {
-      // Permite descrição opcional para outros motivos
     }
 
     setIsSubmitting(true);
@@ -146,8 +145,11 @@ export const RepDashboard: React.FC = () => {
   };
 
   // 🔴 NOVO: Abrir modal de revogação
-  const handleOpenRevoke = (user: RepUser) => {
+  const handleOpenRevoke = (user: RepUser, assignmentId: string, controlName: string, controlId: string) => {
     setSelectedUser(user);
+    setSelectedAssignmentId(assignmentId);
+    setSelectedControlName(controlName);
+    setSelectedControlId(controlId);
     setActionError(null);
     setShowRevokeModal(true);
   };
@@ -488,7 +490,6 @@ export const RepDashboard: React.FC = () => {
                                 <ClipboardList className="h-4 w-4 mr-1" />
                                 Atribuir
                               </Button>
-                              {/* 🔴 NOVO: Botão Editar */}
                               <Button 
                                 size="sm" 
                                 variant="outline"
@@ -497,7 +498,6 @@ export const RepDashboard: React.FC = () => {
                               >
                                 <Edit className="h-4 w-4" />
                               </Button>
-                              {/* 🔴 NOVO: Botão Inativar */}
                               <Button 
                                 size="sm" 
                                 variant="outline"
@@ -506,6 +506,17 @@ export const RepDashboard: React.FC = () => {
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
+                              {/* 🔴 NOVO: Botão Revogar Controle - aparece apenas se tiver atribuições */}
+                              {u.assignmentsCount > 0 && (
+                                <Button 
+                                  size="sm" 
+                                  variant="outline"
+                                  className="text-orange-600 border-orange-200 hover:bg-orange-50"
+                                  onClick={() => handleOpenRevoke(u, 'assignmentId', 'Control', 'CTL-001')}
+                                >
+                                  <AlertTriangle className="h-4 w-4" />
+                                </Button>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -544,7 +555,7 @@ export const RepDashboard: React.FC = () => {
         </Card>
       </main>
 
-      {/* 🔴 NOVO: Modal de Inativação */}
+      {/* Modal de Inativação */}
       {showInactivateModal && selectedUser && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-xl">
@@ -634,6 +645,25 @@ export const RepDashboard: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* 🔴 NOVO: Modal de Revogação */}
+      {showRevokeModal && selectedUser && (
+        <RevokeControlModal
+          isOpen={showRevokeModal}
+          onClose={() => {
+            setShowRevokeModal(false);
+            setSelectedUser(null);
+          }}
+          onConfirm={handleConfirmRevoke}
+          assignmentId={selectedAssignmentId}
+          controlName={selectedControlName}
+          controlId={selectedControlId}
+          currentUserName={selectedUser.name}
+          currentUserId={selectedUser._id}
+          repId={user?.id || ''}
+          isSubmitting={isSubmitting}
+        />
       )}
     </div>
   );
