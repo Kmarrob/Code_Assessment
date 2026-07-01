@@ -396,8 +396,7 @@ export class RepService {
         assignedBy: repId,
         assignedAt: new Date(),
         status: ResponseStatus.PENDING,
-        // Transferir metadados se existirem
-        notes: assignment.notes,
+        // 🔴 CORRIGIDO: Removida a linha 'notes: assignment.notes,'
         dueDate: assignment.dueDate,
       });
 

@@ -19,6 +19,7 @@ export enum ResponseStatus {
   COMPLETED = 'completed',
   SKIPPED = 'skipped',
   EXPIRED = 'expired',
+  REVOKED = 'revoked', // 🔴 ADICIONADO
 }
 
 export enum MaturityLevel {
