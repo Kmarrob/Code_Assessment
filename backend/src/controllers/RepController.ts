@@ -380,7 +380,7 @@ export class RepController {
 
       // 🔴 NOVO: Buscar todas as perguntas relacionadas aos controles
       const controlIds = responses
-        .map(r => r.controlId?.id || r.controlId?.controlId)
+        .map(r => r.controlId?.id || '')
         .filter(id => id);
 
       let questionsMap: Record<string, any> = {};
@@ -406,7 +406,8 @@ export class RepController {
             responsesByUser[userId] = [];
           }
 
-          const controlIdString = r.controlId?.id || r.controlId?.controlId || '';
+          // 🔴 CORREÇÃO: Apenas r.controlId?.id
+          const controlIdString = r.controlId?.id || '';
           const question = questionsMap[controlIdString];
 
           responsesByUser[userId].push({
@@ -414,7 +415,6 @@ export class RepController {
             controlId: r.controlId?._id || r.controlId,
             controlIdString: controlIdString || r.controlId?._id || 'N/A',
             controlName: r.controlId?.nome || r.controlId?.name || 'Controle não identificado',
-            // 🔴 NOVO: Pergunta e objetivo
             questionText: question?.text || '',
             questionObjective: question?.objective || '',
             maturityLevel: r.maturityLevel !== undefined && r.maturityLevel !== null 
