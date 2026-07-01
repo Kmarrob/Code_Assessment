@@ -364,12 +364,12 @@ export class RepController {
 
       // Buscar respostas por userId
       const userIds = users.map(u => u._id);
-      
-      // 🔴 CORREÇÃO: Incluir 'nome' no populate
+
+      // 🔴 CORREÇÃO: Incluir campos para ID do controle
       const responses = await ResponseModel.find({
         userId: { $in: userIds },
       })
-        .populate('controlId', 'nome name id')
+        .populate('controlId', 'id _id controlId nome name')
         .lean();
 
       console.log('🔵 [getUsersWithResponses] Respostas encontradas:', responses.length);
@@ -386,11 +386,13 @@ export class RepController {
           responsesByUser[userId].push({
             _id: r._id,
             controlId: r.controlId?._id || r.controlId,
+            // 🔴 CORREÇÃO: Tentar vários campos para encontrar o ID
+            controlIdString: r.controlId?.id || r.controlId?.controlId || r.controlId?._id || 'N/A',
             controlName: r.controlId?.nome || r.controlId?.name || 'Controle não identificado',
             maturityLevel: r.maturityLevel !== undefined && r.maturityLevel !== null 
               ? Number(r.maturityLevel) 
               : -1,
-            scenario: r.scenarioDescription || r.scenario || '',
+            scenarioDescription: r.scenarioDescription || r.scenario || '',
             observations: r.observations || '',
             updatedAt: r.updatedAt || r.lastUpdatedAt || r.createdAt,
           });
