@@ -7,14 +7,13 @@ import {
   CheckCircle, Clock, AlertCircle, LogOut,
   Search, ChevronLeft, ChevronRight, Plus, Loader2,
   LayoutDashboard, MessageSquare, Edit, Trash2, 
-  X, RefreshCw, AlertTriangle
+  X, RefreshCw, AlertTriangle, ChevronDown
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card.js';
 import { Button } from '../components/ui/Button.js';
 import { Input } from '../components/ui/Input.js';
 import { EmptyState } from '../components/ui/EmptyState.js';
 import { repService, RepUser, RepStats } from '../services/rep.service.js';
-// 🔴 NOVO: Import do modal de revogação
 import { RevokeControlModal } from '../components/rep/RevokeControlModal.js';
 
 export const RepDashboard: React.FC = () => {
@@ -31,7 +30,7 @@ export const RepDashboard: React.FC = () => {
   const [pagination, setPagination] = useState<any>(null);
   const limit = 10;
 
-  // 🔴 NOVO: Estados para modais
+  // Estados para modais
   const [showInactivateModal, setShowInactivateModal] = useState(false);
   const [showRevokeModal, setShowRevokeModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<RepUser | null>(null);
@@ -42,6 +41,11 @@ export const RepDashboard: React.FC = () => {
   const [inactivateDescription, setInactivateDescription] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+
+  // 🔴 NOVO: Estado para lista de atribuições do usuário
+  const [userAssignments, setUserAssignments] = useState<any[]>([]);
+  const [showAssignmentsList, setShowAssignmentsList] = useState(false);
+  const [isLoadingAssignments, setIsLoadingAssignments] = useState(false);
 
   // ============================================
   // CARREGAR DADOS
@@ -105,7 +109,7 @@ export const RepDashboard: React.FC = () => {
     navigate(`/rep/users/${userId}/edit`);
   };
 
-  // 🔴 NOVO: Abrir modal de inativação
+  // Abrir modal de inativação
   const handleOpenInactivate = (user: RepUser) => {
     setSelectedUser(user);
     setInactivateReason('Desligado');
@@ -114,7 +118,7 @@ export const RepDashboard: React.FC = () => {
     setShowInactivateModal(true);
   };
 
-  // 🔴 NOVO: Confirmar inativação
+  // Confirmar inativação
   const handleConfirmInactivate = async () => {
     if (!selectedUser) return;
 
@@ -144,17 +148,38 @@ export const RepDashboard: React.FC = () => {
     }
   };
 
-  // 🔴 NOVO: Abrir modal de revogação
-  const handleOpenRevoke = (user: RepUser, assignmentId: string, controlName: string, controlId: string) => {
+  // 🔴 CORRIGIDO: Abrir lista de atribuições do usuário
+  const handleOpenRevokeList = async (user: RepUser) => {
     setSelectedUser(user);
+    setActionError(null);
+    setIsLoadingAssignments(true);
+    setShowAssignmentsList(true);
+
+    try {
+      // Buscar progresso do usuário para obter as atribuições
+      const progress = await repService.getUserProgress(user._id);
+      const pendingAssignments = progress.details.filter(
+        (detail: any) => detail.status === 'pending' || detail.status === 'in_progress'
+      );
+      setUserAssignments(pendingAssignments);
+    } catch (err: any) {
+      console.error('Erro ao carregar atribuições:', err);
+      setActionError('Erro ao carregar lista de controles');
+    } finally {
+      setIsLoadingAssignments(false);
+    }
+  };
+
+  // 🔴 CORRIGIDO: Abrir modal de revogação com dados reais
+  const handleOpenRevoke = (assignmentId: string, controlName: string, controlId: string) => {
     setSelectedAssignmentId(assignmentId);
     setSelectedControlName(controlName);
     setSelectedControlId(controlId);
-    setActionError(null);
+    setShowAssignmentsList(false);
     setShowRevokeModal(true);
   };
 
-  // 🔴 NOVO: Confirmar revogação
+  // Confirmar revogação
   const handleConfirmRevoke = async (assignmentId: string, newUserId?: string) => {
     setIsSubmitting(true);
     setActionError(null);
@@ -167,6 +192,7 @@ export const RepDashboard: React.FC = () => {
       
       setShowRevokeModal(false);
       setSelectedUser(null);
+      setUserAssignments([]);
       await loadUsers();
       await loadStats();
     } catch (err: any) {
@@ -506,13 +532,13 @@ export const RepDashboard: React.FC = () => {
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
-                              {/* 🔴 NOVO: Botão Revogar Controle - aparece apenas se tiver atribuições */}
+                              {/* 🔴 CORRIGIDO: Botão Revogar Controle - abre lista de atribuições */}
                               {u.assignmentsCount > 0 && (
                                 <Button 
                                   size="sm" 
                                   variant="outline"
                                   className="text-orange-600 border-orange-200 hover:bg-orange-50"
-                                  onClick={() => handleOpenRevoke(u, 'assignmentId', 'Control', 'CTL-001')}
+                                  onClick={() => handleOpenRevokeList(u)}
                                 >
                                   <AlertTriangle className="h-4 w-4" />
                                 </Button>
@@ -647,7 +673,112 @@ export const RepDashboard: React.FC = () => {
         </div>
       )}
 
-      {/* 🔴 NOVO: Modal de Revogação */}
+      {/* 🔴 NOVO: Modal de Lista de Atribuições para Revogação */}
+      {showAssignmentsList && selectedUser && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl max-w-2xl w-full p-6 shadow-xl max-h-[80vh] flex flex-col">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">Controles do Usuário</h2>
+                <p className="text-sm text-gray-600">
+                  {selectedUser.name} - Selecione um controle para revogar
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setShowAssignmentsList(false);
+                  setSelectedUser(null);
+                  setUserAssignments([]);
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {isLoadingAssignments ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                <span className="ml-2 text-gray-500">Carregando controles...</span>
+              </div>
+            ) : userAssignments.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <AlertCircle className="h-12 w-12 mx-auto text-gray-400 mb-3" />
+                <p>Este usuário não possui controles pendentes para revogar.</p>
+                <p className="text-sm">Todos os controles já foram respondidos ou não há atribuições.</p>
+              </div>
+            ) : (
+              <div className="overflow-y-auto flex-1">
+                <table className="w-full">
+                  <thead className="bg-gray-50 border-b border-gray-200 sticky top-0">
+                    <tr>
+                      <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider py-3 px-4">Controle</th>
+                      <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider py-3 px-4">Status</th>
+                      <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider py-3 px-4">Ação</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {userAssignments.map((assignment) => (
+                      <tr key={assignment.assignmentId} className="hover:bg-gray-50">
+                        <td className="py-3 px-4">
+                          <div className="font-medium text-gray-900">{assignment.controlName}</div>
+                          <div className="text-xs text-gray-500">ID: {assignment.controlId}</div>
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className="px-2 py-1 text-xs rounded-full bg-yellow-100 text-yellow-800">
+                            {assignment.status || 'Pendente'}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-orange-600 border-orange-200 hover:bg-orange-50"
+                            onClick={() => {
+                              // Extrair o ID do controle da string ou usar o assignmentId
+                              const controlId = assignment.controlId || assignment.assignmentId;
+                              handleOpenRevoke(
+                                assignment.assignmentId,
+                                assignment.controlName,
+                                controlId
+                              );
+                            }}
+                          >
+                            <AlertTriangle className="h-4 w-4 mr-1" />
+                            Revogar
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {actionError && (
+              <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
+                {actionError}
+              </div>
+            )}
+
+            <div className="mt-4 pt-4 border-t border-gray-200 flex justify-end">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowAssignmentsList(false);
+                  setSelectedUser(null);
+                  setUserAssignments([]);
+                  setActionError(null);
+                }}
+              >
+                Fechar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Revogação */}
       {showRevokeModal && selectedUser && (
         <RevokeControlModal
           isOpen={showRevokeModal}
