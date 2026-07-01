@@ -103,6 +103,60 @@ export class NotificationController {
   }
 
   /**
+   * 🔴 NOVO: Criar uma notificação (para testes e admin)
+   * POST /api/notifications
+   */
+  static async createNotification(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const userId = req.userId;
+      if (!userId) {
+        throw new AppError('Usuário não autenticado', 401);
+      }
+
+      const { targetUserId, companyId, type, title, message, link, metadata } = req.body;
+
+      if (!targetUserId) {
+        throw new AppError('ID do usuário destino é obrigatório', 400);
+      }
+
+      if (!companyId) {
+        throw new AppError('ID da empresa é obrigatório', 400);
+      }
+
+      if (!type) {
+        throw new AppError('Tipo de notificação é obrigatório', 400);
+      }
+
+      if (!title || !message) {
+        throw new AppError('Título e mensagem são obrigatórios', 400);
+      }
+
+      const notification = await NotificationService.createNotification({
+        userId: targetUserId,
+        companyId,
+        type,
+        title,
+        message,
+        link,
+        metadata,
+      });
+
+      res.status(201).json({
+        success: true,
+        data: notification,
+        message: 'Notificação criada com sucesso',
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
    * Marcar notificação como lida
    * PATCH /api/notifications/:id/read
    */

@@ -13,6 +13,13 @@ router.use(authenticate);
 // ROTAS DE NOTIFICAÇÕES
 // ============================================
 
+// 🔴 NOVO: Criar uma notificação (para testes e admin)
+router.post(
+  '/',
+  authenticatedRateLimiter,
+  NotificationController.createNotification
+);
+
 // Buscar notificações do usuário (com paginação)
 router.get(
   '/',
