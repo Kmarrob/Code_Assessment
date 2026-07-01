@@ -36,8 +36,8 @@ export class NotificationService {
       }
 
       const notification = new Notification({
-        userId: data.userId,
-        companyId: data.companyId,
+        userId: new mongoose.Types.ObjectId(data.userId),
+        companyId: new mongoose.Types.ObjectId(data.companyId),
         type: data.type,
         title: data.title,
         message: data.message,
@@ -65,8 +65,8 @@ export class NotificationService {
   ): Promise<INotification[]> {
     try {
       const notifications = userIds.map((userId) => ({
-        userId,
-        companyId: data.companyId,
+        userId: new mongoose.Types.ObjectId(userId),
+        companyId: new mongoose.Types.ObjectId(data.companyId),
         type: data.type,
         title: data.title,
         message: data.message,
@@ -91,11 +91,11 @@ export class NotificationService {
   static async getNotifications(
     userId: string,
     filters: NotificationFilters = {}
-  ): Promise<{ notifications: INotification[]; total: number; unreadCount: number }> {
+  ): Promise<{ notifications: any[]; total: number; unreadCount: number }> {
     const { page = 1, limit = 20, filter = 'all' } = filters;
     const skip = (page - 1) * limit;
 
-    const query: any = { userId };
+    const query: any = { userId: new mongoose.Types.ObjectId(userId) };
     if (filter === 'unread') {
       query.read = false;
     }
@@ -107,7 +107,7 @@ export class NotificationService {
         .limit(limit)
         .lean(),
       Notification.countDocuments(query),
-      Notification.countDocuments({ userId, read: false }),
+      Notification.countDocuments({ userId: new mongoose.Types.ObjectId(userId), read: false }),
     ]);
 
     return {
@@ -120,8 +120,11 @@ export class NotificationService {
   /**
    * Busca apenas notificações não lidas
    */
-  static async getUnreadNotifications(userId: string): Promise<INotification[]> {
-    return Notification.find({ userId, read: false })
+  static async getUnreadNotifications(userId: string): Promise<any[]> {
+    return Notification.find({ 
+      userId: new mongoose.Types.ObjectId(userId), 
+      read: false 
+    })
       .sort({ createdAt: -1 })
       .limit(50)
       .lean();
@@ -131,15 +134,18 @@ export class NotificationService {
    * Conta notificações não lidas
    */
   static async countUnread(userId: string): Promise<number> {
-    return Notification.countDocuments({ userId, read: false });
+    return Notification.countDocuments({ 
+      userId: new mongoose.Types.ObjectId(userId), 
+      read: false 
+    });
   }
 
   /**
    * Marca notificação como lida
    */
-  static async markAsRead(notificationId: string, userId: string): Promise<INotification | null> {
+  static async markAsRead(notificationId: string, userId: string): Promise<any | null> {
     const notification = await Notification.findOneAndUpdate(
-      { _id: notificationId, userId },
+      { _id: notificationId, userId: new mongoose.Types.ObjectId(userId) },
       { $set: { read: true, readAt: new Date() } },
       { new: true }
     );
@@ -156,7 +162,7 @@ export class NotificationService {
    */
   static async markAllAsRead(userId: string): Promise<number> {
     const result = await Notification.updateMany(
-      { userId, read: false },
+      { userId: new mongoose.Types.ObjectId(userId), read: false },
       { $set: { read: true, readAt: new Date() } }
     );
     
@@ -167,7 +173,10 @@ export class NotificationService {
    * Exclui uma notificação
    */
   static async deleteNotification(notificationId: string, userId: string): Promise<void> {
-    const result = await Notification.deleteOne({ _id: notificationId, userId });
+    const result = await Notification.deleteOne({ 
+      _id: notificationId, 
+      userId: new mongoose.Types.ObjectId(userId) 
+    });
     
     if (result.deletedCount === 0) {
       throw new AppError('Notificação não encontrada', 404);
