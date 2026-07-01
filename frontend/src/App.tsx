@@ -41,10 +41,13 @@ import RepDashboard from './pages/RepDashboard.js';
 import RepNewUser from './pages/RepNewUser.js';
 import RepAssignControls from './pages/RepAssignControls.js';
 import RepResponses from './pages/RepResponses.js';
-import RepEditUser from './pages/RepEditUser.js'; // 🔴 NOVO
+import RepEditUser from './pages/RepEditUser.js';
 import ConsultantDashboard from './pages/ConsultantDashboard.js';
 import UserDashboard from './pages/UserDashboard.js';
 import ProfilePage from './pages/ProfilePage.js';
+
+// 🔴 NOVO: Import do Layout
+import { Layout } from './components/Layout.js';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -95,66 +98,190 @@ function App() {
                     ROTAS PROTEGIDAS (qualquer usuário autenticado)
                     ============================================ */ }
                 <Route element={<ProtectedRoute />}>
-                  <Route path="/profile" element={<ProfilePage />} />
+                  <Route path="/profile" element={
+                    <Layout>
+                      <ProfilePage />
+                    </Layout>
+                  } />
                 </Route>
 
                 { /* ============================================
                     ROTAS ADMIN
                     ============================================ */ }
                 <Route element={<ProtectedRoute allowedRoles={[UserRole.ADMIN]} />}>
-                  <Route path="/admin" element={<AdminDashboard />} />
-                  <Route path="/admin/usuarios" element={<AdminUsers />} />
-                  <Route path="/admin/controles" element={<AdminControls />} />
+                  <Route path="/admin" element={
+                    <Layout>
+                      <AdminDashboard />
+                    </Layout>
+                  } />
+                  <Route path="/admin/usuarios" element={
+                    <Layout>
+                      <AdminUsers />
+                    </Layout>
+                  } />
+                  <Route path="/admin/controles" element={
+                    <Layout>
+                      <AdminControls />
+                    </Layout>
+                  } />
                   <Route path="/admin/users" element={<Navigate to="/admin/usuarios" replace />} />
-                  <Route path="/admin/empresas" element={<AdminCompanies />} />
-                  <Route path="/admin/perguntas" element={<AdminQuestions />} />
-                  <Route path="/admin/consultores" element={<AdminConsultants />} />
-                  <Route path="/admin/consultores/novo" element={<AdminConsultantForm />} />
-                  <Route path="/admin/consultores/:id/editar" element={<AdminConsultantForm />} />
-                  <Route path="/admin/consultores/:id" element={<AdminConsultantView />} />
+                  <Route path="/admin/empresas" element={
+                    <Layout>
+                      <AdminCompanies />
+                    </Layout>
+                  } />
+                  <Route path="/admin/perguntas" element={
+                    <Layout>
+                      <AdminQuestions />
+                    </Layout>
+                  } />
+                  <Route path="/admin/consultores" element={
+                    <Layout>
+                      <AdminConsultants />
+                    </Layout>
+                  } />
+                  <Route path="/admin/consultores/novo" element={
+                    <Layout>
+                      <AdminConsultantForm />
+                    </Layout>
+                  } />
+                  <Route path="/admin/consultores/:id/editar" element={
+                    <Layout>
+                      <AdminConsultantForm />
+                    </Layout>
+                  } />
+                  <Route path="/admin/consultores/:id" element={
+                    <Layout>
+                      <AdminConsultantView />
+                    </Layout>
+                  } />
                   
                   {/* Dashboard Admin - Seletor de empresas e Visão interna */}
-                  <Route path="/admin/dashboard" element={<AdminCompanySelector />} />
-                  <Route path="/admin/dashboard/empresas/:companyId" element={<DashboardOverview />} />
-                  <Route path="/admin/dashboard/categorizacao/:companyId" element={<Categorization />} />
-                  <Route path="/admin/dashboard/tipos-controle/:companyId" element={<ControlTypes />} />
-                  <Route path="/admin/dashboard/conceitos-ciberneticos/:companyId" element={<CyberConcepts />} />
-                  <Route path="/admin/dashboard/capacidades/:companyId" element={<Capabilities />} />
-                  <Route path="/admin/dashboard/dominios/:companyId" element={<Domains />} />
+                  <Route path="/admin/dashboard" element={
+                    <Layout>
+                      <AdminCompanySelector />
+                    </Layout>
+                  } />
+                  <Route path="/admin/dashboard/empresas/:companyId" element={
+                    <Layout>
+                      <DashboardOverview />
+                    </Layout>
+                  } />
+                  <Route path="/admin/dashboard/categorizacao/:companyId" element={
+                    <Layout>
+                      <Categorization />
+                    </Layout>
+                  } />
+                  <Route path="/admin/dashboard/tipos-controle/:companyId" element={
+                    <Layout>
+                      <ControlTypes />
+                    </Layout>
+                  } />
+                  <Route path="/admin/dashboard/conceitos-ciberneticos/:companyId" element={
+                    <Layout>
+                      <CyberConcepts />
+                    </Layout>
+                  } />
+                  <Route path="/admin/dashboard/capacidades/:companyId" element={
+                    <Layout>
+                      <Capabilities />
+                    </Layout>
+                  } />
+                  <Route path="/admin/dashboard/dominios/:companyId" element={
+                    <Layout>
+                      <Domains />
+                    </Layout>
+                  } />
                 </Route>
 
                 { /* ============================================
                     ROTAS REP (PREPOSTO)
                     ============================================ */ }
                 <Route element={<ProtectedRoute allowedRoles={[UserRole.REP, UserRole.ADMIN]} />}>
-                  <Route path="/rep" element={<RepDashboard />} />
-                  <Route path="/rep/users/new" element={<RepNewUser />} />
-                  <Route path="/rep/users/:userId/assign" element={<RepAssignControls />} />
-                  <Route path="/rep/users/:userId/edit" element={<RepEditUser />} /> {/* 🔴 NOVO */}
-                  <Route path="/rep/responses" element={<RepResponses />} />
+                  <Route path="/rep" element={
+                    <Layout>
+                      <RepDashboard />
+                    </Layout>
+                  } />
+                  <Route path="/rep/users/new" element={
+                    <Layout>
+                      <RepNewUser />
+                    </Layout>
+                  } />
+                  <Route path="/rep/users/:userId/assign" element={
+                    <Layout>
+                      <RepAssignControls />
+                    </Layout>
+                  } />
+                  <Route path="/rep/users/:userId/edit" element={
+                    <Layout>
+                      <RepEditUser />
+                    </Layout>
+                  } />
+                  <Route path="/rep/responses" element={
+                    <Layout>
+                      <RepResponses />
+                    </Layout>
+                  } />
                   
                   {/* Dashboard Rep - Visão da empresa do preposto */}
-                  <Route path="/rep/dashboard" element={<DashboardOverview />} />
-                  <Route path="/rep/dashboard/categorizacao" element={<Categorization />} />
-                  <Route path="/rep/dashboard/tipos-controle" element={<ControlTypes />} />
-                  <Route path="/rep/dashboard/conceitos-ciberneticos" element={<CyberConcepts />} />
-                  <Route path="/rep/dashboard/capacidades" element={<Capabilities />} />
-                  <Route path="/rep/dashboard/dominios" element={<Domains />} />
+                  <Route path="/rep/dashboard" element={
+                    <Layout>
+                      <DashboardOverview />
+                    </Layout>
+                  } />
+                  <Route path="/rep/dashboard/categorizacao" element={
+                    <Layout>
+                      <Categorization />
+                    </Layout>
+                  } />
+                  <Route path="/rep/dashboard/tipos-controle" element={
+                    <Layout>
+                      <ControlTypes />
+                    </Layout>
+                  } />
+                  <Route path="/rep/dashboard/conceitos-ciberneticos" element={
+                    <Layout>
+                      <CyberConcepts />
+                    </Layout>
+                  } />
+                  <Route path="/rep/dashboard/capacidades" element={
+                    <Layout>
+                      <Capabilities />
+                    </Layout>
+                  } />
+                  <Route path="/rep/dashboard/dominios" element={
+                    <Layout>
+                      <Domains />
+                    </Layout>
+                  } />
                 </Route>
 
                 { /* ============================================
                     ROTAS CONSULTANT
                     ============================================ */ }
                 <Route element={<ProtectedRoute allowedRoles={[UserRole.CONSULTANT, UserRole.ADMIN]} />}>
-                  <Route path="/consultant" element={<ConsultantDashboard />} />
+                  <Route path="/consultant" element={
+                    <Layout>
+                      <ConsultantDashboard />
+                    </Layout>
+                  } />
                 </Route>
 
                 { /* ============================================
                     ROTAS USER (e outros perfis que podem acessar dashboard)
                     ============================================ */ }
                 <Route element={<ProtectedRoute allowedRoles={[UserRole.USER, UserRole.REP, UserRole.CONSULTANT, UserRole.ADMIN]} />}>
-                  <Route path="/dashboard" element={<UserDashboard />} />
-                  <Route path="/user/answer/:assignmentId" element={<UserAnswer />} />
+                  <Route path="/dashboard" element={
+                    <Layout>
+                      <UserDashboard />
+                    </Layout>
+                  } />
+                  <Route path="/user/answer/:assignmentId" element={
+                    <Layout>
+                      <UserAnswer />
+                    </Layout>
+                  } />
                 </Route>
 
                 <Route path="*" element={<Navigate to="/" replace />} />
