@@ -78,7 +78,7 @@ export class NotificationService {
       const result = await Notification.insertMany(notifications);
       logger.info(`📬 ${result.length} notificações criadas em lote`);
       
-      return result;
+      return result as any;
     } catch (error) {
       logger.error('❌ Erro ao criar notificações em lote:', error);
       throw error;
@@ -105,13 +105,13 @@ export class NotificationService {
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
-        .lean(),
+        .lean() as any,
       Notification.countDocuments(query),
       Notification.countDocuments({ userId: new mongoose.Types.ObjectId(userId), read: false }),
     ]);
 
     return {
-      notifications,
+      notifications: notifications as any[],
       total,
       unreadCount,
     };
@@ -127,7 +127,7 @@ export class NotificationService {
     })
       .sort({ createdAt: -1 })
       .limit(50)
-      .lean();
+      .lean() as any;
   }
 
   /**
@@ -377,7 +377,7 @@ export class NotificationService {
       message: `Você tem ${pendingCount} controle(s) pendente(s) para responder.`,
       link: `/user/dashboard`,
       metadata: {
-        pendingCount,
+        pendingCount: pendingCount,
       },
     });
   }
