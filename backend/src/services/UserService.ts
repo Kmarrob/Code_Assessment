@@ -2,6 +2,8 @@
 import { Assignment } from '../models/Assignment.js';
 import { Response } from '../models/Response.js';
 import { User } from '../models/User.js';
+import { Question } from '../models/Question.js';
+import { Control } from '../models/Control.js'; // 🔴 NOVO
 import { NotFoundError, AppError } from '../middleware/errorHandler.js';
 import { logger } from '../utils/logger.js';
 import { ResponseStatus, MaturityLevel } from '../types/index.js';
@@ -90,7 +92,7 @@ export class UserService {
   }
 
   /**
-   * Salvar resposta de um controle
+   * Salvar resposta de um controle com automação do scenarioDescription
    */
   static async saveResponse(
     userId: string,
@@ -114,6 +116,14 @@ export class UserService {
       throw new AppError('Atribuição não encontrada ou não pertence ao usuário', 404);
     }
 
+    // Buscar o usuário para obter o companyId
+    const user = await User.findById(userId);
+    if (!user) {
+      throw new AppError('Usuário não encontrado', 404);
+    }
+
+    const companyId = user.companyId;
+
     // Converter evidence para string se for array
     let evidenceString = '';
     if (evidence) {
@@ -124,25 +134,63 @@ export class UserService {
       }
     }
 
+    // 🔴 AUTOMAÇÃO CORRIGIDA: Buscar o controle para obter o 'id' (string)
+    let autoScenarioDescription = scenarioDescription || '';
+
+    if (!scenarioDescription || scenarioDescription.trim() === '') {
+      try {
+        // 🔴 BUSCAR O CONTROLE PRIMEIRO
+        const control = await Control.findById(assignment.controlId);
+        if (!control) {
+          logger.warn(`⚠️ Controle não encontrado para o assignment ${assignmentId}`);
+        } else {
+          // 🔴 USAR O CAMPO 'id' DO CONTROLE (STRING) PARA BUSCAR A PERGUNTA
+          const question = await Question.findOne({ 
+            controlId: control.id,
+            active: true 
+          });
+
+          if (question) {
+            const level = Number(maturityLevel);
+            if (level === 2) {
+              autoScenarioDescription = question.answerImplemented || '';
+            } else if (level === 1) {
+              autoScenarioDescription = question.answerPartial || '';
+            } else if (level === 0) {
+              autoScenarioDescription = question.answerNotImplemented || '';
+            }
+            
+            logger.info(`🔍 Descrição automática preenchida para controle ${control.id} - Nível: ${level}`);
+          } else {
+            logger.warn(`⚠️ Pergunta não encontrada para o controle ${control.id}`);
+          }
+        }
+      } catch (error) {
+        logger.error(`❌ Erro ao buscar pergunta para o controle ${assignment.controlId}:`, error);
+        autoScenarioDescription = scenarioDescription || '';
+      }
+    }
+
     // Verificar se já existe uma resposta
     let response = await Response.findOne({ assignmentId });
 
     if (response) {
       // Atualizar resposta existente
       response.maturityLevel = maturityLevel;
-      response.scenarioDescription = scenarioDescription || '';
-response.evidence = evidenceString ? [evidenceString] : [];
+      response.scenarioDescription = autoScenarioDescription;
+      response.evidence = evidenceString ? [evidenceString] : [];
       response.observations = notes || '';
       await response.save();
     } else {
-      // Criar nova resposta
+      // Criar nova resposta com companyId
       response = new Response({
         assignmentId,
         userId,
         controlId: assignment.controlId,
+        companyId: companyId,
         maturityLevel,
-        scenarioDescription: scenarioDescription || '',
-        evidence: evidenceString ? [evidenceString] : [], // Correção aqui: envolvendo em array string[]
+        scenarioDescription: autoScenarioDescription,
+        evidence: evidenceString ? [evidenceString] : [],
         observations: notes || '',
         submittedAt: new Date(),
       });

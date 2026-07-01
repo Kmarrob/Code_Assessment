@@ -10,6 +10,7 @@ import { User } from '../models/User.js';
 import { Company } from '../models/Company.js';
 import { Response as ResponseModel } from '../models/Response.js';
 import { Assignment } from '../models/Assignment.js';
+import { Question } from '../models/Question.js';
 import {
   repCreateUserSchema,
   repAssignControlsSchema,
@@ -365,15 +366,36 @@ export class RepController {
       // Buscar respostas por userId
       const userIds = users.map(u => u._id);
 
-      // 🔴 CORREÇÃO: Incluir campos para ID do controle
+      // Buscar respostas com controle populado
       const responses = await ResponseModel.find({
         userId: { $in: userIds },
       })
-        .populate('controlId', 'id _id controlId nome name')
+        .populate({
+          path: 'controlId',
+          select: 'id _id controlId nome name',
+        })
         .lean();
 
       console.log('🔵 [getUsersWithResponses] Respostas encontradas:', responses.length);
-      console.log('🔵 [getUsersWithResponses] Primeira resposta:', responses[0] || 'Nenhuma resposta');
+
+      // 🔴 NOVO: Buscar todas as perguntas relacionadas aos controles
+      const controlIds = responses
+        .map(r => r.controlId?.id || r.controlId?.controlId)
+        .filter(id => id);
+
+      let questionsMap: Record<string, any> = {};
+      if (controlIds.length > 0) {
+        const questions = await Question.find({
+          controlId: { $in: controlIds },
+          active: true,
+        }).lean();
+
+        questionsMap = questions.reduce((acc: any, q: any) => {
+          acc[q.controlId] = q;
+          return acc;
+        }, {});
+        console.log('🔵 [getUsersWithResponses] Perguntas encontradas:', questions.length);
+      }
 
       // Mapear respostas por usuário
       const responsesByUser: Record<string, any[]> = {};
@@ -383,12 +405,18 @@ export class RepController {
           if (!responsesByUser[userId]) {
             responsesByUser[userId] = [];
           }
+
+          const controlIdString = r.controlId?.id || r.controlId?.controlId || '';
+          const question = questionsMap[controlIdString];
+
           responsesByUser[userId].push({
             _id: r._id,
             controlId: r.controlId?._id || r.controlId,
-            // 🔴 CORREÇÃO: Tentar vários campos para encontrar o ID
-            controlIdString: r.controlId?.id || r.controlId?.controlId || r.controlId?._id || 'N/A',
+            controlIdString: controlIdString || r.controlId?._id || 'N/A',
             controlName: r.controlId?.nome || r.controlId?.name || 'Controle não identificado',
+            // 🔴 NOVO: Pergunta e objetivo
+            questionText: question?.text || '',
+            questionObjective: question?.objective || '',
             maturityLevel: r.maturityLevel !== undefined && r.maturityLevel !== null 
               ? Number(r.maturityLevel) 
               : -1,
