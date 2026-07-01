@@ -3,6 +3,10 @@ import { Request, Response, NextFunction } from 'express';
 import { ReviewService } from '../services/ReviewService.js';
 import { AppError } from '../utils/errors.js';
 import { IAttachment } from '../models/ReviewRequest.js';
+import { emailService } from '../services/EmailService.js'; // 🔴 NOVO IMPORT
+import { User } from '../models/User.js'; // 🔴 NOVO IMPORT
+import { Control } from '../models/Control.js'; // 🔴 NOVO IMPORT
+import { Response as ResponseModel } from '../models/Response.js'; // 🔴 NOVO IMPORT
 
 // 🔴 EXTENDER O TIPO REQUEST PARA INCLUIR USER
 interface AuthenticatedRequest extends Request {
@@ -29,6 +33,7 @@ export class ReviewController {
 
       const companyId = req.user?.companyId || req.body.companyId;
       const repId = req.user?.id;
+      const repName = req.user?.name || 'Preposto';
 
       if (!companyId) {
         throw new AppError('Empresa não identificada', 400);
@@ -55,6 +60,43 @@ export class ReviewController {
         justification,
         attachments: attachments || [],
       });
+
+      // 🔴 NOVO: Buscar dados para enviar e-mail ao usuário
+      try {
+        // Buscar usuário
+        const user = await User.findById(userId).select('name email');
+        // Buscar controle
+        const control = await Control.findById(controlId).select('id name');
+        // Buscar resposta
+        const response = await ResponseModel.findById(responseId).select('maturityLevel');
+
+        if (user && user.email && control) {
+          const maturityLabels: Record<string, string> = {
+            '0': 'Não Implementado',
+            '1': 'Parcialmente Implementado',
+            '2': 'Totalmente Implementado',
+          };
+          const maturityLabel = response?.maturityLevel 
+            ? maturityLabels[response.maturityLevel.toString()] || response.maturityLevel 
+            : 'Não informado';
+
+          const loginLink = process.env.FRONTEND_URL || 'https://code-assessment-frontend.onrender.com/login';
+
+          await emailService.sendReviewRequestEmail({
+            to: user.email,
+            userName: user.name || 'Usuário',
+            controlName: control.name || 'Controle',
+            controlId: control.id || controlId,
+            repName: repName,
+            justification: justification,
+            companyName: req.user?.companyId || 'Empresa',
+            loginLink: `${loginLink}?redirect=/user/dashboard&reviewId=${review._id}`,
+          });
+        }
+      } catch (emailError) {
+        // Não interrompe o fluxo se o e-mail falhar
+        console.error('❌ Erro ao enviar e-mail de notificação:', emailError);
+      }
 
       res.status(201).json({
         success: true,
@@ -167,7 +209,7 @@ export class ReviewController {
   static async updateReviewStatus(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const { reviewId } = req.params;
-      const { status } = req.body;
+      const { status, reviewNotes } = req.body;
       const companyId = req.user?.companyId || req.body.companyId;
 
       if (!companyId) {
@@ -187,6 +229,48 @@ export class ReviewController {
         status,
         companyId,
       });
+
+      // 🔴 NOVO: Buscar dados para enviar e-mail ao preposto
+      try {
+        // Buscar preposto (quem criou a solicitação)
+        const rep = await User.findById(review.repId).select('name email');
+        // Buscar usuário que respondeu
+        const user = await User.findById(review.userId).select('name');
+        // Buscar controle
+        const control = await Control.findById(review.controlId).select('id name');
+        // Buscar resposta
+        const response = await ResponseModel.findById(review.responseId).select('maturityLevel');
+
+        if (rep && rep.email && control) {
+          const statusLabel = status === 'approved' ? 'Aprovada ✅' : 'Rejeitada ❌';
+          const maturityLabels: Record<string, string> = {
+            '0': 'Não Implementado',
+            '1': 'Parcialmente Implementado',
+            '2': 'Totalmente Implementado',
+          };
+          const maturityLabel = response?.maturityLevel 
+            ? maturityLabels[response.maturityLevel.toString()] || response.maturityLevel 
+            : 'Não informado';
+
+          const loginLink = process.env.FRONTEND_URL || 'https://code-assessment-frontend.onrender.com/login';
+
+          await emailService.sendReviewCompletedEmail({
+            to: rep.email,
+            repName: rep.name || 'Preposto',
+            userName: user?.name || 'Usuário',
+            controlName: control.name || 'Controle',
+            controlId: control.id || review.controlId,
+            status: status,
+            statusLabel: statusLabel,
+            reviewNotes: reviewNotes || `Nível de maturidade: ${maturityLabel}`,
+            companyName: companyId.toString(),
+            loginLink: `${loginLink}?redirect=/rep/responses&reviewId=${review._id}`,
+          });
+        }
+      } catch (emailError) {
+        // Não interrompe o fluxo se o e-mail falhar
+        console.error('❌ Erro ao enviar e-mail de notificação:', emailError);
+      }
 
       res.status(200).json({
         success: true,

@@ -23,6 +23,7 @@ interface UpdateReviewStatusDTO {
   reviewId: string;
   status: 'approved' | 'rejected';
   companyId: string;
+  reviewNotes?: string;
 }
 
 export class ReviewService {
@@ -211,6 +212,15 @@ export class ReviewService {
       }
 
       review.status = data.status;
+      
+      // Salvar reviewNotes se fornecido
+      if (data.reviewNotes) {
+        review.reviewNotes = data.reviewNotes;
+      }
+      
+      // Registrar data da revisão
+      review.reviewedAt = new Date();
+      
       await review.save({ session });
       await session.commitTransaction();
 
@@ -288,7 +298,7 @@ export class ReviewService {
   }
 
   /**
-   * 🔴 MÉTODO ADICIONADO - Estatísticas de solicitações de revisão
+   * Estatísticas de solicitações de revisão
    */
   static async getReviewStats(companyId: string): Promise<{
     total: number;

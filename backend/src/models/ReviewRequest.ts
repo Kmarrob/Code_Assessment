@@ -18,6 +18,8 @@ export interface IReviewRequest extends Document {
   justification: string;
   attachments: IAttachment[];
   status: 'pending' | 'approved' | 'rejected';
+  reviewNotes?: string; // 🔴 ADICIONADO - Observações do preposto ao revisar
+  reviewedAt?: Date; // 🔴 ADICIONADO - Data da revisão
   createdAt: Date;
   updatedAt: Date;
 }
@@ -73,6 +75,15 @@ const ReviewRequestSchema = new Schema<IReviewRequest>(
       enum: ['pending', 'approved', 'rejected'],
       default: 'pending',
       index: true,
+    },
+    // 🔴 ADICIONADO: Campos para registro da revisão
+    reviewNotes: {
+      type: String,
+      required: false,
+    },
+    reviewedAt: {
+      type: Date,
+      required: false,
     },
   },
   {
