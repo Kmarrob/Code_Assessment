@@ -14,6 +14,7 @@ import repRoutes from './routes/rep.routes.js';
 import userRoutes from './routes/user.routes.js';
 import consultantRoutes from './routes/consultant.routes.js';
 import reviewRoutes from './routes/review.routes.js'; // 🔴 NOVO
+import './services/EmailService.js';
 import { noCache } from './middleware/cache.js';
 import { SitemapController } from './controllers/SitemapController.js';
 import { adminMetricsHandler } from './middleware/adminPerformance.js';
