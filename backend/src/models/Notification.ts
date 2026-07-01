@@ -22,6 +22,7 @@ export interface INotificationMetadata {
   controlIdString?: string;
   status?: string;
   reason?: string;
+  pendingCount?: number; // 🔴 ADICIONADO - para notificações de lembrete
 }
 
 export interface INotification extends Document {
