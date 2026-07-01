@@ -24,17 +24,19 @@ import { Input } from '../components/ui/Input.js';
 import { EmptyState } from '../components/ui/EmptyState.js';
 import { ReviewModal } from '../components/rep/ReviewModal.js';
 import { ReviewList } from '../components/rep/ReviewList.js';
+import { ViewResponseModal } from '../components/rep/ViewResponseModal.js';
 import { IAttachment } from '../types/review.js';
 import { reviewService } from '../services/review.service.js';
 import { repService, UserWithResponses } from '../services/rep.service.js';
 import toast from 'react-hot-toast';
 
-// 🔴 INTERFACE ADICIONADA
 interface UserResponse {
   _id: string;
   controlId: string;
   controlIdString: string;
   controlName: string;
+  questionText: string;
+  questionObjective: string;
   maturityLevel: number;
   scenario: string;
   scenarioDescription: string;
@@ -52,6 +54,8 @@ export const RepResponses: React.FC = () => {
   const [selectedUser, setSelectedUser] = useState<UserWithResponses | null>(null);
   const [selectedResponse, setSelectedResponse] = useState<UserWithResponses['responses'][0] | null>(null);
   const [showReviewModal, setShowReviewModal] = useState(false);
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [selectedResponseForView, setSelectedResponseForView] = useState<any>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<'responses' | 'reviews'>('responses');
 
@@ -100,6 +104,11 @@ export const RepResponses: React.FC = () => {
     setSelectedUser(user);
     setSelectedResponse(response);
     setShowReviewModal(true);
+  };
+
+  const handleViewResponse = (response: any) => {
+    setSelectedResponseForView(response);
+    setShowViewModal(true);
   };
 
   const handleSubmitReview = async (justification: string, attachments: IAttachment[]) => {
@@ -323,27 +332,27 @@ export const RepResponses: React.FC = () => {
                                   )}
                                 </span>
                               </div>
-                              {response.scenarioDescription && (
-                                <p className="text-sm text-gray-600 mt-0.5">
-                                  📝 {response.scenarioDescription}
-                                </p>
-                              )}
-                              {response.observations && (
-                                <p className="text-xs text-gray-400 mt-0.5">
-                                  💬 {response.observations}
-                                </p>
-                              )}
                               <p className="text-xs text-gray-400 mt-0.5">
                                 Atualizado em: {new Date(response.updatedAt).toLocaleDateString('pt-BR')}
                               </p>
                             </div>
-                            <button
-                              onClick={() => handleOpenReviewModal(u, response)}
-                              className="ml-4 flex items-center gap-1 px-3 py-1.5 text-sm text-purple-600 hover:text-purple-700 border border-purple-300 rounded-lg hover:bg-purple-50 transition-colors flex-shrink-0"
-                            >
-                              <MessageSquare className="w-3.5 h-3.5" />
-                              Solicitar Revisão
-                            </button>
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              <button
+                                onClick={() => handleViewResponse(response)}
+                                className="flex items-center gap-1 px-2 py-1.5 text-xs text-gray-600 hover:text-gray-800 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                                title="Ver detalhes"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                                Ver
+                              </button>
+                              <button
+                                onClick={() => handleOpenReviewModal(u, response)}
+                                className="flex items-center gap-1 px-2 py-1.5 text-xs text-purple-600 hover:text-purple-700 border border-purple-300 rounded-lg hover:bg-purple-50 transition-colors"
+                              >
+                                <MessageSquare className="w-3.5 h-3.5" />
+                                Revisão
+                              </button>
+                            </div>
                           </div>
                         ))
                       )}
@@ -373,6 +382,29 @@ export const RepResponses: React.FC = () => {
         onSubmit={handleSubmitReview}
         userName={selectedUser?.name}
         controlName={selectedResponse?.controlName}
+      />
+
+      <ViewResponseModal
+        isOpen={showViewModal}
+        onClose={() => {
+          setShowViewModal(false);
+          setSelectedResponseForView(null);
+        }}
+        response={selectedResponseForView}
+        onRequestReview={() => {
+          setShowViewModal(false);
+          if (selectedResponseForView) {
+            const user = users.find(u => 
+              u.responses.some(r => r._id === selectedResponseForView._id)
+            );
+            if (user) {
+              const response = user.responses.find(r => r._id === selectedResponseForView._id);
+              if (response) {
+                handleOpenReviewModal(user, response);
+              }
+            }
+          }
+        }}
       />
     </div>
   );
