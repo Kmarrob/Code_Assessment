@@ -3,10 +3,10 @@ import { Request, Response, NextFunction } from 'express';
 import { ReviewService } from '../services/ReviewService.js';
 import { AppError } from '../utils/errors.js';
 import { IAttachment } from '../models/ReviewRequest.js';
-import { emailService } from '../services/EmailService.js'; // 🔴 NOVO IMPORT
-import { User } from '../models/User.js'; // 🔴 NOVO IMPORT
-import { Control } from '../models/Control.js'; // 🔴 NOVO IMPORT
-import { Response as ResponseModel } from '../models/Response.js'; // 🔴 NOVO IMPORT
+import { emailService } from '../services/EmailService.js';
+import { User } from '../models/User.js';
+import { Control } from '../models/Control.js';
+import { Response as ResponseModel } from '../models/Response.js';
 
 // 🔴 EXTENDER O TIPO REQUEST PARA INCLUIR USER
 interface AuthenticatedRequest extends Request {
@@ -85,8 +85,8 @@ export class ReviewController {
           await emailService.sendReviewRequestEmail({
             to: user.email,
             userName: user.name || 'Usuário',
-            controlName: control.name || 'Controle',
-            controlId: control.id || controlId,
+            controlName: (control as any).name || 'Controle',
+            controlId: (control as any).id || controlId,
             repName: repName,
             justification: justification,
             companyName: req.user?.companyId || 'Empresa',
@@ -228,6 +228,7 @@ export class ReviewController {
         reviewId,
         status,
         companyId,
+        reviewNotes,
       });
 
       // 🔴 NOVO: Buscar dados para enviar e-mail ao preposto
@@ -258,8 +259,8 @@ export class ReviewController {
             to: rep.email,
             repName: rep.name || 'Preposto',
             userName: user?.name || 'Usuário',
-            controlName: control.name || 'Controle',
-            controlId: control.id || review.controlId,
+            controlName: (control as any).name || 'Controle',
+            controlId: (control as any).id || review.controlId,
             status: status,
             statusLabel: statusLabel,
             reviewNotes: reviewNotes || `Nível de maturidade: ${maturityLabel}`,
