@@ -7,7 +7,10 @@ import { AppError } from '../utils/errors.js';
 import { logger } from '../utils/logger.js';
 import fs from 'fs/promises';
 import path from 'path';
-import { v4 as uuidv4 } from 'uuid';
+// 🔴 CORRIGIDO: Importação com require para compatibilidade CommonJS
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const { v4: uuidv4 } = require('uuid');
 
 interface CreateDocumentDTO {
   companyId: string;
@@ -244,11 +247,6 @@ export class DocumentService {
       document.controlIds = data.controlIds.map(id => new mongoose.Types.ObjectId(id));
     }
     if (data.metadata !== undefined) document.metadata = data.metadata;
-
-    // Se status mudar para archived, atualizar versão? (opcional)
-    if (data.status === 'archived') {
-      // Mantém a versão, mas pode ser incrementada se desejar
-    }
 
     await document.save();
 
