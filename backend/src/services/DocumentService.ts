@@ -7,10 +7,12 @@ import { AppError } from '../utils/errors.js';
 import { logger } from '../utils/logger.js';
 import fs from 'fs/promises';
 import path from 'path';
-// 🔴 CORRIGIDO: Importação com require para compatibilidade CommonJS
-import { createRequire } from 'module';
-const require = createRequire(import.meta.url);
-const { v4: uuidv4 } = require('uuid');
+// 🔴 REMOVIDO: Importação do uuid substituída por função nativa
+
+// 🔴 NOVO: Função para gerar ID único
+function generateId(): string {
+  return Date.now().toString(36) + Math.random().toString(36).substring(2, 10);
+}
 
 interface CreateDocumentDTO {
   companyId: string;
@@ -71,9 +73,9 @@ export class DocumentService {
   private static generateFileName(originalName: string): string {
     const ext = path.extname(originalName);
     const name = path.basename(originalName, ext);
-    const uuid = uuidv4().substring(0, 8);
+    const id = generateId();
     const timestamp = Date.now();
-    return `${name}_${timestamp}_${uuid}${ext}`;
+    return `${name}_${timestamp}_${id}${ext}`;
   }
 
   /**
