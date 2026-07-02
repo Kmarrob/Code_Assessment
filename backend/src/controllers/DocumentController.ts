@@ -4,6 +4,7 @@ import { DocumentService } from '../services/DocumentService.js';
 import { AppError } from '../utils/errors.js';
 import { AuthenticatedRequest } from '../types/index.js';
 import { logger } from '../utils/logger.js';
+import { User } from '../models/User.js'; // 🔴 ADICIONADO
 import multer from 'multer';
 import path from 'path';
 
@@ -14,7 +15,7 @@ const upload = multer({
   limits: {
     fileSize: 10 * 1024 * 1024, // 10MB
   },
-  fileFilter: (req, file, cb) => {
+  fileFilter: (req: any, file: any, cb: any) => { // 🔴 CORRIGIDO: Adicionar tipos any
     const allowedMimes = [
       'application/pdf',
       'application/msword',
@@ -63,7 +64,7 @@ export class DocumentController {
         metadata 
       } = req.body;
 
-      const file = req.file;
+      const file = (req as any).file; // 🔴 CORRIGIDO: Cast para any para acessar file
       if (!file) {
         throw new AppError('Arquivo é obrigatório', 400);
       }
