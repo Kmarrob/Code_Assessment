@@ -30,19 +30,20 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
+  // Limite de caracteres para descrição
+  const MAX_DESCRIPTION_LENGTH = 1000;
+
   // ============================================
   // HANDLERS
   // ============================================
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Validar tamanho (10MB)
       if (file.size > 10 * 1024 * 1024) {
         setError('O arquivo deve ter no máximo 10MB');
         return;
       }
       
-      // Validar tipo
       const allowedTypes = [
         'application/pdf',
         'application/msword',
@@ -73,10 +74,16 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
     }
   };
 
+  const handleDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const value = e.target.value;
+    if (value.length <= MAX_DESCRIPTION_LENGTH) {
+      setDescription(value);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validações
     if (!title.trim()) {
       setError('Título é obrigatório');
       return;
@@ -102,7 +109,6 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
 
       setSuccess('Documento enviado com sucesso!');
       
-      // Limpar formulário após 2 segundos
       setTimeout(() => {
         setTitle('');
         setDescription('');
@@ -135,7 +141,6 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
   // ============================================
   if (!isOpen) return null;
 
-  // Obter ícone e cor do arquivo
   const getFileIcon = (file: File) => {
     const type = file.type;
     let color = 'text-gray-400';
@@ -148,6 +153,10 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
     
     return <File className={`h-8 w-8 ${color}`} />;
   };
+
+  const remainingChars = MAX_DESCRIPTION_LENGTH - description.length;
+  const isNearLimit = remainingChars <= 100;
+  const isOverLimit = remainingChars < 0;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -186,19 +195,37 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
             />
           </div>
 
-          {/* Descrição */}
+          {/* Descrição com contador */}
           <div>
-            <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
-              Descrição
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label htmlFor="description" className="block text-sm font-medium text-gray-700">
+                Descrição
+              </label>
+              <span className={`text-xs ${remainingChars <= 100 ? 'text-orange-500' : 'text-gray-400'}`}>
+                {remainingChars} caracteres restantes
+              </span>
+            </div>
             <textarea
               id="description"
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Breve descrição do documento..."
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none h-20"
+              onChange={handleDescriptionChange}
+              placeholder="Breve descrição do documento (máx. 1000 caracteres)..."
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none h-20 ${
+                remainingChars < 0 ? 'border-red-500' : 'border-gray-300'
+              }`}
               disabled={isSubmitting}
+              maxLength={MAX_DESCRIPTION_LENGTH}
             />
+            {remainingChars <= 100 && remainingChars >= 0 && (
+              <p className="text-xs text-orange-500 mt-1">
+                ⚠️ Aproximando-se do limite de 1000 caracteres
+              </p>
+            )}
+            {remainingChars < 0 && (
+              <p className="text-xs text-red-500 mt-1">
+                ❌ Limite de 1000 caracteres excedido
+              </p>
+            )}
           </div>
 
           {/* Categoria e Subcategoria */}
@@ -310,7 +337,7 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
             <Button
               type="submit"
               className="flex-1"
-              disabled={isSubmitting || !selectedFile || !title.trim()}
+              disabled={isSubmitting || !selectedFile || !title.trim() || remainingChars < 0}
             >
               {isSubmitting ? (
                 <>
