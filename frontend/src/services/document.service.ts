@@ -77,7 +77,8 @@ export const documentService = {
     search?: string;
     controlId?: string;
   }): Promise<DocumentsResponse> {
-    const response = await api.get<DocumentsResponse>('/api/documents', { params });
+    // 🔴 CORRIGIDO: Remover '/api' pois o api já inclui o prefixo
+    const response = await api.get<DocumentsResponse>('/documents', { params });
     return response.data;
   },
 
@@ -85,8 +86,9 @@ export const documentService = {
    * Buscar documento por ID
    */
   async getDocumentById(documentId: string): Promise<CompanyDocument> {
+    // 🔴 CORRIGIDO: Remover '/api' pois o api já inclui o prefixo
     const response = await api.get<{ success: boolean; data: CompanyDocument }>(
-      `/api/documents/${documentId}`
+      `/documents/${documentId}`
     );
     return response.data.data;
   },
@@ -106,8 +108,9 @@ export const documentService = {
     if (data.controlIds) formData.append('controlIds', JSON.stringify(data.controlIds));
     if (data.metadata) formData.append('metadata', JSON.stringify(data.metadata));
 
+    // 🔴 CORRIGIDO: Remover '/api' pois o api já inclui o prefixo
     const response = await api.post<{ success: boolean; data: CompanyDocument }>(
-      '/api/documents',
+      '/documents',
       formData,
       {
         headers: {
@@ -125,8 +128,9 @@ export const documentService = {
     documentId: string,
     data: Partial<Omit<CompanyDocument, '_id' | 'companyId' | 'uploadedBy' | 'uploadedAt' | 'createdAt' | 'updatedAt'>>
   ): Promise<CompanyDocument> {
+    // 🔴 CORRIGIDO: Remover '/api' pois o api já inclui o prefixo
     const response = await api.patch<{ success: boolean; data: CompanyDocument }>(
-      `/api/documents/${documentId}`,
+      `/documents/${documentId}`,
       data
     );
     return response.data.data;
@@ -136,15 +140,17 @@ export const documentService = {
    * Excluir documento
    */
   async deleteDocument(documentId: string): Promise<void> {
-    await api.delete(`/api/documents/${documentId}`);
+    // 🔴 CORRIGIDO: Remover '/api' pois o api já inclui o prefixo
+    await api.delete(`/documents/${documentId}`);
   },
 
   /**
    * Arquivar documento
    */
   async archiveDocument(documentId: string): Promise<CompanyDocument> {
+    // 🔴 CORRIGIDO: Remover '/api' pois o api já inclui o prefixo
     const response = await api.patch<{ success: boolean; data: CompanyDocument }>(
-      `/api/documents/${documentId}/archive`
+      `/documents/${documentId}/archive`
     );
     return response.data.data;
   },
@@ -153,8 +159,9 @@ export const documentService = {
    * Restaurar documento arquivado
    */
   async restoreDocument(documentId: string): Promise<CompanyDocument> {
+    // 🔴 CORRIGIDO: Remover '/api' pois o api já inclui o prefixo
     const response = await api.patch<{ success: boolean; data: CompanyDocument }>(
-      `/api/documents/${documentId}/restore`
+      `/documents/${documentId}/restore`
     );
     return response.data.data;
   },
@@ -163,7 +170,8 @@ export const documentService = {
    * Baixar documento
    */
   async downloadDocument(documentId: string): Promise<Blob> {
-    const response = await api.get(`/api/documents/${documentId}/download`, {
+    // 🔴 CORRIGIDO: Remover '/api' pois o api já inclui o prefixo
+    const response = await api.get(`/documents/${documentId}/download`, {
       responseType: 'blob',
     });
     return response.data;
@@ -173,7 +181,8 @@ export const documentService = {
    * Obter estatísticas de documentos
    */
   async getStats(): Promise<DocumentStats> {
-    const response = await api.get<{ success: boolean; data: DocumentStats }>('/api/documents/stats');
+    // 🔴 CORRIGIDO: Remover '/api' pois o api já inclui o prefixo
+    const response = await api.get<{ success: boolean; data: DocumentStats }>('/documents/stats');
     return response.data.data;
   },
 
@@ -181,8 +190,9 @@ export const documentService = {
    * Buscar documentos por controle
    */
   async getDocumentsByControl(controlId: string): Promise<CompanyDocument[]> {
+    // 🔴 CORRIGIDO: Remover '/api' pois o api já inclui o prefixo
     const response = await api.get<{ success: boolean; data: CompanyDocument[] }>(
-      `/api/documents/control/${controlId}`
+      `/documents/control/${controlId}`
     );
     return response.data.data;
   },
