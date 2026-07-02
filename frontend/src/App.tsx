@@ -42,6 +42,7 @@ import RepNewUser from './pages/RepNewUser.js';
 import RepAssignControls from './pages/RepAssignControls.js';
 import RepResponses from './pages/RepResponses.js';
 import RepEditUser from './pages/RepEditUser.js';
+import RepDocuments from './pages/RepDocuments.js'; // 🔴 NOVO
 import ConsultantDashboard from './pages/ConsultantDashboard.js';
 import UserDashboard from './pages/UserDashboard.js';
 import ProfilePage from './pages/ProfilePage.js';
@@ -221,6 +222,11 @@ function App() {
                   <Route path="/rep/responses" element={
                     <Layout>
                       <RepResponses />
+                    </Layout>
+                  } />
+                  <Route path="/rep/documents" element={ // 🔴 NOVO
+                    <Layout>
+                      <RepDocuments />
                     </Layout>
                   } />
                   

@@ -7,7 +7,7 @@ import {
   CheckCircle, Clock, AlertCircle, LogOut,
   Search, ChevronLeft, ChevronRight, Plus, Loader2,
   LayoutDashboard, MessageSquare, Edit, Trash2, 
-  X, RefreshCw, AlertTriangle, ChevronDown
+  X, RefreshCw, AlertTriangle, ChevronDown, FileText
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card.js';
 import { Button } from '../components/ui/Button.js';
@@ -42,7 +42,7 @@ export const RepDashboard: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
-  // 🔴 NOVO: Estado para lista de atribuições do usuário
+  // Estado para lista de atribuições do usuário
   const [userAssignments, setUserAssignments] = useState<any[]>([]);
   const [showAssignmentsList, setShowAssignmentsList] = useState(false);
   const [isLoadingAssignments, setIsLoadingAssignments] = useState(false);
@@ -148,7 +148,7 @@ export const RepDashboard: React.FC = () => {
     }
   };
 
-  // 🔴 CORRIGIDO: Abrir lista de atribuições do usuário
+  // Abrir lista de atribuições do usuário
   const handleOpenRevokeList = async (user: RepUser) => {
     setSelectedUser(user);
     setActionError(null);
@@ -156,7 +156,6 @@ export const RepDashboard: React.FC = () => {
     setShowAssignmentsList(true);
 
     try {
-      // Buscar progresso do usuário para obter as atribuições
       const progress = await repService.getUserProgress(user._id);
       const pendingAssignments = progress.details.filter(
         (detail: any) => detail.status === 'pending' || detail.status === 'in_progress'
@@ -170,7 +169,7 @@ export const RepDashboard: React.FC = () => {
     }
   };
 
-  // 🔴 CORRIGIDO: Abrir modal de revogação com dados reais
+  // Abrir modal de revogação com dados reais
   const handleOpenRevoke = (assignmentId: string, controlName: string, controlId: string) => {
     setSelectedAssignmentId(assignmentId);
     setSelectedControlName(controlName);
@@ -201,6 +200,11 @@ export const RepDashboard: React.FC = () => {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  // 🔴 NOVO: Navegar para página de documentos
+  const handleManageDocuments = () => {
+    navigate('/rep/documents');
   };
 
   const handleSearch = (e: React.FormEvent) => {
@@ -412,17 +416,18 @@ export const RepDashboard: React.FC = () => {
             <ChevronRight className="w-4 h-4 text-gray-400 mt-2" />
           </div>
 
+          {/* 🔴 SUBSTITUÍDO: Card "Atribuir" pelo card "Documentos" */}
           <div
-            onClick={() => {}}
-            className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow cursor-pointer opacity-50 cursor-not-allowed"
+            onClick={handleManageDocuments}
+            className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Atribuir</p>
-                <p className="text-lg font-bold text-gray-900">Controles</p>
+                <p className="text-sm font-medium text-gray-600">Gerenciar</p>
+                <p className="text-lg font-bold text-gray-900">Documentos</p>
               </div>
               <div className="p-3 bg-indigo-100 rounded-full">
-                <ClipboardList className="w-6 h-6 text-indigo-600" />
+                <FileText className="w-6 h-6 text-indigo-600" />
               </div>
             </div>
             <ChevronRight className="w-4 h-4 text-gray-400 mt-2" />
@@ -532,7 +537,6 @@ export const RepDashboard: React.FC = () => {
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
-                              {/* 🔴 CORRIGIDO: Botão Revogar Controle - abre lista de atribuições */}
                               {u.assignmentsCount > 0 && (
                                 <Button 
                                   size="sm" 
@@ -673,7 +677,7 @@ export const RepDashboard: React.FC = () => {
         </div>
       )}
 
-      {/* 🔴 NOVO: Modal de Lista de Atribuições para Revogação */}
+      {/* Modal de Lista de Atribuições para Revogação */}
       {showAssignmentsList && selectedUser && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl max-w-2xl w-full p-6 shadow-xl max-h-[80vh] flex flex-col">
@@ -735,7 +739,6 @@ export const RepDashboard: React.FC = () => {
                             variant="outline"
                             className="text-orange-600 border-orange-200 hover:bg-orange-50"
                             onClick={() => {
-                              // Extrair o ID do controle da string ou usar o assignmentId
                               const controlId = assignment.controlId || assignment.assignmentId;
                               handleOpenRevoke(
                                 assignment.assignmentId,
