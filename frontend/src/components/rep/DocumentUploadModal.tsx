@@ -2,7 +2,6 @@
 import React, { useState, useRef } from 'react';
 import { 
   X, Upload, File, Loader2, AlertCircle, CheckCircle,
-  FilePdf, FileWord, FileSpreadsheet, FileImage, FileText,
   Trash2
 } from 'lucide-react';
 import { Button } from '../ui/Button.js';
@@ -136,15 +135,18 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
   // ============================================
   if (!isOpen) return null;
 
-  // Obter ícone do arquivo
+  // Obter ícone e cor do arquivo
   const getFileIcon = (file: File) => {
     const type = file.type;
-    if (type.includes('pdf')) return <FilePdf className="h-8 w-8 text-red-500" />;
-    if (type.includes('word')) return <FileWord className="h-8 w-8 text-blue-500" />;
-    if (type.includes('excel') || type.includes('sheet')) return <FileSpreadsheet className="h-8 w-8 text-green-500" />;
-    if (type.includes('image')) return <FileImage className="h-8 w-8 text-purple-500" />;
-    if (type.includes('text')) return <FileText className="h-8 w-8 text-gray-500" />;
-    return <File className="h-8 w-8 text-gray-400" />;
+    let color = 'text-gray-400';
+    
+    if (type.includes('pdf')) color = 'text-red-500';
+    else if (type.includes('word')) color = 'text-blue-500';
+    else if (type.includes('excel') || type.includes('sheet')) color = 'text-green-500';
+    else if (type.includes('image')) color = 'text-purple-500';
+    else if (type.includes('text')) color = 'text-gray-500';
+    
+    return <File className={`h-8 w-8 ${color}`} />;
   };
 
   return (
