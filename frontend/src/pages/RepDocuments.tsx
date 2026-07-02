@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { 
   FileText, Upload, Search, Filter, X, Download, 
   Archive, RotateCcw, Trash2, Eye, Plus, Loader2,
-  File, FilePdf, FileWord, FileSpreadsheet, FileImage,
+  File,
   AlertCircle, CheckCircle, Clock, FolderOpen
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card.js';
@@ -147,6 +147,19 @@ export const RepDocuments: React.FC = () => {
       console.error('Erro ao excluir:', err);
       alert('Erro ao excluir o documento');
     }
+  };
+
+  // 🔴 NOVO: Função para obter ícone do arquivo com cores
+  const getFileIcon = (mimeType: string) => {
+    let color = 'text-gray-400';
+    
+    if (mimeType.includes('pdf')) color = 'text-red-500';
+    else if (mimeType.includes('word')) color = 'text-blue-500';
+    else if (mimeType.includes('excel') || mimeType.includes('sheet')) color = 'text-green-500';
+    else if (mimeType.includes('image')) color = 'text-purple-500';
+    else if (mimeType.includes('text')) color = 'text-gray-500';
+    
+    return <File className={`h-5 w-5 ${color}`} />;
   };
 
   // ============================================
@@ -296,17 +309,7 @@ export const RepDocuments: React.FC = () => {
                       <tr key={doc._id} className="hover:bg-gray-50">
                         <td className="py-3 px-4">
                           <div className="flex items-center gap-2">
-                            {doc.mimeType.includes('pdf') ? (
-                              <FilePdf className="h-5 w-5 text-red-500" />
-                            ) : doc.mimeType.includes('word') ? (
-                              <FileWord className="h-5 w-5 text-blue-500" />
-                            ) : doc.mimeType.includes('excel') || doc.mimeType.includes('sheet') ? (
-                              <FileSpreadsheet className="h-5 w-5 text-green-500" />
-                            ) : doc.mimeType.includes('image') ? (
-                              <FileImage className="h-5 w-5 text-purple-500" />
-                            ) : (
-                              <File className="h-5 w-5 text-gray-400" />
-                            )}
+                            {getFileIcon(doc.mimeType)}
                             <div>
                               <p className="font-medium text-gray-900">{doc.title}</p>
                               <p className="text-xs text-gray-500">{doc.fileName}</p>
