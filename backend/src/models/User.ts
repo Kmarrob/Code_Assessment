@@ -7,7 +7,7 @@ import { passwordPolicy } from '../services/PasswordPolicy.js';
 
 // Interface para o documento estendendo de forma compatível com IUser
 export interface IUserDocument extends IUser, Document {
-  password?: string; // Mantido obrigatório para manter compatibilidade estrita com a interface IUser
+  password?: string;
   refreshToken?: string;
   passwordHistory?: string[];
   passwordExpiresAt?: Date;
@@ -41,7 +41,7 @@ const userSchema = new Schema<IUserDocument>(
     },
     password: {
       type: String,
-      required: [true, 'Senha é obrigatória'],
+      required: false, // 🔴 CORRIGIDO: Senha opcional (gerada automaticamente)
       minlength: [8, 'Senha deve ter pelo menos 8 caracteres'],
       select: false,
     },
@@ -128,7 +128,6 @@ const userSchema = new Schema<IUserDocument>(
     timestamps: true,
     toJSON: {
       transform: (_, ret) => {
-        // Usar exclusão condicional para propriedades que podem existir
         if (ret.password) {
           delete ret.password;
         }
