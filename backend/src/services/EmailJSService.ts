@@ -7,7 +7,7 @@ interface EmailOptions {
   subject: string;
   html: string;
   text?: string;
-  message?: string; // 🔴 ADICIONADO
+  message?: string;
   templateParams?: Record<string, any>;
 }
 
@@ -52,23 +52,13 @@ export class EmailJSService {
                        options.to.split('@')[0] || 
                        'Usuário';
 
-      // 🔴 CORRIGIDO: Extrair apenas a mensagem pura, sem HTML
-      let plainMessage = options.message || options.text || '';
-      if (!plainMessage && options.html) {
-        // Remover tags HTML para obter texto puro
-        plainMessage = options.html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
-        // Limitar tamanho
-        if (plainMessage.length > 500) {
-          plainMessage = plainMessage.substring(0, 497) + '...';
-        }
-      }
-
+      // 🔴 SIMPLIFICADO: Criar templateParams com todos os campos necessários
       const templateParams = {
         to_email: options.to,
-        subject: options.subject,
+        subject: options.templateParams?.subject || options.subject,
         user_name: userName,
-        title: options.subject,
-message: options.templateParams?.message || options.text || options.message || 'Nova notificação do sistema',
+        title: options.templateParams?.title || options.subject,
+        message: options.templateParams?.message || options.text || options.message || 'Nova notificação do sistema',
         link: options.templateParams?.link || process.env.FRONTEND_URL || 'https://code-assessment-frontend.onrender.com',
         ...options.templateParams,
       };
@@ -116,13 +106,15 @@ message: options.templateParams?.message || options.text || options.message || '
     return this.sendEmail({
       to,
       subject: title,
-      html: '', // Não usado diretamente, mas mantido para compatibilidade
+      html: '',
       text: message,
-      message: message, // 🔴 ADICIONADO
+      message: message,
       templateParams: {
         user_name: userName,
+        title: title,
         message: message,
         link: link,
+        subject: title,
       },
     });
   }
