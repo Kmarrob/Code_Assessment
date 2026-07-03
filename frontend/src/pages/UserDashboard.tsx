@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext.js';
-import { LayoutDashboard, ClipboardList, CheckCircle, Clock, AlertCircle, Loader2, LogOut } from 'lucide-react';
+import { LayoutDashboard, ClipboardList, CheckCircle, Clock, AlertCircle, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card.js';
 import { userService, UserStats, UserControl } from '../services/user.service.js';
 
@@ -105,29 +105,6 @@ export const UserDashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
-        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <LayoutDashboard className="h-6 w-6 text-primary-600" />
-            <span className="text-lg font-semibold text-gray-900">Code_Assessment</span>
-          </div>
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-gray-600">Olá, {user?.name}</span>
-            <button
-              onClick={handleLogout}
-              className="text-gray-400 hover:text-red-600 transition-colors"
-              aria-label="Sair"
-            >
-              <LogOut className="h-5 w-5" />
-            </button>
-            <div className="w-8 h-8 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center font-semibold text-sm">
-              {user?.name?.charAt(0) || 'U'}
-            </div>
-          </div>
-        </div>
-      </header>
-
       <main className="container mx-auto px-4 py-8">
         {/* Welcome Section */}
         <div className="mb-8">
