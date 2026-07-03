@@ -42,7 +42,8 @@ import RepNewUser from './pages/RepNewUser.js';
 import RepAssignControls from './pages/RepAssignControls.js';
 import RepResponses from './pages/RepResponses.js';
 import RepEditUser from './pages/RepEditUser.js';
-import RepDocuments from './pages/RepDocuments.js'; // 🔴 NOVO
+import RepDocuments from './pages/RepDocuments.js';
+import ResetPassword from './pages/ResetPassword.js'; // 🔴 NOVO
 import ConsultantDashboard from './pages/ConsultantDashboard.js';
 import UserDashboard from './pages/UserDashboard.js';
 import ProfilePage from './pages/ProfilePage.js';
@@ -94,6 +95,7 @@ function App() {
                 <Route path="/" element={<LandingPage />} />
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/register" element={<RegisterPage />} />
+                <Route path="/reset-password/:token" element={<ResetPassword />} /> {/* 🔴 NOVO */}
 
                 { /* ============================================
                     ROTAS PROTEGIDAS (qualquer usuário autenticado)
@@ -224,7 +226,7 @@ function App() {
                       <RepResponses />
                     </Layout>
                   } />
-                  <Route path="/rep/documents" element={ // 🔴 NOVO
+                  <Route path="/rep/documents" element={
                     <Layout>
                       <RepDocuments />
                     </Layout>
