@@ -1,7 +1,7 @@
 // frontend/src/pages/rep/RepNewUser.tsx
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, UserPlus, Loader2, AlertCircle } from 'lucide-react';
+import { ArrowLeft, UserPlus, Loader2, AlertCircle, Mail } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card.js';
 import { Button } from '../components/ui/Button.js';
 import { Input } from '../components/ui/Input.js';
@@ -11,11 +11,10 @@ export const RepNewUser: React.FC = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    password: '',
-    confirmPassword: '',
     department: '',
   });
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -30,6 +29,9 @@ export const RepNewUser: React.FC = () => {
         return newErrors;
       });
     }
+    // Limpar mensagem de sucesso/erro ao digitar
+    if (success) setSuccess(null);
+    if (error) setError(null);
   };
 
   const validateForm = (): boolean => {
@@ -43,14 +45,6 @@ export const RepNewUser: React.FC = () => {
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       errors.email = 'Email inválido';
     }
-    if (!formData.password) {
-      errors.password = 'Senha é obrigatória';
-    } else if (formData.password.length < 8) {
-      errors.password = 'Senha deve ter no mínimo 8 caracteres';
-    }
-    if (formData.password !== formData.confirmPassword) {
-      errors.confirmPassword = 'As senhas não coincidem';
-    }
 
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
@@ -59,6 +53,7 @@ export const RepNewUser: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setSuccess(null);
 
     if (!validateForm()) {
       return;
@@ -69,33 +64,40 @@ export const RepNewUser: React.FC = () => {
       await repService.createUser({
         name: formData.name.trim(),
         email: formData.email.trim(),
-        password: formData.password,
         department: formData.department.trim() || undefined,
+        // 🔴 REMOVIDO: password não é mais enviado
       });
 
-      // Sucesso - navegar de volta para o dashboard
-      navigate('/rep');
+      setSuccess(`✅ Usuário ${formData.name} criado com sucesso! Um e-mail com o link para criar a senha foi enviado para ${formData.email}.`);
+      
+      // Limpar formulário
+      setFormData({
+        name: '',
+        email: '',
+        department: '',
+      });
+      
+      // Redirecionar após 3 segundos
+      setTimeout(() => {
+        navigate('/rep');
+      }, 3000);
     } catch (err: any) {
       console.error('Erro ao criar usuário:', err);
       
-      // Mensagem de erro da API
       const message = err.response?.data?.message || 'Erro ao criar usuário. Tente novamente.';
       setError(message);
 
-      // Tratamento de erros de validação - CORRIGIDO
       const errors = err.response?.data?.errors;
       if (errors) {
         const fieldErrors: Record<string, string> = {};
         
         if (Array.isArray(errors)) {
-          // Formato: [{ field: 'email', message: '...' }]
           errors.forEach((e: any) => {
             if (e.field) {
               fieldErrors[e.field] = e.message;
             }
           });
         } else if (typeof errors === 'object') {
-          // Formato: { email: ['Email já está em uso'] }
           Object.entries(errors).forEach(([field, messages]) => {
             if (Array.isArray(messages) && messages.length > 0) {
               fieldErrors[field] = messages[0];
@@ -137,7 +139,7 @@ export const RepNewUser: React.FC = () => {
               <div>
                 <CardTitle>Novo Usuário</CardTitle>
                 <p className="text-sm text-gray-500 mt-1">
-                  Cadastre um novo usuário para atribuir controles
+                  Cadastre um novo usuário — ele receberá um e-mail para criar a própria senha
                 </p>
               </div>
             </div>
@@ -152,6 +154,14 @@ export const RepNewUser: React.FC = () => {
                 </div>
               )}
 
+              {/* Sucesso */}
+              {success && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-start gap-3">
+                  <Mail className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-green-700">{success}</p>
+                </div>
+              )}
+
               {/* Nome */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -162,6 +172,7 @@ export const RepNewUser: React.FC = () => {
                   onChange={(e) => handleChange('name', e.target.value)}
                   placeholder="Ex: João Silva"
                   className={fieldErrors.name ? 'border-red-500' : ''}
+                  disabled={isLoading}
                 />
                 {fieldErrors.name && (
                   <p className="text-sm text-red-500 mt-1">{fieldErrors.name}</p>
@@ -179,10 +190,14 @@ export const RepNewUser: React.FC = () => {
                   onChange={(e) => handleChange('email', e.target.value)}
                   placeholder="Ex: joao@empresa.com"
                   className={fieldErrors.email ? 'border-red-500' : ''}
+                  disabled={isLoading}
                 />
                 {fieldErrors.email && (
                   <p className="text-sm text-red-500 mt-1">{fieldErrors.email}</p>
                 )}
+                <p className="text-xs text-gray-400 mt-1">
+                  📧 O usuário receberá um e-mail com o link para criar a própria senha
+                </p>
               </div>
 
               {/* Departamento */}
@@ -194,43 +209,12 @@ export const RepNewUser: React.FC = () => {
                   value={formData.department}
                   onChange={(e) => handleChange('department', e.target.value)}
                   placeholder="Ex: TI, RH, Financeiro"
+                  disabled={isLoading}
                 />
                 <p className="text-xs text-gray-400 mt-1">Opcional</p>
               </div>
 
-              {/* Senha */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Senha *
-                </label>
-                <Input
-                  type="password"
-                  value={formData.password}
-                  onChange={(e) => handleChange('password', e.target.value)}
-                  placeholder="Mínimo 8 caracteres"
-                  className={fieldErrors.password ? 'border-red-500' : ''}
-                />
-                {fieldErrors.password && (
-                  <p className="text-sm text-red-500 mt-1">{fieldErrors.password}</p>
-                )}
-              </div>
-
-              {/* Confirmar Senha */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Confirmar Senha *
-                </label>
-                <Input
-                  type="password"
-                  value={formData.confirmPassword}
-                  onChange={(e) => handleChange('confirmPassword', e.target.value)}
-                  placeholder="Digite a senha novamente"
-                  className={fieldErrors.confirmPassword ? 'border-red-500' : ''}
-                />
-                {fieldErrors.confirmPassword && (
-                  <p className="text-sm text-red-500 mt-1">{fieldErrors.confirmPassword}</p>
-                )}
-              </div>
+              {/* 🔴 REMOVIDOS: Campos de senha e confirmar senha */}
 
               {/* Botões */}
               <div className="flex gap-3 pt-4 border-t border-gray-200">
@@ -267,9 +251,12 @@ export const RepNewUser: React.FC = () => {
 
         {/* Informação adicional */}
         <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <p className="text-sm text-blue-700">
-            <span className="font-semibold">💡 Dica:</span> Após criar o usuário, você poderá atribuir controles 
-            específicos da ISO 27001 para ele responder.
+          <p className="text-sm text-blue-700 flex items-start gap-2">
+            <Mail className="h-4 w-4 flex-shrink-0 mt-0.5" />
+            <span>
+              <span className="font-semibold">💡 Como funciona:</span> O usuário receberá um e-mail com um link 
+              para criar sua própria senha de acesso. Após definir a senha, poderá acessar o sistema normalmente.
+            </span>
           </p>
         </div>
       </div>
