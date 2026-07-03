@@ -21,7 +21,7 @@ services:
     name: code-assessment-frontend
     rootDir: frontend
     buildCommand: npm install && npm run build
-    publishPath: dist
+    publishPath: dist  # 🔴 CORRIGIDO: publishPath (não publishDir)
     envVars:
       - key: VITE_API_URL
         value: https://code-assessment-898z.onrender.com
