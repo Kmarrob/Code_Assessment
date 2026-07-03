@@ -70,20 +70,29 @@ export class AuthService {
 
   static async login(email: string, password: string): Promise<{ user: IUser; tokens: AuthTokens }> {
     try {
+      logger.info(`🔍 Tentando login para: ${email}`);
+
       const user = await User.findOne({ email })
         .select('_id name email password role company department isActive refreshToken')
         .exec();
 
       if (!user) {
+        logger.warn(`❌ Usuário não encontrado: ${email}`);
         throw new AuthenticationError('Email ou senha inválidos');
       }
 
       if (!user.isActive) {
+        logger.warn(`❌ Usuário inativo: ${email}`);
         throw new AuthenticationError('Usuário inativo');
       }
 
+      logger.info(`🔍 Hash da senha no banco: ${user.password}`);
+
       const isPasswordValid = await user.comparePassword(password);
+      logger.info(`🔍 Resultado da comparação: ${isPasswordValid}`);
+
       if (!isPasswordValid) {
+        logger.warn(`❌ Senha inválida para: ${email}`);
         throw new AuthenticationError('Email ou senha inválidos');
       }
 
@@ -114,6 +123,7 @@ export class AuthService {
         passwordChangedAt: user.passwordChangedAt,
       };
 
+      logger.info(`✅ Login bem-sucedido: ${email}`);
       return { user: userResponse, tokens };
 
     } catch (error) {

@@ -151,8 +151,19 @@ userSchema.methods.comparePassword = async function (
   candidatePassword: string
 ): Promise<boolean> {
   try {
-    if (!this.password) return false;
-    return await bcrypt.compare(candidatePassword, this.password);
+    if (!this.password) {
+      logger.warn('🔍 comparePassword: password é undefined ou null');
+      return false;
+    }
+
+    logger.info(`🔍 comparePassword - Senha fornecida: ${candidatePassword}`);
+    logger.info(`🔍 comparePassword - Hash armazenado: ${this.password}`);
+
+    const result = await bcrypt.compare(candidatePassword, this.password);
+
+    logger.info(`🔍 comparePassword - Resultado da comparação: ${result}`);
+
+    return result;
   } catch (error) {
     logger.error('Error comparing passwords:', error);
     return false;
@@ -178,6 +189,8 @@ userSchema.pre<IUserDocument>('save', async function (next) {
       return next(new Error('Senha não fornecida para modificação'));
     }
 
+    logger.info(`🔍 pre-save - Validando senha: ${this.password}`);
+
     const validation = passwordPolicy.validate(this.password, {
       name: this.name,
       email: this.email,
@@ -199,6 +212,9 @@ userSchema.pre<IUserDocument>('save', async function (next) {
 
     const salt = await bcrypt.genSalt(12);
     this.password = await bcrypt.hash(this.password, salt);
+
+    logger.info(`🔍 pre-save - Hash gerado: ${this.password}`);
+
     next();
   } catch (error) {
     next(error as Error);
