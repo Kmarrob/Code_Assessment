@@ -1,1 +1,5 @@
-/*    /index.html    200
+# Redirecionamento para SPA (Single Page Application)
+# Todas as rotas não encontradas são redirecionadas para o index.html
+# Isso permite que o React Router gerencie as rotas no frontend
+
+/* /index.html 200
