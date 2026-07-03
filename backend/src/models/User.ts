@@ -1,4 +1,3 @@
-// backend/src/models/User.ts
 import mongoose, { Schema, Model, Document } from 'mongoose';
 import bcrypt from 'bcryptjs';
 import { IUser, UserRole } from '../types/index.js';
@@ -11,12 +10,12 @@ export interface IUserDocument extends IUser, Document {
   refreshToken?: string;
   passwordHistory?: string[];
   passwordExpiresAt?: Date;
-  // 🔴 ADICIONADO: Campos para inativação
+  // Campos para inativação
   inactivationReason?: 'Desligado' | 'Mudou de setor' | 'Outros';
   inactivationDescription?: string;
   inactivatedAt?: Date;
   inactivatedBy?: mongoose.Types.ObjectId;
-  // 🔴 NOVO: Campo para indicar que o usuário precisa trocar a senha no primeiro acesso
+  // Campo para indicar que o usuário precisa trocar a senha no primeiro acesso
   mustChangePassword?: boolean;
   comparePassword(candidatePassword: string): Promise<boolean>;
   needsPasswordChange(): boolean;
@@ -34,14 +33,14 @@ const userSchema = new Schema<IUserDocument>(
     email: {
       type: String,
       required: [true, 'Email é obrigatório'],
-      unique: true,
+      unique: true, // Mantido aqui, removido do bloco inferior de índices manuais redundantes
       trim: true,
       lowercase: true,
       match: [/^\S+@\S+\.\S+$/, 'Email inválido'],
     },
     password: {
       type: String,
-      required: false, // 🔴 CORRIGIDO: Senha opcional (gerada automaticamente)
+      required: false, // Senha opcional (gerada automaticamente)
       minlength: [8, 'Senha deve ter pelo menos 8 caracteres'],
       select: false,
     },
@@ -98,12 +97,10 @@ const userSchema = new Schema<IUserDocument>(
     passwordExpiresAt: {
       type: Date,
     },
-    // 🔴 NOVO: Campo para primeiro acesso
     mustChangePassword: {
       type: Boolean,
       default: false,
     },
-    // 🔴 ADICIONADO: Campos para inativação
     inactivationReason: {
       type: String,
       enum: ['Desligado', 'Mudou de setor', 'Outros'],
@@ -156,7 +153,6 @@ userSchema.methods.comparePassword = async function (
       return false;
     }
 
-    // 🔴 CORREÇÃO: Remover quebras de linha e espaços extras
     const cleanHash = this.password.trim();
     const cleanPassword = candidatePassword.trim();
 
@@ -193,18 +189,15 @@ userSchema.pre<IUserDocument>('save', async function (next) {
       return next(new Error('Senha não fornecida para modificação'));
     }
 
-    // 🔴 CORREÇÃO: Verificar se a senha já é um hash bcrypt
     const isAlreadyHashed = this.password.startsWith('$2a$') || 
                             this.password.startsWith('$2b$') || 
                             this.password.startsWith('$2y$');
     
     if (isAlreadyHashed) {
-      // Se já está hasheado, não aplicar novamente
       logger.info(`🔍 pre-save - Senha já hasheada, pulando hash`);
       return next();
     }
 
-    // Só aplicar hash se for texto plano
     const cleanPassword = this.password.trim();
 
     logger.info(`🔍 pre-save - Validando senha em texto plano: ${cleanPassword}`);
@@ -257,10 +250,9 @@ userSchema.pre<IUserDocument>('save', async function (next) {
 });
 
 // ============================================
-// ÍNDICES
+// ÍNDICES (Limpos de duplicidades com propriedades diretas do Schema)
 // ============================================
 
-userSchema.index({ email: 1 }, { unique: true });
 userSchema.index({ role: 1 });
 userSchema.index({ isActive: 1 });
 userSchema.index({ role: 1, isActive: 1, createdAt: -1 });
@@ -273,10 +265,8 @@ userSchema.index({ consultantId: 1, role: 1 });
 userSchema.index({ name: 'text', email: 'text' });
 userSchema.index({ lastLogin: -1 });
 userSchema.index({ passwordExpiresAt: 1 });
-// 🔴 ADICIONADO: Índices para inativação
 userSchema.index({ inactivatedBy: 1 });
 userSchema.index({ inactivationReason: 1 });
-// 🔴 NOVO: Índice para mustChangePassword
 userSchema.index({ mustChangePassword: 1 });
 
 // ============================================

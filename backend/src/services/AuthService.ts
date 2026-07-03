@@ -1,4 +1,3 @@
-// backend/src/services/AuthService.ts
 import jwt from 'jsonwebtoken';
 import { User } from '../models/User.js';
 import { config } from '../config/env.js';
@@ -72,8 +71,9 @@ export class AuthService {
     try {
       logger.info(`🔍 Tentando login para: ${email}`);
 
+      // 🔴 CORREÇÃO CRÍTICA: Adicionado '+password' para forçar a busca do campo que está com select: false
       const user = await User.findOne({ email })
-        .select('_id name email password role company department isActive refreshToken')
+        .select('+password _id name email role company department isActive refreshToken passwordChangedAt')
         .exec();
 
       if (!user) {

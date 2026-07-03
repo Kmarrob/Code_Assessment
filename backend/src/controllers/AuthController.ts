@@ -1,4 +1,3 @@
-// backend/src/controllers/AuthController.ts
 import { Request, Response, NextFunction } from 'express';
 import { AuthService } from '../services/AuthService.js';
 import { validate, registerSchema, loginSchema, refreshTokenSchema, updateProfileSchema } from '../utils/validation.js';
@@ -311,17 +310,13 @@ export class AuthController {
       }
 
       // Buscar usuário pelo token (ID)
-      const user = await User.findById(token);
+      const user = await User.findById(token).select('+password');
       if (!user) {
         throw new AppError('Token inválido ou usuário não encontrado', 404);
       }
 
-      // Hash da nova senha
-      const salt = await bcrypt.genSalt(12);
-      const hashedPassword = await bcrypt.hash(newPassword, salt);
-
-      // Atualizar senha e remover flag de primeiro acesso
-      user.password = hashedPassword;
+      // 🔴 CORREÇÃO CRÍTICA: Passamos o texto plano. O userSchema.pre('save') cuidará do hash de forma única.
+      user.password = newPassword;
       user.mustChangePassword = false;
       user.passwordChangedAt = new Date();
       
