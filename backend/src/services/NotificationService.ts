@@ -4,8 +4,8 @@ import { Notification, INotification, NotificationType, INotificationMetadata } 
 import { User } from '../models/User.js';
 import { AppError } from '../utils/errors.js';
 import { logger } from '../utils/logger.js';
-// 🔴 NOVO: Import do EmailService
-import { emailService } from './EmailService.js';
+// 🔴 SUBSTITUÍDO: EmailService pelo EmailJSService
+import { emailjsService } from './EmailJSService.js';
 
 interface CreateNotificationDTO {
   userId: string;
@@ -51,8 +51,8 @@ export class NotificationService {
       await notification.save();
       logger.info(`📬 Notificação criada para ${user.email}: ${data.title}`);
 
-      // 🔴 NOVO: Enviar e-mail para o usuário (se tiver email)
-      await this.sendEmailNotification(user, data);
+      // 🔴 ENVIAR E-MAIL VIA EMAILJS
+      await this.sendEmailNotificationViaEmailJS(user, data);
 
       return notification;
     } catch (error) {
@@ -62,9 +62,9 @@ export class NotificationService {
   }
 
   /**
-   * 🔴 NOVO: Envia e-mail para o usuário sobre a notificação
+   * 🔴 NOVO: Envia e-mail via EmailJS
    */
-  private static async sendEmailNotification(
+  private static async sendEmailNotificationViaEmailJS(
     user: any,
     data: CreateNotificationDTO
   ): Promise<void> {
@@ -93,73 +93,22 @@ export class NotificationService {
       const typeInfo = typeMap[data.type] || { emoji: '📬', subject: 'Nova Notificação' };
       const subject = `${typeInfo.emoji} ${typeInfo.subject}`;
 
-      // Montar HTML do e-mail
-      const html = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="UTF-8">
-          <style>
-            body { font-family: Arial, sans-serif; color: #333; line-height: 1.6; }
-            .container { max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px; }
-            .header { background: #1a56db; color: white; padding: 15px; border-radius: 8px 8px 0 0; text-align: center; }
-            .content { padding: 20px; }
-            .notification-box { background: #f0f4ff; padding: 15px; border-left: 4px solid #1a56db; margin: 15px 0; border-radius: 4px; }
-            .button { display: inline-block; background: #1a56db; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; }
-            .footer { margin-top: 20px; padding-top: 15px; border-top: 1px solid #e0e0e0; font-size: 12px; color: #666; text-align: center; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="header">
-              <h2>${typeInfo.emoji} ${data.title}</h2>
-            </div>
-            <div class="content">
-              <p>Olá <strong>${user.name || 'Usuário'}</strong>,</p>
-              <div class="notification-box">
-                <p>${data.message}</p>
-              </div>
-              <p style="text-align: center; margin: 30px 0;">
-                <a href="${fullLink}" class="button">🔐 Ver no Sistema</a>
-              </p>
-              <p><strong>Link alternativo:</strong> ${fullLink}</p>
-              <p>Atenciosamente,<br><strong>Equipe Code_Assessment</strong></p>
-            </div>
-            <div class="footer">
-              <p>Este é um e-mail automático. Por favor, não responda.</p>
-              <p>© ${new Date().getFullYear()} Code_Assessment - Sistema de Avaliação de Maturidade ISO 27001</p>
-            </div>
-          </div>
-        </body>
-        </html>
-      `;
-
-      // Texto plano para fallback
-      const text = `
-${typeInfo.emoji} ${data.title}
-
-Olá ${user.name || 'Usuário'},
-
-${data.message}
-
-Acesse o sistema para mais detalhes:
-${fullLink}
-
-Atenciosamente,
-Equipe Code_Assessment
-      `;
-
-      await emailService.sendEmail({
+      // Enviar via EmailJS
+      const result = await emailjsService.sendNotificationEmail({
         to: user.email,
-        subject,
-        html,
-        text,
+        userName: user.name || 'Usuário',
+        title: data.title,
+        message: data.message,
+        link: fullLink,
       });
 
-      logger.info(`📧 E-mail enviado para ${user.email}: ${subject}`);
+      if (result) {
+        logger.info(`📧 E-mail enviado para ${user.email} via EmailJS: ${subject}`);
+      } else {
+        logger.warn(`⚠️ Falha ao enviar e-mail para ${user.email} via EmailJS`);
+      }
     } catch (emailError) {
-      // Não interrompe o fluxo se o e-mail falhar
-      logger.error(`❌ Erro ao enviar e-mail para notificação:`, emailError);
+      logger.error(`❌ Erro ao enviar e-mail para ${user.email} via EmailJS:`, emailError);
     }
   }
 
@@ -185,12 +134,12 @@ Equipe Code_Assessment
       const result = await Notification.insertMany(notifications);
       logger.info(`📬 ${result.length} notificações criadas em lote`);
       
-      // 🔴 NOVO: Enviar e-mails em lote (de forma assíncrona, sem bloquear)
+      // Enviar e-mails em lote via EmailJS
       for (const userId of userIds) {
         try {
           const user = await User.findById(userId);
           if (user && user.email) {
-            await this.sendEmailNotification(user, { ...data, userId });
+            await this.sendEmailNotificationViaEmailJS(user, { ...data, userId });
           }
         } catch (emailError) {
           logger.error(`❌ Erro ao enviar e-mail para ${userId}:`, emailError);
