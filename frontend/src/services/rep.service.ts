@@ -157,12 +157,12 @@ export const repService = {
   },
 
   /**
-   * Criar usuário
+   * 🔴 CORRIGIDO: Criar usuário (senha opcional - sistema gera automaticamente)
    */
   async createUser(data: {
     name: string;
     email: string;
-    password: string;
+    password?: string; // 🔴 TORNADO OPCIONAL
     company?: string;
     department?: string;
   }): Promise<User> {
