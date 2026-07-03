@@ -8,6 +8,8 @@ import { UserRole, IUser } from '../types/index.js';
 import { retryDatabase } from '../utils/retry.js';
 import { databaseCircuitBreaker } from '../utils/circuitBreaker.js';
 import { withDbTimeout } from '../middleware/timeout.js';
+// 🔴 NOVO: Import do EmailJSService
+import { emailjsService } from './EmailJSService.js';
 
 export interface CreateUserData {
   name: string;
@@ -164,6 +166,26 @@ export class AdminService {
             await user.save();
 
             logger.info(`Usuário criado pelo admin: ${user.email} (${user.role}) - Empresa: ${companyId || 'Nenhuma'}`);
+
+            // 🔴 NOVO: Enviar e-mail de boas-vindas com link para criar senha
+            try {
+              const frontendUrl = process.env.FRONTEND_URL || 'https://code-assessment-frontend.onrender.com';
+              const resetToken = user._id; // Usar ID como token simples
+              const resetLink = `${frontendUrl}/reset-password/${resetToken}`;
+
+              await emailjsService.sendPasswordResetEmail({
+                to: user.email,
+                userName: user.name,
+                userEmail: user.email,
+                resetLink: resetLink,
+                expiryTime: '24 horas',
+              });
+
+              logger.info(`📧 E-mail de boas-vindas enviado para ${user.email} (Admin)`);
+            } catch (emailError) {
+              // Não interrompe o fluxo se o e-mail falhar
+              logger.error(`❌ Erro ao enviar e-mail de boas-vindas para ${user.email}:`, emailError);
+            }
 
             return user.toJSON() as unknown as IUser;
           }, 'AdminService.createUser');

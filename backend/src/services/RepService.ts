@@ -8,6 +8,8 @@ import { Company } from '../models/Company.js';
 import { AppError, NotFoundError, ValidationError } from '../middleware/errorHandler.js';
 import { logger } from '../utils/logger.js';
 import { UserRole, ResponseStatus } from '../types/index.js';
+// 🔴 NOVO: Import do EmailJSService
+import { emailjsService } from './EmailJSService.js';
 
 // Tipo de retorno para listUsers
 interface ListUsersResult {
@@ -186,6 +188,26 @@ export class RepService {
     await user.save();
 
     logger.info(`Usuário criado pelo preposto ${rep.email}: ${user.email} (Empresa: ${companyId})`);
+
+    // 🔴 NOVO: Enviar e-mail de boas-vindas com link para criar senha
+    try {
+      const frontendUrl = process.env.FRONTEND_URL || 'https://code-assessment-frontend.onrender.com';
+      const resetToken = user._id; // Usar ID como token simples (pode ser melhorado com JWT)
+      const resetLink = `${frontendUrl}/reset-password/${resetToken}`;
+
+      await emailjsService.sendPasswordResetEmail({
+        to: user.email,
+        userName: user.name,
+        userEmail: user.email,
+        resetLink: resetLink,
+        expiryTime: '24 horas',
+      });
+
+      logger.info(`📧 E-mail de boas-vindas enviado para ${user.email}`);
+    } catch (emailError) {
+      // Não interrompe o fluxo se o e-mail falhar
+      logger.error(`❌ Erro ao enviar e-mail de boas-vindas para ${user.email}:`, emailError);
+    }
 
     return user.toJSON();
   }
