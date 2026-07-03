@@ -1,8 +1,6 @@
 // backend/src/services/EmailJSService.ts
-// 🔴 CORRIGIDO: Usando require para compatibilidade com tipos
-const emailjs = require('@emailjs/nodejs');
+// 🔴 CORRIGIDO: Usando fetch diretamente para a API REST do EmailJS
 import { logger } from '../utils/logger.js';
-import { config } from '../config/env.js';
 
 interface EmailOptions {
   to: string;
@@ -14,6 +12,10 @@ interface EmailOptions {
 
 export class EmailJSService {
   private initialized: boolean = false;
+  private publicKey: string = '';
+  private privateKey: string = '';
+  private serviceId: string = '';
+  private templateId: string = '';
 
   constructor() {
     this.init();
@@ -21,21 +23,18 @@ export class EmailJSService {
 
   private init() {
     try {
-      const publicKey = process.env.EMAILJS_PUBLIC_KEY;
-      const privateKey = process.env.EMAILJS_PRIVATE_KEY;
+      this.publicKey = process.env.EMAILJS_PUBLIC_KEY || '';
+      this.privateKey = process.env.EMAILJS_PRIVATE_KEY || '';
+      this.serviceId = process.env.EMAILJS_SERVICE_ID || 'service_1rgfisk';
+      this.templateId = process.env.EMAILJS_TEMPLATE_ID || 'template_Sygc3ia';
 
-      if (!publicKey || !privateKey) {
+      if (!this.publicKey || !this.privateKey) {
         logger.warn('⚠️ EmailJS credenciais não configuradas. E-mails não serão enviados.');
         return;
       }
 
-      emailjs.init({
-        publicKey: publicKey,
-        privateKey: privateKey,
-      });
-
       this.initialized = true;
-      logger.info('📧 Serviço de e-mail EmailJS inicializado com sucesso');
+      logger.info('📧 Serviço de e-mail EmailJS inicializado com sucesso (modo API REST)');
     } catch (error) {
       logger.error('❌ Erro ao inicializar EmailJS:', error);
     }
@@ -47,9 +46,6 @@ export class EmailJSService {
         logger.warn('⚠️ EmailJS não inicializado. E-mail não enviado.');
         return false;
       }
-
-      const serviceId = process.env.EMAILJS_SERVICE_ID || 'service_1rgfisk';
-      const templateId = process.env.EMAILJS_TEMPLATE_ID || 'template_Sygc3ia';
 
       const userName = options.templateParams?.user_name || 
                        options.to.split('@')[0] || 
@@ -65,13 +61,27 @@ export class EmailJSService {
         ...options.templateParams,
       };
 
-      const response = await emailjs.send(
-        serviceId,
-        templateId,
-        templateParams
-      );
+      // Chamada direta para a API REST do EmailJS
+      const response = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          service_id: this.serviceId,
+          template_id: this.templateId,
+          user_id: this.publicKey,
+          accessToken: this.privateKey,
+          template_params: templateParams,
+        }),
+      });
 
-      logger.info(`📧 E-mail enviado para ${options.to} via EmailJS: ${response.status}`);
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`EmailJS API error: ${response.status} - ${errorText}`);
+      }
+
+      logger.info(`📧 E-mail enviado para ${options.to} via EmailJS API`);
       return true;
     } catch (error) {
       logger.error(`❌ Erro ao enviar e-mail para ${options.to} via EmailJS:`, error);
