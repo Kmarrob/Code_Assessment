@@ -68,7 +68,7 @@ export class EmailJSService {
         subject: options.subject,
         user_name: userName,
         title: options.subject,
-        message: plainMessage || 'Nova notificação do sistema',
+message: options.templateParams?.message || options.text || options.message || 'Nova notificação do sistema',
         link: options.templateParams?.link || process.env.FRONTEND_URL || 'https://code-assessment-frontend.onrender.com',
         ...options.templateParams,
       };
