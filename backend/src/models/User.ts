@@ -156,10 +156,14 @@ userSchema.methods.comparePassword = async function (
       return false;
     }
 
-    logger.info(`🔍 comparePassword - Senha fornecida: ${candidatePassword}`);
-    logger.info(`🔍 comparePassword - Hash armazenado: ${this.password}`);
+    // 🔴 CORREÇÃO: Remover quebras de linha e espaços extras
+    const cleanHash = this.password.trim();
+    const cleanPassword = candidatePassword.trim();
 
-    const result = await bcrypt.compare(candidatePassword, this.password);
+    logger.info(`🔍 comparePassword - Senha fornecida: ${cleanPassword}`);
+    logger.info(`🔍 comparePassword - Hash armazenado (limpo): ${cleanHash}`);
+
+    const result = await bcrypt.compare(cleanPassword, cleanHash);
 
     logger.info(`🔍 comparePassword - Resultado da comparação: ${result}`);
 
@@ -189,9 +193,12 @@ userSchema.pre<IUserDocument>('save', async function (next) {
       return next(new Error('Senha não fornecida para modificação'));
     }
 
-    logger.info(`🔍 pre-save - Validando senha: ${this.password}`);
+    // 🔴 CORREÇÃO: Remover quebras de linha e espaços extras antes de validar
+    const cleanPassword = this.password.trim();
 
-    const validation = passwordPolicy.validate(this.password, {
+    logger.info(`🔍 pre-save - Validando senha: ${cleanPassword}`);
+
+    const validation = passwordPolicy.validate(cleanPassword, {
       name: this.name,
       email: this.email,
     });
@@ -211,7 +218,7 @@ userSchema.pre<IUserDocument>('save', async function (next) {
     this.passwordExpiresAt = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
 
     const salt = await bcrypt.genSalt(12);
-    this.password = await bcrypt.hash(this.password, salt);
+    this.password = await bcrypt.hash(cleanPassword, salt);
 
     logger.info(`🔍 pre-save - Hash gerado: ${this.password}`);
 
