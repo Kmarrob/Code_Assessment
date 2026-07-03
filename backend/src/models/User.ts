@@ -193,10 +193,21 @@ userSchema.pre<IUserDocument>('save', async function (next) {
       return next(new Error('Senha não fornecida para modificação'));
     }
 
-    // 🔴 CORREÇÃO: Remover quebras de linha e espaços extras antes de validar
+    // 🔴 CORREÇÃO: Verificar se a senha já é um hash bcrypt
+    const isAlreadyHashed = this.password.startsWith('$2a$') || 
+                            this.password.startsWith('$2b$') || 
+                            this.password.startsWith('$2y$');
+    
+    if (isAlreadyHashed) {
+      // Se já está hasheado, não aplicar novamente
+      logger.info(`🔍 pre-save - Senha já hasheada, pulando hash`);
+      return next();
+    }
+
+    // Só aplicar hash se for texto plano
     const cleanPassword = this.password.trim();
 
-    logger.info(`🔍 pre-save - Validando senha: ${cleanPassword}`);
+    logger.info(`🔍 pre-save - Validando senha em texto plano: ${cleanPassword}`);
 
     const validation = passwordPolicy.validate(cleanPassword, {
       name: this.name,
