@@ -15,12 +15,14 @@ export const repCreateUserSchema = z.object({
     .email('Email inválido')
     .min(5, 'Email muito curto')
     .max(255, 'Email muito longo'),
+  // 🔴 CORRIGIDO: Tornar senha opcional (sistema gera automaticamente)
   password: z.string()
     .min(8, 'Senha deve ter pelo menos 8 caracteres')
     .regex(/[A-Z]/, 'Senha deve conter pelo menos 1 letra maiúscula')
     .regex(/[a-z]/, 'Senha deve conter pelo menos 1 letra minúscula')
     .regex(/[0-9]/, 'Senha deve conter pelo menos 1 número')
-    .regex(/[^A-Za-z0-9]/, 'Senha deve conter pelo menos 1 caractere especial'),
+    .regex(/[^A-Za-z0-9]/, 'Senha deve conter pelo menos 1 caractere especial')
+    .optional(), // 🔴 TORNADO OPCIONAL
   company: z.string().max(100).optional(),
   department: z.string().max(100).optional(),
 });
@@ -51,7 +53,7 @@ export const repUpdateUserSchema = z.object({
     .optional(),
 });
 
-// 🔴 NOVO: Schema para inativação de usuário
+// Schema para inativação de usuário
 export const repInactivateUserSchema = z.object({
   reason: z.enum(['Desligado', 'Mudou de setor', 'Outros'], {
     errorMap: () => ({ message: 'Motivo inválido. Use: Desligado, Mudou de setor ou Outros' })
@@ -69,7 +71,7 @@ export const repInactivateUserSchema = z.object({
     ),
 });
 
-// 🔴 NOVO: Schema para revogação de controle
+// Schema para revogação de controle
 export const repRevokeControlSchema = z.object({
   confirmRevoke: z.boolean({
     required_error: 'Confirmação de revogação é obrigatória',
