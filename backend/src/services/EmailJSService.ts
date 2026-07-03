@@ -7,6 +7,7 @@ interface EmailOptions {
   subject: string;
   html: string;
   text?: string;
+  message?: string; // 🔴 ADICIONADO
   templateParams?: Record<string, any>;
 }
 
@@ -117,6 +118,7 @@ export class EmailJSService {
       subject: title,
       html: '', // Não usado diretamente, mas mantido para compatibilidade
       text: message,
+      message: message, // 🔴 ADICIONADO
       templateParams: {
         user_name: userName,
         message: message,
