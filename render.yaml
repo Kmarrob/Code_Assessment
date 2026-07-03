@@ -25,9 +25,6 @@ services:
     envVars:
       - key: VITE_API_URL
         value: https://code-assessment-898z.onrender.com
-    # ----------------------------------------------------
-    # ADICIONE ESTAS LINHAS ABAIXO NO SEU ARQUIVO:
-    # ----------------------------------------------------
     routes:
       - type: rewrite
         source: /*
