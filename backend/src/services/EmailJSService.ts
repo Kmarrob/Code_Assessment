@@ -1,5 +1,6 @@
 // backend/src/services/EmailJSService.ts
-import emailjs from '@emailjs/nodejs';
+// 🔴 CORRIGIDO: Usando require para compatibilidade com tipos
+const emailjs = require('@emailjs/nodejs');
 import { logger } from '../utils/logger.js';
 import { config } from '../config/env.js';
 
@@ -50,7 +51,6 @@ export class EmailJSService {
       const serviceId = process.env.EMAILJS_SERVICE_ID || 'service_1rgfisk';
       const templateId = process.env.EMAILJS_TEMPLATE_ID || 'template_Sygc3ia';
 
-      // Extrair nome do usuário do email (para personalização)
       const userName = options.templateParams?.user_name || 
                        options.to.split('@')[0] || 
                        'Usuário';
