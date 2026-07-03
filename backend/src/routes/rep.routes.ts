@@ -1,4 +1,3 @@
-// backend/src/routes/rep.routes.ts
 import { Router } from 'express';
 import { RepController } from '../controllers/RepController.js';
 import { DashboardController } from '../controllers/DashboardController.js';
@@ -22,6 +21,13 @@ router.get(
   '/users',
   adminRateLimiter,
   RepController.listUsers
+);
+
+// 🔴 NOVA ROTA ESTÁTICA: Movida para cima para evitar conflito com parâmetros dinâmicos
+router.get(
+  '/users-with-responses',
+  adminRateLimiter,
+  RepController.getUsersWithResponses
 );
 
 // Criar usuário
@@ -64,18 +70,18 @@ router.post(
   RepController.revokeControl
 );
 
+// 🔴 CORREÇÃO CRÍTICA DE ORDEM: 'progress/overall' DEVE vir antes de 'progress/:userId'
+router.get(
+  '/progress/overall',
+  adminRateLimiter,
+  RepController.getOverallProgress
+);
+
 // Obter progresso de um usuário específico
 router.get(
   '/progress/:userId',
   adminRateLimiter,
   RepController.getUserProgress
-);
-
-// Obter progresso geral do preposto
-router.get(
-  '/progress/overall',
-  adminRateLimiter,
-  RepController.getOverallProgress
 );
 
 // Obter estatísticas do preposto
@@ -99,15 +105,6 @@ router.get(
   '/controls',
   adminRateLimiter,
   RepController.getCompanyControls
-);
-
-// ============================================
-// 🔴 NOVA ROTA: Obter usuários com respostas (otimizado)
-// ============================================
-router.get(
-  '/users-with-responses',
-  adminRateLimiter,
-  RepController.getUsersWithResponses
 );
 
 export default router;
