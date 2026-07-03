@@ -5,6 +5,8 @@ import { validate, registerSchema, loginSchema, refreshTokenSchema, updateProfil
 import { User } from '../models/User.js';
 import { AuthenticatedRequest, UserRole } from '../types/index.js';
 import { AppError, ValidationError } from '../middleware/errorHandler.js';
+import { logger } from '../utils/logger.js';
+import bcrypt from 'bcryptjs';
 
 export class AuthController {
   static async register(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -232,6 +234,107 @@ export class AuthController {
         timestamp: new Date().toISOString(),
       });
       
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * 🔴 NOVO: Validar token de redefinição de senha
+   * POST /auth/validate-reset-token
+   */
+  static async validateResetToken(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { token } = req.body;
+
+      if (!token) {
+        throw new AppError('Token é obrigatório', 400);
+      }
+
+      // Verificar se o usuário existe com este token
+      const user = await User.findOne({ 
+        _id: token,
+        isActive: true 
+      });
+
+      if (!user) {
+        throw new AppError('Token inválido ou usuário não encontrado', 404);
+      }
+
+      res.json({
+        success: true,
+        message: 'Token válido',
+        data: { userId: user._id },
+        statusCode: 200,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * 🔴 NOVO: Redefinir senha
+   * POST /auth/reset-password
+   */
+  static async resetPassword(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { token, newPassword } = req.body;
+
+      if (!token) {
+        throw new AppError('Token é obrigatório', 400);
+      }
+
+      if (!newPassword) {
+        throw new AppError('Nova senha é obrigatória', 400);
+      }
+
+      // Validar senha
+      if (newPassword.length < 8) {
+        throw new AppError('Senha deve ter no mínimo 8 caracteres', 400);
+      }
+
+      if (!/[A-Z]/.test(newPassword)) {
+        throw new AppError('Senha deve conter pelo menos 1 letra maiúscula', 400);
+      }
+
+      if (!/[a-z]/.test(newPassword)) {
+        throw new AppError('Senha deve conter pelo menos 1 letra minúscula', 400);
+      }
+
+      if (!/[0-9]/.test(newPassword)) {
+        throw new AppError('Senha deve conter pelo menos 1 número', 400);
+      }
+
+      if (!/[^A-Za-z0-9]/.test(newPassword)) {
+        throw new AppError('Senha deve conter pelo menos 1 caractere especial', 400);
+      }
+
+      // Buscar usuário pelo token (ID)
+      const user = await User.findById(token);
+      if (!user) {
+        throw new AppError('Token inválido ou usuário não encontrado', 404);
+      }
+
+      // Hash da nova senha
+      const salt = await bcrypt.genSalt(12);
+      const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+      // Atualizar senha e remover flag de primeiro acesso
+      user.password = hashedPassword;
+      user.mustChangePassword = false;
+      user.passwordChangedAt = new Date();
+      
+      await user.save();
+
+      logger.info(`Senha redefinida para o usuário: ${user.email}`);
+
+      res.json({
+        success: true,
+        message: 'Senha redefinida com sucesso',
+        statusCode: 200,
+        timestamp: new Date().toISOString(),
+      });
     } catch (error) {
       next(error);
     }

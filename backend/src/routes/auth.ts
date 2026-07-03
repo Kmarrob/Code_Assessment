@@ -19,6 +19,10 @@ router.post('/register', registerRateLimiter, noCache, AuthController.register);
 router.post('/login', authRateLimiter, noCache, AuthController.login);
 router.post('/refresh-token', refreshRateLimiter, noCache, AuthController.refreshToken);
 
+// 🔴 NOVO: Rotas públicas de redefinição de senha
+router.post('/validate-reset-token', authRateLimiter, noCache, AuthController.validateResetToken);
+router.post('/reset-password', authRateLimiter, noCache, AuthController.resetPassword);
+
 // Rotas autenticadas (cache privado)
 router.use(authenticate);
 

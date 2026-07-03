@@ -34,4 +34,19 @@ export const authService = {
     const response = await api.get(API_ENDPOINTS.AUTH.USERS, { params });
     return response.data.data;
   },
+
+  /**
+   * 🔴 NOVO: Validar token de redefinição de senha
+   */
+  async validateResetToken(token: string): Promise<{ success: boolean; userId: string }> {
+    const response = await api.post('/auth/validate-reset-token', { token });
+    return response.data.data;
+  },
+
+  /**
+   * 🔴 NOVO: Redefinir senha
+   */
+  async resetPassword(token: string, newPassword: string): Promise<void> {
+    await api.post('/auth/reset-password', { token, newPassword });
+  },
 };

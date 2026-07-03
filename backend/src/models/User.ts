@@ -16,6 +16,8 @@ export interface IUserDocument extends IUser, Document {
   inactivationDescription?: string;
   inactivatedAt?: Date;
   inactivatedBy?: mongoose.Types.ObjectId;
+  // 🔴 NOVO: Campo para indicar que o usuário precisa trocar a senha no primeiro acesso
+  mustChangePassword?: boolean;
   comparePassword(candidatePassword: string): Promise<boolean>;
   needsPasswordChange(): boolean;
 }
@@ -95,6 +97,11 @@ const userSchema = new Schema<IUserDocument>(
     },
     passwordExpiresAt: {
       type: Date,
+    },
+    // 🔴 NOVO: Campo para primeiro acesso
+    mustChangePassword: {
+      type: Boolean,
+      default: false,
     },
     // 🔴 ADICIONADO: Campos para inativação
     inactivationReason: {
@@ -236,6 +243,8 @@ userSchema.index({ passwordExpiresAt: 1 });
 // 🔴 ADICIONADO: Índices para inativação
 userSchema.index({ inactivatedBy: 1 });
 userSchema.index({ inactivationReason: 1 });
+// 🔴 NOVO: Índice para mustChangePassword
+userSchema.index({ mustChangePassword: 1 });
 
 // ============================================
 // MÉTODOS ESTÁTICOS
