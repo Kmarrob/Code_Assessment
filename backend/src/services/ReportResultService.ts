@@ -4,6 +4,7 @@ import { Control } from '../models/Control.js';
 import { Response } from '../models/Response.js';
 import { Assignment } from '../models/Assignment.js';
 import { User } from '../models/User.js';
+import { Company } from '../models/Company.js';
 import { logger } from '../utils/logger.js';
 import { UserRole } from '../types/index.js';
 
@@ -37,14 +38,6 @@ const CAPABILITIES = [
   { key: 'Gestão de criptografia', label: 'Gestão de Criptografia', altKeys: ['Gestão de criptografia', 'Gestão_de_criptografia'] },
   { key: 'Garantia de segurança da informação', label: 'Garantia de SI', altKeys: ['Garantia de SI', 'Garantia de segurança da informação', 'Garantia_de_segurança_da_informação'] },
 ];
-
-// Mapeamento de status para nível de maturidade
-const STATUS_MAP: Record<string, number> = {
-  'Implementado': 2,
-  'Parcialmente implementado': 1,
-  'Não implementado': 0,
-  'Não se aplica': -1,
-};
 
 // ============================================
 // TIPOS
@@ -120,90 +113,80 @@ export class ReportResultService {
     try {
       logger.info(`📊 Buscando dados de resultados para empresa: ${companyId}`);
 
-      // 🔴 CORREÇÃO: Buscar respostas da empresa primeiro
-      const responses = await Response.find({ companyId }).lean();
-      logger.info(`📊 Total de respostas encontradas: ${responses.length}`);
-
-      // 🔴 CORREÇÃO: Extrair IDs dos controles das respostas
-      const controlIds = responses
-        .map(r => r.controlId)
-        .filter(id => id)
-        .map(id => id.toString());
-
-      logger.info(`📊 IDs de controles encontrados: ${controlIds.length}`);
-
-      // 🔴 CORREÇÃO: Buscar controles que têm respostas
-      let controls: any[] = [];
-      if (controlIds.length > 0) {
-        controls = await Control.find({ _id: { $in: controlIds } }).lean();
-        logger.info(`📊 Total de controles encontrados: ${controls.length}`);
-      } else {
-        logger.warn(`⚠️ Nenhuma resposta encontrada para a empresa ${companyId}`);
-        // Retornar dados vazios
-        return {
-          categorizacao: {
-            categories: CATEGORIES.map(cat => ({
-              name: cat.label,
-              total: 0,
-              implemented: 0,
-              partial: 0,
-              notImpl: 0,
-              na: 0,
-              pImpl: 0,
-              pPartial: 0,
-              pNot: 0,
-              pNa: 0,
-            })),
-            totals: { implemented: 0, partial: 0, notImpl: 0, na: 0, total: 0 },
-          },
-          capacidades: {
-            capabilities: CAPABILITIES.map(cap => ({
-              name: cap.label,
-              key: cap.key,
-              total: 0,
-              implemented: 0,
-              partial: 0,
-              notImpl: 0,
-              aderente: 0,
-              naoAderente: 0,
-            })),
-            totals: { implemented: 0, partial: 0, notImpl: 0, total: 0 },
-            totalAderente: 0,
-            totalNaoAderente: 0,
-            radarData: [],
-          },
-        };
+      // 🔴 CORREÇÃO: Buscar empresa para obter o nome
+      const company = await Company.findById(companyId);
+      if (!company) {
+        logger.warn(`⚠️ Empresa não encontrada: ${companyId}`);
+        return this.getEmptyResultadosData();
       }
 
-      // Buscar atribuições da empresa
-      const assignments = await Assignment.find({ companyId }).lean();
-      logger.info(`📊 Total de atribuições encontradas: ${assignments.length}`);
+      // 🔴 CORREÇÃO: Buscar usuários usando a mesma lógica do DashboardService
+      const userFilter: any = {
+        $or: [
+          { companyId: new mongoose.Types.ObjectId(companyId) },
+          { company: company.name } // Fallback: busca pelo nome da empresa
+        ],
+        isActive: true
+      };
 
-      // Buscar usuários da empresa
-      const users = await User.find({ companyId, isActive: true }).select('_id');
+      const users = await User.find(userFilter).select('_id');
       const userIds = users.map(u => u._id);
 
-      // Construir mapa de respostas por controlId
-      const responseMap = new Map<string, any>();
+      logger.info(`📊 Usuários encontrados: ${users.length}`);
+
+      if (userIds.length === 0) {
+        logger.warn(`⚠️ Nenhum usuário encontrado para a empresa ${companyId}`);
+        return this.getEmptyResultadosData();
+      }
+
+      // 🔴 CORREÇÃO: Buscar atribuições por userId (NÃO por companyId)
+      const assignments = await Assignment.find({
+        userId: { $in: userIds }
+      }).populate('controlId').lean();
+
+      logger.info(`📊 Atribuições encontradas: ${assignments.length}`);
+
+      if (assignments.length === 0) {
+        logger.warn(`⚠️ Nenhuma atribuição encontrada para a empresa ${companyId}`);
+        return this.getEmptyResultadosData();
+      }
+
+      // 🔴 CORREÇÃO: Buscar respostas por userId
+      const responses = await Response.find({
+        userId: { $in: userIds }
+      }).lean();
+
+      logger.info(`📊 Respostas encontradas: ${responses.length}`);
+
+      // Criar mapa de respostas por assignmentId
+      const responseMap = new Map();
       responses.forEach(r => {
-        const controlId = r.controlId?.toString();
-        if (controlId) {
-          responseMap.set(controlId, r);
-        }
+        responseMap.set(r.assignmentId.toString(), r);
       });
 
-      // 🔴 CORREÇÃO: Construir dados dos controles com status a partir das respostas
-      const controlsWithStatus = controls.map(control => {
-        const response = responseMap.get(control._id.toString());
+      // Construir dados dos controles com status
+      const controlsWithStatus = assignments.map(a => {
+        const response = responseMap.get(a._id.toString());
+        const control = a.controlId as any;
+
         let status = 'Não implementado';
         let maturityLevel = 0;
 
         if (response) {
-          maturityLevel = response.maturityLevel;
-          if (maturityLevel === 2) status = 'Implementado';
-          else if (maturityLevel === 1) status = 'Parcialmente implementado';
-          else if (maturityLevel === 0) status = 'Não implementado';
-          else if (maturityLevel === -1) status = 'Não se aplica';
+          const level = response.maturityLevel;
+          if (level === 2 || level === '2') {
+            status = 'Implementado';
+            maturityLevel = 2;
+          } else if (level === 1 || level === '1') {
+            status = 'Parcialmente implementado';
+            maturityLevel = 1;
+          } else if (level === 0 || level === '0') {
+            status = 'Não implementado';
+            maturityLevel = 0;
+          } else if (level === -1 || level === '-1' || level === 'N/A') {
+            status = 'Não se aplica';
+            maturityLevel = -1;
+          }
         }
 
         return {
@@ -211,14 +194,20 @@ export class ReportResultService {
           status,
           maturityLevel,
           response,
+          assignment: a,
         };
       });
 
+      // 🔴 CORREÇÃO: Usar apenas os controles que têm atribuições
+      const uniqueControls = controlsWithStatus.filter(c => c._id);
+
+      logger.info(`📊 Controles únicos encontrados: ${uniqueControls.length}`);
+
       // Calcular categorização
-      const categorizacao = await this.calculateCategorization(controlsWithStatus);
+      const categorizacao = await this.calculateCategorization(uniqueControls);
 
       // Calcular capacidades operacionais
-      const capacidades = await this.calculateCapabilities(controlsWithStatus);
+      const capacidades = await this.calculateCapabilities(uniqueControls);
 
       logger.info(`✅ Dados de resultados calculados com sucesso`);
 
@@ -231,6 +220,45 @@ export class ReportResultService {
       logger.error('❌ Erro ao buscar dados de resultados:', error);
       throw error;
     }
+  }
+
+  /**
+   * Retornar dados vazios
+   */
+  private static getEmptyResultadosData(): ResultadosData {
+    return {
+      categorizacao: {
+        categories: CATEGORIES.map(cat => ({
+          name: cat.label,
+          total: 0,
+          implemented: 0,
+          partial: 0,
+          notImpl: 0,
+          na: 0,
+          pImpl: 0,
+          pPartial: 0,
+          pNot: 0,
+          pNa: 0,
+        })),
+        totals: { implemented: 0, partial: 0, notImpl: 0, na: 0, total: 0 },
+      },
+      capacidades: {
+        capabilities: CAPABILITIES.map(cap => ({
+          name: cap.label,
+          key: cap.key,
+          total: 0,
+          implemented: 0,
+          partial: 0,
+          notImpl: 0,
+          aderente: 0,
+          naoAderente: 0,
+        })),
+        totals: { implemented: 0, partial: 0, notImpl: 0, total: 0 },
+        totalAderente: 0,
+        totalNaoAderente: 0,
+        radarData: [],
+      },
+    };
   }
 
   /**
