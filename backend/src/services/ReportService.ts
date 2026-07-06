@@ -163,7 +163,7 @@ export class ReportService {
       page?: number;
       limit?: number;
     } = {}
-  ): Promise<{ reports: IReport[]; total: number }> {
+  ): Promise<{ reports: any[]; total: number }> {
     const { page = 1, limit = 20 } = pagination;
     const { status, search } = filters;
 
@@ -200,6 +200,9 @@ export class ReportService {
       Report.countDocuments(match),
     ]);
 
-    return { reports, total };
+    return { 
+      reports: reports as any[], 
+      total 
+    };
   }
 }

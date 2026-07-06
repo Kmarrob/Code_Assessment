@@ -4,6 +4,9 @@ import { ReportService } from '../services/ReportService.js';
 import { AppError, NotFoundError, ValidationError } from '../middleware/errorHandler.js';
 import { logger } from '../utils/logger.js';
 import { AuthenticatedRequest, UserRole } from '../types/index.js';
+import { User } from '../models/User.js';
+import { Response as ResponseModel } from '../models/Response.js';
+import { Assignment } from '../models/Assignment.js';
 
 export class ReportController {
   /**
@@ -19,6 +22,10 @@ export class ReportController {
     try {
       const { companyId } = req.params;
       const user = req.user;
+
+      if (!companyId) {
+        throw new AppError('ID da empresa é obrigatório', 400);
+      }
 
       // Verificar permissões
       if (user?.role !== UserRole.ADMIN && user?.companyId?.toString() !== companyId) {
@@ -57,6 +64,10 @@ export class ReportController {
       const { companyId } = req.params;
       const user = req.user;
 
+      if (!companyId) {
+        throw new AppError('ID da empresa é obrigatório', 400);
+      }
+
       // Verificar permissões
       if (user?.role !== UserRole.ADMIN && user?.companyId?.toString() !== companyId) {
         throw new AppError('Você não tem permissão para acessar este relatório', 403);
@@ -93,6 +104,10 @@ export class ReportController {
 
       if (!userId) {
         throw new AppError('Usuário não autenticado', 401);
+      }
+
+      if (!companyId) {
+        throw new AppError('ID da empresa é obrigatório', 400);
       }
 
       // Verificar permissões
@@ -141,8 +156,8 @@ export class ReportController {
 
       const result = await ReportService.listReports(
         {
-          status: status as string,
-          search: search as string,
+          status: status as string | undefined,
+          search: search as string | undefined,
         },
         {
           page: Number(page),
@@ -203,14 +218,19 @@ export class ReportController {
 
       // Buscar estatísticas para o dashboard
       const totalUsers = await User.countDocuments({
-        companyId,
+        companyId: companyId,
         isActive: true,
         role: UserRole.USER,
       });
 
-      const totalResponses = await Response.countDocuments({ companyId });
+      const totalResponses = await ResponseModel.countDocuments({ companyId: companyId });
+
+      // Buscar usuários da empresa
+      const users = await User.find({ companyId: companyId, isActive: true }).select('_id');
+      const userIds = users.map(u => u._id);
+
       const totalControls = await Assignment.countDocuments({ 
-        assignedTo: { $in: await User.find({ companyId, isActive: true }).select('_id') }
+        userId: { $in: userIds }
       });
 
       res.json({
