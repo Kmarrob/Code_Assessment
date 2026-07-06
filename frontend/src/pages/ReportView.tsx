@@ -264,7 +264,7 @@ export const ReportView: React.FC = () => {
         {/* Quem Somos */}
         <div className="py-8 border-b border-gray-200">
           <h2 className="text-xl font-bold text-gray-900 mb-4">Quem Somos</h2>
-          <p className="text-gray-700 leading-relaxed">
+          <p className="text-gray-700 text-justify">
             "O nosso negócio é segurança da informação, infraestrutura de TI, GRC e computação na nuvem"
           </p>
           <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200 text-center text-gray-500">
@@ -275,11 +275,11 @@ export const ReportView: React.FC = () => {
         {/* Apresentação */}
         <div className="py-8 border-b border-gray-200">
           <h2 className="text-xl font-bold text-gray-900 mb-4">Apresentação</h2>
-          <p className="text-gray-700 leading-relaxed">
+          <p className="text-gray-700 text-justify">
             A MRS Consultoria, empresa especializada em soluções de segurança, e tecnologia da informação, 
             apresenta relatório de maturidade referente à ABNT NBR ISO 27001:2022.
           </p>
-          <p className="text-gray-700 leading-relaxed mt-4">
+          <p className="text-gray-700 text-justify mt-4">
             Agradecemos esta oportunidade e nos colocamos a disposição para contribuir de forma plena com 
             os objetivos e metas da <strong>{companyName}</strong>. Da mesma maneira, estamos à disposição 
             para sanar quaisquer dúvidas decorrentes desta, ou em relação aos demais serviços oferecidos 
@@ -288,7 +288,7 @@ export const ReportView: React.FC = () => {
               http://www.cisatool.com.br
             </a>
           </p>
-          <p className="text-gray-600 italic mt-4">
+          <p className="text-gray-600 italic text-justify mt-4">
             "O nosso negócio é segurança da informação, infraestrutura de TI, GRC e computação na nuvem"
           </p>
         </div>
@@ -343,7 +343,7 @@ export const ReportView: React.FC = () => {
         {/* Objetivo */}
         <div className="py-8 border-b border-gray-200">
           <h2 className="text-xl font-bold text-gray-900 mb-4">1. Objetivo</h2>
-          <p className="text-gray-700 leading-relaxed">
+          <p className="text-gray-700 text-justify">
             Apresentar análises e resultados oriundos da avaliação de maturidade do ambiente da{' '}
             <strong>{companyName}</strong>, identificando lacunas que impactam na sua maturidade, 
             propondo recomendações de melhorias técnicas e processuais que precisam ser implementadas 
@@ -351,7 +351,7 @@ export const ReportView: React.FC = () => {
             que auxiliará na melhoria contínua do SGSI – Sistema de Gestão de Segurança da Informação, 
             visando otimizar a segurança da informação em seus processos, recursos e pessoas.
           </p>
-          <p className="text-gray-700 leading-relaxed mt-4">
+          <p className="text-gray-700 text-justify mt-4">
             Os trabalhos foram baseados nas entrevistas realizadas no período de{' '}
             <strong>{formatDateFull(report.assessmentStartDate)}</strong> a{' '}
             <strong>{formatDateFull(report.assessmentEndDate)}</strong>, bem como informações 
@@ -359,7 +359,7 @@ export const ReportView: React.FC = () => {
             Após avaliação do ambiente, foram elaboradas recomendações do nível desejado para a organização, 
             que poderão ser aplicadas aos diversos tipos de ameaças identificadas.
           </p>
-          <p className="text-gray-600 italic mt-4 text-sm">
+          <p className="text-gray-600 italic text-justify mt-4 text-sm">
             Ressaltamos que não foram realizadas análises de evidências e que todos os insumos gerados 
             neste documento são oriundos do questionário baseado nos controles da ABNT NBR ISO/IEC 27001:2022, 
             Anexo A, respondido pela <strong>{companyName}</strong>.
@@ -369,7 +369,7 @@ export const ReportView: React.FC = () => {
         {/* Benefícios da ISO 27001 */}
         <div className="py-8 border-b border-gray-200">
           <h2 className="text-xl font-bold text-gray-900 mb-4">2. Benefícios da ISO 27001</h2>
-          <p className="text-gray-700 leading-relaxed">
+          <p className="text-gray-700 text-justify">
             A ABNT NBR ISO 27001 é uma norma internacional de padrão e referência para a gestão de 
             segurança da informação na empresa. Por meio dela será desenvolvido um Sistema de Gestão 
             de Segurança da Informação (SGSI) que permitirá à empresa ter um melhor conhecimento dos 
@@ -377,13 +377,13 @@ export const ReportView: React.FC = () => {
             da informação, assim como os aprimoramentos sobre os processos de gestão permitindo uma 
             melhoria contínua.
           </p>
-          <p className="text-gray-700 leading-relaxed mt-4">
+          <p className="text-gray-700 text-justify mt-4">
             Será possível identificar por meio da matriz de priorização, anexo deste documento, quais 
             são as ameaças e vulnerabilidades identificadas relacionadas aos controles da ISO, 
             classificando os controles de crítico até o mais baixo, relacionando as medidas tecnológicas 
             e processuais para uma mitigação efetiva.
           </p>
-          <p className="text-gray-700 leading-relaxed mt-4">
+          <p className="text-gray-700 text-justify mt-4">
             Caso a <strong>{companyName}</strong> busque futuramente uma certificação nessa norma, 
             a empresa terá uma maior credibilidade e confiabilidade na entrega dos serviços prestados, 
             por utilizar a segurança da informação em todas as etapas do negócio, aumentando a satisfação 
@@ -464,11 +464,11 @@ export const ReportView: React.FC = () => {
         <div className="py-8 border-b border-gray-200">
           <h2 className="text-xl font-bold text-gray-900 mb-4">4. Metodologia de Avaliação</h2>
           
-          <p className="text-gray-700 leading-relaxed mb-6">
+          <p className="text-gray-700 text-justify mb-6">
             Com estrutura mais simples e controles contemporâneos, a ABNT NBR ISO/IEC 27001:2022, tem uma visão holística e coordenada dos riscos de segurança da informação das organizações (SGSI), a fim de determinar e implementar um conjunto abrangente de controles na estrutura geral de um sistema de gestão coerente. Deste modo, é possível direcionar a análise/avaliação de riscos, gerenciamento, especificação, reavaliação e implementação de segurança na <strong>{companyName}</strong>.
           </p>
           
-          <p className="text-gray-700 leading-relaxed mb-6">
+          <p className="text-gray-700 text-justify mb-6">
             É composta por 93 controles agrupados em 4 temas:
           </p>
           
@@ -478,7 +478,7 @@ export const ReportView: React.FC = () => {
                 <Building2 className="h-5 w-5 text-blue-600" />
                 <span className="font-semibold text-blue-800">Controles Organizacionais</span>
               </div>
-              <p className="text-sm text-gray-600">Referentes a forma com qual organização estrutura ações estratégicas, relacionadas à Gestão da Segurança da Informação, com abrangência institucional ou perante partes externas. Aqui também se incluem todos os controles que não se encaixam nas demais categorias.</p>
+              <p className="text-sm text-gray-600 text-justify">Referentes a forma com qual organização estrutura ações estratégicas, relacionadas à Gestão da Segurança da Informação, com abrangência institucional ou perante partes externas. Aqui também se incluem todos os controles que não se encaixam nas demais categorias.</p>
             </div>
             
             <div className="bg-green-50 border border-green-200 rounded-lg p-4">
@@ -486,7 +486,7 @@ export const ReportView: React.FC = () => {
                 <UsersIcon className="h-5 w-5 text-green-600" />
                 <span className="font-semibold text-green-800">Controles de Pessoas</span>
               </div>
-              <p className="text-sm text-gray-600">Referentes a pessoas individuais, como a organização aborda aspectos de Segurança da Informação, aliada à segurança jurídica, durante o ciclo de vida do colaborador na empresa.</p>
+              <p className="text-sm text-gray-600 text-justify">Referentes a pessoas individuais, como a organização aborda aspectos de Segurança da Informação, aliada à segurança jurídica, durante o ciclo de vida do colaborador na empresa.</p>
             </div>
             
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
@@ -494,7 +494,7 @@ export const ReportView: React.FC = () => {
                 <Server className="h-5 w-5 text-yellow-600" />
                 <span className="font-semibold text-yellow-800">Controles Físicos</span>
               </div>
-              <p className="text-sm text-gray-600">Aspectos de segurança física, predial e ambiental da organização que impactam direta ou indiretamente na Segurança da Informação.</p>
+              <p className="text-sm text-gray-600 text-justify">Aspectos de segurança física, predial e ambiental da organização que impactam direta ou indiretamente na Segurança da Informação.</p>
             </div>
             
             <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
@@ -502,13 +502,13 @@ export const ReportView: React.FC = () => {
                 <Cpu className="h-5 w-5 text-purple-600" />
                 <span className="font-semibold text-purple-800">Controles Tecnológicos</span>
               </div>
-              <p className="text-sm text-gray-600">Referentes diretamente a tecnologia, ações e mecanismos de Segurança da Informação aplicados a recursos computacionais, sistemas e redes, repositório de dados, etc.</p>
+              <p className="text-sm text-gray-600 text-justify">Referentes diretamente a tecnologia, ações e mecanismos de Segurança da Informação aplicados a recursos computacionais, sistemas e redes, repositório de dados, etc.</p>
             </div>
           </div>
 
           {/* Tabela de Níveis de Maturidade */}
           <h3 className="text-lg font-semibold text-gray-800 mb-4">Níveis de Maturidade</h3>
-          <p className="text-gray-700 leading-relaxed mb-4">
+          <p className="text-gray-700 text-justify mb-4">
             A avaliação de maturidade é baseada nos níveis mostrados abaixo. Eles fornecem a descrição sobre as práticas que a empresa possui no que tange a existência de processos de Segurança da Informação.
           </p>
           
@@ -559,13 +559,13 @@ export const ReportView: React.FC = () => {
         <div className="py-8 border-b border-gray-200">
           <h2 className="text-xl font-bold text-gray-900 mb-4">5. Atributos</h2>
           
-          <p className="text-gray-700 leading-relaxed mb-6">
+          <p className="text-gray-700 text-justify mb-6">
             De forma complementar, a ABNT NBR ISO/IEC 27002:2022 possibilitou a análise dos controles à luz de 05 (cinco) atributos: 1) tipo de controle; 2) propriedades de segurança da informação; 3) conceitos de segurança cibernética; 4) capacidades operacionais; 5) domínios de segurança.
           </p>
 
           {/* 5.1 Tipo de Controle */}
           <h3 className="text-lg font-semibold text-gray-800 mt-6 mb-3">5.1 Tipo de Controle</h3>
-          <p className="text-gray-700 leading-relaxed mb-3">
+          <p className="text-gray-700 text-justify mb-3">
             Atributo utilizado para fornecer uma visão dos controles na perspectiva de quando e como uma medida altera o risco relacionado com a ocorrência de um incidente de segurança da informação. Assim, o controle poderá variar entre:
           </p>
           <div className="flex flex-wrap gap-3 mb-6">
@@ -582,7 +582,7 @@ export const ReportView: React.FC = () => {
 
           {/* 5.2 Propriedades de SI */}
           <h3 className="text-lg font-semibold text-gray-800 mt-6 mb-3">5.2 Propriedades de Segurança da Informação</h3>
-          <p className="text-gray-700 leading-relaxed mb-3">
+          <p className="text-gray-700 text-justify mb-3">
             Atributo para visualizar controles na perspectiva de qual característica das informações o controle contribuirá para a preservação. Os valores dos atributos consistem em:
           </p>
           <div className="flex flex-wrap gap-3 mb-6">
@@ -599,7 +599,7 @@ export const ReportView: React.FC = () => {
 
           {/* 5.3 Conceitos de Segurança Cibernética */}
           <h3 className="text-lg font-semibold text-gray-800 mt-6 mb-3">5.3 Conceitos de Segurança Cibernética</h3>
-          <p className="text-gray-700 leading-relaxed mb-3">
+          <p className="text-gray-700 text-justify mb-3">
             Atributo para visualizar os controles sob a perspectiva da associação de controles aos conceitos de segurança cibernética definidos no quadro de segurança cibernética descrito no ISO/IEC TS 27110. Os valores dos atributos consistem em:
           </p>
           <div className="flex flex-wrap gap-3 mb-6">
@@ -622,7 +622,7 @@ export const ReportView: React.FC = () => {
 
           {/* 5.4 Capacidades Operacionais */}
           <h3 className="text-lg font-semibold text-gray-800 mt-6 mb-3">5.4 Capacidades Operacionais</h3>
-          <p className="text-gray-700 leading-relaxed mb-3">
+          <p className="text-gray-700 text-justify mb-3">
             As capacidades operacionais são atributos para visualizar controles da perspectiva do praticante sobre os recursos de segurança da informação. Os valores de atributos consistem em:
           </p>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-6">
@@ -643,7 +643,7 @@ export const ReportView: React.FC = () => {
 
           {/* 5.5 Domínios de Segurança */}
           <h3 className="text-lg font-semibold text-gray-800 mt-6 mb-3">5.5 Domínios de Segurança</h3>
-          <p className="text-gray-700 leading-relaxed mb-3">
+          <p className="text-gray-700 text-justify mb-3">
             Os domínios de segurança são um atributo para visualizar controles na perspectiva de 4 domínios de SI:
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -652,28 +652,28 @@ export const ReportView: React.FC = () => {
                 <Globe className="h-5 w-5 text-indigo-600" />
                 <span className="font-semibold text-indigo-800">Governança e Ecossistema</span>
               </div>
-              <p className="text-sm text-gray-600">Inclui "Governança do Sistema de Segurança da Informação e Gestão de Riscos" e "Gestão de segurança cibernética do ecossistema" (partes interessadas internas e externas).</p>
+              <p className="text-sm text-gray-600 text-justify">Inclui "Governança do Sistema de Segurança da Informação e Gestão de Riscos" e "Gestão de segurança cibernética do ecossistema" (partes interessadas internas e externas).</p>
             </div>
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Shield className="h-5 w-5 text-blue-600" />
                 <span className="font-semibold text-blue-800">Proteção</span>
               </div>
-              <p className="text-sm text-gray-600">Inclui "Arquitetura de Segurança de TI", "Administração de Segurança de TI", "Gestão de identidade e acesso", "Manutenção de Segurança de TI" e "Segurança física e ambiental".</p>
+              <p className="text-sm text-gray-600 text-justify">Inclui "Arquitetura de Segurança de TI", "Administração de Segurança de TI", "Gestão de identidade e acesso", "Manutenção de Segurança de TI" e "Segurança física e ambiental".</p>
             </div>
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
               <div className="flex items-center gap-2 mb-2">
                 <AlertOctagon className="h-5 w-5 text-yellow-600" />
                 <span className="font-semibold text-yellow-800">Defesa</span>
               </div>
-              <p className="text-sm text-gray-600">Inclui "Detectar" e "Gestão de Incidente de segurança computacional".</p>
+              <p className="text-sm text-gray-600 text-justify">Inclui "Detectar" e "Gestão de Incidente de segurança computacional".</p>
             </div>
             <div className="bg-green-50 border border-green-200 rounded-lg p-4">
               <div className="flex items-center gap-2 mb-2">
                 <RefreshIcon className="h-5 w-5 text-green-600" />
                 <span className="font-semibold text-green-800">Resiliência</span>
               </div>
-              <p className="text-sm text-gray-600">Inclui "Operações de continuidade" e "Gestão de crises".</p>
+              <p className="text-sm text-gray-600 text-justify">Inclui "Operações de continuidade" e "Gestão de crises".</p>
             </div>
           </div>
         </div>
@@ -682,18 +682,18 @@ export const ReportView: React.FC = () => {
         <div className="py-8 border-b border-gray-200">
           <h2 className="text-xl font-bold text-gray-900 mb-4">6. Recomendações</h2>
           
-          <p className="text-gray-700 leading-relaxed mb-4">
+          <p className="text-gray-700 text-justify mb-4">
             As recomendações propostas neste relatório são oriundas da norma <strong>ISO/IEC 27002:2022</strong> que fornecem um conjunto abrangente de controles de segurança da informação comumente utilizados, incluindo orientação para implementação desses controles em uma organização.
           </p>
           
-          <p className="text-gray-700 leading-relaxed mb-4">
+          <p className="text-gray-700 text-justify mb-4">
             A norma <strong>ISO/IEC 27002:2022</strong> é complementar à norma <strong>ISO/IEC 27001</strong> e totalmente indispensável à sua aplicação. Enquanto a norma ISO/IEC 27001 estabelece os requisitos para implementação de um Sistema de Gestão da Segurança da Informação (SGSI), a norma fornece um conjunto de controles genéricos de segurança da informação, além da ISO/IEC 27002:2022 fornecer orientação para implementação de controles de segurança da informação.
           </p>
           
-          <p className="text-gray-700 leading-relaxed">
+          <p className="text-gray-700 text-justify">
             A norma <strong>ISO/IEC 27002:2022</strong> foi concebida para ser usada pelas organizações:
           </p>
-          <ul className="list-disc pl-6 mt-3 space-y-2 text-gray-700">
+          <ul className="list-disc pl-6 mt-3 space-y-2 text-gray-700 text-justify">
             <li>no contexto de um sistema de gestão de segurança da informação (SGSI) baseado na ISO/IEC 27001;</li>
             <li>para a implementação de controles de segurança da informação com base em melhores práticas reconhecidas internacionalmente;</li>
             <li>para o desenvolvimento de diretrizes específicas de gestão de segurança da informação da organização.</li>
