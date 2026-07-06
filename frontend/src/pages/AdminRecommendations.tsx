@@ -30,7 +30,7 @@ import { Input } from '../components/ui/Input.js';
 import { recommendationService, ControlSearchResult } from '../services/recommendation.service.js';
 import { Recommendation, CreateRecommendationData, UpdateRecommendationData } from '../types/recommendation.js';
 
-// 🔴 NOVO: Interface para recomendação estruturada
+// 🔴 Interface para recomendação estruturada
 interface StructuredRecommendation {
   titulo: string;
   descricao: string;
@@ -56,7 +56,7 @@ export const AdminRecommendations: React.FC = () => {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // 🔴 NOVO: Modal para adicionar recomendação estruturada
+  // 🔴 Modal para adicionar recomendação estruturada
   const [isRecModalOpen, setIsRecModalOpen] = useState(false);
   const [editingRecIndex, setEditingRecIndex] = useState<number | null>(null);
   const [recFormData, setRecFormData] = useState<StructuredRecommendation>({
@@ -66,7 +66,7 @@ export const AdminRecommendations: React.FC = () => {
   });
   const [tempSolucao, setTempSolucao] = useState('');
 
-  // 🔴 NOVO: Estados para autocomplete
+  // 🔴 Estados para autocomplete
   const [controlSearchQuery, setControlSearchQuery] = useState('');
   const [controlSuggestions, setControlSuggestions] = useState<ControlSearchResult[]>([]);
   const [isSearchingControls, setIsSearchingControls] = useState(false);
@@ -125,7 +125,7 @@ export const AdminRecommendations: React.FC = () => {
   }, [loadDominios]);
 
   // ============================================
-  // 🔴 NOVO: BUSCA DE CONTROLES PARA AUTOCOMPLETE
+  // 🔴 BUSCA DE CONTROLES PARA AUTOCOMPLETE
   // ============================================
   useEffect(() => {
     const searchControls = async () => {
@@ -164,7 +164,7 @@ export const AdminRecommendations: React.FC = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // 🔴 NOVO: Selecionar um controle da lista
+  // 🔴 Selecionar um controle da lista
   const handleSelectControl = (control: ControlSearchResult) => {
     setSelectedControl(control);
     setControlSearchQuery(`${control.id} - ${control.nome}`);
@@ -176,7 +176,7 @@ export const AdminRecommendations: React.FC = () => {
     setShowSuggestions(false);
   };
 
-  // 🔴 NOVO: Limpar seleção do controle
+  // 🔴 Limpar seleção do controle
   const handleClearControl = () => {
     setSelectedControl(null);
     setControlSearchQuery('');
@@ -189,7 +189,7 @@ export const AdminRecommendations: React.FC = () => {
   };
 
   // ============================================
-  // 🔴 NOVO: HANDLERS PARA RECOMENDAÇÃO ESTRUTURADA
+  // 🔴 HANDLERS PARA RECOMENDAÇÃO ESTRUTURADA
   // ============================================
   const openRecModal = (index?: number) => {
     if (index !== undefined && index >= 0) {
@@ -243,7 +243,6 @@ export const AdminRecommendations: React.FC = () => {
     if (editingRecIndex !== null && editingRecIndex >= 0) {
       newRecomendacoes[editingRecIndex] = recString;
     } else {
-      // Remover o primeiro item vazio se existir
       if (newRecomendacoes.length === 1 && !newRecomendacoes[0].trim()) {
         newRecomendacoes[0] = recString;
       } else {
@@ -256,7 +255,7 @@ export const AdminRecommendations: React.FC = () => {
     setError(null);
   };
 
-  // 🔴 NOVO: Funções para serializar/deserializar recomendações
+  // 🔴 Funções para serializar/deserializar recomendações
   const formatRecommendationString = (rec: StructuredRecommendation): string => {
     const solucoes = (rec.solucoesTecnicas || []).join('|');
     return `TITULO:${rec.titulo}|DESC:${rec.descricao}|SOL:${solucoes}`;
@@ -330,8 +329,8 @@ export const AdminRecommendations: React.FC = () => {
       controlId: rec.controlId,
       titulo: rec.titulo,
       dominio: rec.dominio,
-      recomendacoes: rec.recomendacoes.length > 0 ? rec.recomendacoes : [],
-      solucoesTecnicas: rec.solucoesTecnicas && rec.solucoesTecnicas.length > 0 ? rec.solucoesTecnicas : [],
+      recomendacoes: rec.recomendacoes.length > 0 ? rec.recomendacoes : [''],
+      solucoesTecnicas: rec.solucoesTecnicas && rec.solucoesTecnicas.length > 0 ? rec.solucoesTecnicas : [''],
     });
     setIsModalOpen(true);
   };
@@ -352,8 +351,8 @@ export const AdminRecommendations: React.FC = () => {
       controlId: '',
       titulo: '',
       dominio: '',
-      recomendacoes: [],
-      solucoesTecnicas: [],
+      recomendacoes: [''], // ✨ Mantido estável com [''] para não quebrar a re-renderização
+      solucoesTecnicas: [''],
     });
   };
 
@@ -391,7 +390,6 @@ export const AdminRecommendations: React.FC = () => {
   };
 
   const handleSubmit = async () => {
-    // Validar campos obrigatórios
     if (!formData.controlId.trim()) {
       setError('ID do controle é obrigatório');
       return;
@@ -664,7 +662,7 @@ export const AdminRecommendations: React.FC = () => {
         </Card>
       </div>
 
-      {/* 🔴 NOVO: Modal de Criar/Editar Recomendação Estruturada */}
+      {/* 🔴 Modal de Criar/Editar Recomendação Estruturada */}
       {isRecModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 shadow-xl">
