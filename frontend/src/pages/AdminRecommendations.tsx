@@ -192,9 +192,12 @@ export const AdminRecommendations: React.FC = () => {
   // 🔴 HANDLERS PARA RECOMENDAÇÃO ESTRUTURADA
   // ============================================
   const openRecModal = (index?: number) => {
-    if (index !== undefined && index >= 0) {
+    console.log('🔴 [ADMIN] openRecModal chamado! Index:', index);
+    
+    // 🔴 CORREÇÃO: Verificar se formData.recomendacoes existe e tem o índice
+    if (index !== undefined && index >= 0 && formData.recomendacoes && formData.recomendacoes.length > index) {
       // Editar recomendação existente
-      const recStr = formData.recomendacoes[index];
+      const recStr = formData.recomendacoes[index] || '';
       const parsed = parseRecommendationString(recStr);
       setRecFormData(parsed);
       setEditingRecIndex(index);
@@ -351,7 +354,7 @@ export const AdminRecommendations: React.FC = () => {
       controlId: '',
       titulo: '',
       dominio: '',
-      recomendacoes: [''], // ✨ Mantido estável com [''] para não quebrar a re-renderização
+      recomendacoes: [''],
       solucoesTecnicas: [''],
     });
   };
