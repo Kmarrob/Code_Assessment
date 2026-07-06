@@ -1,3 +1,4 @@
+// frontend/src/types/index.ts
 export enum UserRole {
   ADMIN = 'admin',
   REP = 'rep',
@@ -58,3 +59,8 @@ export interface PaginatedResponse<T> {
     hasPrevious: boolean;
   };
 }
+
+// ============================================
+// 🔴 NOVO (v17): Tipos de Relatório
+// ============================================
+export * from './report.js';

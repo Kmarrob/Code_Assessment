@@ -6,7 +6,7 @@ import { useUsers } from '../hooks/useAdmin.js';
 import { 
   Users, Settings, Shield, 
   BarChart3, Database, Activity,
-  LogOut, Building2, ClipboardList, UserCog, LayoutDashboard
+  LogOut, Building2, ClipboardList, UserCog, LayoutDashboard, FileText
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card.js';
 import { AdminBreadcrumbs } from '../components/admin/AdminBreadcrumbs.js';
@@ -52,6 +52,13 @@ export const AdminDashboard: React.FC = () => {
   // ============================================
   const handleNavigateToDashboard = useCallback(() => {
     navigate('/admin/dashboard');
+  }, [navigate]);
+
+  // ============================================
+  // NOVO HANDLER: RELATÓRIOS (v17)
+  // ============================================
+  const handleNavigateToReports = useCallback(() => {
+    navigate('/admin/relatorios');
   }, [navigate]);
 
   const handleLogout = useCallback(async () => {
@@ -263,6 +270,26 @@ export const AdminDashboard: React.FC = () => {
                   <div>
                     <h3 className="font-semibold text-gray-900">Dashboard</h3>
                     <p className="text-sm text-gray-500">Maturidade das empresas</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* ============================================
+                NOVO CARD: RELATÓRIOS (v17)
+                ============================================ */}
+            <Card 
+              className="hover:shadow-lg transition-shadow cursor-pointer"
+              onClick={handleNavigateToReports}
+            >
+              <CardContent className="p-6">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-teal-100 rounded-lg">
+                    <FileText className="h-6 w-6 text-teal-600" aria-hidden="true" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-gray-900">Relatórios</h3>
+                    <p className="text-sm text-gray-500">Visualizar relatórios gerados</p>
                   </div>
                 </div>
               </CardContent>

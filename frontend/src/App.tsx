@@ -47,6 +47,8 @@ import ResetPassword from './pages/ResetPassword.js'; // 🔴 NOVO
 import ConsultantDashboard from './pages/ConsultantDashboard.js';
 import UserDashboard from './pages/UserDashboard.js';
 import ProfilePage from './pages/ProfilePage.js';
+import ReportView from './pages/ReportView.js'; // 🔴 NOVO (v17)
+import AdminReports from './pages/AdminReports.js'; // 🔴 NOVO (v17)
 
 // 🔴 NOVO: Import do Layout
 import { Layout } from './components/Layout.js';
@@ -158,6 +160,11 @@ function App() {
                       <AdminConsultantView />
                     </Layout>
                   } />
+                  <Route path="/admin/relatorios" element={ /* 🔴 NOVO (v17) */
+                    <Layout>
+                      <AdminReports />
+                    </Layout>
+                  } />
                   
                   {/* Dashboard Admin - Seletor de empresas e Visão interna */}
                   <Route path="/admin/dashboard" element={
@@ -229,6 +236,11 @@ function App() {
                   <Route path="/rep/documents" element={
                     <Layout>
                       <RepDocuments />
+                    </Layout>
+                  } />
+                  <Route path="/rep/report" element={ /* 🔴 NOVO (v17) */
+                    <Layout>
+                      <ReportView />
                     </Layout>
                   } />
                   

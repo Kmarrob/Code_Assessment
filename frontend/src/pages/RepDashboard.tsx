@@ -207,6 +207,11 @@ export const RepDashboard: React.FC = () => {
     navigate('/rep/documents');
   };
 
+  // 🔴 NOVO (v17): Navegar para página de relatório
+  const handleManageReport = () => {
+    navigate('/rep/report');
+  };
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setPage(1);
@@ -428,6 +433,23 @@ export const RepDashboard: React.FC = () => {
               </div>
               <div className="p-3 bg-indigo-100 rounded-full">
                 <FileText className="w-6 h-6 text-indigo-600" />
+              </div>
+            </div>
+            <ChevronRight className="w-4 h-4 text-gray-400 mt-2" />
+          </div>
+
+          {/* 🔴 NOVO (v17): Card "Relatório de Recomendações" */}
+          <div
+            onClick={handleManageReport}
+            className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Visualizar</p>
+                <p className="text-lg font-bold text-gray-900">Relatório</p>
+              </div>
+              <div className="p-3 bg-teal-100 rounded-full">
+                <FileText className="w-6 h-6 text-teal-600" />
               </div>
             </div>
             <ChevronRight className="w-4 h-4 text-gray-400 mt-2" />
