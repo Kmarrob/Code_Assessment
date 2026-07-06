@@ -263,6 +263,9 @@ export const AdminRecommendations: React.FC = () => {
   };
 
   const parseRecommendationString = (str: string): StructuredRecommendation => {
+    if (!str || !str.trim() || !str.includes('TITULO:')) {
+      return { titulo: 'Nova Recomendação', descricao: '', solucoesTecnicas: [] };
+    }
     try {
       const tituloMatch = str.match(/TITULO:(.*?)\|DESC:/);
       const descMatch = str.match(/DESC:(.*?)(?:\|SOL:|$)/);
@@ -313,8 +316,8 @@ export const AdminRecommendations: React.FC = () => {
       controlId: '',
       titulo: '',
       dominio: '',
-      recomendacoes: [],
-      solucoesTecnicas: [],
+      recomendacoes: [''],
+      solucoesTecnicas: [''],
     });
     setIsModalOpen(true);
   };
