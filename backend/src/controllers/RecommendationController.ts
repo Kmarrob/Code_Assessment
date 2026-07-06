@@ -4,6 +4,7 @@ import { RecommendationService } from '../services/RecommendationService.js';
 import { AppError, NotFoundError, ValidationError } from '../middleware/errorHandler.js';
 import { logger } from '../utils/logger.js';
 import { AuthenticatedRequest, UserRole } from '../types/index.js';
+import { Control } from '../models/Control.js'; // 🔴 NOVO
 
 export class RecommendationController {
   /**
@@ -300,6 +301,56 @@ export class RecommendationController {
       res.json({
         success: true,
         data: { dominios },
+        statusCode: 200,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * 🔴 NOVO: Buscar controles para autocomplete (ADMIN)
+   * GET /api/recommendations/controls/search?q=5.2
+   */
+  static async searchControls(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const user = req.user;
+
+      if (user?.role !== UserRole.ADMIN) {
+        throw new AppError('Acesso restrito a administradores', 403);
+      }
+
+      const { q } = req.query;
+
+      if (!q || typeof q !== 'string' || q.trim().length === 0) {
+        res.json({
+          success: true,
+          data: [],
+          statusCode: 200,
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      // Buscar controles por ID ou nome
+      const controls = await Control.find({
+        $or: [
+          { id: { $regex: q, $options: 'i' } },
+          { nome: { $regex: q, $options: 'i' } },
+        ],
+      })
+        .select('id nome tiposDeControles')
+        .limit(10)
+        .lean();
+
+      res.json({
+        success: true,
+        data: controls,
         statusCode: 200,
         timestamp: new Date().toISOString(),
       });

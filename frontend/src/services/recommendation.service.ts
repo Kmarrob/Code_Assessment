@@ -64,6 +64,14 @@ export interface RecommendationListResponse {
   };
 }
 
+// 🔴 NOVO: Tipo para controle retornado na busca
+export interface ControlSearchResult {
+  _id: string;
+  id: string;
+  nome: string;
+  tiposDeControles?: string[];
+}
+
 // ============================================
 // SERVIÇO
 // ============================================
@@ -152,6 +160,21 @@ export const recommendationService = {
       `/recommendations/report/${companyId}`
     );
     return response.data.data;
+  },
+
+  /**
+   * 🔴 NOVO: Buscar controles para autocomplete
+   * GET /api/recommendations/controls/search?q=5.2
+   */
+  async searchControls(query: string): Promise<ControlSearchResult[]> {
+    if (!query || query.trim().length === 0) {
+      return [];
+    }
+    const response = await api.get<ApiResponse<ControlSearchResult[]>>(
+      '/recommendations/controls/search',
+      { params: { q: query.trim() } }
+    );
+    return response.data.data || [];
   },
 };
 

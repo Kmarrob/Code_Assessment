@@ -9,8 +9,9 @@ import { UserRole } from '../types/index.js';
 const router = Router();
 
 // ============================================
-// ROTA PARA RELATÓRIO (REP) - DEVE VIR ANTES DO MIDDLEWARE ADMIN
+// ROTAS PÚBLICAS (AUTENTICADAS) - DEVEM VIR ANTES DO MIDDLEWARE ADMIN
 // ============================================
+
 // GET /api/recommendations/report/:companyId
 // Acesso: REP (da empresa) ou ADMIN
 router.get(
@@ -18,6 +19,15 @@ router.get(
   authenticate,
   authenticatedRateLimiter,
   RecommendationController.getRecommendationsForReport
+);
+
+// 🔴 NOVO: GET /api/recommendations/controls/search?q=5.2
+// Acesso: ADMIN (busca de controles para autocomplete)
+router.get(
+  '/controls/search',
+  authenticate,
+  authenticatedRateLimiter,
+  RecommendationController.searchControls
 );
 
 // ============================================

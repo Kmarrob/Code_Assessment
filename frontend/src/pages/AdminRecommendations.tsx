@@ -1,5 +1,5 @@
 // frontend/src/pages/AdminRecommendations.tsx
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   FileText, 
@@ -21,11 +21,12 @@ import {
   RefreshCw,
   Check,
   AlertTriangle,
+  ChevronDown,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card.js';
 import { Button } from '../components/ui/Button.js';
 import { Input } from '../components/ui/Input.js';
-import { recommendationService } from '../services/recommendation.service.js';
+import { recommendationService, ControlSearchResult } from '../services/recommendation.service.js';
 import { Recommendation, CreateRecommendationData, UpdateRecommendationData } from '../types/recommendation.js';
 
 export const AdminRecommendations: React.FC = () => {
@@ -46,6 +47,15 @@ export const AdminRecommendations: React.FC = () => {
   const [editingRecommendation, setEditingRecommendation] = useState<Recommendation | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // 🔴 NOVO: Estados para autocomplete
+  const [controlSearchQuery, setControlSearchQuery] = useState('');
+  const [controlSuggestions, setControlSuggestions] = useState<ControlSearchResult[]>([]);
+  const [isSearchingControls, setIsSearchingControls] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [selectedControl, setSelectedControl] = useState<ControlSearchResult | null>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
 
   // Form states
   const [formData, setFormData] = useState<CreateRecommendationData>({
@@ -97,6 +107,70 @@ export const AdminRecommendations: React.FC = () => {
   }, [loadDominios]);
 
   // ============================================
+  // 🔴 NOVO: BUSCA DE CONTROLES PARA AUTOCOMPLETE
+  // ============================================
+  useEffect(() => {
+    const searchControls = async () => {
+      if (!controlSearchQuery || controlSearchQuery.trim().length < 1) {
+        setControlSuggestions([]);
+        setShowSuggestions(false);
+        return;
+      }
+
+      setIsSearchingControls(true);
+      try {
+        const results = await recommendationService.searchControls(controlSearchQuery);
+        setControlSuggestions(results);
+        setShowSuggestions(results.length > 0);
+      } catch (err) {
+        console.error('Erro ao buscar controles:', err);
+        setControlSuggestions([]);
+      } finally {
+        setIsSearchingControls(false);
+      }
+    };
+
+    const debounceTimer = setTimeout(searchControls, 300);
+    return () => clearTimeout(debounceTimer);
+  }, [controlSearchQuery]);
+
+  // Fechar sugestões ao clicar fora
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (suggestionsRef.current && !suggestionsRef.current.contains(event.target as Node) &&
+          searchInputRef.current && !searchInputRef.current.contains(event.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // 🔴 NOVO: Selecionar um controle da lista
+  const handleSelectControl = (control: ControlSearchResult) => {
+    setSelectedControl(control);
+    setControlSearchQuery(`${control.id} - ${control.nome}`);
+    setFormData(prev => ({
+      ...prev,
+      controlId: control.id,
+      titulo: control.nome,
+    }));
+    setShowSuggestions(false);
+  };
+
+  // 🔴 NOVO: Limpar seleção do controle
+  const handleClearControl = () => {
+    setSelectedControl(null);
+    setControlSearchQuery('');
+    setFormData(prev => ({
+      ...prev,
+      controlId: '',
+      titulo: '',
+    }));
+    setShowSuggestions(false);
+  };
+
+  // ============================================
   // HANDLERS
   // ============================================
   const handleSearch = (e: React.FormEvent) => {
@@ -119,6 +193,10 @@ export const AdminRecommendations: React.FC = () => {
   // Modal handlers
   const handleOpenCreateModal = () => {
     setEditingRecommendation(null);
+    setSelectedControl(null);
+    setControlSearchQuery('');
+    setControlSuggestions([]);
+    setShowSuggestions(false);
     setFormData({
       controlId: '',
       titulo: '',
@@ -131,6 +209,8 @@ export const AdminRecommendations: React.FC = () => {
 
   const handleOpenEditModal = (rec: Recommendation) => {
     setEditingRecommendation(rec);
+    setSelectedControl({ _id: rec.controlObjectId, id: rec.controlId, nome: rec.titulo });
+    setControlSearchQuery(`${rec.controlId} - ${rec.titulo}`);
     setFormData({
       controlId: rec.controlId,
       titulo: rec.titulo,
@@ -149,6 +229,10 @@ export const AdminRecommendations: React.FC = () => {
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setEditingRecommendation(null);
+    setSelectedControl(null);
+    setControlSearchQuery('');
+    setControlSuggestions([]);
+    setShowSuggestions(false);
     setFormData({
       controlId: '',
       titulo: '',
@@ -499,18 +583,87 @@ export const AdminRecommendations: React.FC = () => {
             )}
 
             <div className="space-y-4">
-              {/* ID do Controle */}
+              {/* 🔴 CORRIGIDO: ID do Controle com autocomplete */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   ID do Controle *
                 </label>
-                <Input
-                  value={formData.controlId}
-                  onChange={(e) => handleFormChange('controlId', e.target.value)}
-                  placeholder="Ex: 5.18"
-                  disabled={!!editingRecommendation}
-                  className={editingRecommendation ? 'bg-gray-100' : ''}
-                />
+                <div className="relative">
+                  <div className="flex items-center">
+                    <input
+                      ref={searchInputRef}
+                      type="text"
+                      value={controlSearchQuery}
+                      onChange={(e) => {
+                        setControlSearchQuery(e.target.value);
+                        if (!e.target.value) {
+                          setSelectedControl(null);
+                          setFormData(prev => ({ ...prev, controlId: '', titulo: '' }));
+                        }
+                      }}
+                      onFocus={() => {
+                        if (controlSuggestions.length > 0) {
+                          setShowSuggestions(true);
+                        }
+                      }}
+                      placeholder="Digite o ID ou nome do controle..."
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-l-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      disabled={!!editingRecommendation}
+                    />
+                    {selectedControl && !editingRecommendation && (
+                      <button
+                        type="button"
+                        onClick={handleClearControl}
+                        className="px-3 py-2 bg-gray-100 border border-l-0 border-gray-300 rounded-r-lg hover:bg-gray-200"
+                      >
+                        <X className="h-4 w-4 text-gray-500" />
+                      </button>
+                    )}
+                    {isSearchingControls && (
+                      <div className="px-3 py-2 bg-gray-100 border border-l-0 border-gray-300 rounded-r-lg">
+                        <Loader2 className="h-4 w-4 animate-spin text-gray-500" />
+                      </div>
+                    )}
+                    {!selectedControl && !isSearchingControls && controlSuggestions.length === 0 && controlSearchQuery.length > 0 && (
+                      <div className="px-3 py-2 bg-gray-100 border border-l-0 border-gray-300 rounded-r-lg">
+                        <Search className="h-4 w-4 text-gray-400" />
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Lista de sugestões */}
+                  {showSuggestions && controlSuggestions.length > 0 && (
+                    <div
+                      ref={suggestionsRef}
+                      className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto"
+                    >
+                      {controlSuggestions.map((control) => (
+                        <div
+                          key={control._id}
+                          onClick={() => handleSelectControl(control)}
+                          className="px-4 py-2 hover:bg-blue-50 cursor-pointer flex items-center justify-between border-b border-gray-100 last:border-b-0"
+                        >
+                          <div>
+                            <span className="font-mono text-sm font-medium text-blue-600">
+                              {control.id}
+                            </span>
+                            <span className="ml-2 text-sm text-gray-700">
+                              {control.nome}
+                            </span>
+                          </div>
+                          {control.tiposDeControles && control.tiposDeControles.length > 0 && (
+                            <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded">
+                              {control.tiposDeControles[0]}
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                {editingRecommendation && (
+                  <p className="text-xs text-gray-400 mt-1">O ID do controle não pode ser alterado durante a edição.</p>
+                )}
               </div>
 
               {/* Título */}
