@@ -120,13 +120,60 @@ export class ReportResultService {
     try {
       logger.info(`📊 Buscando dados de resultados para empresa: ${companyId}`);
 
-      // Buscar todos os controles da empresa
-      const controls = await Control.find({ companyId }).lean();
-      logger.info(`📊 Total de controles encontrados: ${controls.length}`);
-
-      // Buscar respostas da empresa
+      // 🔴 CORREÇÃO: Buscar respostas da empresa primeiro
       const responses = await Response.find({ companyId }).lean();
       logger.info(`📊 Total de respostas encontradas: ${responses.length}`);
+
+      // 🔴 CORREÇÃO: Extrair IDs dos controles das respostas
+      const controlIds = responses
+        .map(r => r.controlId)
+        .filter(id => id)
+        .map(id => id.toString());
+
+      logger.info(`📊 IDs de controles encontrados: ${controlIds.length}`);
+
+      // 🔴 CORREÇÃO: Buscar controles que têm respostas
+      let controls: any[] = [];
+      if (controlIds.length > 0) {
+        controls = await Control.find({ _id: { $in: controlIds } }).lean();
+        logger.info(`📊 Total de controles encontrados: ${controls.length}`);
+      } else {
+        logger.warn(`⚠️ Nenhuma resposta encontrada para a empresa ${companyId}`);
+        // Retornar dados vazios
+        return {
+          categorizacao: {
+            categories: CATEGORIES.map(cat => ({
+              name: cat.label,
+              total: 0,
+              implemented: 0,
+              partial: 0,
+              notImpl: 0,
+              na: 0,
+              pImpl: 0,
+              pPartial: 0,
+              pNot: 0,
+              pNa: 0,
+            })),
+            totals: { implemented: 0, partial: 0, notImpl: 0, na: 0, total: 0 },
+          },
+          capacidades: {
+            capabilities: CAPABILITIES.map(cap => ({
+              name: cap.label,
+              key: cap.key,
+              total: 0,
+              implemented: 0,
+              partial: 0,
+              notImpl: 0,
+              aderente: 0,
+              naoAderente: 0,
+            })),
+            totals: { implemented: 0, partial: 0, notImpl: 0, total: 0 },
+            totalAderente: 0,
+            totalNaoAderente: 0,
+            radarData: [],
+          },
+        };
+      }
 
       // Buscar atribuições da empresa
       const assignments = await Assignment.find({ companyId }).lean();
@@ -145,7 +192,7 @@ export class ReportResultService {
         }
       });
 
-      // Construir dados dos controles com status
+      // 🔴 CORREÇÃO: Construir dados dos controles com status a partir das respostas
       const controlsWithStatus = controls.map(control => {
         const response = responseMap.get(control._id.toString());
         let status = 'Não implementado';
