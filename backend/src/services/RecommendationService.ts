@@ -76,14 +76,14 @@ export class RecommendationService {
    * Buscar recomendação por ID do controle
    */
   static async getByControlId(controlId: string): Promise<IRecommendation | null> {
-    return Recommendation.findOne({ controlId }).lean();
+    return Recommendation.findOne({ controlId }).lean() as Promise<IRecommendation | null>;
   }
 
   /**
    * Buscar recomendação por ObjectId do controle
    */
   static async getByControlObjectId(controlObjectId: string): Promise<IRecommendation | null> {
-    return Recommendation.findOne({ controlObjectId }).lean();
+    return Recommendation.findOne({ controlObjectId }).lean() as Promise<IRecommendation | null>;
   }
 
   /**
