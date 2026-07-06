@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext.js';
 import { reportService } from '../services/report.service.js';
+import { recommendationService } from '../services/recommendation.service.js'; // 🔴 NOVO (v19)
 import { Report, ReportStats } from '../types/report.js';
 import {
   FileText,
@@ -58,6 +59,8 @@ import {
   HelpCircle,
   Check,
   Minus,
+  Lightbulb,
+  Wrench,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card.js';
 import { Button } from '../components/ui/Button.js';
@@ -69,6 +72,7 @@ export const ReportView: React.FC = () => {
   const [report, setReport] = useState<Report | null>(null);
   const [stats, setStats] = useState<ReportStats | null>(null);
   const [resultados, setResultados] = useState<any>(null);
+  const [recomendacoes, setRecomendacoes] = useState<any[]>([]); // 🔴 NOVO (v19)
   const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -86,6 +90,7 @@ export const ReportView: React.FC = () => {
     atributos: true,
     recomendacoes: true,
     resultados: true,
+    cenarioAtual: true, // 🔴 NOVO (v19)
   });
   const [formData, setFormData] = useState({
     projectNumber: '',
@@ -107,6 +112,18 @@ export const ReportView: React.FC = () => {
         projectNumber: data.report.projectNumber || '',
         scope: data.report.scope || '',
       });
+
+      // 🔴 NOVO (v19): Carregar recomendações para o relatório
+      const companyId = data.report.companyId;
+      if (companyId) {
+        try {
+          const recs = await recommendationService.getRecommendationsForReport(companyId);
+          setRecomendacoes(recs || []);
+        } catch (recErr) {
+          console.error('Erro ao carregar recomendações:', recErr);
+          setRecomendacoes([]);
+        }
+      }
     } catch (err: any) {
       console.error('Erro ao carregar relatório:', err);
       setError(err.response?.data?.message || 'Erro ao carregar relatório');
@@ -853,6 +870,100 @@ export const ReportView: React.FC = () => {
           </div>
         </div>
 
+        {/* 🔴 NOVO (v19): 8. Cenário atual e Recomendações */}
+        <div className="py-8 border-b border-gray-200">
+          <h2 className="text-xl font-bold text-gray-900 mb-4">8. Cenário atual e Recomendações</h2>
+
+          {recomendacoes.length === 0 ? (
+            <p className="text-gray-500 text-center py-8">
+              Nenhum controle com necessidade de atenção identificado.
+            </p>
+          ) : (
+            <>
+              {/* Agrupar por domínio */}
+              {['Controles organizacionais', 'Controles de pessoas', 'Controles físicos', 'Controles tecnológicos'].map(dominio => {
+                const items = recomendacoes.filter(r => r.dominio === dominio);
+                if (items.length === 0) return null;
+
+                // Determinar número do domínio
+                const dominioNumero = {
+                  'Controles organizacionais': '5',
+                  'Controles de pessoas': '6',
+                  'Controles físicos': '7',
+                  'Controles tecnológicos': '8',
+                }[dominio] || '5';
+
+                return (
+                  <div key={dominio} className="mb-8">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                      {dominioNumero} – {dominio}
+                    </h3>
+
+                    {items.map((item, idx) => (
+                      <div key={idx} className="mb-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                        <h4 className="text-md font-bold text-gray-900 mb-2">
+                          {item.controlId} {item.titulo}
+                        </h4>
+
+                        <div className="mb-2">
+                          <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
+                            item.status === 'Parcialmente implementado' 
+                              ? 'bg-yellow-100 text-yellow-800' 
+                              : 'bg-red-100 text-red-800'
+                          }`}>
+                            {item.status}
+                          </span>
+                        </div>
+
+                        {/* Cenário Identificado */}
+                        <div className="mb-3">
+                          <p className="text-sm font-semibold text-gray-700">Cenário identificado</p>
+                          <p className="text-sm text-gray-600 text-justify mt-1">
+                            {item.cenarioIdentificado || 'Cenário não descrito para este controle.'}
+                          </p>
+                        </div>
+
+                        {/* Recomendações */}
+                        <div className="mb-3">
+                          <p className="text-sm font-semibold text-gray-700">Recomendações</p>
+                          <ul className="list-disc pl-5 mt-1 space-y-1">
+                            {item.recomendacoes && item.recomendacoes.length > 0 ? (
+                              item.recomendacoes.map((rec: string, recIdx: number) => (
+                                <li key={recIdx} className="text-sm text-gray-600 text-justify">{rec}</li>
+                              ))
+                            ) : (
+                              <li className="text-sm text-gray-500">Recomendação não cadastrada para este controle.</li>
+                            )}
+                          </ul>
+                        </div>
+
+                        {/* Soluções Técnicas (opcional) */}
+                        {item.solucoesTecnicas && item.solucoesTecnicas.length > 0 && (
+                          <div>
+                            <p className="text-sm font-semibold text-gray-700">Soluções técnicas de apoio</p>
+                            <ul className="list-disc pl-5 mt-1 space-y-1">
+                              {item.solucoesTecnicas.map((sol: string, solIdx: number) => (
+                                <li key={solIdx} className="text-sm text-gray-600">{sol}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                );
+              })}
+
+              {/* Legenda */}
+              <div className="mt-4 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                <p className="text-sm text-gray-700 text-justify">
+                  <strong>Legenda:</strong> Os controles listados acima são aqueles que foram avaliados como <strong>Parcialmente implementados</strong> ou <strong>Não implementados</strong>.
+                </p>
+              </div>
+            </>
+          )}
+        </div>
+
         {/* Botão para sair do modo de impressão */}
         <div className="text-center py-8 print:hidden">
           <Button onClick={() => setIsPrintMode(false)}>
@@ -1067,6 +1178,7 @@ export const ReportView: React.FC = () => {
                 { id: 'atributos', label: '5. Atributos', icon: Layers },
                 { id: 'recomendacoes', label: '6. Recomendações', icon: Shield },
                 { id: 'resultados', label: '7. Resultados da Avaliação', icon: BarChart3 },
+                { id: 'cenarioAtual', label: '8. Cenário atual e Recomendações', icon: Lightbulb },
               ].map((item) => {
                 const Icon = item.icon;
                 return (

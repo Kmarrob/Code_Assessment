@@ -49,6 +49,7 @@ import UserDashboard from './pages/UserDashboard.js';
 import ProfilePage from './pages/ProfilePage.js';
 import ReportView from './pages/ReportView.js'; // 🔴 NOVO (v17)
 import AdminReports from './pages/AdminReports.js'; // 🔴 NOVO (v17)
+import AdminRecommendations from './pages/AdminRecommendations.js'; // 🔴 NOVO (v19)
 
 // 🔴 NOVO: Import do Layout
 import { Layout } from './components/Layout.js';
@@ -163,6 +164,11 @@ function App() {
                   <Route path="/admin/relatorios" element={ /* 🔴 NOVO (v17) */
                     <Layout>
                       <AdminReports />
+                    </Layout>
+                  } />
+                  <Route path="/admin/recomendacoes" element={ /* 🔴 NOVO (v19) */
+                    <Layout>
+                      <AdminRecommendations />
                     </Layout>
                   } />
                   

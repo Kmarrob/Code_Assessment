@@ -6,7 +6,7 @@ import { useUsers } from '../hooks/useAdmin.js';
 import { 
   Users, Settings, Shield, 
   BarChart3, Database, Activity,
-  LogOut, Building2, ClipboardList, UserCog, LayoutDashboard, FileText
+  LogOut, Building2, ClipboardList, UserCog, LayoutDashboard, FileText, Lightbulb
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card.js';
 import { AdminBreadcrumbs } from '../components/admin/AdminBreadcrumbs.js';
@@ -59,6 +59,13 @@ export const AdminDashboard: React.FC = () => {
   // ============================================
   const handleNavigateToReports = useCallback(() => {
     navigate('/admin/relatorios');
+  }, [navigate]);
+
+  // ============================================
+  // NOVO HANDLER: RECOMENDAÇÕES (v19)
+  // ============================================
+  const handleNavigateToRecommendations = useCallback(() => {
+    navigate('/admin/recomendacoes');
   }, [navigate]);
 
   const handleLogout = useCallback(async () => {
@@ -169,7 +176,7 @@ export const AdminDashboard: React.FC = () => {
             </div>
           </section>
 
-          <section aria-label="Ações rápidas" className="grid grid-cols-1 md:grid-cols-6 gap-6 mb-8">
+          <section aria-label="Ações rápidas" className="grid grid-cols-1 md:grid-cols-7 gap-6 mb-8">
             <Card 
               className="hover:shadow-lg transition-shadow cursor-pointer"
               onClick={handleNavigateToUsers}
@@ -290,6 +297,26 @@ export const AdminDashboard: React.FC = () => {
                   <div>
                     <h3 className="font-semibold text-gray-900">Relatórios</h3>
                     <p className="text-sm text-gray-500">Visualizar relatórios gerados</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* ============================================
+                NOVO CARD: RECOMENDAÇÕES (v19)
+                ============================================ */}
+            <Card 
+              className="hover:shadow-lg transition-shadow cursor-pointer"
+              onClick={handleNavigateToRecommendations}
+            >
+              <CardContent className="p-6">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-amber-100 rounded-lg">
+                    <Lightbulb className="h-6 w-6 text-amber-600" aria-hidden="true" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-gray-900">Recomendações</h3>
+                    <p className="text-sm text-gray-500">Gerenciar recomendações por controle</p>
                   </div>
                 </div>
               </CardContent>

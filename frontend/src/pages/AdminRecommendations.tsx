@@ -1,0 +1,714 @@
+// frontend/src/pages/AdminRecommendations.tsx
+import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { 
+  FileText, 
+  Loader2, 
+  AlertCircle, 
+  Search, 
+  ChevronLeft, 
+  ChevronRight,
+  Plus,
+  Edit,
+  Trash2,
+  X,
+  Save,
+  List,
+  BookOpen,
+  Lightbulb,
+  Wrench,
+  Filter,
+  RefreshCw,
+  Check,
+  AlertTriangle,
+} from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card.js';
+import { Button } from '../components/ui/Button.js';
+import { Input } from '../components/ui/Input.js';
+import { recommendationService } from '../services/recommendation.service.js';
+import { Recommendation, CreateRecommendationData, UpdateRecommendationData } from '../types/recommendation.js';
+
+export const AdminRecommendations: React.FC = () => {
+  const navigate = useNavigate();
+  const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+  const [dominioFilter, setDominioFilter] = useState<string>('all');
+  const [dominios, setDominios] = useState<string[]>([]);
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState<any>(null);
+  const limit = 10;
+
+  // Modal states
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [editingRecommendation, setEditingRecommendation] = useState<Recommendation | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Form states
+  const [formData, setFormData] = useState<CreateRecommendationData>({
+    controlId: '',
+    titulo: '',
+    dominio: '',
+    recomendacoes: [''],
+    solucoesTecnicas: [''],
+  });
+
+  // ============================================
+  // CARREGAR DADOS
+  // ============================================
+  const loadRecommendations = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await recommendationService.listRecommendations({
+        page,
+        limit,
+        dominio: dominioFilter !== 'all' ? dominioFilter : undefined,
+        search: search || undefined,
+      });
+      setRecommendations(response.recommendations);
+      setPagination(response.pagination);
+    } catch (err: any) {
+      console.error('Erro ao carregar recomendações:', err);
+      setError(err.response?.data?.message || 'Erro ao carregar recomendações');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [page, limit, dominioFilter, search]);
+
+  const loadDominios = useCallback(async () => {
+    try {
+      const data = await recommendationService.getDominios();
+      setDominios(data);
+    } catch (err) {
+      console.error('Erro ao carregar domínios:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadRecommendations();
+  }, [loadRecommendations]);
+
+  useEffect(() => {
+    loadDominios();
+  }, [loadDominios]);
+
+  // ============================================
+  // HANDLERS
+  // ============================================
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    setPage(1);
+    loadRecommendations();
+  };
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage < 1) return;
+    if (pagination && newPage > pagination.totalPages) return;
+    setPage(newPage);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleRefresh = () => {
+    loadRecommendations();
+  };
+
+  // Modal handlers
+  const handleOpenCreateModal = () => {
+    setEditingRecommendation(null);
+    setFormData({
+      controlId: '',
+      titulo: '',
+      dominio: '',
+      recomendacoes: [''],
+      solucoesTecnicas: [''],
+    });
+    setIsModalOpen(true);
+  };
+
+  const handleOpenEditModal = (rec: Recommendation) => {
+    setEditingRecommendation(rec);
+    setFormData({
+      controlId: rec.controlId,
+      titulo: rec.titulo,
+      dominio: rec.dominio,
+      recomendacoes: rec.recomendacoes.length > 0 ? rec.recomendacoes : [''],
+      solucoesTecnicas: rec.solucoesTecnicas && rec.solucoesTecnicas.length > 0 ? rec.solucoesTecnicas : [''],
+    });
+    setIsModalOpen(true);
+  };
+
+  const handleOpenDeleteModal = (id: string) => {
+    setDeletingId(id);
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setEditingRecommendation(null);
+    setFormData({
+      controlId: '',
+      titulo: '',
+      dominio: '',
+      recomendacoes: [''],
+      solucoesTecnicas: [''],
+    });
+  };
+
+  // Form handlers
+  const handleFormChange = (field: keyof CreateRecommendationData, value: any) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleRecomendacaoChange = (index: number, value: string) => {
+    const newRecomendacoes = [...formData.recomendacoes];
+    newRecomendacoes[index] = value;
+    setFormData(prev => ({ ...prev, recomendacoes: newRecomendacoes }));
+  };
+
+  const handleAddRecomendacao = () => {
+    setFormData(prev => ({ 
+      ...prev, 
+      recomendacoes: [...prev.recomendacoes, ''] 
+    }));
+  };
+
+  const handleRemoveRecomendacao = (index: number) => {
+    if (formData.recomendacoes.length <= 1) return;
+    const newRecomendacoes = formData.recomendacoes.filter((_, i) => i !== index);
+    setFormData(prev => ({ ...prev, recomendacoes: newRecomendacoes }));
+  };
+
+  const handleSolucaoChange = (index: number, value: string) => {
+    const newSolucoes = [...(formData.solucoesTecnicas || [''])];
+    newSolucoes[index] = value;
+    setFormData(prev => ({ ...prev, solucoesTecnicas: newSolucoes }));
+  };
+
+  const handleAddSolucao = () => {
+    setFormData(prev => ({ 
+      ...prev, 
+      solucoesTecnicas: [...(prev.solucoesTecnicas || []), ''] 
+    }));
+  };
+
+  const handleRemoveSolucao = (index: number) => {
+    if (!formData.solucoesTecnicas || formData.solucoesTecnicas.length <= 1) return;
+    const newSolucoes = formData.solucoesTecnicas.filter((_, i) => i !== index);
+    setFormData(prev => ({ ...prev, solucoesTecnicas: newSolucoes }));
+  };
+
+  const handleSubmit = async () => {
+    // Validar campos obrigatórios
+    if (!formData.controlId.trim()) {
+      setError('ID do controle é obrigatório');
+      return;
+    }
+    if (!formData.titulo.trim()) {
+      setError('Título é obrigatório');
+      return;
+    }
+    if (!formData.dominio) {
+      setError('Domínio é obrigatório');
+      return;
+    }
+    const recomendacoesValidas = formData.recomendacoes.filter(r => r.trim());
+    if (recomendacoesValidas.length === 0) {
+      setError('Pelo menos uma recomendação é obrigatória');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      const data = {
+        ...formData,
+        recomendacoes: recomendacoesValidas,
+        solucoesTecnicas: (formData.solucoesTecnicas || []).filter(s => s.trim()),
+      };
+
+      if (editingRecommendation) {
+        await recommendationService.updateRecommendation(
+          editingRecommendation.controlId,
+          data as UpdateRecommendationData
+        );
+      } else {
+        await recommendationService.createRecommendation(data);
+      }
+
+      handleCloseModal();
+      loadRecommendations();
+    } catch (err: any) {
+      console.error('Erro ao salvar recomendação:', err);
+      setError(err.response?.data?.message || 'Erro ao salvar recomendação');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deletingId) return;
+
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      await recommendationService.deleteRecommendation(deletingId);
+      setIsDeleteModalOpen(false);
+      setDeletingId(null);
+      loadRecommendations();
+    } catch (err: any) {
+      console.error('Erro ao deletar recomendação:', err);
+      setError(err.response?.data?.message || 'Erro ao deletar recomendação');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // ============================================
+  // RENDER
+  // ============================================
+  if (isLoading && recommendations.length === 0) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto" />
+          <p className="mt-4 text-gray-500">Carregando recomendações...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const totalPages = pagination?.totalPages || 1;
+  const currentPage = pagination?.page || 1;
+  const hasPrevious = currentPage > 1;
+  const hasNext = currentPage < totalPages;
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Cabeçalho */}
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <Lightbulb className="h-6 w-6 text-yellow-500" />
+              <div>
+                <h1 className="text-xl font-bold text-gray-900">Recomendações por Controle</h1>
+                <p className="text-sm text-gray-500">
+                  Gerencie as recomendações para controles da ISO 27001
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <Button onClick={handleRefresh} variant="outline" size="sm">
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Atualizar
+              </Button>
+              <Button onClick={handleOpenCreateModal} size="sm">
+                <Plus className="h-4 w-4 mr-2" />
+                Nova Recomendação
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Conteúdo */}
+      <div className="container mx-auto px-4 py-8">
+        {/* Filtros */}
+        <Card className="mb-8">
+          <CardContent className="p-6">
+            <div className="flex flex-wrap items-center gap-4">
+              <form onSubmit={handleSearch} className="flex-1 min-w-[200px]">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    placeholder="Buscar por ID ou título..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="pl-9 w-full"
+                  />
+                </div>
+              </form>
+              <div className="min-w-[180px]">
+                <select
+                  value={dominioFilter}
+                  onChange={(e) => setDominioFilter(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                >
+                  <option value="all">Todos os Domínios</option>
+                  {dominios.map((d) => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
+                </select>
+              </div>
+              <Button variant="outline" onClick={() => {
+                setSearch('');
+                setDominioFilter('all');
+                setPage(1);
+              }}>
+                Limpar filtros
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Lista */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>Recomendações Cadastradas</CardTitle>
+              <span className="text-sm text-gray-500">
+                {pagination?.total || 0} {pagination?.total === 1 ? 'recomendação' : 'recomendações'}
+              </span>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {error ? (
+              <div className="text-center py-8">
+                <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-3" />
+                <p className="text-red-600">{error}</p>
+                <Button className="mt-4" onClick={loadRecommendations}>Tentar novamente</Button>
+              </div>
+            ) : recommendations.length === 0 ? (
+              <div className="text-center py-12">
+                <Lightbulb className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900">Nenhuma recomendação cadastrada</h3>
+                <p className="text-gray-500 mt-1">
+                  {search || dominioFilter !== 'all' 
+                    ? 'Tente ajustar os filtros de busca' 
+                    : 'Clique em "Nova Recomendação" para começar'}
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50 border-b border-gray-200">
+                    <tr>
+                      <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider py-3 px-4">Controle</th>
+                      <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider py-3 px-4">Título</th>
+                      <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider py-3 px-4">Domínio</th>
+                      <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider py-3 px-4">Recomendações</th>
+                      <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider py-3 px-4">Soluções</th>
+                      <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider py-3 px-4">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {recommendations.map((rec) => (
+                      <tr key={rec._id} className="hover:bg-gray-50">
+                        <td className="py-3 px-4">
+                          <span className="font-mono text-sm font-medium text-blue-600">
+                            {rec.controlId}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="text-sm font-medium text-gray-900">{rec.titulo}</div>
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className="inline-flex px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-700">
+                            {rec.dominio}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className="text-sm text-gray-600">{rec.recomendacoes.length}</span>
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className="text-sm text-gray-600">
+                            {rec.solucoesTecnicas?.length || 0}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleOpenEditModal(rec)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-red-600 border-red-200 hover:bg-red-50"
+                              onClick={() => handleOpenDeleteModal(rec.controlId)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+
+                {/* Paginação */}
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200">
+                    <div className="text-sm text-gray-500">
+                      Página {currentPage} de {totalPages}
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handlePageChange(currentPage - 1)}
+                        disabled={!hasPrevious}
+                        className="px-3 py-1 rounded border border-gray-300 text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => handlePageChange(currentPage + 1)}
+                        disabled={!hasNext}
+                        className="px-3 py-1 rounded border border-gray-300 text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Modal de Criar/Editar */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 shadow-xl">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-gray-900">
+                {editingRecommendation ? 'Editar Recomendação' : 'Nova Recomendação'}
+              </h2>
+              <button
+                onClick={handleCloseModal}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {error && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm flex items-start gap-2">
+                <AlertCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            <div className="space-y-4">
+              {/* ID do Controle */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  ID do Controle *
+                </label>
+                <Input
+                  value={formData.controlId}
+                  onChange={(e) => handleFormChange('controlId', e.target.value)}
+                  placeholder="Ex: 5.18"
+                  disabled={!!editingRecommendation}
+                  className={editingRecommendation ? 'bg-gray-100' : ''}
+                />
+              </div>
+
+              {/* Título */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Título *
+                </label>
+                <Input
+                  value={formData.titulo}
+                  onChange={(e) => handleFormChange('titulo', e.target.value)}
+                  placeholder="Ex: 5.18 Direitos de acesso"
+                />
+              </div>
+
+              {/* Domínio */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Domínio *
+                </label>
+                <select
+                  value={formData.dominio}
+                  onChange={(e) => handleFormChange('dominio', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                >
+                  <option value="">Selecione um domínio</option>
+                  {dominios.map((d) => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Recomendações */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Recomendações *
+                </label>
+                <div className="space-y-2">
+                  {formData.recomendacoes.map((rec, index) => (
+                    <div key={index} className="flex items-start gap-2">
+                      <div className="flex-1">
+                        <Input
+                          value={rec}
+                          onChange={(e) => handleRecomendacaoChange(index, e.target.value)}
+                          placeholder={`Recomendação ${index + 1}`}
+                        />
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="mt-1 text-red-600 border-red-200 hover:bg-red-50"
+                        onClick={() => handleRemoveRecomendacao(index)}
+                        disabled={formData.recomendacoes.length <= 1}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleAddRecomendacao}
+                    className="w-full"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Adicionar Recomendação
+                  </Button>
+                </div>
+              </div>
+
+              {/* Soluções Técnicas (opcional) */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Soluções Técnicas de Apoio (opcional)
+                </label>
+                <div className="space-y-2">
+                  {(formData.solucoesTecnicas || ['']).map((sol, index) => (
+                    <div key={index} className="flex items-start gap-2">
+                      <div className="flex-1">
+                        <Input
+                          value={sol}
+                          onChange={(e) => handleSolucaoChange(index, e.target.value)}
+                          placeholder={`Solução ${index + 1}`}
+                        />
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="mt-1 text-red-600 border-red-200 hover:bg-red-50"
+                        onClick={() => handleRemoveSolucao(index)}
+                        disabled={!formData.solucoesTecnicas || formData.solucoesTecnicas.length <= 1}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleAddSolucao}
+                    className="w-full"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Adicionar Solução Técnica
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6 pt-4 border-t border-gray-200">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={handleCloseModal}
+                disabled={isSubmitting}
+              >
+                Cancelar
+              </Button>
+              <Button
+                className="flex-1"
+                onClick={handleSubmit}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Salvando...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    {editingRecommendation ? 'Atualizar' : 'Criar'}
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Confirmação de Exclusão */}
+      {isDeleteModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-xl">
+            <div className="flex items-center gap-3 mb-4">
+              <AlertTriangle className="h-6 w-6 text-red-500" />
+              <h2 className="text-xl font-bold text-gray-900">Confirmar Exclusão</h2>
+            </div>
+
+            <p className="text-gray-600 mb-6">
+              Tem certeza que deseja excluir esta recomendação? Esta ação não pode ser desfeita.
+            </p>
+
+            {error && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
+                {error}
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => {
+                  setIsDeleteModalOpen(false);
+                  setDeletingId(null);
+                  setError(null);
+                }}
+                disabled={isSubmitting}
+              >
+                Cancelar
+              </Button>
+              <Button
+                className="flex-1 bg-red-600 hover:bg-red-700"
+                onClick={handleDelete}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Excluindo...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Excluir
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default AdminRecommendations;

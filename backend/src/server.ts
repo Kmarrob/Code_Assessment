@@ -17,6 +17,7 @@ import reviewRoutes from './routes/review.routes.js';
 import notificationRoutes from './routes/notification.routes.js';
 import documentRoutes from './routes/document.routes.js'; // 🔴 NOVO
 import reportRoutes from './routes/report.routes.js'; // 🔴 NOVO (v17)
+import recommendationRoutes from './routes/recommendation.routes.js'; // 🔴 NOVO (v19)
 import './services/EmailService.js';
 import { noCache } from './middleware/cache.js';
 import { SitemapController } from './controllers/SitemapController.js';
@@ -122,6 +123,7 @@ app.use('/api/review', reviewRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/documents', documentRoutes); // 🔴 NOVO - Rotas de documentos
 app.use('/api/reports', reportRoutes); // 🔴 NOVO (v17) - Rotas de relatórios
+app.use('/api/recommendations', recommendationRoutes); // 🔴 NOVO (v19) - Rotas de recomendações
 
 app.get('/health', noCache, (_req, res) => {
   res.json({
@@ -194,7 +196,8 @@ async function startServer() {
       logger.info(`📋 Review Routes: http://localhost:${PORT}/api/review`);
       logger.info(`🔔 Notification Routes: http://localhost:${PORT}/api/notifications`);
       logger.info(`📄 Document Routes: http://localhost:${PORT}/api/documents`);
-      logger.info(`📊 Report Routes: http://localhost:${PORT}/api/reports`); // 🔴 NOVO (v17)
+      logger.info(`📊 Report Routes: http://localhost:${PORT}/api/reports`);
+      logger.info(`📋 Recommendation Routes: http://localhost:${PORT}/api/recommendations`); // 🔴 NOVO (v19)
     });
 
   } catch (error) {

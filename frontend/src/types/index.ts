@@ -64,3 +64,8 @@ export interface PaginatedResponse<T> {
 // 🔴 NOVO (v17): Tipos de Relatório
 // ============================================
 export * from './report.js';
+
+// ============================================
+// 🔴 NOVO (v19): Tipos de Recomendação
+// ============================================
+export * from './recommendation.js';
