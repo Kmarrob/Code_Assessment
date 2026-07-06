@@ -9,6 +9,18 @@ import { UserRole } from '../types/index.js';
 const router = Router();
 
 // ============================================
+// ROTA PARA RELATÓRIO (REP) - DEVE VIR ANTES DO MIDDLEWARE ADMIN
+// ============================================
+// GET /api/recommendations/report/:companyId
+// Acesso: REP (da empresa) ou ADMIN
+router.get(
+  '/report/:companyId',
+  authenticate,
+  authenticatedRateLimiter,
+  RecommendationController.getRecommendationsForReport
+);
+
+// ============================================
 // ROTAS ADMIN (CRUD de recomendações)
 // ============================================
 
@@ -58,19 +70,6 @@ router.delete(
   '/:controlId',
   adminRateLimiter,
   RecommendationController.deleteRecommendation
-);
-
-// ============================================
-// ROTAS PARA RELATÓRIO (REP)
-// ============================================
-
-// 🔴 CORREÇÃO: Rota para o relatório (acessível por REP e ADMIN)
-// GET /api/recommendations/report/:companyId
-router.get(
-  '/report/:companyId',
-  authenticate,
-  authenticatedRateLimiter,
-  RecommendationController.getRecommendationsForReport
 );
 
 export default router;
