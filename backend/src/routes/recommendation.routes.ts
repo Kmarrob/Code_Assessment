@@ -64,10 +64,13 @@ router.delete(
 // ROTAS PARA RELATÓRIO (REP)
 // ============================================
 
-// Rota pública (dentro do contexto do relatório) - será usada pelo ReportView
-// Mas vamos manter como uma rota separada para não conflitar com as rotas admin
+// 🔴 CORREÇÃO: Rota para o relatório (acessível por REP e ADMIN)
 // GET /api/recommendations/report/:companyId
-// Acesso: REP (da empresa) ou ADMIN
-// Nota: Esta rota será registrada no server.ts separadamente
+router.get(
+  '/report/:companyId',
+  authenticate,
+  authenticatedRateLimiter,
+  RecommendationController.getRecommendationsForReport
+);
 
 export default router;
