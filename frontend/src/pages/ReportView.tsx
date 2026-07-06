@@ -114,8 +114,9 @@ export const ReportView: React.FC = () => {
       });
 
       // 🔴 NOVO (v19): Carregar recomendações para o relatório
-      const companyId = data.report.companyId;
-      if (companyId) {
+      // 🔴 CORREÇÃO: Garantir que companyId seja uma string
+      const companyId = data.report.companyId?._id || data.report.companyId;
+      if (companyId && typeof companyId === 'string') {
         try {
           const recs = await recommendationService.getRecommendationsForReport(companyId);
           setRecomendacoes(recs || []);
