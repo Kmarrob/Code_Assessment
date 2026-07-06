@@ -1,6 +1,7 @@
 // backend/src/controllers/ReportController.ts
 import { Request, Response, NextFunction } from 'express';
 import { ReportService } from '../services/ReportService.js';
+import { ReportResultService } from '../services/ReportResultService.js'; // 🔴 NOVO
 import { AppError, NotFoundError, ValidationError } from '../middleware/errorHandler.js';
 import { logger } from '../utils/logger.js';
 import { AuthenticatedRequest, UserRole } from '../types/index.js';
@@ -228,6 +229,9 @@ export class ReportController {
       // 🔴 POPULAR companyId para obter o nome da empresa
       await reportData.populate('companyId', 'name cnpj');
 
+      // 🔴 NOVO: Buscar dados de resultados (categorização e capacidades)
+      const resultados = await ReportResultService.getResultadosData(companyId);
+
       // Buscar estatísticas para o dashboard
       const totalUsers = await User.countDocuments({
         companyId: companyId,
@@ -255,6 +259,7 @@ export class ReportController {
             totalControls,
             completionRate: totalControls > 0 ? Math.round((totalResponses / totalControls) * 100) : 0,
           },
+          resultados: resultados, // 🔴 NOVO
         },
         statusCode: 200,
         timestamp: new Date().toISOString(),

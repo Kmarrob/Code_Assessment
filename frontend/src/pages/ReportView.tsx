@@ -67,6 +67,7 @@ export const ReportView: React.FC = () => {
   const navigate = useNavigate();
   const [report, setReport] = useState<Report | null>(null);
   const [stats, setStats] = useState<ReportStats | null>(null);
+  const [resultados, setResultados] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -83,6 +84,7 @@ export const ReportView: React.FC = () => {
     metodologia: true,
     atributos: true,
     recomendacoes: true,
+    resultados: true,
   });
   const [formData, setFormData] = useState({
     projectNumber: '',
@@ -99,6 +101,7 @@ export const ReportView: React.FC = () => {
       const data = await reportService.getDashboard();
       setReport(data.report);
       setStats(data.stats);
+      setResultados(data.resultados || null);
       setFormData({
         projectNumber: data.report.projectNumber || '',
         scope: data.report.scope || '',
@@ -128,6 +131,8 @@ export const ReportView: React.FC = () => {
         projectNumber: updated.projectNumber || '',
         scope: updated.scope || '',
       });
+      // Recarregar dados para atualizar resultados
+      await loadData();
     } catch (err: any) {
       console.error('Erro ao gerar relatório:', err);
       setError(err.response?.data?.message || 'Erro ao gerar dados do relatório');
@@ -713,6 +718,121 @@ export const ReportView: React.FC = () => {
           </ul>
         </div>
 
+        {/* 7. Resultados da Avaliação */}
+        <div className="py-8 border-b border-gray-200">
+          <h2 className="text-xl font-bold text-gray-900 mb-4">7. Resultados da Avaliação</h2>
+
+          {/* 7.1 Categorização dos controles */}
+          <h3 className="text-lg font-semibold text-gray-800 mt-6 mb-3">7.1 Categorização dos controles</h3>
+          <p className="text-gray-700 text-justify mb-4">
+            A análise dos controles e processos utilizados pela <strong>{companyName}</strong>, no que se refere a ISO 27001, permitiu identificar a média geral do Nível de Maturidade dos 93 controles, que estão claramente subdivididos e resumidos em 4 áreas temáticas: controles organizacionais, controle de pessoas, controles físicos e controles tecnológicos. O resultado exibido abaixo diz respeito ao <strong>percentual de controles efetivamente implementados</strong>.
+          </p>
+
+          {/* Cards de porcentagem por categoria */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            {resultados?.categorizacao?.categories?.map((cat: any, index: number) => {
+              const colors = [
+                { bg: 'bg-blue-100', text: 'text-blue-700', border: 'border-blue-300' },
+                { bg: 'bg-green-100', text: 'text-green-700', border: 'border-green-300' },
+                { bg: 'bg-yellow-100', text: 'text-yellow-700', border: 'border-yellow-300' },
+                { bg: 'bg-purple-100', text: 'text-purple-700', border: 'border-purple-300' },
+              ];
+              const color = colors[index % colors.length];
+              return (
+                <div key={index} className={`${color.bg} border ${color.border} rounded-xl p-4 text-center`}>
+                  <div className={`text-3xl font-bold ${color.text}`}>{cat.pImpl}%</div>
+                  <p className={`text-sm font-medium ${color.text} mt-1`}>{cat.name}</p>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Tabela detalhada de categorização */}
+          <p className="text-gray-700 text-justify mt-6 mb-4">
+            O quadro abaixo mostra o quantitativo de controles identificados em cada uma das 04 (quatro) categorizações da ISO 27001:2022, bem como a quantidade de controles que se encontram implementados, parcialmente implementados, não implementados e os que não se aplicam, mostrando uma visão geral das lacunas que foram encontradas na <strong>{companyName}</strong>.
+          </p>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm border-collapse">
+              <thead>
+                <tr className="bg-gray-100">
+                  <th className="text-left py-2 px-4 font-semibold text-gray-700 border border-gray-300">Categorização</th>
+                  <th className="text-center py-2 px-4 font-semibold text-gray-700 border border-gray-300">Total</th>
+                  <th className="text-center py-2 px-4 font-semibold text-gray-700 border border-gray-300">Não Aplicáveis</th>
+                  <th className="text-center py-2 px-4 font-semibold text-gray-700 border border-gray-300">Implementados</th>
+                  <th className="text-center py-2 px-4 font-semibold text-gray-700 border border-gray-300">Parciais</th>
+                  <th className="text-center py-2 px-4 font-semibold text-gray-700 border border-gray-300">Não Implementados</th>
+                </tr>
+              </thead>
+              <tbody>
+                {resultados?.categorizacao?.categories?.map((cat: any, index: number) => (
+                  <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                    <td className="py-2 px-4 border border-gray-300 text-gray-700">{cat.name}</td>
+                    <td className="py-2 px-4 border border-gray-300 text-center font-bold">{cat.total}</td>
+                    <td className="py-2 px-4 border border-gray-300 text-center">{cat.na}</td>
+                    <td className="py-2 px-4 border border-gray-300 text-center text-emerald-600 font-bold">{cat.implemented}</td>
+                    <td className="py-2 px-4 border border-gray-300 text-center text-amber-600">{cat.partial}</td>
+                    <td className="py-2 px-4 border border-gray-300 text-center text-red-600">{cat.notImpl}</td>
+                  </tr>
+                ))}
+                <tr className="bg-gray-200 font-bold">
+                  <td className="py-2 px-4 border border-gray-300 text-gray-900">Total controles</td>
+                  <td className="py-2 px-4 border border-gray-300 text-center">{resultados?.categorizacao?.totals?.total || 0}</td>
+                  <td className="py-2 px-4 border border-gray-300 text-center">{resultados?.categorizacao?.totals?.na || 0}</td>
+                  <td className="py-2 px-4 border border-gray-300 text-center text-emerald-700">{resultados?.categorizacao?.totals?.implemented || 0}</td>
+                  <td className="py-2 px-4 border border-gray-300 text-center text-amber-700">{resultados?.categorizacao?.totals?.partial || 0}</td>
+                  <td className="py-2 px-4 border border-gray-300 text-center text-red-700">{resultados?.categorizacao?.totals?.notImpl || 0}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          {/* 7.2 Capacidades Operacionais */}
+          <h3 className="text-lg font-semibold text-gray-800 mt-8 mb-3">7.2 Capacidades Operacionais</h3>
+          <p className="text-gray-700 text-justify mb-4">
+            A capacidade operacional analisa os controles da perspectiva de seus recursos operacionais de segurança da informação e oferece suporte a uma visão prática dos controles pelo usuário.
+          </p>
+
+          {/* Tabela de Capacidades Operacionais */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm border-collapse">
+              <thead>
+                <tr className="bg-gray-100">
+                  <th className="text-left py-2 px-4 font-semibold text-gray-700 border border-gray-300">Capacidades Operacionais</th>
+                  <th className="text-center py-2 px-4 font-semibold text-gray-700 border border-gray-300">Não se aplica</th>
+                  <th className="text-center py-2 px-4 font-semibold text-gray-700 border border-gray-300">Não Implementado</th>
+                  <th className="text-center py-2 px-4 font-semibold text-gray-700 border border-gray-300">Parcial</th>
+                  <th className="text-center py-2 px-4 font-semibold text-gray-700 border border-gray-300">Implementados</th>
+                </tr>
+              </thead>
+              <tbody>
+                {resultados?.capacidades?.capabilities?.map((cap: any, index: number) => (
+                  <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                    <td className="py-2 px-4 border border-gray-300 text-gray-700">{cap.name}</td>
+                    <td className="py-2 px-4 border border-gray-300 text-center">0</td>
+                    <td className="py-2 px-4 border border-gray-300 text-center text-red-600">{cap.notImpl}</td>
+                    <td className="py-2 px-4 border border-gray-300 text-center text-amber-600">{cap.partial}</td>
+                    <td className="py-2 px-4 border border-gray-300 text-center text-emerald-600 font-bold">{cap.implemented}</td>
+                  </tr>
+                ))}
+                <tr className="bg-gray-200 font-bold">
+                  <td className="py-2 px-4 border border-gray-300 text-gray-900">Total de Controles</td>
+                  <td className="py-2 px-4 border border-gray-300 text-center">0</td>
+                  <td className="py-2 px-4 border border-gray-300 text-center text-red-700">{resultados?.capacidades?.totals?.notImpl || 0}</td>
+                  <td className="py-2 px-4 border border-gray-300 text-center text-amber-700">{resultados?.capacidades?.totals?.partial || 0}</td>
+                  <td className="py-2 px-4 border border-gray-300 text-center text-emerald-700 font-bold">{resultados?.capacidades?.totals?.implemented || 0}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-sm text-gray-700 text-justify">
+              <strong>Legenda:</strong> O "Total de Controles" na linha de rodapé corresponde ao quantitativo total de <strong>capacidades operacionais</strong> aplicadas (ou não aplicáveis) para o total das 93 Categorias da ISO 27001:2022, considerando-se que um mesmo controle pode ter mais de uma capacidade operacional a ele atribuída.
+            </p>
+          </div>
+        </div>
+
         {/* Botão para sair do modo de impressão */}
         <div className="text-center py-8 print:hidden">
           <Button onClick={() => setIsPrintMode(false)}>
@@ -926,6 +1046,7 @@ export const ReportView: React.FC = () => {
                 { id: 'metodologia', label: '4. Metodologia de Avaliação', icon: BookOpen },
                 { id: 'atributos', label: '5. Atributos', icon: Layers },
                 { id: 'recomendacoes', label: '6. Recomendações', icon: Shield },
+                { id: 'resultados', label: '7. Resultados da Avaliação', icon: BarChart3 },
               ].map((item) => {
                 const Icon = item.icon;
                 return (
