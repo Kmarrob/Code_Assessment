@@ -61,6 +61,7 @@ import {
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card.js';
 import { Button } from '../components/ui/Button.js';
+import { RadarChart } from '../components/dashboard/RadarChart.js'; // 🔴 NOVO
 
 export const ReportView: React.FC = () => {
   const { user } = useAuth();
@@ -792,6 +793,25 @@ export const ReportView: React.FC = () => {
           <p className="text-gray-700 text-justify mb-4">
             A capacidade operacional analisa os controles da perspectiva de seus recursos operacionais de segurança da informação e oferece suporte a uma visão prática dos controles pelo usuário.
           </p>
+
+          {/* Radar Chart */}
+          {resultados?.capacidades?.radarData && resultados.capacidades.radarData.length > 0 && (
+            <div className="mt-6 mb-6">
+              <h4 className="text-md font-semibold text-gray-800 mb-4">Radar de Capacidades Operacionais</h4>
+              <p className="text-sm text-gray-600 mb-4">
+                Comparação entre o nível implementado e o recomendado (100%) por capacidade
+              </p>
+              <div className="bg-white border border-gray-200 rounded-lg p-4">
+                <RadarChart
+                  data={resultados.capacidades.radarData}
+                  title="Radar de Capacidades Operacionais"
+                  subtitle="Comparação entre o nível implementado e o recomendado (100%) por capacidade"
+                  height={500}
+                  colors={{ Implementado: '#10b981', Recomendado: '#94a3b8' }}
+                />
+              </div>
+            </div>
+          )}
 
           {/* Tabela de Capacidades Operacionais */}
           <div className="overflow-x-auto">
