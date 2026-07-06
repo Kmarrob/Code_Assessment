@@ -429,7 +429,7 @@ export const ReportView: React.FC = () => {
             </table>
           </div>
 
-          <h3 className="text-lg font-semibold text-gray-800 mt-6 mb-3">ISH</h3>
+          <h3 className="text-lg font-semibold text-gray-800 mt-6 mb-3">MRS Consultoria</h3>
           <div className="overflow-x-auto">
             <table className="w-full text-sm border-collapse">
               <thead>
@@ -458,6 +458,19 @@ export const ReportView: React.FC = () => {
               </tbody>
             </table>
           </div>
+
+          {/* 🔴 TEXTO EXPLICATIVO SOBRE ISENÇÃO DE CONSULTORIA */}
+          {report.consultantTeam.length === 0 && (
+            <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-sm text-gray-700 text-justify">
+                <strong>Nota sobre o processo de avaliação:</strong> Para esta avaliação, <strong>não foram contratadas horas de consultoria</strong>. 
+                O processo de preenchimento e validação das respostas foi realizado integralmente pela organização, 
+                por meio da solução <strong>Code_Assessment</strong>. 
+                A <strong>MRS Consultoria</strong> não atuou como consultora durante esta etapa, 
+                sendo as informações apresentadas de <strong>inteira responsabilidade do cliente</strong>.
+              </p>
+            </div>
+          )}
         </div>
 
         {/* 4. Metodologia de Avaliação */}
