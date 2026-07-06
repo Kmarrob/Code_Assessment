@@ -39,6 +39,9 @@ export class ReportController {
         report = await ReportService.generateReportData(companyId);
       }
 
+      // 🔴 POPULAR companyId para obter o nome da empresa
+      await report.populate('companyId', 'name cnpj');
+
       res.json({
         success: true,
         data: { report },
@@ -74,6 +77,9 @@ export class ReportController {
       }
 
       const report = await ReportService.generateReportData(companyId);
+
+      // 🔴 POPULAR companyId para obter o nome da empresa
+      await report.populate('companyId', 'name cnpj');
 
       res.json({
         success: true,
@@ -122,6 +128,9 @@ export class ReportController {
         { projectNumber, scope, status },
         userId
       );
+
+      // 🔴 POPULAR companyId para obter o nome da empresa
+      await report.populate('companyId', 'name cnpj');
 
       res.json({
         success: true,
@@ -215,6 +224,9 @@ export class ReportController {
       if (report.clientTeam.length === 0) {
         reportData = await ReportService.generateReportData(companyId);
       }
+
+      // 🔴 POPULAR companyId para obter o nome da empresa
+      await reportData.populate('companyId', 'name cnpj');
 
       // Buscar estatísticas para o dashboard
       const totalUsers = await User.countDocuments({
