@@ -58,7 +58,7 @@ export const notificationService = {
     limit: number = 20,
     filter: 'all' | 'unread' = 'all'
   ): Promise<NotificationsResponse> {
-    const response = await api.get<NotificationsResponse>('/api/notifications', {
+    const response = await api.get<NotificationsResponse>('/notifications', {
       params: { page, limit, filter },
     });
     return response.data;
@@ -69,7 +69,7 @@ export const notificationService = {
    */
   async getUnreadNotifications(): Promise<Notification[]> {
     const response = await api.get<{ success: boolean; data: Notification[]; count: number }>(
-      '/api/notifications/unread'
+      '/notifications/unread'
     );
     return response.data.data;
   },
@@ -78,7 +78,7 @@ export const notificationService = {
    * Obter contagem de notificações não lidas
    */
   async getUnreadCount(): Promise<number> {
-    const response = await api.get<UnreadCountResponse>('/api/notifications/unread/count');
+    const response = await api.get<UnreadCountResponse>('/notifications/unread/count');
     return response.data.data.count;
   },
 
@@ -87,7 +87,7 @@ export const notificationService = {
    */
   async markAsRead(notificationId: string): Promise<Notification> {
     const response = await api.patch<{ success: boolean; data: Notification }>(
-      `/api/notifications/${notificationId}/read`
+      `/notifications/${notificationId}/read`
     );
     return response.data.data;
   },
@@ -97,7 +97,7 @@ export const notificationService = {
    */
   async markAllAsRead(): Promise<number> {
     const response = await api.patch<{ success: boolean; data: { count: number } }>(
-      '/api/notifications/read-all'
+      '/notifications/read-all'
     );
     return response.data.data.count;
   },
@@ -106,7 +106,7 @@ export const notificationService = {
    * Excluir uma notificação
    */
   async deleteNotification(notificationId: string): Promise<void> {
-    await api.delete(`/api/notifications/${notificationId}`);
+    await api.delete(`/notifications/${notificationId}`);
   },
 
   /**
@@ -114,7 +114,7 @@ export const notificationService = {
    */
   async deleteOldNotifications(days: number = 30): Promise<number> {
     const response = await api.delete<{ success: boolean; data: { deleted: number } }>(
-      '/api/notifications/old',
+      '/notifications/old',
       { params: { days } }
     );
     return response.data.data.deleted;
