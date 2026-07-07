@@ -21,6 +21,7 @@ import {
   Check,
   AlertTriangle,
   ChevronDown,
+  ArrowLeft, // Adicionado para o botão de voltar
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card.js';
 import { Button } from '../components/ui/Button.js';
@@ -95,17 +96,14 @@ export const AdminRecommendations: React.FC = () => {
         // Mapeia o total de itens de forma dinâmica
         let totalReal = checkedPagination?.total || dataResult.total || dataResult.data?.total || response?.total || 0;
         
-        // Se o total dinâmico vier zerado por falha na resposta da API, usamos a quantidade de itens na tela como base segura
         if (totalReal === 0) {
           totalReal = checkedRecommendations.length;
         }
         
-        // Se houver mais registros e estamos na última página teórica do backend, expande dinamicamente
         if (checkedRecommendations.length === itemsPerPage && totalReal <= (page * itemsPerPage)) {
           totalReal = (page * itemsPerPage) + 1;
         }
 
-        // Calcula dinamicamente o número exato de páginas de acordo com a necessidade real do banco
         const totalPagesCalculated = Math.ceil(totalReal / itemsPerPage) || 1;
         
         setPagination({
@@ -221,13 +219,11 @@ export const AdminRecommendations: React.FC = () => {
     setPage(1);
   };
 
-  // CORREÇÃO: Simplificação da trava de segurança para permitir navegação regressiva sem bloqueios na última página
   const handlePageChange = (newPage: number) => {
     console.log('📄 handlePageChange chamado com:', newPage);
     if (newPage === page) return;
     if (newPage < 1) return;
     
-    console.log('✅ Atualizando page para:', newPage);
     setPage(newPage);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -431,15 +427,30 @@ export const AdminRecommendations: React.FC = () => {
       <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="container mx-auto px-4 py-4">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <Lightbulb className="h-6 w-6 text-yellow-500" />
-              <div>
-                <h1 className="text-xl font-bold text-gray-900">Recomendações por Controle</h1>
-                <p className="text-sm text-gray-500">
-                  Gerencie as recomendações para controles da ISO 27001
-                </p>
+            
+            {/* CORREÇÃO VISUAL: Botão Voltar integrado de forma elegante na hierarquia do título */}
+            <div className="flex items-center gap-4">
+              <Button 
+                onClick={() => navigate('/admin')} 
+                variant="outline" 
+                size="sm"
+                className="hover:bg-gray-100 border-gray-300 text-gray-700"
+              >
+                <ArrowLeft className="h-4 w-4 mr-1.5" />
+                Voltar
+              </Button>
+              
+              <div className="flex items-center gap-3 border-l border-gray-200 pl-4">
+                <Lightbulb className="h-6 w-6 text-yellow-500" />
+                <div>
+                  <h1 className="text-xl font-bold text-gray-900">Recomendações por Controle</h1>
+                  <p className="text-sm text-gray-500">
+                    Gerencie as recomendações para controles da ISO 27001
+                  </p>
+                </div>
               </div>
             </div>
+
             <div className="flex items-center gap-3">
               <Button onClick={handleRefresh} variant="outline" size="sm">
                 <RefreshCw className="h-4 w-4 mr-2" />
