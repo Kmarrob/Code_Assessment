@@ -4,7 +4,7 @@ import { RecommendationService } from '../services/RecommendationService.js';
 import { AppError, NotFoundError, ValidationError } from '../middleware/errorHandler.js';
 import { logger } from '../utils/logger.js';
 import { AuthenticatedRequest, UserRole } from '../types/index.js';
-import { Control } from '../models/Control.js'; // 🔴 NOVO
+import { Control } from '../models/Control.js';
 
 export class RecommendationController {
   /**
@@ -120,12 +120,7 @@ export class RecommendationController {
         throw new AppError('Acesso restrito a administradores', 403);
       }
 
-      // Captura as propriedades da URL (Query String)
-      const { page, limit, dominio, search } = req.query;
-
-      // CORREÇÃO: Garante a tipagem estritamente numérica para que o .slice() do Service funcione dinamicamente
-      const pageNumber = page ? Number(page) : 1;
-      const limitNumber = limit ? Number(limit) : 20;
+      const { page = 1, limit = 20, dominio, search } = req.query;
 
       const result = await RecommendationService.listRecommendations(
         {
@@ -133,19 +128,20 @@ export class RecommendationController {
           search: search as string | undefined,
         },
         {
-          page: pageNumber,
-          limit: limitNumber,
+          page: Number(page),
+          limit: Number(limit),
         }
       );
 
+      // 🔴 CORREÇÃO: Usar result.pagination.total e result.pagination.totalPages
       res.json({
         success: true,
         data: { recommendations: result.recommendations },
         pagination: {
-          page: pageNumber,
-          limit: limitNumber,
-          total: result.total,
-          totalPages: Math.ceil(result.total / limitNumber),
+          page: Number(page),
+          limit: Number(limit),
+          total: result.pagination.total,
+          totalPages: result.pagination.totalPages,
         },
         statusCode: 200,
         timestamp: new Date().toISOString(),
@@ -197,7 +193,7 @@ export class RecommendationController {
 
       res.json({
         success: true,
-        message: 'Recomendação updated com sucesso',
+        message: 'Recomendação atualizada com sucesso',
         data: { recommendation },
         statusCode: 200,
         timestamp: new Date().toISOString(),
@@ -267,7 +263,6 @@ export class RecommendationController {
         throw new AppError('ID da empresa é obrigatório', 400);
       }
 
-      // Verificar permissão do preposto
       if (user.role === UserRole.REP && user.companyId?.toString() !== companyId) {
         throw new AppError('Você não tem permissão para acessar dados desta empresa', 403);
       }
@@ -315,7 +310,7 @@ export class RecommendationController {
   }
 
   /**
-   * 🔴 NOVO: Buscar controles para autocomplete (ADMIN)
+   * Buscar controles para autocomplete (ADMIN)
    * GET /api/recommendations/controls/search?q=5.2
    */
   static async searchControls(
@@ -342,7 +337,6 @@ export class RecommendationController {
         return;
       }
 
-      // Buscar controles por ID ou nome
       const controls = await Control.find({
         $or: [
           { id: { $regex: q, $options: 'i' } },
