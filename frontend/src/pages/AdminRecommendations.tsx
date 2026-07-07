@@ -87,21 +87,26 @@ export const AdminRecommendations: React.FC = () => {
       
       if (dataResult) {
         const checkedRecommendations = dataResult.data?.recommendations || dataResult.recommendations || [];
-        const checkedPagination = dataResult.pagination || dataResult.data?.pagination;
-        
-        // Garante o total de 12 vindo do backend independente da chave em que se encontra
-        const totalReal = checkedPagination?.total || dataResult.total || 12;
-
         setRecommendations(checkedRecommendations);
         
-        const totalPagesCalculated = Math.ceil(totalReal / itemsPerPage) || 1;
+        // CORREÇÃO: Captura o objeto de paginação vindo do backend
+        const checkedPagination = response?.pagination || dataResult.pagination || dataResult.data?.pagination;
         
-        setPagination({
-          total: totalReal,
-          page: page,
-          limit: itemsPerPage,
-          totalPages: totalPagesCalculated
-        });
+        if (checkedPagination) {
+          console.log('📊 Paginação mapeada diretamente do backend:', checkedPagination);
+          setPagination(checkedPagination);
+        } else {
+          // Fallback dinâmico seguro caso as chaves não coincidam
+          const totalReal = dataResult.total || dataResult.data?.total || 22; 
+          const totalPagesCalculated = Math.ceil(totalReal / itemsPerPage) || 1;
+          
+          setPagination({
+            total: totalReal,
+            page: page,
+            limit: itemsPerPage,
+            totalPages: totalPagesCalculated
+          });
+        }
       }
     } catch (err: any) {
       console.error('❌ Erro ao carregar recomendações:', err);
