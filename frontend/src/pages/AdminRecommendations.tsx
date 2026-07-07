@@ -1,5 +1,4 @@
-// frontend/src/pages/AdminRecommendations.tsx
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   FileText, 
@@ -38,8 +37,8 @@ export const AdminRecommendations: React.FC = () => {
   const [dominioFilter, setDominioFilter] = useState<string>('all');
   const [dominios, setDominios] = useState<string[]>([]);
   const [page, setPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [pagination, setPagination] = useState<any>(null);
-  const limit = 10;
 
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -48,7 +47,7 @@ export const AdminRecommendations: React.FC = () => {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // 🔴 NOVO: Estados para autocomplete
+  // Estados para autocomplete
   const [controlSearchQuery, setControlSearchQuery] = useState('');
   const [controlSuggestions, setControlSuggestions] = useState<ControlSearchResult[]>([]);
   const [isSearchingControls, setIsSearchingControls] = useState(false);
@@ -67,47 +66,73 @@ export const AdminRecommendations: React.FC = () => {
   });
 
   // ============================================
-  // CARREGAR DADOS
+  // FUNÇÃO PARA CARREGAR OS DADOS
   // ============================================
-  const loadRecommendations = useCallback(async () => {
+  const loadRecommendations = async () => {
+    console.log('🔄 Carregando recomendações - Página:', page, 'Limit:', itemsPerPage);
+    console.log('🔍 Filtros - dominio:', dominioFilter, 'search:', search);
     setIsLoading(true);
     setError(null);
+    
     try {
       const response = await recommendationService.listRecommendations({
         page,
-        limit,
+        limit: itemsPerPage,
         dominio: dominioFilter !== 'all' ? dominioFilter : undefined,
         search: search || undefined,
       });
-      setRecommendations(response.recommendations);
-      setPagination(response.pagination);
+      
+      const dataResult = response?.data ? response.data : response;
+      console.log('📦 Resposta COMPLETA do backend:', JSON.stringify(dataResult, null, 2));
+      
+      if (dataResult) {
+        const checkedRecommendations = dataResult.data?.recommendations || dataResult.recommendations || [];
+        const checkedPagination = dataResult.pagination || dataResult.data?.pagination;
+        
+        // Garante o total de 12 vindo do backend independente da chave em que se encontra
+        const totalReal = checkedPagination?.total || dataResult.total || 12;
+
+        setRecommendations(checkedRecommendations);
+        
+        const totalPagesCalculated = Math.ceil(totalReal / itemsPerPage) || 1;
+        
+        setPagination({
+          total: totalReal,
+          page: page,
+          limit: itemsPerPage,
+          totalPages: totalPagesCalculated
+        });
+      }
     } catch (err: any) {
-      console.error('Erro ao carregar recomendações:', err);
+      console.error('❌ Erro ao carregar recomendações:', err);
       setError(err.response?.data?.message || 'Erro ao carregar recomendações');
     } finally {
       setIsLoading(false);
     }
-  }, [page, limit, dominioFilter, search]);
+  };
 
-  const loadDominios = useCallback(async () => {
+  const loadDominios = async () => {
     try {
       const data = await recommendationService.getDominios();
       setDominios(data);
     } catch (err) {
       console.error('Erro ao carregar domínios:', err);
     }
-  }, []);
+  };
 
+  // ============================================
+  // useEffect - CARREGAR QUANDO ALGO MUDAR
+  // ============================================
   useEffect(() => {
     loadRecommendations();
-  }, [loadRecommendations]);
+  }, [page, itemsPerPage, dominioFilter, search]);
 
   useEffect(() => {
     loadDominios();
-  }, [loadDominios]);
+  }, []);
 
   // ============================================
-  // 🔴 NOVO: BUSCA DE CONTROLES PARA AUTOCOMPLETE
+  // BUSCA DE CONTROLES PARA AUTOCOMPLETE
   // ============================================
   useEffect(() => {
     const searchControls = async () => {
@@ -146,7 +171,7 @@ export const AdminRecommendations: React.FC = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // 🔴 NOVO: Selecionar um controle da lista
+  // Selecionar um controle da lista
   const handleSelectControl = (control: ControlSearchResult) => {
     setSelectedControl(control);
     setControlSearchQuery(`${control.id} - ${control.nome}`);
@@ -158,7 +183,7 @@ export const AdminRecommendations: React.FC = () => {
     setShowSuggestions(false);
   };
 
-  // 🔴 NOVO: Limpar seleção do controle
+  // Limpar seleção do controle
   const handleClearControl = () => {
     setSelectedControl(null);
     setControlSearchQuery('');
@@ -176,14 +201,31 @@ export const AdminRecommendations: React.FC = () => {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setPage(1);
-    loadRecommendations();
+  };
+
+  const handleClearFilters = () => {
+    setSearch('');
+    setDominioFilter('all');
+    setPage(1);
   };
 
   const handlePageChange = (newPage: number) => {
+    console.log('📄 handlePageChange chamado com:', newPage);
+    console.log('📊 Paginação atual:', pagination);
+    if (newPage === page) return;
     if (newPage < 1) return;
-    if (pagination && newPage > pagination.totalPages) return;
+    if (pagination && newPage > pagination.totalPages) {
+      console.log('⛔ Página maior que totalPages:', newPage, '>', pagination.totalPages);
+      return;
+    }
+    console.log('✅ Atualizando page para:', newPage);
     setPage(newPage);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleItemsPerPageChange = (newLimit: number) => {
+    setItemsPerPage(newLimit);
+    setPage(1);
   };
 
   const handleRefresh = () => {
@@ -286,7 +328,6 @@ export const AdminRecommendations: React.FC = () => {
   };
 
   const handleSubmit = async () => {
-    // Validar campos obrigatórios
     if (!formData.controlId.trim()) {
       setError('ID do controle é obrigatório');
       return;
@@ -354,23 +395,44 @@ export const AdminRecommendations: React.FC = () => {
   };
 
   // ============================================
-  // RENDER
+  // PAGINAÇÃO - MESMA METODOLOGIA DO AdminControls
   // ============================================
-  if (isLoading && recommendations.length === 0) {
-    return (
-      <div className="min-h-[60vh] flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto" />
-          <p className="mt-4 text-gray-500">Carregando recomendações...</p>
-        </div>
-      </div>
-    );
-  }
-
+  const totalItems = pagination?.total || 0;
   const totalPages = pagination?.totalPages || 1;
   const currentPage = pagination?.page || 1;
+
   const hasPrevious = currentPage > 1;
   const hasNext = currentPage < totalPages;
+
+  // Gerar números das páginas (igual ao AdminControls)
+  const getPageNumbers = () => {
+    if (!pagination) return [];
+    
+    const total = totalPages;
+    const current = currentPage;
+    const delta = 2;
+    const range: number[] = [];
+    const rangeWithDots: (number | string)[] = [];
+
+    for (let i = 1; i <= total; i++) {
+      if (i === 1 || i === total || Math.abs(i - current) <= delta) {
+        range.push(i);
+      }
+    }
+
+    let last: number | null = null;
+    for (const i of range) {
+      if (last !== null && i - last > 1) {
+        rangeWithDots.push('...');
+      }
+      rangeWithDots.push(i);
+      last = i;
+    }
+
+    return rangeWithDots;
+  };
+
+  const pageNumbers = getPageNumbers();
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -430,11 +492,7 @@ export const AdminRecommendations: React.FC = () => {
                   ))}
                 </select>
               </div>
-              <Button variant="outline" onClick={() => {
-                setSearch('');
-                setDominioFilter('all');
-                setPage(1);
-              }}>
+              <Button variant="outline" onClick={handleClearFilters}>
                 Limpar filtros
               </Button>
             </div>
@@ -447,7 +505,7 @@ export const AdminRecommendations: React.FC = () => {
             <div className="flex items-center justify-between">
               <CardTitle>Recomendações Cadastradas</CardTitle>
               <span className="text-sm text-gray-500">
-                {pagination?.total || 0} {pagination?.total === 1 ? 'recomendação' : 'recomendações'}
+                {totalItems} {totalItems === 1 ? 'recomendação' : 'recomendações'}
               </span>
             </div>
           </CardHeader>
@@ -529,30 +587,101 @@ export const AdminRecommendations: React.FC = () => {
                   </tbody>
                 </table>
 
-                {/* Paginação */}
-                {totalPages > 1 && (
-                  <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200">
-                    <div className="text-sm text-gray-500">
-                      Página {currentPage} de {totalPages}
+                {/* ============================================
+                    PAGINAÇÃO - IGUAL AO AdminControls
+                    ============================================ */}
+                <div className="mt-6 pt-4 border-t-2 border-gray-200">
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-500">Itens por página:</span>
+                      <select
+                        value={itemsPerPage}
+                        onChange={(e) => handleItemsPerPageChange(Number(e.target.value))}
+                        className="px-2 py-1 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                      >
+                        <option value={5}>5</option>
+                        <option value={10}>10</option>
+                        <option value={20}>20</option>
+                        <option value={30}>30</option>
+                        <option value={40}>40</option>
+                        <option value={50}>50</option>
+                        <option value={100}>100</option>
+                      </select>
                     </div>
-                    <div className="flex gap-2">
+
+                    <div className="flex items-center gap-2">
+                      {/* Anterior */}
                       <button
-                        onClick={() => handlePageChange(currentPage - 1)}
+                        onClick={() => {
+                          if (currentPage > 1) {
+                            handlePageChange(currentPage - 1);
+                          }
+                        }}
                         disabled={!hasPrevious}
-                        className="px-3 py-1 rounded border border-gray-300 text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                        className={`flex items-center gap-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          hasPrevious
+                            ? 'bg-gray-100 hover:bg-gray-200 text-gray-700 cursor-pointer'
+                            : 'bg-gray-50 text-gray-400 cursor-not-allowed opacity-50'
+                        }`}
                       >
                         <ChevronLeft className="h-4 w-4" />
+                        Anterior
                       </button>
+
+                      {/* Números */}
+                      <div className="flex items-center gap-1 bg-gray-50 px-3 py-1 rounded-lg">
+                        {pageNumbers.length > 0 ? (
+                          pageNumbers.map((item, index) => (
+                            typeof item === 'number' ? (
+                              <button
+                                key={index}
+                                onClick={() => {
+                                  handlePageChange(item);
+                                }}
+                                className={`min-w-[36px] h-9 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
+                                  item === currentPage
+                                    ? 'bg-blue-600 text-white'
+                                    : 'bg-white hover:bg-gray-200 text-gray-700'
+                                }`}
+                              >
+                                {item}
+                              </button>
+                            ) : (
+                              <span key={index} className="px-1 text-gray-400 text-sm">
+                                {item}
+                              </span>
+                            )
+                          ))
+                        ) : (
+                          <button
+                            className="min-w-[36px] h-9 rounded-lg text-sm font-medium bg-blue-600 text-white cursor-default"
+                            disabled
+                          >
+                            1
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Próximo */}
                       <button
-                        onClick={() => handlePageChange(currentPage + 1)}
+                        onClick={() => {
+                          if (currentPage < totalPages) {
+                            handlePageChange(currentPage + 1);
+                          }
+                        }}
                         disabled={!hasNext}
-                        className="px-3 py-1 rounded border border-gray-300 text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                        className={`flex items-center gap-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          hasNext
+                            ? 'bg-gray-100 hover:bg-gray-200 text-gray-700 cursor-pointer'
+                            : 'bg-gray-50 text-gray-400 cursor-not-allowed opacity-50'
+                        }`}
                       >
+                        Próximo
                         <ChevronRight className="h-4 w-4" />
                       </button>
                     </div>
                   </div>
-                )}
+                </div>
               </div>
             )}
           </CardContent>
@@ -583,7 +712,7 @@ export const AdminRecommendations: React.FC = () => {
             )}
 
             <div className="space-y-4">
-              {/* 🔴 CORRIGIDO: ID do Controle com autocomplete */}
+              {/* ID do Controle com autocomplete */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   ID do Controle *

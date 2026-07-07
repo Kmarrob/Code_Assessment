@@ -1,4 +1,3 @@
-// backend/src/services/RecommendationService.ts
 import mongoose from 'mongoose';
 import { Recommendation, IRecommendation } from '../models/Recommendation.js';
 import { Control } from '../models/Control.js';
@@ -43,13 +42,11 @@ export class RecommendationService {
     data: CreateRecommendationData,
     userId: string
   ): Promise<IRecommendation> {
-    // Buscar o controle para obter o ObjectId
     const control = await Control.findOne({ id: data.controlId });
     if (!control) {
       throw new NotFoundError(`Controle ${data.controlId} não encontrado`);
     }
 
-    // Verificar se já existe recomendação para este controle
     const existing = await Recommendation.findOne({ controlId: data.controlId });
     if (existing) {
       throw new AppError(`Já existe uma recomendação para o controle ${data.controlId}`, 400);
@@ -87,7 +84,7 @@ export class RecommendationService {
   }
 
   /**
-   * Listar todas as recomendações
+   * Listar todas as recomendações - COM TOTAL CORRETO
    */
   static async listRecommendations(
     filters: {
@@ -98,8 +95,9 @@ export class RecommendationService {
       page?: number;
       limit?: number;
     } = {}
-  ): Promise<{ recommendations: IRecommendation[]; total: number }> {
-    const { page = 1, limit = 20 } = pagination;
+  ): Promise<{ recommendations: IRecommendation[]; pagination: { total: number; page: number; limit: number; totalPages: number } }> {
+    const page = Number(pagination.page) || 1;
+    const limit = Number(pagination.limit) || 10;
     const { dominio, search } = filters;
 
     const match: any = {};
@@ -117,18 +115,43 @@ export class RecommendationService {
 
     const skip = (page - 1) * limit;
 
-    const [recommendations, total] = await Promise.all([
-      Recommendation.find(match)
-        .populate('createdBy', 'name email')
-        .populate('updatedBy', 'name email')
-        .sort({ controlId: 1 })
-        .skip(skip)
-        .limit(limit)
-        .lean(),
-      Recommendation.countDocuments(match),
-    ]);
+    // Buscar TODOS os documentos que atendem ao filtro
+    const allDocs = await Recommendation.find(match)
+      .populate('createdBy', 'name email')
+      .populate('updatedBy', 'name email')
+      .lean();
 
-    return { recommendations: recommendations as any[], total };
+    // Ordenação Numérica Estrita por Segmentos (5.1 -> 5.2 -> 5.10)
+    const sortedDocs = allDocs.sort((a, b) => {
+      const partsA = (a.controlId || '').split('.').map(Number);
+      const partsB = (b.controlId || '').split('.').map(Number);
+      
+      for (let i = 0; i < Math.max(partsA.length, partsB.length); i++) {
+        const numA = partsA[i] || 0;
+        const numB = partsB[i] || 0;
+        if (numA !== numB) {
+          return numA - numB;
+        }
+      }
+      return (a.controlId || '').localeCompare(b.controlId || '');
+    });
+
+    // total = TODOS os documentos (não apenas os da página)
+    const total = sortedDocs.length;
+    const totalPages = Math.ceil(total / limit) || 1;
+    
+    // Aplicar paginação APÓS calcular o total
+    const paginatedDocs = sortedDocs.slice(skip, skip + limit);
+
+    return { 
+      recommendations: paginatedDocs as any[],
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages
+      }
+    };
   }
 
   /**
@@ -178,19 +201,16 @@ export class RecommendationService {
 
   /**
    * Buscar recomendações com respostas para o relatório
-   * Retorna apenas controles com status "Parcialmente implementado" ou "Não implementado"
    */
   static async getRecommendationsWithResponses(
     companyId: string
   ): Promise<RecommendationWithResponse[]> {
     try {
-      // Buscar empresa
       const company = await Company.findById(companyId);
       if (!company) {
         throw new NotFoundError('Empresa não encontrada');
       }
 
-      // Buscar usuários da empresa
       const userFilter: any = {
         $or: [
           { companyId: new mongoose.Types.ObjectId(companyId) },
@@ -206,7 +226,6 @@ export class RecommendationService {
         return [];
       }
 
-      // Buscar atribuições e respostas
       const assignments = await Assignment.find({
         userId: { $in: userIds },
       }).populate('controlId').lean();
@@ -215,22 +234,18 @@ export class RecommendationService {
         userId: { $in: userIds },
       }).lean();
 
-      // Criar mapa de respostas por assignmentId
       const responseMap = new Map();
       responses.forEach(r => {
         responseMap.set(r.assignmentId.toString(), r);
       });
 
-      // Buscar recomendações existentes
       const allRecommendations = await Recommendation.find().lean();
 
-      // Mapear recomendações por controlId
       const recommendationMap = new Map();
       allRecommendations.forEach(rec => {
         recommendationMap.set(rec.controlId, rec);
       });
 
-      // Construir resultado
       const result: RecommendationWithResponse[] = [];
 
       assignments.forEach(a => {
@@ -239,7 +254,6 @@ export class RecommendationService {
 
         if (!control) return;
 
-        // Verificar se o controle tem status que precisa de atenção
         let status = 'Não implementado';
         let maturityLevel = 0;
         let cenarioIdentificado = '';
@@ -260,23 +274,18 @@ export class RecommendationService {
             maturityLevel = -1;
           }
 
-          // Cenário identificado vem da resposta
           cenarioIdentificado = response.scenarioDescription || response.scenario || '';
         }
 
-        // Filtrar apenas controles que precisam de atenção
         if (status !== 'Parcialmente implementado' && status !== 'Não implementado') {
           return;
         }
 
-        // Buscar recomendação
         const recommendation = recommendationMap.get(control.id);
 
-        // Se não houver recomendação, criar uma estrutura básica
         const recomendacoes = recommendation?.recomendacoes || ['Recomendação não cadastrada para este controle.'];
         const solucoesTecnicas = recommendation?.solucoesTecnicas || [];
 
-        // Determinar domínio
         const tipos = control.tiposDeControles || control.tipoDeControle || [];
         let dominio = 'Controles organizacionais';
         if (Array.isArray(tipos)) {
@@ -305,8 +314,16 @@ export class RecommendationService {
         });
       });
 
-      // Ordenar por controlId
-      result.sort((a, b) => a.controlId.localeCompare(b.controlId));
+      result.sort((a, b) => {
+        const partsA = (a.controlId || '').split('.').map(Number);
+        const partsB = (b.controlId || '').split('.').map(Number);
+        for (let i = 0; i < Math.max(partsA.length, partsB.length); i++) {
+          const numA = partsA[i] || 0;
+          const numB = partsB[i] || 0;
+          if (numA !== numB) return numA - numB;
+        }
+        return (a.controlId || '').localeCompare(b.controlId || '');
+      });
 
       return result;
 

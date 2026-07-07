@@ -120,7 +120,12 @@ export class RecommendationController {
         throw new AppError('Acesso restrito a administradores', 403);
       }
 
-      const { page = 1, limit = 20, dominio, search } = req.query;
+      // Captura as propriedades da URL (Query String)
+      const { page, limit, dominio, search } = req.query;
+
+      // CORREÇÃO: Garante a tipagem estritamente numérica para que o .slice() do Service funcione dinamicamente
+      const pageNumber = page ? Number(page) : 1;
+      const limitNumber = limit ? Number(limit) : 20;
 
       const result = await RecommendationService.listRecommendations(
         {
@@ -128,8 +133,8 @@ export class RecommendationController {
           search: search as string | undefined,
         },
         {
-          page: Number(page),
-          limit: Number(limit),
+          page: pageNumber,
+          limit: limitNumber,
         }
       );
 
@@ -137,10 +142,10 @@ export class RecommendationController {
         success: true,
         data: { recommendations: result.recommendations },
         pagination: {
-          page: Number(page),
-          limit: Number(limit),
+          page: pageNumber,
+          limit: limitNumber,
           total: result.total,
-          totalPages: Math.ceil(result.total / Number(limit)),
+          totalPages: Math.ceil(result.total / limitNumber),
         },
         statusCode: 200,
         timestamp: new Date().toISOString(),
@@ -192,7 +197,7 @@ export class RecommendationController {
 
       res.json({
         success: true,
-        message: 'Recomendação atualizada com sucesso',
+        message: 'Recomendação updated com sucesso',
         data: { recommendation },
         statusCode: 200,
         timestamp: new Date().toISOString(),
