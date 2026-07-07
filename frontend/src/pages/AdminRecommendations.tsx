@@ -685,7 +685,7 @@ export const AdminRecommendations: React.FC = () => {
       {/* Modal de Criar/Editar (principal com tudo integrado) */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 shadow-xl">
+          <div className="bg-white rounded-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto p-6 shadow-xl">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-bold text-gray-900">
                 {editingRecommendation ? 'Editar Recomendação' : 'Nova Recomendação'}
@@ -818,12 +818,27 @@ export const AdminRecommendations: React.FC = () => {
                 </select>
               </div>
 
-              {/* Adicionar Nova Recomendação Estruturada - Integrado */}
+              {/* === SEÇÃO: ADICIONAR RECOMENDAÇÃO ESTRUTURADA === */}
               <div className="border-t border-gray-200 pt-4">
-                <h3 className="text-sm font-medium text-gray-700 mb-3">
-                  {editingRecIndex !== null ? 'Editando Recomendação' : 'Adicionar Nova Recomendação'}
-                </h3>
-                <div className="space-y-3">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-medium text-gray-700">
+                    {editingRecIndex !== null ? '✏️ Editando Recomendação' : '➕ Adicionar Nova Recomendação'}
+                  </h3>
+                  {editingRecIndex !== null && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={clearRecForm}
+                      className="text-xs"
+                    >
+                      Cancelar Edição
+                    </Button>
+                  )}
+                </div>
+                
+                <div className="bg-gray-50 rounded-lg p-4 border border-gray-200 space-y-3">
+                  {/* Título da Recomendação */}
                   <div>
                     <label className="block text-xs font-medium text-gray-600 mb-1">
                       Título da Recomendação *
@@ -831,13 +846,15 @@ export const AdminRecommendations: React.FC = () => {
                     <Input
                       value={formData.recTitulo}
                       onChange={(e) => setFormData(prev => ({ ...prev, recTitulo: e.target.value }))}
-                      placeholder="Ex: Criação e Alinhamento Estratégico da PSI"
+                      placeholder="Ex: Cultura, Conscientização e Treinamento Contínuo"
                       size="sm"
                     />
                   </div>
+
+                  {/* Descrição da Recomendação */}
                   <div>
                     <label className="block text-xs font-medium text-gray-600 mb-1">
-                      Descrição *
+                      Descrição da Recomendação *
                     </label>
                     <textarea
                       value={formData.recDescricao}
@@ -847,6 +864,8 @@ export const AdminRecommendations: React.FC = () => {
                       placeholder="Descreva a recomendação em detalhes..."
                     />
                   </div>
+
+                  {/* Soluções Técnicas da Recomendação */}
                   <div>
                     <label className="block text-xs font-medium text-gray-600 mb-1">
                       Soluções Técnicas (opcional)
@@ -889,71 +908,74 @@ export const AdminRecommendations: React.FC = () => {
                       </div>
                     )}
                   </div>
-                  <div className="flex gap-2">
-                    <Button
-                      type="button"
-                      size="sm"
-                      onClick={saveStructuredRecommendation}
-                      disabled={!formData.recTitulo.trim() || !formData.recDescricao.trim()}
-                    >
-                      <Save className="h-4 w-4 mr-2" />
-                      {editingRecIndex !== null ? 'Atualizar' : 'Adicionar'}
-                    </Button>
-                    {editingRecIndex !== null && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={clearRecForm}
-                      >
-                        Cancelar Edição
-                      </Button>
-                    )}
-                  </div>
+
+                  {/* Botão Adicionar/Atualizar Recomendação */}
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="w-full"
+                    onClick={saveStructuredRecommendation}
+                    disabled={!formData.recTitulo.trim() || !formData.recDescricao.trim()}
+                  >
+                    <Save className="h-4 w-4 mr-2" />
+                    {editingRecIndex !== null ? 'Atualizar Recomendação' : 'Adicionar Recomendação'}
+                  </Button>
                 </div>
               </div>
 
-              {/* Lista de Recomendações Estruturadas já adicionadas */}
+              {/* === LISTA DE RECOMENDAÇÕES ADICIONADAS === */}
               {formData.recomendacoes.length > 0 && (
                 <div className="border-t border-gray-200 pt-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Recomendações Adicionadas *
-                  </label>
-                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-sm font-medium text-gray-700">
+                      Recomendações Adicionadas ({formData.recomendacoes.length})
+                    </label>
+                    <span className="text-xs text-gray-400">* Campo obrigatório</span>
+                  </div>
+                  <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
                     {formData.recomendacoes.map((rec, index) => {
                       const display = getRecommendationDisplay(rec);
                       return (
                         <div
                           key={index}
-                          className="flex items-start gap-2 p-3 bg-gray-50 rounded-lg border border-gray-200"
+                          className="flex items-start gap-2 p-3 bg-white rounded-lg border border-gray-200 hover:border-blue-300 transition-colors"
                         >
-                          <div className="flex-1">
-                            <p className="font-medium text-gray-900 text-sm">{display.titulo}</p>
-                            <p className="text-xs text-gray-600 line-clamp-2">{display.descricao}</p>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-gray-900 text-sm">
+                              {index + 1}. {display.titulo}
+                            </p>
+                            <p className="text-xs text-gray-600 line-clamp-2 mt-0.5">
+                              {display.descricao}
+                            </p>
                             {display.solucoes.length > 0 && (
-                              <p className="text-xs text-gray-400 mt-1">
-                                {display.solucoes.length} solução(ões) técnica(s)
-                              </p>
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {display.solucoes.map((sol, idx) => (
+                                  <span key={idx} className="text-[10px] text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">
+                                    {sol}
+                                  </span>
+                                ))}
+                              </div>
                             )}
                           </div>
-                          <div className="flex gap-1">
+                          <div className="flex gap-1 flex-shrink-0">
                             <Button
                               type="button"
                               variant="outline"
                               size="sm"
                               onClick={() => editRecommendationItem(index)}
+                              className="h-7 w-7 p-0"
                             >
-                              <Edit className="h-3 w-3" />
+                              <Edit className="h-3.5 w-3.5" />
                             </Button>
                             <Button
                               type="button"
                               variant="outline"
                               size="sm"
-                              className="text-red-600 border-red-200 hover:bg-red-50"
+                              className="h-7 w-7 p-0 text-red-600 border-red-200 hover:bg-red-50"
                               onClick={() => removeRecomendacaoItem(index)}
                               disabled={formData.recomendacoes.length <= 1}
                             >
-                              <X className="h-3 w-3" />
+                              <X className="h-3.5 w-3.5" />
                             </Button>
                           </div>
                         </div>
@@ -963,12 +985,14 @@ export const AdminRecommendations: React.FC = () => {
                 </div>
               )}
 
-              {/* Soluções Técnicas Globais (opcional) */}
+              {/* === SOLUÇÕES TÉCNICAS GLOBAIS === */}
               <div className="border-t border-gray-200 pt-4">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Soluções Técnicas de Apoio (opcional)
                 </label>
-                <p className="text-xs text-gray-400 mb-2">Soluções que se aplicam a todas as recomendações acima</p>
+                <p className="text-xs text-gray-400 mb-2">
+                  Soluções que se aplicam a todas as recomendações acima
+                </p>
                 <div className="space-y-2">
                   {(formData.solucoesTecnicas || []).map((sol, index) => (
                     <div key={index} className="flex items-start gap-2">
@@ -976,7 +1000,7 @@ export const AdminRecommendations: React.FC = () => {
                         <Input
                           value={sol}
                           onChange={(e) => handleSolucaoChange(index, e.target.value)}
-                          placeholder={`Solução ${index + 1}`}
+                          placeholder={`Solução Técnica Global ${index + 1}`}
                           size="sm"
                         />
                       </div>
@@ -1006,6 +1030,7 @@ export const AdminRecommendations: React.FC = () => {
               </div>
             </div>
 
+            {/* Botões de Ação do Modal */}
             <div className="flex gap-3 mt-6 pt-4 border-t border-gray-200">
               <Button
                 variant="outline"
