@@ -231,29 +231,48 @@ export const AdminRecommendations: React.FC = () => {
     }));
   };
 
+  // 🔴 CORRIGIDO: Função saveStructuredRecommendation com tratamento de erro e logs
   const saveStructuredRecommendation = () => {
+    console.log('🔍 Iniciando saveStructuredRecommendation');
+    console.log('📝 recTitulo:', formData.recTitulo);
+    console.log('📝 recDescricao:', formData.recDescricao);
+    console.log('📝 recSolucoes:', formData.recSolucoes);
+
     if (!formData.recTitulo.trim() || !formData.recDescricao.trim()) {
+      console.log('❌ Validação falhou: título ou descrição vazios');
       setError('Título e descrição são obrigatórios');
       return;
     }
 
-    const recString = formatRecommendationString({
-      titulo: formData.recTitulo,
-      descricao: formData.recDescricao,
-      solucoesTecnicas: formData.recSolucoes,
-    });
+    try {
+      const recString = formatRecommendationString({
+        titulo: formData.recTitulo,
+        descricao: formData.recDescricao,
+        solucoesTecnicas: formData.recSolucoes,
+      });
 
-    const newRecomendacoes = [...formData.recomendacoes];
+      console.log('✅ String serializada:', recString);
 
-    if (editingRecIndex !== null && editingRecIndex >= 0) {
-      newRecomendacoes[editingRecIndex] = recString;
-    } else {
-      newRecomendacoes.push(recString);
+      const newRecomendacoes = [...formData.recomendacoes];
+
+      if (editingRecIndex !== null && editingRecIndex >= 0) {
+        console.log(`📝 Editando recomendação no índice ${editingRecIndex}`);
+        newRecomendacoes[editingRecIndex] = recString;
+      } else {
+        console.log('📝 Adicionando nova recomendação');
+        newRecomendacoes.push(recString);
+      }
+
+      console.log('📝 Total de recomendações:', newRecomendacoes.length);
+
+      setFormData(prev => ({ ...prev, recomendacoes: newRecomendacoes }));
+      clearRecForm();
+      setError(null);
+      console.log('✅ Recomendação salva com sucesso!');
+    } catch (err) {
+      console.error('❌ Erro ao salvar recomendação:', err);
+      setError('Erro ao salvar recomendação: ' + (err as Error).message);
     }
-
-    setFormData(prev => ({ ...prev, recomendacoes: newRecomendacoes }));
-    clearRecForm();
-    setError(null);
   };
 
   const removeRecomendacaoItem = (index: number) => {
@@ -265,10 +284,17 @@ export const AdminRecommendations: React.FC = () => {
     setFormData(prev => ({ ...prev, recomendacoes: newRecomendacoes }));
   };
 
-  // Funções para serializar/deserializar recomendações
+  // 🔴 CORRIGIDO: Função formatRecommendationString com validação segura
   const formatRecommendationString = (rec: StructuredRecommendation): string => {
-    const solucoes = (rec.solucoesTecnicas || []).join('|');
-    return `TITULO:${rec.titulo}|DESC:${rec.descricao}|SOL:${solucoes}`;
+    try {
+      const titulo = rec.titulo?.trim() || 'Sem título';
+      const descricao = rec.descricao?.trim() || 'Sem descrição';
+      const solucoes = (rec.solucoesTecnicas || []).filter(s => s?.trim()).join('|');
+      return `TITULO:${titulo}|DESC:${descricao}|SOL:${solucoes}`;
+    } catch (err) {
+      console.error('❌ Erro ao formatar recomendação:', err);
+      return `TITULO:Erro na formatação|DESC:${rec.descricao || ''}|SOL:`;
+    }
   };
 
   const parseRecommendationString = (str: string): StructuredRecommendation => {
