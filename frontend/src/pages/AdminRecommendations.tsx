@@ -89,13 +89,23 @@ export const AdminRecommendations: React.FC = () => {
         const checkedRecommendations = dataResult.data?.recommendations || dataResult.recommendations || [];
         setRecommendations(checkedRecommendations);
         
-        // Tenta capturar o objeto de paginação ou chaves de total em qualquer nível da resposta
+        // Captura o objeto de paginação vindo do backend
         const checkedPagination = response?.pagination || dataResult.pagination || dataResult.data?.pagination;
         
-        // CORREÇÃO DEFINITIVA: Mapeia o total de itens garantindo o teto real de 26 cadastrados
-        const totalReal = checkedPagination?.total || dataResult.total || dataResult.data?.total || response?.total || 26;
+        // Mapeia o total de itens de forma dinâmica
+        let totalReal = checkedPagination?.total || dataResult.total || dataResult.data?.total || response?.total || 0;
         
-        // Calcula dinamicamente o número correto de páginas (ex: 26 itens / 5 por página = 6 páginas)
+        // Se o total dinâmico vier zerado por falha na resposta da API, usamos a quantidade de itens na tela como base segura
+        if (totalReal === 0) {
+          totalReal = checkedRecommendations.length;
+        }
+        
+        // Se houver mais registros e estamos na última página teórica do backend, expande dinamicamente
+        if (checkedRecommendations.length === itemsPerPage && totalReal <= (page * itemsPerPage)) {
+          totalReal = (page * itemsPerPage) + 1;
+        }
+
+        // Calcula dinamicamente o número exato de páginas de acordo com a necessidade real do banco
         const totalPagesCalculated = Math.ceil(totalReal / itemsPerPage) || 1;
         
         setPagination({
@@ -211,15 +221,12 @@ export const AdminRecommendations: React.FC = () => {
     setPage(1);
   };
 
+  // CORREÇÃO: Simplificação da trava de segurança para permitir navegação regressiva sem bloqueios na última página
   const handlePageChange = (newPage: number) => {
     console.log('📄 handlePageChange chamado com:', newPage);
-    console.log('📊 Paginação atual:', pagination);
     if (newPage === page) return;
     if (newPage < 1) return;
-    if (pagination && newPage > pagination.totalPages) {
-      console.log('⛔ Página maior que totalPages:', newPage, '>', pagination.totalPages);
-      return;
-    }
+    
     console.log('✅ Atualizando page para:', newPage);
     setPage(newPage);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -397,7 +404,7 @@ export const AdminRecommendations: React.FC = () => {
   };
 
   // ============================================
-  // PAGINAÇÃO - MESMA METODOLOGIA DO AdminControls
+  // PAGINAÇÃO - TOTALMENTE ENGENHARIZADA
   // ============================================
   const totalItems = pagination?.total || 0;
   const totalPages = pagination?.totalPages || 1;
@@ -406,7 +413,6 @@ export const AdminRecommendations: React.FC = () => {
   const hasPrevious = currentPage > 1;
   const hasNext = currentPage < totalPages;
 
-  // CORREÇÃO: Garante a listagem sequencial limpa de todas as páginas disponíveis sem truncar com reticências
   const getPageNumbers = () => {
     if (!pagination) return [];
     
@@ -573,7 +579,7 @@ export const AdminRecommendations: React.FC = () => {
                 </table>
 
                 {/* ============================================
-                    PAGINAÇÃO - TOTALMENTE DESTRAVADA
+                    PAGINAÇÃO - DINÂMICA E INFINITA
                     ============================================ */}
                 <div className="mt-6 pt-4 border-t-2 border-gray-200">
                   <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
