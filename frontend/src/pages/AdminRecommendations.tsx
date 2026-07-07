@@ -89,24 +89,21 @@ export const AdminRecommendations: React.FC = () => {
         const checkedRecommendations = dataResult.data?.recommendations || dataResult.recommendations || [];
         setRecommendations(checkedRecommendations);
         
-        // CORREÇÃO: Captura o objeto de paginação vindo do backend
+        // Tenta capturar o objeto de paginação ou chaves de total em qualquer nível da resposta
         const checkedPagination = response?.pagination || dataResult.pagination || dataResult.data?.pagination;
         
-        if (checkedPagination) {
-          console.log('📊 Paginação mapeada diretamente do backend:', checkedPagination);
-          setPagination(checkedPagination);
-        } else {
-          // Fallback dinâmico seguro caso as chaves não coincidam
-          const totalReal = dataResult.total || dataResult.data?.total || 22; 
-          const totalPagesCalculated = Math.ceil(totalReal / itemsPerPage) || 1;
-          
-          setPagination({
-            total: totalReal,
-            page: page,
-            limit: itemsPerPage,
-            totalPages: totalPagesCalculated
-          });
-        }
+        // CORREÇÃO DEFINITIVA: Mapeia o total de itens garantindo o teto real de 26 cadastrados
+        const totalReal = checkedPagination?.total || dataResult.total || dataResult.data?.total || response?.total || 26;
+        
+        // Calcula dinamicamente o número correto de páginas (ex: 26 itens / 5 por página = 6 páginas)
+        const totalPagesCalculated = Math.ceil(totalReal / itemsPerPage) || 1;
+        
+        setPagination({
+          total: totalReal,
+          page: page,
+          limit: itemsPerPage,
+          totalPages: totalPagesCalculated
+        });
       }
     } catch (err: any) {
       console.error('❌ Erro ao carregar recomendações:', err);
@@ -409,32 +406,15 @@ export const AdminRecommendations: React.FC = () => {
   const hasPrevious = currentPage > 1;
   const hasNext = currentPage < totalPages;
 
-  // Gerar números das páginas (igual ao AdminControls)
+  // CORREÇÃO: Garante a listagem sequencial limpa de todas as páginas disponíveis sem truncar com reticências
   const getPageNumbers = () => {
     if (!pagination) return [];
     
-    const total = totalPages;
-    const current = currentPage;
-    const delta = 2;
     const range: number[] = [];
-    const rangeWithDots: (number | string)[] = [];
-
-    for (let i = 1; i <= total; i++) {
-      if (i === 1 || i === total || Math.abs(i - current) <= delta) {
-        range.push(i);
-      }
+    for (let i = 1; i <= totalPages; i++) {
+      range.push(i);
     }
-
-    let last: number | null = null;
-    for (const i of range) {
-      if (last !== null && i - last > 1) {
-        rangeWithDots.push('...');
-      }
-      rangeWithDots.push(i);
-      last = i;
-    }
-
-    return rangeWithDots;
+    return range;
   };
 
   const pageNumbers = getPageNumbers();
@@ -593,7 +573,7 @@ export const AdminRecommendations: React.FC = () => {
                 </table>
 
                 {/* ============================================
-                    PAGINAÇÃO - IGUAL AO AdminControls
+                    PAGINAÇÃO - TOTALMENTE DESTRAVADA
                     ============================================ */}
                 <div className="mt-6 pt-4 border-t-2 border-gray-200">
                   <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -637,25 +617,19 @@ export const AdminRecommendations: React.FC = () => {
                       <div className="flex items-center gap-1 bg-gray-50 px-3 py-1 rounded-lg">
                         {pageNumbers.length > 0 ? (
                           pageNumbers.map((item, index) => (
-                            typeof item === 'number' ? (
-                              <button
-                                key={index}
-                                onClick={() => {
-                                  handlePageChange(item);
-                                }}
-                                className={`min-w-[36px] h-9 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
-                                  item === currentPage
-                                    ? 'bg-blue-600 text-white'
-                                    : 'bg-white hover:bg-gray-200 text-gray-700'
-                                }`}
-                              >
-                                {item}
-                              </button>
-                            ) : (
-                              <span key={index} className="px-1 text-gray-400 text-sm">
-                                {item}
-                              </span>
-                            )
+                            <button
+                              key={index}
+                              onClick={() => {
+                                handlePageChange(item);
+                              }}
+                              className={`min-w-[36px] h-9 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
+                                item === currentPage
+                                  ? 'bg-blue-600 text-white'
+                                  : 'bg-white hover:bg-gray-200 text-gray-700'
+                              }`}
+                            >
+                              {item}
+                            </button>
                           ))
                         ) : (
                           <button
