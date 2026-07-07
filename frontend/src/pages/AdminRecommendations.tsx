@@ -662,7 +662,7 @@ export const AdminRecommendations: React.FC = () => {
         </Card>
       </div>
 
-      {/* 🔴 MODAL PRINCIPAL - Agora contém o modal de recomendação estruturada */}
+      {/* 🔴 MODAL PRINCIPAL - MODAL DE RECOMENDAÇÃO ESTRUTURADA EXTRAÍDO PARA FORA */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 shadow-xl">
@@ -925,137 +925,137 @@ export const AdminRecommendations: React.FC = () => {
               </Button>
             </div>
           </div>
-
-          {/* 🔴 MODAL DE RECOMENDAÇÃO ESTRUTURADA (dentro do modal principal) */}
-          {isRecModalOpen && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
-              <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 shadow-xl">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-xl font-bold text-gray-900">
-                    {editingRecIndex !== null ? 'Editar Recomendação' : 'Nova Recomendação'}
-                  </h2>
-                  <button
-                    onClick={closeRecModal}
-                    className="text-gray-400 hover:text-gray-600"
-                  >
-                    <X className="h-5 w-5" />
-                  </button>
-                </div>
-
-                {error && (
-                  <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm flex items-start gap-2">
-                    <AlertCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />
-                    <span>{error}</span>
-                  </div>
-                )}
-
-                <div className="space-y-4">
-                  {/* Título da Recomendação */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Título da Recomendação *
-                    </label>
-                    <Input
-                      value={recFormData.titulo}
-                      onChange={(e) => setRecFormData(prev => ({ ...prev, titulo: e.target.value }))}
-                      placeholder="Ex: Criação e Alinhamento Estratégico da PSI"
-                    />
-                  </div>
-
-                  {/* Descrição */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Descrição *
-                    </label>
-                    <textarea
-                      value={recFormData.descricao}
-                      onChange={(e) => setRecFormData(prev => ({ ...prev, descricao: e.target.value }))}
-                      rows={6}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="Descreva a recomendação em detalhes..."
-                    />
-                  </div>
-
-                  {/* Soluções Técnicas */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Soluções Técnicas de Apoio (opcional)
-                    </label>
-                    <div className="flex gap-2">
-                      <Input
-                        value={tempSolucao}
-                        onChange={(e) => setTempSolucao(e.target.value)}
-                        placeholder="Ex: Plataforma de GRC"
-                        className="flex-1"
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            addSolucaoTecnica();
-                          }
-                        }}
-                      />
-                      <Button type="button" onClick={addSolucaoTecnica} size="sm">
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    {recFormData.solucoesTecnicas && recFormData.solucoesTecnicas.length > 0 && (
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {recFormData.solucoesTecnicas.map((sol, idx) => (
-                          <span
-                            key={idx}
-                            className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 text-sm rounded-lg"
-                          >
-                            {sol}
-                            <button
-                              type="button"
-                              onClick={() => removeSolucaoTecnica(idx)}
-                              className="text-blue-400 hover:text-red-500"
-                            >
-                              <X className="h-3 w-3" />
-                            </button>
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex gap-3 mt-6 pt-4 border-t border-gray-200">
-                  <Button
-                    variant="outline"
-                    className="flex-1"
-                    onClick={closeRecModal}
-                    disabled={isSubmitting}
-                  >
-                    Cancelar
-                  </Button>
-                  <Button
-                    className="flex-1"
-                    onClick={saveStructuredRecommendation}
-                    disabled={isSubmitting}
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Salvando...
-                      </>
-                    ) : (
-                      <>
-                        <Save className="h-4 w-4 mr-2" />
-                        {editingRecIndex !== null ? 'Atualizar' : 'Adicionar'}
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       )}
 
-      {/* Modal de Confirmação de Exclusão */}
+      {/* 🔴 MODAL DE RECOMENDAÇÃO ESTRUTURADA - EXTRAÍDO PARA FORA DO MODAL PRINCIPAL */}
+      {isRecModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-4">
+          <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 shadow-xl">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-gray-900">
+                {editingRecIndex !== null ? 'Editar Recomendação' : 'Nova Recomendação'}
+              </h2>
+              <button
+                onClick={closeRecModal}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {error && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm flex items-start gap-2">
+                <AlertCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            <div className="space-y-4">
+              {/* Título da Recomendação */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Título da Recomendação *
+                </label>
+                <Input
+                  value={recFormData.titulo}
+                  onChange={(e) => setRecFormData(prev => ({ ...prev, titulo: e.target.value }))}
+                  placeholder="Ex: Criação e Alinhamento Estratégico da PSI"
+                />
+              </div>
+
+              {/* Descrição */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Descrição *
+                </label>
+                <textarea
+                  value={recFormData.descricao}
+                  onChange={(e) => setRecFormData(prev => ({ ...prev, descricao: e.target.value }))}
+                  rows={6}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Descreva a recomendação em detalhes..."
+                />
+              </div>
+
+              {/* Soluções Técnicas */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Soluções Técnicas de Apoio (opcional)
+                </label>
+                <div className="flex gap-2">
+                  <Input
+                    value={tempSolucao}
+                    onChange={(e) => setTempSolucao(e.target.value)}
+                    placeholder="Ex: Plataforma de GRC"
+                    className="flex-1"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        addSolucaoTecnica();
+                      }
+                    }}
+                  />
+                  <Button type="button" onClick={addSolucaoTecnica} size="sm">
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+                {recFormData.solucoesTecnicas && recFormData.solucoesTecnicas.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {recFormData.solucoesTecnicas.map((sol, idx) => (
+                      <span
+                        key={idx}
+                        className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 text-sm rounded-lg"
+                      >
+                        {sol}
+                        <button
+                          type="button"
+                          onClick={() => removeSolucaoTecnica(idx)}
+                          className="text-blue-400 hover:text-red-500"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6 pt-4 border-t border-gray-200">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={closeRecModal}
+                disabled={isSubmitting}
+              >
+                Cancelar
+              </Button>
+              <Button
+                className="flex-1"
+                onClick={saveStructuredRecommendation}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Salvando...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    {editingRecIndex !== null ? 'Atualizar' : 'Adicionar'}
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Confirmação de Exclusão - EXTRAÍDO PARA FORA DO MODAL PRINCIPAL */}
       {isDeleteModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-4">
           <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-xl">
             <div className="flex items-center gap-3 mb-4">
               <AlertTriangle className="h-6 w-6 text-red-500" />
