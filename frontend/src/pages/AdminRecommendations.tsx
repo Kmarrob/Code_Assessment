@@ -30,7 +30,7 @@ import { Input } from '../components/ui/Input.js';
 import { recommendationService, ControlSearchResult } from '../services/recommendation.service.js';
 import { Recommendation, CreateRecommendationData, UpdateRecommendationData } from '../types/recommendation.js';
 
-// 🔴 Interface para recomendação estruturada
+// Interface para recomendação estruturada
 interface StructuredRecommendation {
   titulo: string;
   descricao: string;
@@ -56,17 +56,7 @@ export const AdminRecommendations: React.FC = () => {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // 🔴 Modal para adicionar recomendação estruturada
-  const [isRecModalOpen, setIsRecModalOpen] = useState(false);
-  const [editingRecIndex, setEditingRecIndex] = useState<number | null>(null);
-  const [recFormData, setRecFormData] = useState<StructuredRecommendation>({
-    titulo: '',
-    descricao: '',
-    solucoesTecnicas: [],
-  });
-  const [tempSolucao, setTempSolucao] = useState('');
-
-  // 🔴 Estados para autocomplete
+  // Estados para autocomplete
   const [controlSearchQuery, setControlSearchQuery] = useState('');
   const [controlSuggestions, setControlSuggestions] = useState<ControlSearchResult[]>([]);
   const [isSearchingControls, setIsSearchingControls] = useState(false);
@@ -75,14 +65,24 @@ export const AdminRecommendations: React.FC = () => {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
 
-  // Form states
-  const [formData, setFormData] = useState<CreateRecommendationData>({
+  // Form states - incluindo campos para recomendação estruturada
+  const [formData, setFormData] = useState<CreateRecommendationData & {
+    recTitulo: string;
+    recDescricao: string;
+    recSolucoes: string[];
+  }>({
     controlId: '',
     titulo: '',
     dominio: '',
-    recomendacoes: [''],
-    solucoesTecnicas: [''],
+    recomendacoes: [],
+    solucoesTecnicas: [],
+    recTitulo: '',
+    recDescricao: '',
+    recSolucoes: [],
   });
+
+  const [tempSolucao, setTempSolucao] = useState('');
+  const [editingRecIndex, setEditingRecIndex] = useState<number | null>(null);
 
   // ============================================
   // CARREGAR DADOS
@@ -125,7 +125,7 @@ export const AdminRecommendations: React.FC = () => {
   }, [loadDominios]);
 
   // ============================================
-  // 🔴 BUSCA DE CONTROLES PARA AUTOCOMPLETE
+  // BUSCA DE CONTROLES PARA AUTOCOMPLETE
   // ============================================
   useEffect(() => {
     const searchControls = async () => {
@@ -164,7 +164,7 @@ export const AdminRecommendations: React.FC = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // 🔴 Selecionar um controle da lista
+  // Selecionar um controle da lista
   const handleSelectControl = (control: ControlSearchResult) => {
     setSelectedControl(control);
     setControlSearchQuery(`${control.id} - ${control.nome}`);
@@ -176,7 +176,7 @@ export const AdminRecommendations: React.FC = () => {
     setShowSuggestions(false);
   };
 
-  // 🔴 Limpar seleção do controle
+  // Limpar seleção do controle
   const handleClearControl = () => {
     setSelectedControl(null);
     setControlSearchQuery('');
@@ -189,81 +189,91 @@ export const AdminRecommendations: React.FC = () => {
   };
 
   // ============================================
-  // 🔴 HANDLERS PARA RECOMENDAÇÃO ESTRUTURADA
+  // HANDLERS PARA RECOMENDAÇÃO ESTRUTURADA (integrado)
   // ============================================
-  const openRecModal = (index?: number) => {
-    if (index !== undefined && index >= 0) {
-      // Editar recomendação existente
-      const recStr = formData.recomendacoes[index];
-      const parsed = parseRecommendationString(recStr);
-      setRecFormData(parsed);
-      setEditingRecIndex(index);
-    } else {
-      // Nova recomendação
-      setRecFormData({ titulo: '', descricao: '', solucoesTecnicas: [] });
-      setEditingRecIndex(null);
-    }
-    setTempSolucao('');
-    setIsRecModalOpen(true);
+  const editRecommendationItem = (index: number) => {
+    const recStr = formData.recomendacoes[index];
+    const parsed = parseRecommendationString(recStr);
+    setFormData(prev => ({
+      ...prev,
+      recTitulo: parsed.titulo,
+      recDescricao: parsed.descricao,
+      recSolucoes: parsed.solucoesTecnicas || [],
+    }));
+    setEditingRecIndex(index);
   };
 
-  const closeRecModal = () => {
-    setIsRecModalOpen(false);
+  const clearRecForm = () => {
+    setFormData(prev => ({
+      ...prev,
+      recTitulo: '',
+      recDescricao: '',
+      recSolucoes: [],
+    }));
     setEditingRecIndex(null);
-    setRecFormData({ titulo: '', descricao: '', solucoesTecnicas: [] });
     setTempSolucao('');
   };
 
   const addSolucaoTecnica = () => {
     if (tempSolucao.trim()) {
-      setRecFormData(prev => ({
+      setFormData(prev => ({
         ...prev,
-        solucoesTecnicas: [...(prev.solucoesTecnicas || []), tempSolucao.trim()]
+        recSolucoes: [...prev.recSolucoes, tempSolucao.trim()]
       }));
       setTempSolucao('');
     }
   };
 
   const removeSolucaoTecnica = (index: number) => {
-    setRecFormData(prev => ({
+    setFormData(prev => ({
       ...prev,
-      solucoesTecnicas: (prev.solucoesTecnicas || []).filter((_, i) => i !== index)
+      recSolucoes: prev.recSolucoes.filter((_, i) => i !== index)
     }));
   };
 
   const saveStructuredRecommendation = () => {
-    if (!recFormData.titulo.trim() || !recFormData.descricao.trim()) {
+    if (!formData.recTitulo.trim() || !formData.recDescricao.trim()) {
       setError('Título e descrição são obrigatórios');
       return;
     }
 
-    const recString = formatRecommendationString(recFormData);
+    const recString = formatRecommendationString({
+      titulo: formData.recTitulo,
+      descricao: formData.recDescricao,
+      solucoesTecnicas: formData.recSolucoes,
+    });
+
     const newRecomendacoes = [...formData.recomendacoes];
 
     if (editingRecIndex !== null && editingRecIndex >= 0) {
       newRecomendacoes[editingRecIndex] = recString;
     } else {
-      if (newRecomendacoes.length === 1 && !newRecomendacoes[0].trim()) {
-        newRecomendacoes[0] = recString;
-      } else {
-        newRecomendacoes.push(recString);
-      }
+      newRecomendacoes.push(recString);
     }
 
     setFormData(prev => ({ ...prev, recomendacoes: newRecomendacoes }));
-    closeRecModal();
+    clearRecForm();
     setError(null);
   };
 
-  // 🔴 Funções para serializar/deserializar recomendações
+  const removeRecomendacaoItem = (index: number) => {
+    if (formData.recomendacoes.length <= 1) {
+      setFormData(prev => ({ ...prev, recomendacoes: [] }));
+      return;
+    }
+    const newRecomendacoes = formData.recomendacoes.filter((_, i) => i !== index);
+    setFormData(prev => ({ ...prev, recomendacoes: newRecomendacoes }));
+  };
+
+  // Funções para serializar/deserializar recomendações
   const formatRecommendationString = (rec: StructuredRecommendation): string => {
     const solucoes = (rec.solucoesTecnicas || []).join('|');
     return `TITULO:${rec.titulo}|DESC:${rec.descricao}|SOL:${solucoes}`;
   };
 
   const parseRecommendationString = (str: string): StructuredRecommendation => {
-    if (!str || !str.trim() || !str.includes('TITULO:')) {
-      return { titulo: 'Nova Recomendação', descricao: '', solucoesTecnicas: [] };
+    if (!str || !str.trim()) {
+      return { titulo: '', descricao: '', solucoesTecnicas: [] };
     }
     try {
       const tituloMatch = str.match(/TITULO:(.*?)\|DESC:/);
@@ -315,9 +325,14 @@ export const AdminRecommendations: React.FC = () => {
       controlId: '',
       titulo: '',
       dominio: '',
-      recomendacoes: [''],
-      solucoesTecnicas: [''],
+      recomendacoes: [],
+      solucoesTecnicas: [],
+      recTitulo: '',
+      recDescricao: '',
+      recSolucoes: [],
     });
+    setEditingRecIndex(null);
+    setTempSolucao('');
     setIsModalOpen(true);
   };
 
@@ -329,9 +344,14 @@ export const AdminRecommendations: React.FC = () => {
       controlId: rec.controlId,
       titulo: rec.titulo,
       dominio: rec.dominio,
-      recomendacoes: rec.recomendacoes.length > 0 ? rec.recomendacoes : [''],
-      solucoesTecnicas: rec.solucoesTecnicas && rec.solucoesTecnicas.length > 0 ? rec.solucoesTecnicas : [''],
+      recomendacoes: rec.recomendacoes.length > 0 ? rec.recomendacoes : [],
+      solucoesTecnicas: rec.solucoesTecnicas && rec.solucoesTecnicas.length > 0 ? rec.solucoesTecnicas : [],
+      recTitulo: '',
+      recDescricao: '',
+      recSolucoes: [],
     });
+    setEditingRecIndex(null);
+    setTempSolucao('');
     setIsModalOpen(true);
   };
 
@@ -351,9 +371,15 @@ export const AdminRecommendations: React.FC = () => {
       controlId: '',
       titulo: '',
       dominio: '',
-      recomendacoes: [''],
-      solucoesTecnicas: [''],
+      recomendacoes: [],
+      solucoesTecnicas: [],
+      recTitulo: '',
+      recDescricao: '',
+      recSolucoes: [],
     });
+    setEditingRecIndex(null);
+    setTempSolucao('');
+    setError(null);
   };
 
   // Form handlers
@@ -361,17 +387,8 @@ export const AdminRecommendations: React.FC = () => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleRemoveRecomendacao = (index: number) => {
-    if (formData.recomendacoes.length <= 1) {
-      setFormData(prev => ({ ...prev, recomendacoes: [''] }));
-      return;
-    }
-    const newRecomendacoes = formData.recomendacoes.filter((_, i) => i !== index);
-    setFormData(prev => ({ ...prev, recomendacoes: newRecomendacoes }));
-  };
-
   const handleSolucaoChange = (index: number, value: string) => {
-    const newSolucoes = [...(formData.solucoesTecnicas || [''])];
+    const newSolucoes = [...(formData.solucoesTecnicas || [])];
     newSolucoes[index] = value;
     setFormData(prev => ({ ...prev, solucoesTecnicas: newSolucoes }));
   };
@@ -390,6 +407,7 @@ export const AdminRecommendations: React.FC = () => {
   };
 
   const handleSubmit = async () => {
+    // Validar campos obrigatórios
     if (!formData.controlId.trim()) {
       setError('ID do controle é obrigatório');
       return;
@@ -413,7 +431,9 @@ export const AdminRecommendations: React.FC = () => {
 
     try {
       const data = {
-        ...formData,
+        controlId: formData.controlId,
+        titulo: formData.titulo,
+        dominio: formData.dominio,
         recomendacoes: recomendacoesValidas,
         solucoesTecnicas: (formData.solucoesTecnicas || []).filter(s => s.trim()),
       };
@@ -662,7 +682,7 @@ export const AdminRecommendations: React.FC = () => {
         </Card>
       </div>
 
-      {/* 🔴 MODAL PRINCIPAL - MODAL DE RECOMENDAÇÃO ESTRUTURADA EXTRAÍDO PARA FORA */}
+      {/* Modal de Criar/Editar (principal com tudo integrado) */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 shadow-xl">
@@ -798,77 +818,166 @@ export const AdminRecommendations: React.FC = () => {
                 </select>
               </div>
 
-              {/* Recomendações estruturadas */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Recomendações *
-                </label>
-                <div className="space-y-2">
-                  {formData.recomendacoes.map((rec, index) => {
-                    const display = getRecommendationDisplay(rec);
-                    return (
-                      <div
-                        key={index}
-                        className="flex items-start gap-2 p-3 bg-gray-50 rounded-lg border border-gray-200"
-                      >
-                        <div className="flex-1">
-                          <p className="font-medium text-gray-900">{display.titulo}</p>
-                          <p className="text-sm text-gray-600 line-clamp-2">{display.descricao}</p>
-                          {display.solucoes.length > 0 && (
-                            <p className="text-xs text-gray-400 mt-1">
-                              {display.solucoes.length} solução(ões) técnica(s)
-                            </p>
-                          )}
-                        </div>
-                        <div className="flex gap-1">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => openRecModal(index)}
+              {/* Adicionar Nova Recomendação Estruturada - Integrado */}
+              <div className="border-t border-gray-200 pt-4">
+                <h3 className="text-sm font-medium text-gray-700 mb-3">
+                  {editingRecIndex !== null ? 'Editando Recomendação' : 'Adicionar Nova Recomendação'}
+                </h3>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">
+                      Título da Recomendação *
+                    </label>
+                    <Input
+                      value={formData.recTitulo}
+                      onChange={(e) => setFormData(prev => ({ ...prev, recTitulo: e.target.value }))}
+                      placeholder="Ex: Criação e Alinhamento Estratégico da PSI"
+                      size="sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">
+                      Descrição *
+                    </label>
+                    <textarea
+                      value={formData.recDescricao}
+                      onChange={(e) => setFormData(prev => ({ ...prev, recDescricao: e.target.value }))}
+                      rows={3}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                      placeholder="Descreva a recomendação em detalhes..."
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">
+                      Soluções Técnicas (opcional)
+                    </label>
+                    <div className="flex gap-2">
+                      <Input
+                        value={tempSolucao}
+                        onChange={(e) => setTempSolucao(e.target.value)}
+                        placeholder="Ex: Plataforma de GRC"
+                        size="sm"
+                        className="flex-1"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            addSolucaoTecnica();
+                          }
+                        }}
+                      />
+                      <Button type="button" onClick={addSolucaoTecnica} size="sm">
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    {formData.recSolucoes.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {formData.recSolucoes.map((sol, idx) => (
+                          <span
+                            key={idx}
+                            className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 text-xs rounded-lg"
                           >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="text-red-600 border-red-200 hover:bg-red-50"
-                            onClick={() => handleRemoveRecomendacao(index)}
-                            disabled={formData.recomendacoes.length <= 1}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </div>
+                            {sol}
+                            <button
+                              type="button"
+                              onClick={() => removeSolucaoTecnica(idx)}
+                              className="text-blue-400 hover:text-red-500"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </span>
+                        ))}
                       </div>
-                    );
-                  })}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => openRecModal()}
-                    className="w-full"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Adicionar Recomendação
-                  </Button>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={saveStructuredRecommendation}
+                      disabled={!formData.recTitulo.trim() || !formData.recDescricao.trim()}
+                    >
+                      <Save className="h-4 w-4 mr-2" />
+                      {editingRecIndex !== null ? 'Atualizar' : 'Adicionar'}
+                    </Button>
+                    {editingRecIndex !== null && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={clearRecForm}
+                      >
+                        Cancelar Edição
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </div>
 
-              {/* Soluções Técnicas (opcional) - global */}
-              <div>
+              {/* Lista de Recomendações Estruturadas já adicionadas */}
+              {formData.recomendacoes.length > 0 && (
+                <div className="border-t border-gray-200 pt-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Recomendações Adicionadas *
+                  </label>
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {formData.recomendacoes.map((rec, index) => {
+                      const display = getRecommendationDisplay(rec);
+                      return (
+                        <div
+                          key={index}
+                          className="flex items-start gap-2 p-3 bg-gray-50 rounded-lg border border-gray-200"
+                        >
+                          <div className="flex-1">
+                            <p className="font-medium text-gray-900 text-sm">{display.titulo}</p>
+                            <p className="text-xs text-gray-600 line-clamp-2">{display.descricao}</p>
+                            {display.solucoes.length > 0 && (
+                              <p className="text-xs text-gray-400 mt-1">
+                                {display.solucoes.length} solução(ões) técnica(s)
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex gap-1">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => editRecommendationItem(index)}
+                            >
+                              <Edit className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="text-red-600 border-red-200 hover:bg-red-50"
+                              onClick={() => removeRecomendacaoItem(index)}
+                              disabled={formData.recomendacoes.length <= 1}
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Soluções Técnicas Globais (opcional) */}
+              <div className="border-t border-gray-200 pt-4">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Soluções Técnicas de Apoio (opcional)
                 </label>
+                <p className="text-xs text-gray-400 mb-2">Soluções que se aplicam a todas as recomendações acima</p>
                 <div className="space-y-2">
-                  {(formData.solucoesTecnicas || ['']).map((sol, index) => (
+                  {(formData.solucoesTecnicas || []).map((sol, index) => (
                     <div key={index} className="flex items-start gap-2">
                       <div className="flex-1">
                         <Input
                           value={sol}
                           onChange={(e) => handleSolucaoChange(index, e.target.value)}
                           placeholder={`Solução ${index + 1}`}
+                          size="sm"
                         />
                       </div>
                       <Button
@@ -879,7 +988,7 @@ export const AdminRecommendations: React.FC = () => {
                         onClick={() => handleRemoveSolucao(index)}
                         disabled={!formData.solucoesTecnicas || formData.solucoesTecnicas.length <= 1}
                       >
-                        <X className="h-4 w-4" />
+                        <X className="h-3 w-3" />
                       </Button>
                     </div>
                   ))}
@@ -891,7 +1000,7 @@ export const AdminRecommendations: React.FC = () => {
                     className="w-full"
                   >
                     <Plus className="h-4 w-4 mr-2" />
-                    Adicionar Solução Técnica
+                    Adicionar Solução Técnica Global
                   </Button>
                 </div>
               </div>
@@ -909,7 +1018,7 @@ export const AdminRecommendations: React.FC = () => {
               <Button
                 className="flex-1"
                 onClick={handleSubmit}
-                disabled={isSubmitting}
+                disabled={isSubmitting || formData.recomendacoes.filter(r => r.trim()).length === 0}
               >
                 {isSubmitting ? (
                   <>
@@ -928,134 +1037,9 @@ export const AdminRecommendations: React.FC = () => {
         </div>
       )}
 
-      {/* 🔴 MODAL DE RECOMENDAÇÃO ESTRUTURADA - EXTRAÍDO PARA FORA DO MODAL PRINCIPAL */}
-      {isRecModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-4">
-          <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 shadow-xl">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-gray-900">
-                {editingRecIndex !== null ? 'Editar Recomendação' : 'Nova Recomendação'}
-              </h2>
-              <button
-                onClick={closeRecModal}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            {error && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm flex items-start gap-2">
-                <AlertCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />
-                <span>{error}</span>
-              </div>
-            )}
-
-            <div className="space-y-4">
-              {/* Título da Recomendação */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Título da Recomendação *
-                </label>
-                <Input
-                  value={recFormData.titulo}
-                  onChange={(e) => setRecFormData(prev => ({ ...prev, titulo: e.target.value }))}
-                  placeholder="Ex: Criação e Alinhamento Estratégico da PSI"
-                />
-              </div>
-
-              {/* Descrição */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Descrição *
-                </label>
-                <textarea
-                  value={recFormData.descricao}
-                  onChange={(e) => setRecFormData(prev => ({ ...prev, descricao: e.target.value }))}
-                  rows={6}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Descreva a recomendação em detalhes..."
-                />
-              </div>
-
-              {/* Soluções Técnicas */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Soluções Técnicas de Apoio (opcional)
-                </label>
-                <div className="flex gap-2">
-                  <Input
-                    value={tempSolucao}
-                    onChange={(e) => setTempSolucao(e.target.value)}
-                    placeholder="Ex: Plataforma de GRC"
-                    className="flex-1"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        addSolucaoTecnica();
-                      }
-                    }}
-                  />
-                  <Button type="button" onClick={addSolucaoTecnica} size="sm">
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </div>
-                {recFormData.solucoesTecnicas && recFormData.solucoesTecnicas.length > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {recFormData.solucoesTecnicas.map((sol, idx) => (
-                      <span
-                        key={idx}
-                        className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 text-sm rounded-lg"
-                      >
-                        {sol}
-                        <button
-                          type="button"
-                          onClick={() => removeSolucaoTecnica(idx)}
-                          className="text-blue-400 hover:text-red-500"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="flex gap-3 mt-6 pt-4 border-t border-gray-200">
-              <Button
-                variant="outline"
-                className="flex-1"
-                onClick={closeRecModal}
-                disabled={isSubmitting}
-              >
-                Cancelar
-              </Button>
-              <Button
-                className="flex-1"
-                onClick={saveStructuredRecommendation}
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Salvando...
-                  </>
-                ) : (
-                  <>
-                    <Save className="h-4 w-4 mr-2" />
-                    {editingRecIndex !== null ? 'Atualizar' : 'Adicionar'}
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal de Confirmação de Exclusão - EXTRAÍDO PARA FORA DO MODAL PRINCIPAL */}
+      {/* Modal de Confirmação de Exclusão */}
       {isDeleteModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-xl">
             <div className="flex items-center gap-3 mb-4">
               <AlertTriangle className="h-6 w-6 text-red-500" />
