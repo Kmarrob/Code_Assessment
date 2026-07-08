@@ -1,3 +1,4 @@
+// frontend/src/pages/AdminRecommendations.tsx
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -21,7 +22,7 @@ import {
   Check,
   AlertTriangle,
   ChevronDown,
-  ArrowLeft, // Adicionado para o botão de voltar
+  ArrowLeft,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card.js';
 import { Button } from '../components/ui/Button.js';
@@ -67,7 +68,7 @@ export const AdminRecommendations: React.FC = () => {
   });
 
   // ============================================
-  // FUNÇÃO PARA CARREGAR OS DADOS
+  // FUNÇÃO PARA CARREGAR OS DADOS - CORRIGIDA
   // ============================================
   const loadRecommendations = async () => {
     console.log('🔄 Carregando recomendações - Página:', page, 'Limit:', itemsPerPage);
@@ -90,28 +91,23 @@ export const AdminRecommendations: React.FC = () => {
         const checkedRecommendations = dataResult.data?.recommendations || dataResult.recommendations || [];
         setRecommendations(checkedRecommendations);
         
-        // Captura o objeto de paginação vindo do backend
-        const checkedPagination = response?.pagination || dataResult.pagination || dataResult.data?.pagination;
-        
-        // Mapeia o total de itens de forma dinâmica
-        let totalReal = checkedPagination?.total || dataResult.total || dataResult.data?.total || response?.total || 0;
-        
-        if (totalReal === 0) {
-          totalReal = checkedRecommendations.length;
+        if (dataResult.pagination) {
+          setPagination({
+            total: dataResult.pagination.total,
+            page: dataResult.pagination.page,
+            limit: dataResult.pagination.limit,
+            totalPages: dataResult.pagination.totalPages
+          });
+        } else {
+          const total = dataResult.total || checkedRecommendations.length || 0;
+          const totalPages = Math.ceil(total / itemsPerPage) || 1;
+          setPagination({
+            total: total,
+            page: page,
+            limit: itemsPerPage,
+            totalPages: totalPages
+          });
         }
-        
-        if (checkedRecommendations.length === itemsPerPage && totalReal <= (page * itemsPerPage)) {
-          totalReal = (page * itemsPerPage) + 1;
-        }
-
-        const totalPagesCalculated = Math.ceil(totalReal / itemsPerPage) || 1;
-        
-        setPagination({
-          total: totalReal,
-          page: page,
-          limit: itemsPerPage,
-          totalPages: totalPagesCalculated
-        });
       }
     } catch (err: any) {
       console.error('❌ Erro ao carregar recomendações:', err);
@@ -400,7 +396,7 @@ export const AdminRecommendations: React.FC = () => {
   };
 
   // ============================================
-  // PAGINAÇÃO - TOTALMENTE ENGENHARIZADA
+  // PAGINAÇÃO
   // ============================================
   const totalItems = pagination?.total || 0;
   const totalPages = pagination?.totalPages || 1;
@@ -428,7 +424,6 @@ export const AdminRecommendations: React.FC = () => {
         <div className="container mx-auto px-4 py-4">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             
-            {/* CORREÇÃO VISUAL: Botão Voltar integrado de forma elegante na hierarquia do título */}
             <div className="flex items-center gap-4">
               <Button 
                 onClick={() => navigate('/admin')} 
@@ -589,9 +584,7 @@ export const AdminRecommendations: React.FC = () => {
                   </tbody>
                 </table>
 
-                {/* ============================================
-                    PAGINAÇÃO - DINÂMICA E INFINITA
-                    ============================================ */}
+                {/* Paginação */}
                 <div className="mt-6 pt-4 border-t-2 border-gray-200">
                   <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
                     <div className="flex items-center gap-2">
