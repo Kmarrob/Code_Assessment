@@ -6,6 +6,7 @@ import { User } from '../models/User.js';
 import { Control } from '../models/Control.js';
 import { Company } from '../models/Company.js';
 import { AppError } from '../utils/errors.js';
+import { logger } from '../utils/logger.js'; // 🔴 CORREÇÃO: Import do logger adicionado
 // 🔴 NOVO: Import do NotificationService
 import { NotificationService } from './NotificationService.js';
 import fs from 'fs/promises';
