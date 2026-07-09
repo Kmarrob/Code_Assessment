@@ -37,8 +37,9 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ className = 
     setError(null);
     try {
       const result = await notificationService.getNotifications(1, 20, 'all');
-      setNotifications(result.notifications);
-      setUnreadCount(result.unreadCount);
+      // 🔴 CORREÇÃO: A API retorna os dados em 'data', não em 'notifications'
+      setNotifications(result.data || []);
+      setUnreadCount(result.unreadCount || 0);
     } catch (err: any) {
       console.error('Erro ao carregar notificações:', err);
       setError('Não foi possível carregar as notificações');
@@ -237,7 +238,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ className = 
                 <AlertCircle className="h-5 w-5" />
                 <span>{error}</span>
               </div>
-            ) : notifications.length === 0 ? (
+            ) : !notifications || notifications.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
                 <Bell className="h-12 w-12 mx-auto text-gray-300 mb-2" />
                 <p>Nenhuma notificação</p>
@@ -300,7 +301,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ className = 
           </div>
 
           {/* Rodapé */}
-          {notifications.length > 0 && (
+          {notifications && notifications.length > 0 && (
             <div className="px-4 py-2 border-t border-gray-200 text-center">
               <button
                 onClick={() => {

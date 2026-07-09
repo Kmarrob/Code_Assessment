@@ -1,6 +1,6 @@
 // frontend/src/pages/RepResponses.tsx
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext.js';
 import {
   Users,
@@ -47,6 +47,9 @@ interface UserResponse {
 export const RepResponses: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const userIdParam = searchParams.get('userId');
+  
   const [users, setUsers] = useState<UserWithResponses[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -69,6 +72,12 @@ export const RepResponses: React.FC = () => {
       const response = await repService.getUsersWithResponses();
       
       let filteredData = response.data;
+      
+      // 🔴 CORREÇÃO: Filtrar por userId se presente na URL
+      if (userIdParam) {
+        filteredData = filteredData.filter((u) => u._id === userIdParam);
+      }
+      
       if (searchTerm.trim()) {
         const term = searchTerm.toLowerCase().trim();
         filteredData = filteredData.filter(
@@ -87,11 +96,19 @@ export const RepResponses: React.FC = () => {
     }
   };
 
+  // 🔴 CORREÇÃO: userIdParam adicionado como dependência
   useEffect(() => {
     if (companyId) {
       loadUsersWithResponses();
     }
-  }, [companyId]);
+  }, [companyId, userIdParam]);
+
+  // 🔴 CORREÇÃO: Recarregar quando o searchTerm mudar
+  useEffect(() => {
+    if (companyId) {
+      loadUsersWithResponses();
+    }
+  }, [searchTerm]);
 
   const handleRefresh = async () => {
     setRefreshing(true);

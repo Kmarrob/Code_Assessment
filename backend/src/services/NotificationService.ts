@@ -313,7 +313,8 @@ export class NotificationService {
       type: 'response',
       title: '📝 Nova Resposta Recebida',
       message: `${userName} respondeu ao controle "${controlName}".`,
-      link: `/rep/responses`,
+      // 🔴 CORREÇÃO: Incluir userId na URL para filtrar respostas do usuário específico
+      link: `/rep/responses?userId=${userId}`,
       metadata: {
         controlId,
         controlName,
