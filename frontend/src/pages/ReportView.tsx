@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext.js';
 import { reportService } from '../services/report.service.js';
-import { recommendationService } from '../services/recommendation.service.js'; // 🔴 NOVO (v19)
+import { recommendationService } from '../services/recommendation.service.js';
 import { Report, ReportStats } from '../types/report.js';
 import {
   FileText,
@@ -61,10 +61,11 @@ import {
   Minus,
   Lightbulb,
   Wrench,
+  ArrowLeft,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card.js';
 import { Button } from '../components/ui/Button.js';
-import { RadarChart } from '../components/dashboard/RadarChart.js'; // 🔴 NOVO
+import { RadarChart } from '../components/dashboard/RadarChart.js';
 
 export const ReportView: React.FC = () => {
   const { user } = useAuth();
@@ -72,7 +73,7 @@ export const ReportView: React.FC = () => {
   const [report, setReport] = useState<Report | null>(null);
   const [stats, setStats] = useState<ReportStats | null>(null);
   const [resultados, setResultados] = useState<any>(null);
-  const [recomendacoes, setRecomendacoes] = useState<any[]>([]); // 🔴 NOVO (v19)
+  const [recomendacoes, setRecomendacoes] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -90,16 +91,21 @@ export const ReportView: React.FC = () => {
     atributos: true,
     recomendacoes: true,
     resultados: true,
-    cenarioAtual: true, // 🔴 NOVO (v19)
+    cenarioAtual: true,
   });
   const [formData, setFormData] = useState({
     projectNumber: '',
     scope: '',
   });
 
-  // ============================================
-  // CARREGAR DADOS
-  // ============================================
+  useEffect(() => {
+    const handleAfterPrint = () => {
+      setIsPrintMode(false);
+    };
+    window.addEventListener('afterprint', handleAfterPrint);
+    return () => window.removeEventListener('afterprint', handleAfterPrint);
+  }, []);
+
   const loadData = async () => {
     setIsLoading(true);
     setError(null);
@@ -113,8 +119,6 @@ export const ReportView: React.FC = () => {
         scope: data.report.scope || '',
       });
 
-      // 🔴 NOVO (v19): Carregar recomendações para o relatório
-      // 🔴 CORREÇÃO: Garantir que companyId seja uma string
       const companyId = data.report.companyId?._id || data.report.companyId;
       if (companyId && typeof companyId === 'string') {
         try {
@@ -137,9 +141,6 @@ export const ReportView: React.FC = () => {
     loadData();
   }, []);
 
-  // ============================================
-  // HANDLERS
-  // ============================================
   const handleGenerate = async () => {
     if (!report) return;
     setIsGenerating(true);
@@ -150,7 +151,6 @@ export const ReportView: React.FC = () => {
         projectNumber: updated.projectNumber || '',
         scope: updated.scope || '',
       });
-      // Recarregar dados para atualizar resultados
       await loadData();
     } catch (err: any) {
       console.error('Erro ao gerar relatório:', err);
@@ -215,9 +215,15 @@ export const ReportView: React.FC = () => {
     return company?.name || 'NOME DO CLIENTE';
   };
 
-  // ============================================
-  // RENDER
-  // ============================================
+  const isAdmin = user?.role === 'admin';
+
+  const handlePrint = () => {
+    setIsPrintMode(true);
+    setTimeout(() => {
+      window.print();
+    }, 300);
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
@@ -260,724 +266,765 @@ export const ReportView: React.FC = () => {
   const status = getStatusLabel(report.status);
   const companyName = getCompanyName();
 
-  // ============================================
-  // RENDER PRINT MODE / VIEW MODE
-  // ============================================
   if (isPrintMode) {
     return (
-      <div className="bg-white p-8 max-w-4xl mx-auto print:p-0">
-        {/* Capa */}
-        <div className="text-center py-16 border-b border-gray-200">
-          <div className="mb-8">
-            <div className="w-32 h-32 mx-auto bg-gray-200 rounded-lg flex items-center justify-center text-gray-400 border-2 border-dashed border-gray-300">
-              <Building2 className="h-12 w-12" />
-              <span className="sr-only">Logo do cliente</span>
+      <>
+        <style>{`
+          @media print {
+            @page {
+              margin-left: 2cm;
+              margin-right: 1cm;
+            }
+            * {
+              font-family: Arial, sans-serif !important;
+              font-size: 12pt !important;
+            }
+            .print-container {
+              padding: 0 !important;
+              margin: 0 !important;
+            }
+            .print-content {
+              max-width: 100% !important;
+              padding: 0 !important;
+              margin: 0 !important;
+            }
+            body {
+              font-family: Arial, sans-serif !important;
+              font-size: 12pt !important;
+            }
+            h1, h2, h3, h4, h5, h6 {
+              font-family: Arial, sans-serif !important;
+            }
+            table, td, th, p, span, div, li {
+              font-family: Arial, sans-serif !important;
+              font-size: 12pt !important;
+            }
+          }
+        `}</style>
+        <div className="bg-white p-8 max-w-4xl mx-auto print:p-0 print-container">
+          <div className="print-content">
+            {/* Botão Voltar - visível apenas na tela, não na impressão */}
+            <div className="print:hidden mb-4 flex items-center justify-between">
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-blue-600 border-blue-300 hover:bg-blue-50"
+                onClick={() => setIsPrintMode(false)}
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Voltar
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-blue-600 border-blue-300 hover:bg-blue-50"
+                onClick={handlePrint}
+              >
+                <Printer className="h-4 w-4 mr-2" />
+                Imprimir / PDF
+              </Button>
             </div>
-            <p className="text-sm text-gray-500 mt-2">Inserir Logo do cliente</p>
-          </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Consultoria para avaliação de maturidade ABNT NBR ISO 27001:2022
-          </h1>
-          <p className="text-gray-600 mt-4">Recomendações</p>
-          <p className="text-gray-500 text-sm mt-2">{formatDateFull(new Date())}</p>
-          <p className="text-gray-500 text-sm mt-1">
-            {report.projectNumber || 'Nº do projeto não definido'} - {companyName} - {report.scope || 'Escopo não definido'}
-          </p>
-        </div>
 
-        {/* Quem Somos */}
-        <div className="py-8 border-b border-gray-200">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">Quem Somos</h2>
-          <p className="text-gray-700 text-justify">
-            "O nosso negócio é segurança da informação, infraestrutura de TI, GRC e computação na nuvem"
-          </p>
-          <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200 text-center text-gray-500">
-            Clique para adicionar texto
-          </div>
-        </div>
-
-        {/* Apresentação */}
-        <div className="py-8 border-b border-gray-200">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">Apresentação</h2>
-          <p className="text-gray-700 text-justify">
-            A MRS Consultoria, empresa especializada em soluções de segurança, e tecnologia da informação, 
-            apresenta relatório de maturidade referente à ABNT NBR ISO 27001:2022.
-          </p>
-          <p className="text-gray-700 text-justify mt-4">
-            Agradecemos esta oportunidade e nos colocamos a disposição para contribuir de forma plena com 
-            os objetivos e metas da <strong>{companyName}</strong>. Da mesma maneira, estamos à disposição 
-            para sanar quaisquer dúvidas decorrentes desta, ou em relação aos demais serviços oferecidos 
-            em nossas áreas de atuação que também podem ser obtidas por meio de nosso endereço virtual 
-            <a href="http://www.cisatool.com.br" className="text-blue-600 hover:underline ml-1">
-              http://www.cisatool.com.br
-            </a>
-          </p>
-          <p className="text-gray-600 italic text-justify mt-4">
-            "O nosso negócio é segurança da informação, infraestrutura de TI, GRC e computação na nuvem"
-          </p>
-        </div>
-
-        {/* Índice */}
-        <div className="py-8 border-b border-gray-200">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">Índice</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-            <div className="flex items-center justify-between py-2 border-b border-gray-100">
-              <span className="text-gray-700">1. Objetivo</span>
-              <span className="text-gray-400 text-sm">2</span>
-            </div>
-            <div className="flex items-center justify-between py-2 border-b border-gray-100">
-              <span className="text-gray-700">2. Benefícios da ISO 27001</span>
-              <span className="text-gray-400 text-sm">3</span>
-            </div>
-            <div className="flex items-center justify-between py-2 border-b border-gray-100">
-              <span className="text-gray-700">3. Equipe</span>
-              <span className="text-gray-400 text-sm">4</span>
-            </div>
-            <div className="flex items-center justify-between py-2 border-b border-gray-100">
-              <span className="text-gray-700">4. Metodologia de Avaliação</span>
-              <span className="text-gray-400 text-sm">5</span>
-            </div>
-            <div className="flex items-center justify-between py-2 border-b border-gray-100">
-              <span className="text-gray-700">5. Atributos</span>
-              <span className="text-gray-400 text-sm">6</span>
-            </div>
-            <div className="flex items-center justify-between py-2 border-b border-gray-100">
-              <span className="text-gray-700">6. Recomendações</span>
-              <span className="text-gray-400 text-sm">7</span>
-            </div>
-            <div className="flex items-center justify-between py-2 border-b border-gray-100">
-              <span className="text-gray-700">7. Resultados da Avaliação</span>
-              <span className="text-gray-400 text-sm">8</span>
-            </div>
-            <div className="flex items-center justify-between py-2 border-b border-gray-100">
-              <span className="text-gray-700">8. Cenário atual e Recomendações</span>
-              <span className="text-gray-400 text-sm">9</span>
-            </div>
-            <div className="flex items-center justify-between py-2 border-b border-gray-100">
-              <span className="text-gray-700">9. Matriz de Priorização</span>
-              <span className="text-gray-400 text-sm">10</span>
-            </div>
-            <div className="flex items-center justify-between py-2 border-b border-gray-100">
-              <span className="text-gray-700">10. Roadmap de Implementação</span>
-              <span className="text-gray-400 text-sm">11</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Objetivo */}
-        <div className="py-8 border-b border-gray-200">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">1. Objetivo</h2>
-          <p className="text-gray-700 text-justify">
-            Apresentar análises e resultados oriundos da avaliação de maturidade do ambiente da{' '}
-            <strong>{companyName}</strong>, identificando lacunas que impactam na sua maturidade, 
-            propondo recomendações de melhorias técnicas e processuais que precisam ser implementadas 
-            para elevação do nível de segurança. Através deste documento, a empresa terá um material 
-            que auxiliará na melhoria contínua do SGSI – Sistema de Gestão de Segurança da Informação, 
-            visando otimizar a segurança da informação em seus processos, recursos e pessoas.
-          </p>
-          <p className="text-gray-700 text-justify mt-4">
-            Os trabalhos foram baseados nas entrevistas realizadas no período de{' '}
-            <strong>{formatDateFull(report.assessmentStartDate)}</strong> a{' '}
-            <strong>{formatDateFull(report.assessmentEndDate)}</strong>, bem como informações 
-            complementares recebidas por e-mail no dia <strong>{formatDateFull(report.assessmentEndDate)}</strong>. 
-            Após avaliação do ambiente, foram elaboradas recomendações do nível desejado para a organização, 
-            que poderão ser aplicadas aos diversos tipos de ameaças identificadas.
-          </p>
-          <p className="text-gray-600 italic text-justify mt-4 text-sm">
-            Ressaltamos que não foram realizadas análises de evidências e que todos os insumos gerados 
-            neste documento são oriundos do questionário baseado nos controles da ABNT NBR ISO/IEC 27001:2022, 
-            Anexo A, respondido pela <strong>{companyName}</strong>.
-          </p>
-        </div>
-
-        {/* Benefícios da ISO 27001 */}
-        <div className="py-8 border-b border-gray-200">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">2. Benefícios da ISO 27001</h2>
-          <p className="text-gray-700 text-justify">
-            A ABNT NBR ISO 27001 é uma norma internacional de padrão e referência para a gestão de 
-            segurança da informação na empresa. Por meio dela será desenvolvido um Sistema de Gestão 
-            de Segurança da Informação (SGSI) que permitirá à empresa ter um melhor conhecimento dos 
-            seus processos, atividades, sistemas, ambientes e pessoas que possam impactar na segurança 
-            da informação, assim como os aprimoramentos sobre os processos de gestão permitindo uma 
-            melhoria contínua.
-          </p>
-          <p className="text-gray-700 text-justify mt-4">
-            Será possível identificar por meio da matriz de priorização, anexo deste documento, quais 
-            são as ameaças e vulnerabilidades identificadas relacionadas aos controles da ISO, 
-            classificando os controles de crítico até o mais baixo, relacionando as medidas tecnológicas 
-            e processuais para uma mitigação efetiva.
-          </p>
-          <p className="text-gray-700 text-justify mt-4">
-            Caso a <strong>{companyName}</strong> busque futuramente uma certificação nessa norma, 
-            a empresa terá uma maior credibilidade e confiabilidade na entrega dos serviços prestados, 
-            por utilizar a segurança da informação em todas as etapas do negócio, aumentando a satisfação 
-            dos seus clientes e parceiros comerciais, além de também ter uma expansão dos seus clientes 
-            e uma maior vantagem competitiva sobre as empresas concorrentes. Pela ISO 27001 ser uma 
-            norma internacionalmente reconhecida e adotada por vários países como uma garantia do uso 
-            da segurança da informação, é possível assegurar que a empresa estará em conformidade com 
-            as obrigações legais e contratuais relacionadas à segurança da informação.
-          </p>
-        </div>
-
-        {/* Equipe */}
-        <div className="py-8 border-b border-gray-200">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">3. Equipe</h2>
-
-          <h3 className="text-lg font-semibold text-gray-800 mb-3">{companyName}</h3>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm border-collapse">
-              <thead>
-                <tr className="bg-gray-50">
-                  <th className="text-left py-2 px-4 font-medium text-gray-500 border border-gray-200">Nome</th>
-                  <th className="text-left py-2 px-4 font-medium text-gray-500 border border-gray-200">Designação</th>
-                  <th className="text-left py-2 px-4 font-medium text-gray-500 border border-gray-200">Contato</th>
-                </tr>
-              </thead>
-              <tbody>
-                {report.clientTeam.length === 0 ? (
-                  <tr>
-                    <td className="py-2 px-4 border border-gray-200 text-gray-500 text-center" colSpan={3}>
-                      Nenhum membro cadastrado
-                    </td>
-                  </tr>
-                ) : (
-                  report.clientTeam.map((member, index) => (
-                    <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                      <td className="py-2 px-4 border border-gray-200">{member.name}</td>
-                      <td className="py-2 px-4 border border-gray-200">{member.role}</td>
-                      <td className="py-2 px-4 border border-gray-200">{member.email}</td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          <h3 className="text-lg font-semibold text-gray-800 mt-6 mb-3">MRS Consultoria</h3>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm border-collapse">
-              <thead>
-                <tr className="bg-gray-50">
-                  <th className="text-left py-2 px-4 font-medium text-gray-500 border border-gray-200">Nome</th>
-                  <th className="text-left py-2 px-4 font-medium text-gray-500 border border-gray-200">Designação</th>
-                  <th className="text-left py-2 px-4 font-medium text-gray-500 border border-gray-200">Contato</th>
-                </tr>
-              </thead>
-              <tbody>
-                {report.consultantTeam.length === 0 ? (
-                  <tr>
-                    <td className="py-2 px-4 border border-gray-200 text-gray-500 text-center" colSpan={3}>
-                      Nenhum consultor vinculado
-                    </td>
-                  </tr>
-                ) : (
-                  report.consultantTeam.map((member, index) => (
-                    <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                      <td className="py-2 px-4 border border-gray-200">{member.name}</td>
-                      <td className="py-2 px-4 border border-gray-200">{member.role}</td>
-                      <td className="py-2 px-4 border border-gray-200">{member.email}</td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          {/* 🔴 TEXTO EXPLICATIVO SOBRE ISENÇÃO DE CONSULTORIA */}
-          {report.consultantTeam.length === 0 && (
-            <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <p className="text-sm text-gray-700 text-justify">
-                <strong>Nota sobre o processo de avaliação:</strong> Para esta avaliação, <strong>não foram contratadas horas de consultoria</strong>. 
-                O processo de preenchimento e validação das respostas foi realizado integralmente pela organização, 
-                por meio da solução <strong>Code_Assessment</strong>. 
-                A <strong>MRS Consultoria</strong> não atuou como consultora durante esta etapa, 
-                sendo as informações apresentadas de <strong>inteira responsabilidade do cliente</strong>.
-              </p>
-            </div>
-          )}
-        </div>
-
-        {/* 4. Metodologia de Avaliação */}
-        <div className="py-8 border-b border-gray-200">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">4. Metodologia de Avaliação</h2>
-          
-          <p className="text-gray-700 text-justify mb-6">
-            Com estrutura mais simples e controles contemporâneos, a ABNT NBR ISO/IEC 27001:2022, tem uma visão holística e coordenada dos riscos de segurança da informação das organizações (SGSI), a fim de determinar e implementar um conjunto abrangente de controles na estrutura geral de um sistema de gestão coerente. Deste modo, é possível direcionar a análise/avaliação de riscos, gerenciamento, especificação, reavaliação e implementação de segurança na <strong>{companyName}</strong>.
-          </p>
-          
-          <p className="text-gray-700 text-justify mb-6">
-            É composta por 93 controles agrupados em 4 temas:
-          </p>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Building2 className="h-5 w-5 text-blue-600" />
-                <span className="font-semibold text-blue-800">Controles Organizacionais</span>
-              </div>
-              <p className="text-sm text-gray-600 text-justify">Referentes a forma com qual organização estrutura ações estratégicas, relacionadas à Gestão da Segurança da Informação, com abrangência institucional ou perante partes externas. Aqui também se incluem todos os controles que não se encaixam nas demais categorias.</p>
-            </div>
-            
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <UsersIcon className="h-5 w-5 text-green-600" />
-                <span className="font-semibold text-green-800">Controles de Pessoas</span>
-              </div>
-              <p className="text-sm text-gray-600 text-justify">Referentes a pessoas individuais, como a organização aborda aspectos de Segurança da Informação, aliada à segurança jurídica, durante o ciclo de vida do colaborador na empresa.</p>
-            </div>
-            
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Server className="h-5 w-5 text-yellow-600" />
-                <span className="font-semibold text-yellow-800">Controles Físicos</span>
-              </div>
-              <p className="text-sm text-gray-600 text-justify">Aspectos de segurança física, predial e ambiental da organização que impactam direta ou indiretamente na Segurança da Informação.</p>
-            </div>
-            
-            <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Cpu className="h-5 w-5 text-purple-600" />
-                <span className="font-semibold text-purple-800">Controles Tecnológicos</span>
-              </div>
-              <p className="text-sm text-gray-600 text-justify">Referentes diretamente a tecnologia, ações e mecanismos de Segurança da Informação aplicados a recursos computacionais, sistemas e redes, repositório de dados, etc.</p>
-            </div>
-          </div>
-
-          {/* Tabela de Níveis de Maturidade */}
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">Níveis de Maturidade</h3>
-          <p className="text-gray-700 text-justify mb-4">
-            A avaliação de maturidade é baseada nos níveis mostrados abaixo. Eles fornecem a descrição sobre as práticas que a empresa possui no que tange a existência de processos de Segurança da Informação.
-          </p>
-          
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm border-collapse">
-              <thead>
-                <tr className="bg-gray-100">
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700 border border-gray-300 w-16">NÍVEL</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700 border border-gray-300 w-32">MATURIDADE</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700 border border-gray-300">DESCRIÇÃO</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr className="bg-gray-50">
-                  <td className="py-3 px-4 border border-gray-300 text-center font-mono">N/A</td>
-                  <td className="py-3 px-4 border border-gray-300">
-                    <span className="inline-flex px-3 py-1 rounded-full text-xs font-medium bg-gray-300 text-gray-700">NÃO SE APLICA</span>
-                  </td>
-                  <td className="py-3 px-4 border border-gray-300 text-gray-600">CONTROLE NÃO APLICÁVEL À ORGANIZAÇÃO</td>
-                </tr>
-                <tr className="bg-red-50">
-                  <td className="py-3 px-4 border border-gray-300 text-center font-mono font-bold text-red-600">0</td>
-                  <td className="py-3 px-4 border border-gray-300">
-                    <span className="inline-flex px-3 py-1 rounded-full text-xs font-medium bg-red-500 text-white">NÃO IMPLEMENTADO</span>
-                  </td>
-                  <td className="py-3 px-4 border border-gray-300 text-gray-600">FALTA DE UM PROCESSO RECONHECIDO.</td>
-                </tr>
-                <tr className="bg-yellow-50">
-                  <td className="py-3 px-4 border border-gray-300 text-center font-mono font-bold text-yellow-600">1</td>
-                  <td className="py-3 px-4 border border-gray-300">
-                    <span className="inline-flex px-3 py-1 rounded-full text-xs font-medium bg-yellow-500 text-white">PARCIAL</span>
-                  </td>
-                  <td className="py-3 px-4 border border-gray-300 text-gray-600">JÁ ESTÁ EM APLICAÇÃO PARTES DOS CONTROLES NA INSTITUIÇÃO, MAS HÁ QUESTÕES QUE PRECISAM SER TRABALHADAS.</td>
-                </tr>
-                <tr className="bg-green-50">
-                  <td className="py-3 px-4 border border-gray-300 text-center font-mono font-bold text-green-600">2</td>
-                  <td className="py-3 px-4 border border-gray-300">
-                    <span className="inline-flex px-3 py-1 rounded-full text-xs font-medium bg-green-500 text-white">IMPLEMENTADO</span>
-                  </td>
-                  <td className="py-3 px-4 border border-gray-300 text-gray-600">OS PROCESSOS FORAM REFINADOS A UM NÍVEL DE BOAS PRÁTICAS, RESULTADO DE UM CONTÍNUO APRIMORAMENTO E MODELAGEM DA MATURIDADE EM SEGURANÇA DA INFORMAÇÃO.</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* 5. Atributos */}
-        <div className="py-8 border-b border-gray-200">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">5. Atributos</h2>
-          
-          <p className="text-gray-700 text-justify mb-6">
-            De forma complementar, a ABNT NBR ISO/IEC 27002:2022 possibilitou a análise dos controles à luz de 05 (cinco) atributos: 1) tipo de controle; 2) propriedades de segurança da informação; 3) conceitos de segurança cibernética; 4) capacidades operacionais; 5) domínios de segurança.
-          </p>
-
-          {/* 5.1 Tipo de Controle */}
-          <h3 className="text-lg font-semibold text-gray-800 mt-6 mb-3">5.1 Tipo de Controle</h3>
-          <p className="text-gray-700 text-justify mb-3">
-            Atributo utilizado para fornecer uma visão dos controles na perspectiva de quando e como uma medida altera o risco relacionado com a ocorrência de um incidente de segurança da informação. Assim, o controle poderá variar entre:
-          </p>
-          <div className="flex flex-wrap gap-3 mb-6">
-            <span className="inline-flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
-              <Shield className="h-4 w-4" /> Preventivo
-            </span>
-            <span className="inline-flex items-center gap-2 px-4 py-2 bg-yellow-100 text-yellow-700 rounded-full text-sm font-medium">
-              <EyeIcon className="h-4 w-4" /> Detectivo
-            </span>
-            <span className="inline-flex items-center gap-2 px-4 py-2 bg-green-100 text-green-700 rounded-full text-sm font-medium">
-              <RefreshIcon className="h-4 w-4" /> Corretivo
-            </span>
-          </div>
-
-          {/* 5.2 Propriedades de SI */}
-          <h3 className="text-lg font-semibold text-gray-800 mt-6 mb-3">5.2 Propriedades de Segurança da Informação</h3>
-          <p className="text-gray-700 text-justify mb-3">
-            Atributo para visualizar controles na perspectiva de qual característica das informações o controle contribuirá para a preservação. Os valores dos atributos consistem em:
-          </p>
-          <div className="flex flex-wrap gap-3 mb-6">
-            <span className="inline-flex items-center gap-2 px-4 py-2 bg-red-100 text-red-700 rounded-full text-sm font-medium">
-              <Lock className="h-4 w-4" /> Confidencialidade
-            </span>
-            <span className="inline-flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
-              <CheckSquare className="h-4 w-4" /> Integridade
-            </span>
-            <span className="inline-flex items-center gap-2 px-4 py-2 bg-green-100 text-green-700 rounded-full text-sm font-medium">
-              <Activity className="h-4 w-4" /> Disponibilidade
-            </span>
-          </div>
-
-          {/* 5.3 Conceitos de Segurança Cibernética */}
-          <h3 className="text-lg font-semibold text-gray-800 mt-6 mb-3">5.3 Conceitos de Segurança Cibernética</h3>
-          <p className="text-gray-700 text-justify mb-3">
-            Atributo para visualizar os controles sob a perspectiva da associação de controles aos conceitos de segurança cibernética definidos no quadro de segurança cibernética descrito no ISO/IEC TS 27110. Os valores dos atributos consistem em:
-          </p>
-          <div className="flex flex-wrap gap-3 mb-6">
-            <span className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-100 text-indigo-700 rounded-full text-sm font-medium">
-              <Target className="h-4 w-4" /> Identificar
-            </span>
-            <span className="inline-flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
-              <ShieldCheck className="h-4 w-4" /> Proteger
-            </span>
-            <span className="inline-flex items-center gap-2 px-4 py-2 bg-yellow-100 text-yellow-700 rounded-full text-sm font-medium">
-              <EyeIcon className="h-4 w-4" /> Detectar
-            </span>
-            <span className="inline-flex items-center gap-2 px-4 py-2 bg-orange-100 text-orange-700 rounded-full text-sm font-medium">
-              <AlertOctagon className="h-4 w-4" /> Responder
-            </span>
-            <span className="inline-flex items-center gap-2 px-4 py-2 bg-green-100 text-green-700 rounded-full text-sm font-medium">
-              <RefreshIcon className="h-4 w-4" /> Recuperar
-            </span>
-          </div>
-
-          {/* 5.4 Capacidades Operacionais */}
-          <h3 className="text-lg font-semibold text-gray-800 mt-6 mb-3">5.4 Capacidades Operacionais</h3>
-          <p className="text-gray-700 text-justify mb-3">
-            As capacidades operacionais são atributos para visualizar controles da perspectiva do praticante sobre os recursos de segurança da informação. Os valores de atributos consistem em:
-          </p>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-6">
-            <span className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700">Governança, Gestão de identidade e acesso</span>
-            <span className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700">Gestão de ameaças e vulnerabilidades</span>
-            <span className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700">Garantia de segurança da informação</span>
-            <span className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700">Gestão de eventos de segurança da informação</span>
-            <span className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700">Gestão de ativos</span>
-            <span className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700">Proteção da informação</span>
-            <span className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700">Legal e compliance</span>
-            <span className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700">Segurança física</span>
-            <span className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700">Configuração segura</span>
-            <span className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700">Segurança em recursos humanos</span>
-            <span className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700">Segurança de sistemas e redes</span>
-            <span className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700">Segurança de aplicações</span>
-            <span className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700">Segurança do relacionamento na cadeia de suprimentos</span>
-          </div>
-
-          {/* 5.5 Domínios de Segurança */}
-          <h3 className="text-lg font-semibold text-gray-800 mt-6 mb-3">5.5 Domínios de Segurança</h3>
-          <p className="text-gray-700 text-justify mb-3">
-            Os domínios de segurança são um atributo para visualizar controles na perspectiva de 4 domínios de SI:
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Globe className="h-5 w-5 text-indigo-600" />
-                <span className="font-semibold text-indigo-800">Governança e Ecossistema</span>
-              </div>
-              <p className="text-sm text-gray-600 text-justify">Inclui "Governança do Sistema de Segurança da Informação e Gestão de Riscos" e "Gestão de segurança cibernética do ecossistema" (partes interessadas internas e externas).</p>
-            </div>
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Shield className="h-5 w-5 text-blue-600" />
-                <span className="font-semibold text-blue-800">Proteção</span>
-              </div>
-              <p className="text-sm text-gray-600 text-justify">Inclui "Arquitetura de Segurança de TI", "Administração de Segurança de TI", "Gestão de identidade e acesso", "Manutenção de Segurança de TI" e "Segurança física e ambiental".</p>
-            </div>
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <AlertOctagon className="h-5 w-5 text-yellow-600" />
-                <span className="font-semibold text-yellow-800">Defesa</span>
-              </div>
-              <p className="text-sm text-gray-600 text-justify">Inclui "Detectar" e "Gestão de Incidente de segurança computacional".</p>
-            </div>
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <RefreshIcon className="h-5 w-5 text-green-600" />
-                <span className="font-semibold text-green-800">Resiliência</span>
-              </div>
-              <p className="text-sm text-gray-600 text-justify">Inclui "Operações de continuidade" e "Gestão de crises".</p>
-            </div>
-          </div>
-        </div>
-
-        {/* 6. Recomendações */}
-        <div className="py-8 border-b border-gray-200">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">6. Recomendações</h2>
-          
-          <p className="text-gray-700 text-justify mb-4">
-            As recomendações propostas neste relatório são oriundas da norma <strong>ISO/IEC 27002:2022</strong> que fornecem um conjunto abrangente de controles de segurança da informação comumente utilizados, incluindo orientação para implementação desses controles em uma organização.
-          </p>
-          
-          <p className="text-gray-700 text-justify mb-4">
-            A norma <strong>ISO/IEC 27002:2022</strong> é complementar à norma <strong>ISO/IEC 27001</strong> e totalmente indispensável à sua aplicação. Enquanto a norma ISO/IEC 27001 estabelece os requisitos para implementação de um Sistema de Gestão da Segurança da Informação (SGSI), a norma fornece um conjunto de controles genéricos de segurança da informação, além da ISO/IEC 27002:2022 fornecer orientação para implementação de controles de segurança da informação.
-          </p>
-          
-          <p className="text-gray-700 text-justify">
-            A norma <strong>ISO/IEC 27002:2022</strong> foi concebida para ser usada pelas organizações:
-          </p>
-          <ul className="list-disc pl-6 mt-3 space-y-2 text-gray-700 text-justify">
-            <li>no contexto de um sistema de gestão de segurança da informação (SGSI) baseado na ISO/IEC 27001;</li>
-            <li>para a implementação de controles de segurança da informação com base em melhores práticas reconhecidas internacionalmente;</li>
-            <li>para o desenvolvimento de diretrizes específicas de gestão de segurança da informação da organização.</li>
-          </ul>
-        </div>
-
-        {/* 7. Resultados da Avaliação */}
-        <div className="py-8 border-b border-gray-200">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">7. Resultados da Avaliação</h2>
-
-          {/* 7.1 Categorização dos controles */}
-          <h3 className="text-lg font-semibold text-gray-800 mt-6 mb-3">7.1 Categorização dos controles</h3>
-          <p className="text-gray-700 text-justify mb-4">
-            A análise dos controles e processos utilizados pela <strong>{companyName}</strong>, no que se refere a ISO 27001, permitiu identificar a média geral do Nível de Maturidade dos 93 controles, que estão claramente subdivididos e resumidos em 4 áreas temáticas: controles organizacionais, controle de pessoas, controles físicos e controles tecnológicos. O resultado exibido abaixo diz respeito ao <strong>percentual de controles efetivamente implementados</strong>.
-          </p>
-
-          {/* Cards de porcentagem por categoria */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-            {resultados?.categorizacao?.categories?.map((cat: any, index: number) => {
-              const colors = [
-                { bg: 'bg-blue-100', text: 'text-blue-700', border: 'border-blue-300' },
-                { bg: 'bg-green-100', text: 'text-green-700', border: 'border-green-300' },
-                { bg: 'bg-yellow-100', text: 'text-yellow-700', border: 'border-yellow-300' },
-                { bg: 'bg-purple-100', text: 'text-purple-700', border: 'border-purple-300' },
-              ];
-              const color = colors[index % colors.length];
-              return (
-                <div key={index} className={`${color.bg} border ${color.border} rounded-xl p-4 text-center`}>
-                  <div className={`text-3xl font-bold ${color.text}`}>{cat.pImpl}%</div>
-                  <p className={`text-sm font-medium ${color.text} mt-1`}>{cat.name}</p>
+            {/* Capa - CENTRALIZADO */}
+            <div className="text-center py-16 border-b border-gray-200">
+              <div className="mb-8">
+                <div className="w-32 h-32 mx-auto bg-gray-200 rounded-lg flex items-center justify-center text-gray-400 border-2 border-dashed border-gray-300">
+                  <Building2 className="h-12 w-12" />
+                  <span className="sr-only">Logo do cliente</span>
                 </div>
-              );
-            })}
-          </div>
-
-          {/* Tabela detalhada de categorização */}
-          <p className="text-gray-700 text-justify mt-6 mb-4">
-            O quadro abaixo mostra o quantitativo de controles identificados em cada uma das 04 (quatro) categorizações da ISO 27001:2022, bem como a quantidade de controles que se encontram implementados, parcialmente implementados, não implementados e os que não se aplicam, mostrando uma visão geral das lacunas que foram encontradas na <strong>{companyName}</strong>.
-          </p>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm border-collapse">
-              <thead>
-                <tr className="bg-gray-100">
-                  <th className="text-left py-2 px-4 font-semibold text-gray-700 border border-gray-300">Categorização</th>
-                  <th className="text-center py-2 px-4 font-semibold text-gray-700 border border-gray-300">Total</th>
-                  <th className="text-center py-2 px-4 font-semibold text-gray-700 border border-gray-300">Não Aplicáveis</th>
-                  <th className="text-center py-2 px-4 font-semibold text-gray-700 border border-gray-300">Implementados</th>
-                  <th className="text-center py-2 px-4 font-semibold text-gray-700 border border-gray-300">Parciais</th>
-                  <th className="text-center py-2 px-4 font-semibold text-gray-700 border border-gray-300">Não Implementados</th>
-                </tr>
-              </thead>
-              <tbody>
-                {resultados?.categorizacao?.categories?.map((cat: any, index: number) => (
-                  <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                    <td className="py-2 px-4 border border-gray-300 text-gray-700">{cat.name}</td>
-                    <td className="py-2 px-4 border border-gray-300 text-center font-bold">{cat.total}</td>
-                    <td className="py-2 px-4 border border-gray-300 text-center">{cat.na}</td>
-                    <td className="py-2 px-4 border border-gray-300 text-center text-emerald-600 font-bold">{cat.implemented}</td>
-                    <td className="py-2 px-4 border border-gray-300 text-center text-amber-600">{cat.partial}</td>
-                    <td className="py-2 px-4 border border-gray-300 text-center text-red-600">{cat.notImpl}</td>
-                  </tr>
-                ))}
-                <tr className="bg-gray-200 font-bold">
-                  <td className="py-2 px-4 border border-gray-300 text-gray-900">Total controles</td>
-                  <td className="py-2 px-4 border border-gray-300 text-center">{resultados?.categorizacao?.totals?.total || 0}</td>
-                  <td className="py-2 px-4 border border-gray-300 text-center">{resultados?.categorizacao?.totals?.na || 0}</td>
-                  <td className="py-2 px-4 border border-gray-300 text-center text-emerald-700">{resultados?.categorizacao?.totals?.implemented || 0}</td>
-                  <td className="py-2 px-4 border border-gray-300 text-center text-amber-700">{resultados?.categorizacao?.totals?.partial || 0}</td>
-                  <td className="py-2 px-4 border border-gray-300 text-center text-red-700">{resultados?.categorizacao?.totals?.notImpl || 0}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          {/* 7.2 Capacidades Operacionais */}
-          <h3 className="text-lg font-semibold text-gray-800 mt-8 mb-3">7.2 Capacidades Operacionais</h3>
-          <p className="text-gray-700 text-justify mb-4">
-            A capacidade operacional analisa os controles da perspectiva de seus recursos operacionais de segurança da informação e oferece suporte a uma visão prática dos controles pelo usuário.
-          </p>
-
-          {/* Radar Chart */}
-          {resultados?.capacidades?.radarData && resultados.capacidades.radarData.length > 0 && (
-            <div className="mt-6 mb-6">
-              <h4 className="text-md font-semibold text-gray-800 mb-4">Radar de Capacidades Operacionais</h4>
-              <p className="text-sm text-gray-600 mb-4">
-                Comparação entre o nível implementado e o recomendado (100%) por capacidade
+                <p className="text-sm text-gray-500 mt-2 text-center">Inserir Logo do cliente</p>
+              </div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2 text-center">
+                Consultoria para avaliação de maturidade ABNT NBR ISO 27001:2022
+              </h1>
+              <p className="text-gray-600 mt-4 text-center">Recomendações</p>
+              <p className="text-gray-500 text-sm mt-2 text-center">{formatDateFull(new Date())}</p>
+              <p className="text-gray-500 text-sm mt-1 text-center">
+                {report.projectNumber || 'Nº do projeto não definido'} - {companyName} - {report.scope || 'Escopo não definido'}
               </p>
-              <div className="bg-white border border-gray-200 rounded-lg p-4">
-                <RadarChart
-                  data={resultados.capacidades.radarData}
-                  title="Radar de Capacidades Operacionais"
-                  subtitle="Comparação entre o nível implementado e o recomendado (100%) por capacidade"
-                  height={500}
-                  colors={{ Implementado: '#10b981', Recomendado: '#94a3b8' }}
-                />
+            </div>
+
+            {/* Quem Somos */}
+            <div className="py-8 border-b border-gray-200">
+              <h2 className="text-xl font-bold text-gray-900 mb-4 text-center">Quem Somos</h2>
+              <p className="text-gray-700 text-justify">
+                "O nosso negócio é segurança da informação, infraestrutura de TI, GRC e computação na nuvem"
+              </p>
+              <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200 text-center text-gray-500">
+                Clique para adicionar texto
               </div>
             </div>
-          )}
 
-          {/* Tabela de Capacidades Operacionais */}
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm border-collapse">
-              <thead>
-                <tr className="bg-gray-100">
-                  <th className="text-left py-2 px-4 font-semibold text-gray-700 border border-gray-300">Capacidades Operacionais</th>
-                  <th className="text-center py-2 px-4 font-semibold text-gray-700 border border-gray-300">Não se aplica</th>
-                  <th className="text-center py-2 px-4 font-semibold text-gray-700 border border-gray-300">Não Implementado</th>
-                  <th className="text-center py-2 px-4 font-semibold text-gray-700 border border-gray-300">Parcial</th>
-                  <th className="text-center py-2 px-4 font-semibold text-gray-700 border border-gray-300">Implementados</th>
-                </tr>
-              </thead>
-              <tbody>
-                {resultados?.capacidades?.capabilities?.map((cap: any, index: number) => (
-                  <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                    <td className="py-2 px-4 border border-gray-300 text-gray-700">{cap.name}</td>
-                    <td className="py-2 px-4 border border-gray-300 text-center">0</td>
-                    <td className="py-2 px-4 border border-gray-300 text-center text-red-600">{cap.notImpl}</td>
-                    <td className="py-2 px-4 border border-gray-300 text-center text-amber-600">{cap.partial}</td>
-                    <td className="py-2 px-4 border border-gray-300 text-center text-emerald-600 font-bold">{cap.implemented}</td>
-                  </tr>
-                ))}
-                <tr className="bg-gray-200 font-bold">
-                  <td className="py-2 px-4 border border-gray-300 text-gray-900">Total de Controles</td>
-                  <td className="py-2 px-4 border border-gray-300 text-center">0</td>
-                  <td className="py-2 px-4 border border-gray-300 text-center text-red-700">{resultados?.capacidades?.totals?.notImpl || 0}</td>
-                  <td className="py-2 px-4 border border-gray-300 text-center text-amber-700">{resultados?.capacidades?.totals?.partial || 0}</td>
-                  <td className="py-2 px-4 border border-gray-300 text-center text-emerald-700 font-bold">{resultados?.capacidades?.totals?.implemented || 0}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+            {/* Apresentação */}
+            <div className="py-8 border-b border-gray-200">
+              <h2 className="text-xl font-bold text-gray-900 mb-4 text-center">Apresentação</h2>
+              <p className="text-gray-700 text-justify">
+                A MRS Consultoria, empresa especializada em soluções de segurança, e tecnologia da informação, 
+                apresenta relatório de maturidade referente à ABNT NBR ISO 27001:2022.
+              </p>
+              <p className="text-gray-700 text-justify mt-4">
+                Agradecemos esta oportunidade e nos colocamos a disposição para contribuir de forma plena com 
+                os objetivos e metas da <strong>{companyName}</strong>. Da mesma maneira, estamos à disposição 
+                para sanar quaisquer dúvidas decorrentes desta, ou em relação aos demais serviços oferecidos 
+                em nossas áreas de atuação que também podem ser obtidas por meio de nosso endereço virtual 
+                <a href="http://www.cisatool.com.br" className="text-blue-600 hover:underline ml-1">
+                  http://www.cisatool.com.br
+                </a>
+              </p>
+              <p className="text-gray-600 italic text-justify mt-4">
+                "O nosso negócio é segurança da informação, infraestrutura de TI, GRC e computação na nuvem"
+              </p>
+            </div>
 
-          <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <p className="text-sm text-gray-700 text-justify">
-              <strong>Legenda:</strong> O "Total de Controles" na linha de rodapé corresponde ao quantitativo total de <strong>capacidades operacionais</strong> aplicadas (ou não aplicáveis) para o total das 93 Categorias da ISO 27001:2022, considerando-se que um mesmo controle pode ter mais de uma capacidade operacional a ele atribuída.
-            </p>
-          </div>
-        </div>
+            {/* Índice */}
+            <div className="py-8 border-b border-gray-200">
+              <h2 className="text-xl font-bold text-gray-900 mb-4 text-center">Índice</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <div className="flex items-center justify-between py-2 border-b border-gray-100">
+                  <span className="text-gray-700">1. Objetivo</span>
+                  <span className="text-gray-400 text-sm">2</span>
+                </div>
+                <div className="flex items-center justify-between py-2 border-b border-gray-100">
+                  <span className="text-gray-700">2. Benefícios da ISO 27001</span>
+                  <span className="text-gray-400 text-sm">3</span>
+                </div>
+                <div className="flex items-center justify-between py-2 border-b border-gray-100">
+                  <span className="text-gray-700">3. Equipe</span>
+                  <span className="text-gray-400 text-sm">4</span>
+                </div>
+                <div className="flex items-center justify-between py-2 border-b border-gray-100">
+                  <span className="text-gray-700">4. Metodologia de Avaliação</span>
+                  <span className="text-gray-400 text-sm">5</span>
+                </div>
+                <div className="flex items-center justify-between py-2 border-b border-gray-100">
+                  <span className="text-gray-700">5. Atributos</span>
+                  <span className="text-gray-400 text-sm">6</span>
+                </div>
+                <div className="flex items-center justify-between py-2 border-b border-gray-100">
+                  <span className="text-gray-700">6. Recomendações</span>
+                  <span className="text-gray-400 text-sm">7</span>
+                </div>
+                <div className="flex items-center justify-between py-2 border-b border-gray-100">
+                  <span className="text-gray-700">7. Resultados da Avaliação</span>
+                  <span className="text-gray-400 text-sm">8</span>
+                </div>
+                <div className="flex items-center justify-between py-2 border-b border-gray-100">
+                  <span className="text-gray-700">8. Cenário atual e Recomendações</span>
+                  <span className="text-gray-400 text-sm">9</span>
+                </div>
+                <div className="flex items-center justify-between py-2 border-b border-gray-100">
+                  <span className="text-gray-700">9. Matriz de Priorização</span>
+                  <span className="text-gray-400 text-sm">10</span>
+                </div>
+                <div className="flex items-center justify-between py-2 border-b border-gray-100">
+                  <span className="text-gray-700">10. Roadmap de Implementação</span>
+                  <span className="text-gray-400 text-sm">11</span>
+                </div>
+              </div>
+            </div>
 
-        {/* 🔴 NOVO (v19): 8. Cenário atual e Recomendações */}
-        <div className="py-8 border-b border-gray-200">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">8. Cenário atual e Recomendações</h2>
+            {/* Objetivo */}
+            <div className="py-8 border-b border-gray-200">
+              <h2 className="text-xl font-bold text-gray-900 mb-4 text-center">1. Objetivo</h2>
+              <p className="text-gray-700 text-justify">
+                Apresentar análises e resultados oriundos da avaliação de maturidade do ambiente da{' '}
+                <strong>{companyName}</strong>, identificando lacunas que impactam na sua maturidade, 
+                propondo recomendações de melhorias técnicas e processuais que precisam ser implementadas 
+                para elevação do nível de segurança. Através deste documento, a empresa terá um material 
+                que auxiliará na melhoria contínua do SGSI – Sistema de Gestão de Segurança da Informação, 
+                visando otimizar a segurança da informação em seus processos, recursos e pessoas.
+              </p>
+              <p className="text-gray-700 text-justify mt-4">
+                Os trabalhos foram baseados nas entrevistas realizadas no período de{' '}
+                <strong>{formatDateFull(report.assessmentStartDate)}</strong> a{' '}
+                <strong>{formatDateFull(report.assessmentEndDate)}</strong>, bem como informações 
+                complementares recebidas por e-mail no dia <strong>{formatDateFull(report.assessmentEndDate)}</strong>. 
+                Após avaliação do ambiente, foram elaboradas recomendações do nível desejado para a organização, 
+                que poderão ser aplicadas aos diversos tipos de ameaças identificadas.
+              </p>
+              <p className="text-gray-600 italic text-justify mt-4 text-sm">
+                Ressaltamos que não foram realizadas análises de evidências e que todos os insumos gerados 
+                neste documento são oriundos do questionário baseado nos controles da ABNT NBR ISO/IEC 27001:2022, 
+                Anexo A, respondido pela <strong>{companyName}</strong>.
+              </p>
+            </div>
 
-          {recomendacoes.length === 0 ? (
-            <p className="text-gray-500 text-center py-8">
-              Nenhum controle com necessidade de atenção identificado.
-            </p>
-          ) : (
-            <>
-              {/* Agrupar por domínio */}
-              {['Controles organizacionais', 'Controles de pessoas', 'Controles físicos', 'Controles tecnológicos'].map(dominio => {
-                const items = recomendacoes.filter(r => r.dominio === dominio);
-                if (items.length === 0) return null;
+            {/* Benefícios da ISO 27001 */}
+            <div className="py-8 border-b border-gray-200">
+              <h2 className="text-xl font-bold text-gray-900 mb-4 text-center">2. Benefícios da ISO 27001</h2>
+              <p className="text-gray-700 text-justify">
+                A ABNT NBR ISO 27001 é uma norma internacional de padrão e referência para a gestão de 
+                segurança da informação na empresa. Por meio dela será desenvolvido um Sistema de Gestão 
+                de Segurança da Informação (SGSI) que permitirá à empresa ter um melhor conhecimento dos 
+                seus processos, atividades, sistemas, ambientes e pessoas que possam impactar na segurança 
+                da informação, assim como os aprimoramentos sobre os processos de gestão permitindo uma 
+                melhoria contínua.
+              </p>
+              <p className="text-gray-700 text-justify mt-4">
+                Será possível identificar por meio da matriz de priorização, anexo deste documento, quais 
+                são as ameaças e vulnerabilidades identificadas relacionadas aos controles da ISO, 
+                classificando os controles de crítico até o mais baixo, relacionando as medidas tecnológicas 
+                e processuais para uma mitigação efetiva.
+              </p>
+              <p className="text-gray-700 text-justify mt-4">
+                Caso a <strong>{companyName}</strong> busque futuramente uma certificação nessa norma, 
+                a empresa terá uma maior credibilidade e confiabilidade na entrega dos serviços prestados, 
+                por utilizar a segurança da informação em todas as etapas do negócio, aumentando a satisfação 
+                dos seus clientes e parceiros comerciais, além de também ter uma expansão dos seus clientes 
+                e uma maior vantagem competitiva sobre as empresas concorrentes. Pela ISO 27001 ser uma 
+                norma internacionalmente reconhecida e adotada por vários países como uma garantia do uso 
+                da segurança da informação, é possível assegurar que a empresa estará em conformidade com 
+                as obrigações legais e contratuais relacionadas à segurança da informação.
+              </p>
+            </div>
 
-                // Determinar número do domínio
-                const dominioNumero = {
-                  'Controles organizacionais': '5',
-                  'Controles de pessoas': '6',
-                  'Controles físicos': '7',
-                  'Controles tecnológicos': '8',
-                }[dominio] || '5';
+            {/* Equipe */}
+            <div className="py-8 border-b border-gray-200">
+              <h2 className="text-xl font-bold text-gray-900 mb-4 text-center">3. Equipe</h2>
 
-                return (
-                  <div key={dominio} className="mb-8">
-                    <h3 className="text-lg font-semibold text-gray-800 mb-4">
-                      {dominioNumero} – {dominio}
-                    </h3>
+              <h3 className="text-lg font-semibold text-gray-800 mb-3 text-left">{companyName}</h3>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm border-collapse">
+                  <thead>
+                    <tr className="bg-gray-50">
+                      <th className="text-left py-2 px-4 font-medium text-gray-500 border border-gray-200">Nome</th>
+                      <th className="text-left py-2 px-4 font-medium text-gray-500 border border-gray-200">Designação</th>
+                      <th className="text-left py-2 px-4 font-medium text-gray-500 border border-gray-200">Contato</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {report.clientTeam.length === 0 ? (
+                      <tr>
+                        <td className="py-2 px-4 border border-gray-200 text-gray-500 text-center" colSpan={3}>
+                          Nenhum membro cadastrado
+                        </td>
+                      </tr>
+                    ) : (
+                      report.clientTeam.map((member, index) => (
+                        <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                          <td className="py-2 px-4 border border-gray-200">{member.name}</td>
+                          <td className="py-2 px-4 border border-gray-200">{member.role}</td>
+                          <td className="py-2 px-4 border border-gray-200">{member.email}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
 
-                    {items.map((item, idx) => (
-                      <div key={idx} className="mb-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
-                        <h4 className="text-md font-bold text-gray-900 mb-2">
-                          {item.controlId} {item.titulo}
-                        </h4>
+              <h3 className="text-lg font-semibold text-gray-800 mt-6 mb-3 text-left">MRS Consultoria</h3>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm border-collapse">
+                  <thead>
+                    <tr className="bg-gray-50">
+                      <th className="text-left py-2 px-4 font-medium text-gray-500 border border-gray-200">Nome</th>
+                      <th className="text-left py-2 px-4 font-medium text-gray-500 border border-gray-200">Designação</th>
+                      <th className="text-left py-2 px-4 font-medium text-gray-500 border border-gray-200">Contato</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {report.consultantTeam.length === 0 ? (
+                      <tr>
+                        <td className="py-2 px-4 border border-gray-200 text-gray-500 text-center" colSpan={3}>
+                          Nenhum consultor vinculado
+                        </td>
+                      </tr>
+                    ) : (
+                      report.consultantTeam.map((member, index) => (
+                        <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                          <td className="py-2 px-4 border border-gray-200">{member.name}</td>
+                          <td className="py-2 px-4 border border-gray-200">{member.role}</td>
+                          <td className="py-2 px-4 border border-gray-200">{member.email}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
 
-                        <div className="mb-2">
-                          <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
-                            item.status === 'Parcialmente implementado' 
-                              ? 'bg-yellow-100 text-yellow-800' 
-                              : 'bg-red-100 text-red-800'
-                          }`}>
-                            {item.status}
-                          </span>
-                        </div>
+              {report.consultantTeam.length === 0 && (
+                <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-sm text-gray-700 text-justify">
+                    <strong>Nota sobre o processo de avaliação:</strong> Para esta avaliação, <strong>não foram contratadas horas de consultoria</strong>. 
+                    O processo de preenchimento e validação das respostas foi realizado integralmente pela organização, 
+                    por meio da solução <strong>Code_Assessment</strong>. 
+                    A <strong>MRS Consultoria</strong> não atuou como consultora durante esta etapa, 
+                    sendo as informações apresentadas de <strong>inteira responsabilidade do cliente</strong>.
+                  </p>
+                </div>
+              )}
+            </div>
 
-                        {/* Cenário Identificado */}
-                        <div className="mb-3">
-                          <p className="text-sm font-semibold text-gray-700">Cenário identificado</p>
-                          <p className="text-sm text-gray-600 text-justify mt-1">
-                            {item.cenarioIdentificado || 'Cenário não descrito para este controle.'}
-                          </p>
-                        </div>
-
-                        {/* Recomendações */}
-                        <div className="mb-3">
-                          <p className="text-sm font-semibold text-gray-700">Recomendações</p>
-                          <ul className="list-disc pl-5 mt-1 space-y-1">
-                            {item.recomendacoes && item.recomendacoes.length > 0 ? (
-                              item.recomendacoes.map((rec: string, recIdx: number) => (
-                                <li key={recIdx} className="text-sm text-gray-600 text-justify">{rec}</li>
-                              ))
-                            ) : (
-                              <li className="text-sm text-gray-500">Recomendação não cadastrada para este controle.</li>
-                            )}
-                          </ul>
-                        </div>
-
-                        {/* Soluções Técnicas (opcional) */}
-                        {item.solucoesTecnicas && item.solucoesTecnicas.length > 0 && (
-                          <div>
-                            <p className="text-sm font-semibold text-gray-700">Soluções técnicas de apoio</p>
-                            <ul className="list-disc pl-5 mt-1 space-y-1">
-                              {item.solucoesTecnicas.map((sol: string, solIdx: number) => (
-                                <li key={solIdx} className="text-sm text-gray-600">{sol}</li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-                      </div>
-                    ))}
+            {/* 4. Metodologia de Avaliação */}
+            <div className="py-8 border-b border-gray-200">
+              <h2 className="text-xl font-bold text-gray-900 mb-4 text-center">4. Metodologia de Avaliação</h2>
+              
+              <p className="text-gray-700 text-justify mb-6">
+                Com estrutura mais simples e controles contemporâneos, a ABNT NBR ISO/IEC 27001:2022, tem uma visão holística e coordenada dos riscos de segurança da informação das organizações (SGSI), a fim de determinar e implementar um conjunto abrangente de controles na estrutura geral de um sistema de gestão coerente. Deste modo, é possível direcionar a análise/avaliação de riscos, gerenciamento, especificação, reavaliação e implementação de segurança na <strong>{companyName}</strong>.
+              </p>
+              
+              <p className="text-gray-700 text-justify mb-6">
+                É composta por 93 controles agrupados em 4 temas:
+              </p>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Building2 className="h-5 w-5 text-blue-600" />
+                    <span className="font-semibold text-blue-800">Controles Organizacionais</span>
                   </div>
-                );
-              })}
+                  <p className="text-sm text-gray-600 text-justify">Referentes a forma com qual organização estrutura ações estratégicas, relacionadas à Gestão da Segurança da Informação, com abrangência institucional ou perante partes externas. Aqui também se incluem todos os controles que não se encaixam nas demais categorias.</p>
+                </div>
+                
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <UsersIcon className="h-5 w-5 text-green-600" />
+                    <span className="font-semibold text-green-800">Controles de Pessoas</span>
+                  </div>
+                  <p className="text-sm text-gray-600 text-justify">Referentes a pessoas individuais, como a organização aborda aspectos de Segurança da Informação, aliada à segurança jurídica, durante o ciclo de vida do colaborador na empresa.</p>
+                </div>
+                
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Server className="h-5 w-5 text-yellow-600" />
+                    <span className="font-semibold text-yellow-800">Controles Físicos</span>
+                  </div>
+                  <p className="text-sm text-gray-600 text-justify">Aspectos de segurança física, predial e ambiental da organização que impactam direta ou indiretamente na Segurança da Informação.</p>
+                </div>
+                
+                <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Cpu className="h-5 w-5 text-purple-600" />
+                    <span className="font-semibold text-purple-800">Controles Tecnológicos</span>
+                  </div>
+                  <p className="text-sm text-gray-600 text-justify">Referentes diretamente a tecnologia, ações e mecanismos de Segurança da Informação aplicados a recursos computacionais, sistemas e redes, repositório de dados, etc.</p>
+                </div>
+              </div>
 
-              {/* Legenda */}
-              <div className="mt-4 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+              {/* Tabela de Níveis de Maturidade */}
+              <h3 className="text-lg font-semibold text-gray-800 mb-4 text-left">Níveis de Maturidade</h3>
+              <p className="text-gray-700 text-justify mb-4">
+                A avaliação de maturidade é baseada nos níveis mostrados abaixo. Eles fornecem a descrição sobre as práticas que a empresa possui no que tange a existência de processos de Segurança da Informação.
+              </p>
+              
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm border-collapse">
+                  <thead>
+                    <tr className="bg-gray-100">
+                      <th className="text-left py-3 px-4 font-semibold text-gray-700 border border-gray-300 w-16">NÍVEL</th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-700 border border-gray-300 w-32">MATURIDADE</th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-700 border border-gray-300">DESCRIÇÃO</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="bg-gray-50">
+                      <td className="py-3 px-4 border border-gray-300 text-center font-mono">N/A</td>
+                      <td className="py-3 px-4 border border-gray-300">
+                        <span className="inline-flex px-3 py-1 rounded-full text-xs font-medium bg-gray-300 text-gray-700">NÃO SE APLICA</span>
+                      </td>
+                      <td className="py-3 px-4 border border-gray-300 text-gray-600">CONTROLE NÃO APLICÁVEL À ORGANIZAÇÃO</td>
+                    </tr>
+                    <tr className="bg-red-50">
+                      <td className="py-3 px-4 border border-gray-300 text-center font-mono font-bold text-red-600">0</td>
+                      <td className="py-3 px-4 border border-gray-300">
+                        <span className="inline-flex px-3 py-1 rounded-full text-xs font-medium bg-red-500 text-white">NÃO IMPLEMENTADO</span>
+                      </td>
+                      <td className="py-3 px-4 border border-gray-300 text-gray-600">FALTA DE UM PROCESSO RECONHECIDO.</td>
+                    </tr>
+                    <tr className="bg-yellow-50">
+                      <td className="py-3 px-4 border border-gray-300 text-center font-mono font-bold text-yellow-600">1</td>
+                      <td className="py-3 px-4 border border-gray-300">
+                        <span className="inline-flex px-3 py-1 rounded-full text-xs font-medium bg-yellow-500 text-white">PARCIAL</span>
+                      </td>
+                      <td className="py-3 px-4 border border-gray-300 text-gray-600">JÁ ESTÁ EM APLICAÇÃO PARTES DOS CONTROLES NA INSTITUIÇÃO, MAS HÁ QUESTÕES QUE PRECISAM SER TRABALHADAS.</td>
+                    </tr>
+                    <tr className="bg-green-50">
+                      <td className="py-3 px-4 border border-gray-300 text-center font-mono font-bold text-green-600">2</td>
+                      <td className="py-3 px-4 border border-gray-300">
+                        <span className="inline-flex px-3 py-1 rounded-full text-xs font-medium bg-green-500 text-white">IMPLEMENTADO</span>
+                      </td>
+                      <td className="py-3 px-4 border border-gray-300 text-gray-600">OS PROCESSOS FORAM REFINADOS A UM NÍVEL DE BOAS PRÁTICAS, RESULTADO DE UM CONTÍNUO APRIMORAMENTO E MODELAGEM DA MATURIDADE EM SEGURANÇA DA INFORMAÇÃO.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* 5. Atributos */}
+            <div className="py-8 border-b border-gray-200">
+              <h2 className="text-xl font-bold text-gray-900 mb-4 text-center">5. Atributos</h2>
+              
+              <p className="text-gray-700 text-justify mb-6">
+                De forma complementar, a ABNT NBR ISO/IEC 27002:2022 possibilitou a análise dos controles à luz de 05 (cinco) atributos: 1) tipo de controle; 2) propriedades de segurança da informação; 3) conceitos de segurança cibernética; 4) capacidades operacionais; 5) domínios de segurança.
+              </p>
+
+              {/* 5.1 Tipo de Controle */}
+              <h3 className="text-lg font-semibold text-gray-800 mt-6 mb-3 text-left">5.1 Tipo de Controle</h3>
+              <p className="text-gray-700 text-justify mb-3">
+                Atributo utilizado para fornecer uma visão dos controles na perspectiva de quando e como uma medida altera o risco relacionado com a ocorrência de um incidente de segurança da informação. Assim, o controle poderá variar entre:
+              </p>
+              <div className="flex flex-wrap gap-3 mb-6">
+                <span className="inline-flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
+                  <Shield className="h-4 w-4" /> Preventivo
+                </span>
+                <span className="inline-flex items-center gap-2 px-4 py-2 bg-yellow-100 text-yellow-700 rounded-full text-sm font-medium">
+                  <EyeIcon className="h-4 w-4" /> Detectivo
+                </span>
+                <span className="inline-flex items-center gap-2 px-4 py-2 bg-green-100 text-green-700 rounded-full text-sm font-medium">
+                  <RefreshIcon className="h-4 w-4" /> Corretivo
+                </span>
+              </div>
+
+              {/* 5.2 Propriedades de SI */}
+              <h3 className="text-lg font-semibold text-gray-800 mt-6 mb-3 text-left">5.2 Propriedades de Segurança da Informação</h3>
+              <p className="text-gray-700 text-justify mb-3">
+                Atributo para visualizar controles na perspectiva de qual característica das informações o controle contribuirá para a preservação. Os valores dos atributos consistem em:
+              </p>
+              <div className="flex flex-wrap gap-3 mb-6">
+                <span className="inline-flex items-center gap-2 px-4 py-2 bg-red-100 text-red-700 rounded-full text-sm font-medium">
+                  <Lock className="h-4 w-4" /> Confidencialidade
+                </span>
+                <span className="inline-flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
+                  <CheckSquare className="h-4 w-4" /> Integridade
+                </span>
+                <span className="inline-flex items-center gap-2 px-4 py-2 bg-green-100 text-green-700 rounded-full text-sm font-medium">
+                  <Activity className="h-4 w-4" /> Disponibilidade
+                </span>
+              </div>
+
+              {/* 5.3 Conceitos de Segurança Cibernética */}
+              <h3 className="text-lg font-semibold text-gray-800 mt-6 mb-3 text-left">5.3 Conceitos de Segurança Cibernética</h3>
+              <p className="text-gray-700 text-justify mb-3">
+                Atributo para visualizar os controles sob a perspectiva da associação de controles aos conceitos de segurança cibernética definidos no quadro de segurança cibernética descrito no ISO/IEC TS 27110. Os valores dos atributos consistem em:
+              </p>
+              <div className="flex flex-wrap gap-3 mb-6">
+                <span className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-100 text-indigo-700 rounded-full text-sm font-medium">
+                  <Target className="h-4 w-4" /> Identificar
+                </span>
+                <span className="inline-flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
+                  <ShieldCheck className="h-4 w-4" /> Proteger
+                </span>
+                <span className="inline-flex items-center gap-2 px-4 py-2 bg-yellow-100 text-yellow-700 rounded-full text-sm font-medium">
+                  <EyeIcon className="h-4 w-4" /> Detectar
+                </span>
+                <span className="inline-flex items-center gap-2 px-4 py-2 bg-orange-100 text-orange-700 rounded-full text-sm font-medium">
+                  <AlertOctagon className="h-4 w-4" /> Responder
+                </span>
+                <span className="inline-flex items-center gap-2 px-4 py-2 bg-green-100 text-green-700 rounded-full text-sm font-medium">
+                  <RefreshIcon className="h-4 w-4" /> Recuperar
+                </span>
+              </div>
+
+              {/* 5.4 Capacidades Operacionais */}
+              <h3 className="text-lg font-semibold text-gray-800 mt-6 mb-3 text-left">5.4 Capacidades Operacionais</h3>
+              <p className="text-gray-700 text-justify mb-3">
+                As capacidades operacionais são atributos para visualizar controles da perspectiva do praticante sobre os recursos de segurança da informação. Os valores de atributos consistem em:
+              </p>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-6">
+                <span className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700">Governança, Gestão de identidade e acesso</span>
+                <span className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700">Gestão de ameaças e vulnerabilidades</span>
+                <span className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700">Garantia de segurança da informação</span>
+                <span className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700">Gestão de eventos de segurança da informação</span>
+                <span className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700">Gestão de ativos</span>
+                <span className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700">Proteção da informação</span>
+                <span className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700">Legal e compliance</span>
+                <span className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700">Segurança física</span>
+                <span className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700">Configuração segura</span>
+                <span className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700">Segurança em recursos humanos</span>
+                <span className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700">Segurança de sistemas e redes</span>
+                <span className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700">Segurança de aplicações</span>
+                <span className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700">Segurança do relacionamento na cadeia de suprimentos</span>
+              </div>
+
+              {/* 5.5 Domínios de Segurança */}
+              <h3 className="text-lg font-semibold text-gray-800 mt-6 mb-3 text-left">5.5 Domínios de Segurança</h3>
+              <p className="text-gray-700 text-justify mb-3">
+                Os domínios de segurança são um atributo para visualizar controles na perspectiva de 4 domínios de SI:
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Globe className="h-5 w-5 text-indigo-600" />
+                    <span className="font-semibold text-indigo-800">Governança e Ecossistema</span>
+                  </div>
+                  <p className="text-sm text-gray-600 text-justify">Inclui "Governança do Sistema de Segurança da Informação e Gestão de Riscos" e "Gestão de segurança cibernética do ecossistema" (partes interessadas internas e externas).</p>
+                </div>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Shield className="h-5 w-5 text-blue-600" />
+                    <span className="font-semibold text-blue-800">Proteção</span>
+                  </div>
+                  <p className="text-sm text-gray-600 text-justify">Inclui "Arquitetura de Segurança de TI", "Administração de Segurança de TI", "Gestão de identidade e acesso", "Manutenção de Segurança de TI" e "Segurança física e ambiental".</p>
+                </div>
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <AlertOctagon className="h-5 w-5 text-yellow-600" />
+                    <span className="font-semibold text-yellow-800">Defesa</span>
+                  </div>
+                  <p className="text-sm text-gray-600 text-justify">Inclui "Detectar" e "Gestão de Incidente de segurança computacional".</p>
+                </div>
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <RefreshIcon className="h-5 w-5 text-green-600" />
+                    <span className="font-semibold text-green-800">Resiliência</span>
+                  </div>
+                  <p className="text-sm text-gray-600 text-justify">Inclui "Operações de continuidade" e "Gestão de crises".</p>
+                </div>
+              </div>
+            </div>
+
+            {/* 6. Recomendações */}
+            <div className="py-8 border-b border-gray-200">
+              <h2 className="text-xl font-bold text-gray-900 mb-4 text-center">6. Recomendações</h2>
+              
+              <p className="text-gray-700 text-justify mb-4">
+                As recomendações propostas neste relatório são oriundas da norma <strong>ISO/IEC 27002:2022</strong> que fornecem um conjunto abrangente de controles de segurança da informação comumente utilizados, incluindo orientação para implementação desses controles em uma organização.
+              </p>
+              
+              <p className="text-gray-700 text-justify mb-4">
+                A norma <strong>ISO/IEC 27002:2022</strong> é complementar à norma <strong>ISO/IEC 27001</strong> e totalmente indispensável à sua aplicação. Enquanto a norma ISO/IEC 27001 estabelece os requisitos para implementação de um Sistema de Gestão da Segurança da Informação (SGSI), a norma fornece um conjunto de controles genéricos de segurança da informação, além da ISO/IEC 27002:2022 fornecer orientação para implementação de controles de segurança da informação.
+              </p>
+              
+              <p className="text-gray-700 text-justify">
+                A norma <strong>ISO/IEC 27002:2022</strong> foi concebida para ser usada pelas organizações:
+              </p>
+              <ul className="list-disc pl-6 mt-3 space-y-2 text-gray-700 text-justify">
+                <li>no contexto de um sistema de gestão de segurança da informação (SGSI) baseado na ISO/IEC 27001;</li>
+                <li>para a implementação de controles de segurança da informação com base em melhores práticas reconhecidas internacionalmente;</li>
+                <li>para o desenvolvimento de diretrizes específicas de gestão de segurança da informação da organização.</li>
+              </ul>
+            </div>
+
+            {/* 7. Resultados da Avaliação */}
+            <div className="py-8 border-b border-gray-200">
+              <h2 className="text-xl font-bold text-gray-900 mb-4 text-center">7. Resultados da Avaliação</h2>
+
+              {/* 7.1 Categorização dos controles */}
+              <h3 className="text-lg font-semibold text-gray-800 mt-6 mb-3 text-left">7.1 Categorização dos controles</h3>
+              <p className="text-gray-700 text-justify mb-4">
+                A análise dos controles e processos utilizados pela <strong>{companyName}</strong>, no que se refere a ISO 27001, permitiu identificar a média geral do Nível de Maturidade dos 93 controles, que estão claramente subdivididos e resumidos em 4 áreas temáticas: controles organizacionais, controle de pessoas, controles físicos e controles tecnológicos. O resultado exibido abaixo diz respeito ao <strong>percentual de controles efetivamente implementados</strong>.
+              </p>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                {resultados?.categorizacao?.categories?.map((cat: any, index: number) => {
+                  const colors = [
+                    { bg: 'bg-blue-100', text: 'text-blue-700', border: 'border-blue-300' },
+                    { bg: 'bg-green-100', text: 'text-green-700', border: 'border-green-300' },
+                    { bg: 'bg-yellow-100', text: 'text-yellow-700', border: 'border-yellow-300' },
+                    { bg: 'bg-purple-100', text: 'text-purple-700', border: 'border-purple-300' },
+                  ];
+                  const color = colors[index % colors.length];
+                  return (
+                    <div key={index} className={`${color.bg} border ${color.border} rounded-xl p-4 text-center`}>
+                      <div className={`text-3xl font-bold ${color.text}`}>{cat.pImpl}%</div>
+                      <p className={`text-sm font-medium ${color.text} mt-1`}>{cat.name}</p>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <p className="text-gray-700 text-justify mt-6 mb-4">
+                O quadro abaixo mostra o quantitativo de controles identificados em cada uma das 04 (quatro) categorizações da ISO 27001:2022, bem como a quantidade de controles que se encontram implementados, parcialmente implementados, não implementados e os que não se aplicam, mostrando uma visão geral das lacunas que foram encontradas na <strong>{companyName}</strong>.
+              </p>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm border-collapse">
+                  <thead>
+                    <tr className="bg-gray-100">
+                      <th className="text-left py-2 px-4 font-semibold text-gray-700 border border-gray-300">Categorização</th>
+                      <th className="text-center py-2 px-4 font-semibold text-gray-700 border border-gray-300">Total</th>
+                      <th className="text-center py-2 px-4 font-semibold text-gray-700 border border-gray-300">Não Aplicáveis</th>
+                      <th className="text-center py-2 px-4 font-semibold text-gray-700 border border-gray-300">Implementados</th>
+                      <th className="text-center py-2 px-4 font-semibold text-gray-700 border border-gray-300">Parciais</th>
+                      <th className="text-center py-2 px-4 font-semibold text-gray-700 border border-gray-300">Não Implementados</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {resultados?.categorizacao?.categories?.map((cat: any, index: number) => (
+                      <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                        <td className="py-2 px-4 border border-gray-300 text-gray-700">{cat.name}</td>
+                        <td className="py-2 px-4 border border-gray-300 text-center font-bold">{cat.total}</td>
+                        <td className="py-2 px-4 border border-gray-300 text-center">{cat.na}</td>
+                        <td className="py-2 px-4 border border-gray-300 text-center text-emerald-600 font-bold">{cat.implemented}</td>
+                        <td className="py-2 px-4 border border-gray-300 text-center text-amber-600">{cat.partial}</td>
+                        <td className="py-2 px-4 border border-gray-300 text-center text-red-600">{cat.notImpl}</td>
+                      </tr>
+                    ))}
+                    <tr className="bg-gray-200 font-bold">
+                      <td className="py-2 px-4 border border-gray-300 text-gray-900">Total controles</td>
+                      <td className="py-2 px-4 border border-gray-300 text-center">{resultados?.categorizacao?.totals?.total || 0}</td>
+                      <td className="py-2 px-4 border border-gray-300 text-center">{resultados?.categorizacao?.totals?.na || 0}</td>
+                      <td className="py-2 px-4 border border-gray-300 text-center text-emerald-700">{resultados?.categorizacao?.totals?.implemented || 0}</td>
+                      <td className="py-2 px-4 border border-gray-300 text-center text-amber-700">{resultados?.categorizacao?.totals?.partial || 0}</td>
+                      <td className="py-2 px-4 border border-gray-300 text-center text-red-700">{resultados?.categorizacao?.totals?.notImpl || 0}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              {/* 7.2 Capacidades Operacionais */}
+              <h3 className="text-lg font-semibold text-gray-800 mt-8 mb-3 text-left">7.2 Capacidades Operacionais</h3>
+              <p className="text-gray-700 text-justify mb-4">
+                A capacidade operacional analisa os controles da perspectiva de seus recursos operacionais de segurança da informação e oferece suporte a uma visão prática dos controles pelo usuário.
+              </p>
+
+              {resultados?.capacidades?.radarData && resultados.capacidades.radarData.length > 0 && (
+                <div className="mt-6 mb-6">
+                  <h4 className="text-md font-semibold text-gray-800 mb-4 text-left">Radar de Capacidades Operacionais</h4>
+                  <p className="text-sm text-gray-600 mb-4 text-justify">
+                    Comparação entre o nível implementado e o recomendado (100%) por capacidade
+                  </p>
+                  <div className="bg-white border border-gray-200 rounded-lg p-4">
+                    <RadarChart
+                      data={resultados.capacidades.radarData}
+                      title="Radar de Capacidades Operacionais"
+                      subtitle="Comparação entre o nível implementado e o recomendado (100%) por capacidade"
+                      height={500}
+                      colors={{ Implementado: '#10b981', Recomendado: '#94a3b8' }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm border-collapse">
+                  <thead>
+                    <tr className="bg-gray-100">
+                      <th className="text-left py-2 px-4 font-semibold text-gray-700 border border-gray-300">Capacidades Operacionais</th>
+                      <th className="text-center py-2 px-4 font-semibold text-gray-700 border border-gray-300">Não se aplica</th>
+                      <th className="text-center py-2 px-4 font-semibold text-gray-700 border border-gray-300">Não Implementado</th>
+                      <th className="text-center py-2 px-4 font-semibold text-gray-700 border border-gray-300">Parcial</th>
+                      <th className="text-center py-2 px-4 font-semibold text-gray-700 border border-gray-300">Implementados</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {resultados?.capacidades?.capabilities?.map((cap: any, index: number) => (
+                      <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                        <td className="py-2 px-4 border border-gray-300 text-gray-700">{cap.name}</td>
+                        <td className="py-2 px-4 border border-gray-300 text-center">0</td>
+                        <td className="py-2 px-4 border border-gray-300 text-center text-red-600">{cap.notImpl}</td>
+                        <td className="py-2 px-4 border border-gray-300 text-center text-amber-600">{cap.partial}</td>
+                        <td className="py-2 px-4 border border-gray-300 text-center text-emerald-600 font-bold">{cap.implemented}</td>
+                      </tr>
+                    ))}
+                    <tr className="bg-gray-200 font-bold">
+                      <td className="py-2 px-4 border border-gray-300 text-gray-900">Total de Controles</td>
+                      <td className="py-2 px-4 border border-gray-300 text-center">0</td>
+                      <td className="py-2 px-4 border border-gray-300 text-center text-red-700">{resultados?.capacidades?.totals?.notImpl || 0}</td>
+                      <td className="py-2 px-4 border border-gray-300 text-center text-amber-700">{resultados?.capacidades?.totals?.partial || 0}</td>
+                      <td className="py-2 px-4 border border-gray-300 text-center text-emerald-700 font-bold">{resultados?.capacidades?.totals?.implemented || 0}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                 <p className="text-sm text-gray-700 text-justify">
-                  <strong>Legenda:</strong> Os controles listados acima são aqueles que foram avaliados como <strong>Parcialmente implementados</strong> ou <strong>Não implementados</strong>.
+                  <strong>Legenda:</strong> O "Total de Controles" na linha de rodapé corresponde ao quantitativo total de <strong>capacidades operacionais</strong> aplicadas (ou não aplicáveis) para o total das 93 Categorias da ISO 27001:2022, considerando-se que um mesmo controle pode ter mais de uma capacidade operacional a ele atribuída.
                 </p>
               </div>
-            </>
-          )}
-        </div>
+            </div>
 
-        {/* Botão para sair do modo de impressão */}
-        <div className="text-center py-8 print:hidden">
-          <Button onClick={() => setIsPrintMode(false)}>
-            Voltar para visualização
-          </Button>
+            {/* 8. Cenário atual e Recomendações */}
+            <div className="py-8 border-b border-gray-200">
+              <h2 className="text-xl font-bold text-gray-900 mb-4 text-center">8. Cenário atual e Recomendações</h2>
+
+              {recomendacoes.length === 0 ? (
+                <p className="text-gray-500 text-center py-8">
+                  Nenhum controle com necessidade de atenção identificado.
+                </p>
+              ) : (
+                <>
+                  {['Controles organizacionais', 'Controles de pessoas', 'Controles físicos', 'Controles tecnológicos'].map(dominio => {
+                    const items = recomendacoes.filter(r => r.dominio === dominio);
+                    if (items.length === 0) return null;
+
+                    const dominioNumero = {
+                      'Controles organizacionais': '5',
+                      'Controles de pessoas': '6',
+                      'Controles físicos': '7',
+                      'Controles tecnológicos': '8',
+                    }[dominio] || '5';
+
+                    return (
+                      <div key={dominio} className="mb-8">
+                        <h3 className="text-lg font-semibold text-gray-800 mb-4 text-left">
+                          {dominioNumero} – {dominio}
+                        </h3>
+
+                        {items.map((item, idx) => (
+                          <div key={idx} className="mb-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                            <h4 className="text-md font-bold text-gray-900 mb-2 text-left">
+                              {item.controlId} {item.titulo}
+                            </h4>
+
+                            <div className="mb-2">
+                              <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
+                                item.status === 'Parcialmente implementado' 
+                                  ? 'bg-yellow-100 text-yellow-800' 
+                                  : 'bg-red-100 text-red-800'
+                              }`}>
+                                {item.status}
+                              </span>
+                            </div>
+
+                            <div className="mb-3">
+                              <p className="text-sm font-semibold text-gray-700 text-left">Cenário identificado</p>
+                              <p className="text-sm text-gray-600 text-justify mt-1">
+                                {item.cenarioIdentificado || 'Cenário não descrito para este controle.'}
+                              </p>
+                            </div>
+
+                            <div className="mb-3">
+                              <p className="text-sm font-semibold text-gray-700 text-left">Recomendações</p>
+                              <ul className="list-disc pl-5 mt-1 space-y-1">
+                                {item.recomendacoes && item.recomendacoes.length > 0 ? (
+                                  item.recomendacoes.map((rec: string, recIdx: number) => (
+                                    <li key={recIdx} className="text-sm text-gray-600 text-justify">{rec}</li>
+                                  ))
+                                ) : (
+                                  <li className="text-sm text-gray-500">Recomendação não cadastrada para este controle.</li>
+                                )}
+                              </ul>
+                            </div>
+
+                            {item.solucoesTecnicas && item.solucoesTecnicas.length > 0 && (
+                              <div>
+                                <p className="text-sm font-semibold text-gray-700 text-left">Soluções técnicas de apoio</p>
+                                <ul className="list-disc pl-5 mt-1 space-y-1">
+                                  {item.solucoesTecnicas.map((sol: string, solIdx: number) => (
+                                    <li key={solIdx} className="text-sm text-gray-600 text-justify">{sol}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })}
+
+                  <div className="mt-4 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                    <p className="text-sm text-gray-700 text-justify">
+                      <strong>Legenda:</strong> Os controles listados acima são aqueles que foram avaliados como <strong>Parcialmente implementados</strong> ou <strong>Não implementados</strong>.
+                    </p>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Botão para sair do modo de impressão (visível apenas na tela) */}
+            <div className="text-center py-8 print:hidden">
+              <Button onClick={() => setIsPrintMode(false)}>
+                Voltar para visualização
+              </Button>
+            </div>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
-  // ============================================
-  // RENDER VISUALIZAÇÃO NORMAL
-  // ============================================
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Cabeçalho da página */}
@@ -1001,7 +1048,6 @@ export const ReportView: React.FC = () => {
                 variant="outline"
                 size="sm"
                 onClick={handleGenerate}
-                disabled={isGenerating}
               >
                 <RefreshCw className={`h-4 w-4 mr-2 ${isGenerating ? 'animate-spin' : ''}`} />
                 {isGenerating ? 'Gerando...' : 'Atualizar Dados'}
@@ -1010,13 +1056,14 @@ export const ReportView: React.FC = () => {
                 <Eye className="h-4 w-4 mr-2" />
                 Visualizar Relatório
               </Button>
-              <Button variant="outline" size="sm">
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-blue-600 border-blue-300 hover:bg-blue-50"
+                onClick={handlePrint}
+              >
                 <Printer className="h-4 w-4 mr-2" />
                 Imprimir
-              </Button>
-              <Button size="sm">
-                <Download className="h-4 w-4 mr-2" />
-                Exportar PDF
               </Button>
             </div>
           </div>
@@ -1091,13 +1138,15 @@ export const ReportView: React.FC = () => {
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>Informações do Projeto</CardTitle>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsEditing(!isEditing)}
-              >
-                {isEditing ? 'Cancelar' : 'Editar'}
-              </Button>
+              {isAdmin && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsEditing(!isEditing)}
+                >
+                  {isEditing ? 'Cancelar' : 'Editar'}
+                </Button>
+              )}
             </div>
           </CardHeader>
           <CardContent>

@@ -1,3 +1,4 @@
+// backend/src/services/RecommendationService.ts
 import mongoose from 'mongoose';
 import { Recommendation, IRecommendation } from '../models/Recommendation.js';
 import { Control } from '../models/Control.js';
@@ -274,12 +275,18 @@ export class RecommendationService {
             maturityLevel = -1;
           }
 
-          cenarioIdentificado = response.scenarioDescription || response.scenario || '';
+          // 🔴 CORREÇÃO: Priorizar Descrição do Cenário Atual, depois Observações, depois Status
+          if (response.scenarioDescription && response.scenarioDescription.trim()) {
+            cenarioIdentificado = response.scenarioDescription;
+          } else if (response.observations && response.observations.trim()) {
+            cenarioIdentificado = response.observations;
+          } else {
+            cenarioIdentificado = status;
+          }
         }
 
-        if (status !== 'Parcialmente implementado' && status !== 'Não implementado') {
-          return;
-        }
+        // 🔴 CORREÇÃO: Remover filtro de status - mostrar TODOS os controles respondidos
+        // Comentado: if (status !== 'Parcialmente implementado' && status !== 'Não implementado') { return; }
 
         const recommendation = recommendationMap.get(control.id);
 

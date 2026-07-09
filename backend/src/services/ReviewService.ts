@@ -6,6 +6,8 @@ import { User } from '../models/User.js';
 import { Control } from '../models/Control.js';
 import { Company } from '../models/Company.js';
 import { AppError } from '../utils/errors.js';
+// 🔴 NOVO: Import do NotificationService
+import { NotificationService } from './NotificationService.js';
 import fs from 'fs/promises';
 import path from 'path';
 
@@ -90,6 +92,24 @@ export class ReviewService {
 
       await reviewRequest.save({ session });
       await session.commitTransaction();
+
+      // 🔴 NOTIFICAÇÃO: Solicitação de revisão para o usuário
+      try {
+        const repPopulated = await User.findById(data.repId).select('name email');
+        
+        await NotificationService.notifyReviewRequest(
+          data.userId,
+          data.companyId,
+          control?.nome || 'Controle',
+          control?.id || data.controlId,
+          repPopulated?.name || 'Preposto',
+          reviewRequest._id.toString()
+        );
+        
+        logger.info(`📬 Notificação de revisão enviada para o usuário ${data.userId}`);
+      } catch (notifyError) {
+        logger.error('❌ Erro ao enviar notificação de solicitação de revisão:', notifyError);
+      }
 
       return reviewRequest;
     } catch (error) {
@@ -213,16 +233,32 @@ export class ReviewService {
 
       review.status = data.status;
       
-      // Salvar reviewNotes se fornecido
       if (data.reviewNotes) {
         review.reviewNotes = data.reviewNotes;
       }
       
-      // Registrar data da revisão
       review.reviewedAt = new Date();
       
       await review.save({ session });
       await session.commitTransaction();
+
+      // 🔴 NOTIFICAÇÃO: Conclusão de revisão para o usuário
+      try {
+        const control = await Control.findById(review.controlId);
+        
+        await NotificationService.notifyReviewCompleted(
+          review.userId.toString(),
+          data.companyId,
+          control?.nome || 'Controle',
+          control?.id || review.controlId,
+          data.status,
+          review._id.toString()
+        );
+        
+        logger.info(`📬 Notificação de revisão ${data.status} enviada para o usuário ${review.userId}`);
+      } catch (notifyError) {
+        logger.error('❌ Erro ao enviar notificação de conclusão de revisão:', notifyError);
+      }
 
       return review;
     } catch (error) {
@@ -254,7 +290,6 @@ export class ReviewService {
         throw new AppError('Não é possível excluir uma solicitação já respondida', 400);
       }
 
-      // Remover arquivos anexados
       if (review.attachments && review.attachments.length > 0) {
         const uploadDir = path.join(process.cwd(), 'uploads', 'reviews', reviewId);
         await fs.rm(uploadDir, { recursive: true, force: true });

@@ -10,6 +10,8 @@ import { logger } from '../utils/logger.js';
 import { UserRole, ResponseStatus } from '../types/index.js';
 // 🔴 NOVO: Import do EmailJSService
 import { emailjsService } from './EmailJSService.js';
+// 🔴 NOVO: Import do NotificationService
+import { NotificationService } from './NotificationService.js';
 import crypto from 'crypto';
 
 // Tipo de retorno para listUsers
@@ -134,7 +136,7 @@ export class RepService {
     userData: {
       name: string;
       email: string;
-      password?: string; // 🔴 TORNADO OPCIONAL
+      password?: string;
       department?: string;
     }
   ) {
@@ -178,33 +180,23 @@ export class RepService {
     // CORREÇÃO: Senha NÃO é gerada para primeiro acesso
     // O usuário deve criar a senha via link de redefinição
     // ============================================
-    // 🔴 CORRIGIDO: NÃO gerar senha aleatória para usuários de primeiro acesso
-    // A senha será definida pelo próprio usuário através do link de redefinição
     let generatedPassword = userData.password;
 
-    // Se NÃO houver senha fornecida, NÃO gerar automática
-    // Apenas deixar como undefined para que o usuário crie via link
     if (!generatedPassword) {
-      // 🔴 NÃO GERAR SENHA ALEATÓRIA!
-      // O usuário deve criar sua própria senha via link de redefinição
-      // O campo password ficará undefined, e o pre-save não será executado
       generatedPassword = undefined as any;
       logger.info(`Usuário criado para primeiro acesso (sem senha): ${userData.email}`);
     }
 
-    // Criar usuário - MAPEANDO EXPLICITAMENTE os campos
+    // Criar usuário
     const user = new User({
       name: userData.name,
       email: userData.email,
-      // 🔴 CORRIGIDO: Só definir password se foi fornecido
-      // Se não foi fornecido, o campo fica undefined
       ...(generatedPassword && { password: generatedPassword }),
       department: userData.department || '',
       role: UserRole.USER,
       createdBy: repId,
       companyId: companyId,
       isActive: true,
-      // 🔴 NOVO: Marcar que o usuário precisa trocar a senha no primeiro acesso
       mustChangePassword: true,
     });
 
@@ -212,7 +204,7 @@ export class RepService {
 
     logger.info(`Usuário criado pelo preposto ${rep.email}: ${user.email} (Empresa: ${companyId})`);
 
-    // 🔴 NOVO: Enviar e-mail de boas-vindas com link para criar senha
+    // Enviar e-mail de boas-vindas com link para criar senha
     try {
       const frontendUrl = process.env.FRONTEND_URL || 'https://code-assessment-frontend.onrender.com';
       const resetToken = user._id;
@@ -228,18 +220,16 @@ export class RepService {
 
       logger.info(`📧 E-mail de boas-vindas enviado para ${user.email}`);
     } catch (emailError) {
-      // Não interrompe o fluxo se o e-mail falhar
       logger.error(`❌ Erro ao enviar e-mail de boas-vindas para ${user.email}:`, emailError);
     }
 
-    // 🔴 RETORNAR O USUÁRIO SEM A SENHA (segurança)
     const userResponse = user.toJSON();
     delete userResponse.password;
     return userResponse;
   }
 
   /**
-   * 🔴 NOVO: Editar usuário pelo preposto
+   * Editar usuário pelo preposto
    */
   static async updateUser(
     repId: string,
@@ -250,29 +240,24 @@ export class RepService {
       department?: string;
     }
   ) {
-    // Verificar se o preposto existe
     const rep = await User.findById(repId);
     if (!rep) {
       throw new NotFoundError('Preposto não encontrado');
     }
 
-    // Verificar se o usuário existe
     const user = await User.findById(userId);
     if (!user) {
       throw new NotFoundError('Usuário não encontrado');
     }
 
-    // Verificar se o usuário pertence ao preposto
     if (user.createdBy?.toString() !== repId) {
       throw new AppError('Usuário não pertence a este preposto', 403);
     }
 
-    // Verificar se o usuário está na mesma empresa do preposto
     if (rep.companyId && user.companyId?.toString() !== rep.companyId.toString()) {
       throw new AppError('Usuário não pertence à mesma empresa do preposto', 403);
     }
 
-    // Se email for alterado, verificar se já está em uso por outro usuário
     if (data.email && data.email !== user.email) {
       const existingUser = await User.findOne({
         email: data.email,
@@ -283,7 +268,6 @@ export class RepService {
       }
     }
 
-    // Atualizar usuário
     const updateData: any = {};
     if (data.name) updateData.name = data.name;
     if (data.email) updateData.email = data.email;
@@ -301,7 +285,7 @@ export class RepService {
   }
 
   /**
-   * 🔴 NOVO: Inativar usuário com justificativa
+   * Inativar usuário com justificativa
    */
   static async inactivateUser(
     repId: string,
@@ -311,34 +295,28 @@ export class RepService {
       description: string;
     }
   ) {
-    // Verificar se o preposto existe
     const rep = await User.findById(repId);
     if (!rep) {
       throw new NotFoundError('Preposto não encontrado');
     }
 
-    // Verificar se o usuário existe
     const user = await User.findById(userId);
     if (!user) {
       throw new NotFoundError('Usuário não encontrado');
     }
 
-    // Verificar se o usuário pertence ao preposto
     if (user.createdBy?.toString() !== repId) {
       throw new AppError('Usuário não pertence a este preposto', 403);
     }
 
-    // Verificar se o usuário está na mesma empresa do preposto
     if (rep.companyId && user.companyId?.toString() !== rep.companyId.toString()) {
       throw new AppError('Usuário não pertence à mesma empresa do preposto', 403);
     }
 
-    // Verificar se o usuário já está inativo
     if (!user.isActive) {
       throw new AppError('Usuário já está inativo', 400);
     }
 
-    // Inativar usuário
     const updatedUser = await User.findByIdAndUpdate(
       userId,
       {
@@ -355,30 +333,39 @@ export class RepService {
 
     logger.info(`Usuário ${user.email} inativado pelo preposto ${rep.email}. Motivo: ${data.reason}`);
 
-    // Opcional: Remover atribuições pendentes do usuário
     await Assignment.updateMany(
       { userId, status: ResponseStatus.PENDING },
       { $set: { status: ResponseStatus.REVOKED } }
     );
 
+    // 🔴 NOTIFICAÇÃO: Usuário inativado
+    try {
+      await NotificationService.notifyUserInactivated(
+        userId,
+        rep.companyId?.toString() || '',
+        rep.name || rep.email,
+        `${data.reason} - ${data.description || ''}`
+      );
+    } catch (notifyError) {
+      logger.error('❌ Erro ao enviar notificação de inativação:', notifyError);
+    }
+
     return updatedUser;
   }
 
   /**
-   * 🔴 NOVO: Revogar controle com reatribuição
+   * Revogar controle com reatribuição
    */
   static async revokeControl(
     repId: string,
     assignmentId: string,
     newUserId: string | null
   ) {
-    // Verificar se o preposto existe
     const rep = await User.findById(repId);
     if (!rep) {
       throw new NotFoundError('Preposto não encontrado');
     }
 
-    // Buscar a atribuição
     const assignment = await Assignment.findById(assignmentId)
       .populate('userId', 'name email')
       .populate('controlId', 'id nome');
@@ -387,21 +374,31 @@ export class RepService {
       throw new NotFoundError('Atribuição não encontrada');
     }
 
-    // Verificar se a atribuição pertence à empresa do preposto
     const currentUser = await User.findById(assignment.userId);
     if (!currentUser || currentUser.companyId?.toString() !== rep.companyId?.toString()) {
       throw new AppError('Atribuição não pertence à sua empresa', 403);
     }
 
-    // Verificar se a atribuição está pendente (não respondida)
     if (assignment.status === ResponseStatus.COMPLETED) {
       throw new AppError('Não é possível revogar um controle já respondido', 400);
     }
 
-    // Guardar informações para resposta
     const oldUserId = assignment.userId;
     const oldUser = currentUser;
     const control = assignment.controlId as any;
+
+    // 🔴 NOTIFICAÇÃO: Controle revogado (antes de deletar)
+    try {
+      await NotificationService.notifyControlRevoked(
+        oldUserId.toString(),
+        rep.companyId?.toString() || '',
+        control?.nome || 'Controle',
+        control?.id || assignment.controlId,
+        `Revogado por ${rep.name || rep.email}${newUserId ? ' e reatribuído' : ''}`
+      );
+    } catch (notifyError) {
+      logger.error('❌ Erro ao enviar notificação de revogação:', notifyError);
+    }
 
     // Remover a atribuição atual
     await Assignment.findByIdAndDelete(assignmentId);
@@ -410,7 +407,6 @@ export class RepService {
 
     // Se novo usuário foi especificado, criar nova atribuição
     if (newUserId) {
-      // Verificar se o novo usuário existe e pertence ao preposto
       const newUser = await User.findOne({
         _id: newUserId,
         createdBy: repId,
@@ -422,12 +418,10 @@ export class RepService {
         throw new NotFoundError('Usuário destino não encontrado ou inativo');
       }
 
-      // Verificar se o novo usuário está na mesma empresa
       if (newUser.companyId?.toString() !== rep.companyId?.toString()) {
         throw new AppError('Usuário destino não pertence à mesma empresa', 403);
       }
 
-      // Verificar se o controle já está atribuído ao novo usuário
       const existingAssignment = await Assignment.findOne({
         userId: newUserId,
         controlId: assignment.controlId,
@@ -451,6 +445,19 @@ export class RepService {
       await newAssignment.populate('userId', 'name email');
       await newAssignment.populate('controlId', 'id nome');
 
+      // 🔴 NOTIFICAÇÃO: Novo controle atribuído (para o novo usuário)
+      try {
+        await NotificationService.notifyAssignment(
+          newUserId,
+          rep.companyId?.toString() || '',
+          control?.nome || 'Controle',
+          control?.id || assignment.controlId,
+          rep.name || rep.email
+        );
+      } catch (notifyError) {
+        logger.error('❌ Erro ao enviar notificação de atribuição para novo usuário:', notifyError);
+      }
+
       logger.info(
         `Controle ${control?.id || assignment.controlId} revogado do usuário ${oldUser?.email} e reatribuído para ${newUser.email} pelo preposto ${rep.email}`
       );
@@ -473,7 +480,6 @@ export class RepService {
 
   /**
    * Atribuir controles a um usuário (sem repetição)
-   * Se um controle já estiver atribuído a outro usuário, pode ser movido com force=true
    */
   static async assignControls(
     repId: string,
@@ -485,35 +491,29 @@ export class RepService {
   ) {
     const { userId, controlIds, force = false } = data;
 
-    // Verificar se o preposto existe
     const rep = await User.findById(repId);
     if (!rep) {
       throw new NotFoundError('Preposto não encontrado');
     }
 
-    // Verificar se o usuário existe
     const user = await User.findById(userId);
     if (!user) {
       throw new NotFoundError('Usuário não encontrado');
     }
 
-    // Verificar se o usuário pertence ao preposto
     if (user.createdBy?.toString() !== repId) {
       throw new AppError('Usuário não pertence a este preposto', 403);
     }
 
-    // Verificar se o usuário está na mesma empresa do preposto
     if (rep.companyId && user.companyId?.toString() !== rep.companyId.toString()) {
       throw new AppError('Usuário não pertence à mesma empresa do preposto', 403);
     }
 
-    // Verificar se os controles existem
     const controls = await Control.find({ _id: { $in: controlIds } });
     if (controls.length !== controlIds.length) {
       throw new NotFoundError('Um ou mais controles não foram encontrados');
     }
 
-    // Verificar quais controles já estão atribuídos a OUTROS usuários da mesma empresa
     const otherUsers = await User.find({
       companyId: rep.companyId,
       _id: { $ne: userId },
@@ -529,7 +529,6 @@ export class RepService {
 
     const otherAssignedControlIds = existingOtherAssignments.map(a => a.controlId.toString());
 
-    // Se houver controles atribuídos a outros usuários e force=false, retornar conflitos
     if (otherAssignedControlIds.length > 0 && !force) {
       return {
         assigned: 0,
@@ -539,7 +538,6 @@ export class RepService {
       };
     }
 
-    // Se force=true, remover atribuições existentes para outros usuários
     let removedCount = 0;
     if (force && otherAssignedControlIds.length > 0) {
       const removed = await Assignment.deleteMany({
@@ -550,7 +548,6 @@ export class RepService {
       logger.info(`Removidas ${removedCount} atribuições de controles para outros usuários`);
     }
 
-    // Verificar quais controles já estão atribuídos a este usuário
     const existingAssignments = await Assignment.find({
       userId,
       controlId: { $in: controlIds },
@@ -559,7 +556,6 @@ export class RepService {
     const existingControlIds = existingAssignments.map((a) => a.controlId.toString());
     const newControlIds = controlIds.filter((id) => !existingControlIds.includes(id));
 
-    // Criar novas atribuições para este usuário
     const assignments = newControlIds.map((controlId) => ({
       userId,
       controlId,
@@ -572,6 +568,24 @@ export class RepService {
     if (assignments.length > 0) {
       const result = await Assignment.insertMany(assignments);
       created = result.length;
+
+      // 🔴 NOTIFICAÇÃO: Para cada controle atribuído
+      for (const assignmentData of assignments) {
+        const control = controls.find(c => c._id.toString() === assignmentData.controlId);
+        if (control) {
+          try {
+            await NotificationService.notifyAssignment(
+              userId,
+              rep.companyId?.toString() || '',
+              control.nome || control.id || assignmentData.controlId,
+              control.id || assignmentData.controlId,
+              rep.name || rep.email
+            );
+          } catch (notifyError) {
+            logger.error('❌ Erro ao enviar notificação de atribuição:', notifyError);
+          }
+        }
+      }
     }
 
     logger.info(`${created} controles atribuídos ao usuário ${user.email} pelo preposto ${rep.email}`);
@@ -589,50 +603,41 @@ export class RepService {
    * Obter progresso de um usuário
    */
   static async getUserProgress(repId: string, userId: string) {
-    // Verificar se o preposto existe
     const rep = await User.findById(repId);
     if (!rep) {
       throw new NotFoundError('Preposto não encontrado');
     }
 
-    // Verificar se o usuário existe
     const user = await User.findById(userId);
     if (!user) {
       throw new NotFoundError('Usuário não encontrado');
     }
 
-    // Verificar se o usuário pertence ao preposto
     if (user.createdBy?.toString() !== repId) {
       throw new AppError('Usuário não pertence a este preposto', 403);
     }
 
-    // Verificar se o usuário está na mesma empresa do preposto
     if (rep.companyId && user.companyId?.toString() !== rep.companyId.toString()) {
       throw new AppError('Usuário não pertence à mesma empresa do preposto', 403);
     }
 
-    // Buscar todas as atribuições do usuário
     const assignments = await Assignment.find({ userId })
       .populate('controlId', 'id nome')
       .lean();
 
-    // Buscar respostas do usuário
     const responses = await Response.find({ userId })
       .populate('controlId', 'id nome')
       .lean();
 
-    // Mapear respostas por assignmentId
     const responseMap = new Map();
     responses.forEach((r) => {
       responseMap.set(r.assignmentId.toString(), r);
     });
 
-    // Calcular estatísticas
     const total = assignments.length;
     const completed = responses.length;
     const pending = total - completed;
 
-    // Calcular distribuição de maturidade
     const maturityDistribution = {
       'N/A': 0,
       '0': 0,
@@ -647,10 +652,8 @@ export class RepService {
       }
     });
 
-    // Calcular porcentagem
     const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
 
-    // Detalhar cada atribuição
     const details = assignments.map((assignment) => {
       const control = assignment.controlId as any;
       return {
@@ -679,13 +682,11 @@ export class RepService {
    * Obter progresso geral do preposto
    */
   static async getOverallProgress(repId: string) {
-    // Verificar se o preposto existe
     const rep = await User.findById(repId);
     if (!rep) {
       throw new NotFoundError('Preposto não encontrado');
     }
 
-    // Buscar todos os usuários do preposto (mesma empresa)
     const filter: any = {
       createdBy: repId,
       role: UserRole.USER,
@@ -699,20 +700,17 @@ export class RepService {
 
     const userIds = users.map((u) => u._id);
 
-    // Buscar atribuições e respostas
     const [assignments, responses] = await Promise.all([
       Assignment.find({ userId: { $in: userIds } }),
       Response.find({ userId: { $in: userIds } }),
     ]);
 
-    // Estatísticas gerais
     const totalAssignments = assignments.length;
     const totalResponses = responses.length;
     const overallPercentage = totalAssignments > 0
       ? Math.round((totalResponses / totalAssignments) * 100)
       : 0;
 
-    // Progresso por usuário
     const userProgress = users.map((user) => {
       const userAssignments = assignments.filter(
         (a) => a.userId.toString() === user._id.toString()
@@ -743,20 +741,18 @@ export class RepService {
   }
 
   /**
-   * Obter estatísticas do preposto - CORRIGIDO
+   * Obter estatísticas do preposto
    */
   static async getStats(repId: string) {
-    // Verificar se o preposto existe
     const rep = await User.findById(repId);
     if (!rep) {
       throw new NotFoundError('Preposto não encontrado');
     }
 
-    // Buscar usuários ATIVOS do preposto (mesma empresa)
     const filter: any = {
       createdBy: repId,
       role: UserRole.USER,
-      isActive: true, // APENAS USUÁRIOS ATIVOS
+      isActive: true,
     };
 
     if (rep.companyId) {
@@ -768,13 +764,11 @@ export class RepService {
 
     const totalUsers = await User.countDocuments(filter);
 
-    // Total de atribuições APENAS para usuários ativos
     const totalAssignments = await Assignment.countDocuments({
       assignedBy: repId,
       userId: { $in: activeUserIds },
     });
 
-    // Atribuições por status (apenas usuários ativos)
     const statusCounts = await Assignment.aggregate([
       { 
         $match: { 
@@ -790,7 +784,6 @@ export class RepService {
       statusMap[item._id] = item.count;
     });
 
-    // Total de respostas (apenas usuários ativos)
     const totalResponses = await Response.aggregate([
       {
         $lookup: {
@@ -810,7 +803,6 @@ export class RepService {
       { $count: 'total' },
     ]);
 
-    // Média de maturidade (apenas usuários ativos)
     const maturityAvg = await Response.aggregate([
       {
         $lookup: {
@@ -837,7 +829,6 @@ export class RepService {
 
     const totalResponsesCount = totalResponses[0]?.total || 0;
 
-    // CORREÇÃO: Completion Rate baseado APENAS em usuários ativos
     const completionRate = totalAssignments > 0
       ? Math.round((totalResponsesCount / totalAssignments) * 100)
       : 0;

@@ -3,10 +3,12 @@ import { Assignment } from '../models/Assignment.js';
 import { Response } from '../models/Response.js';
 import { User } from '../models/User.js';
 import { Question } from '../models/Question.js';
-import { Control } from '../models/Control.js'; // 🔴 NOVO
+import { Control } from '../models/Control.js';
 import { NotFoundError, AppError } from '../middleware/errorHandler.js';
 import { logger } from '../utils/logger.js';
 import { ResponseStatus, MaturityLevel } from '../types/index.js';
+// 🔴 NOVO: Import do NotificationService
+import { NotificationService } from './NotificationService.js';
 
 export class UserService {
   /**
@@ -134,17 +136,15 @@ export class UserService {
       }
     }
 
-    // 🔴 AUTOMAÇÃO CORRIGIDA: Buscar o controle para obter o 'id' (string)
+    // Automação: Buscar descrição automática
     let autoScenarioDescription = scenarioDescription || '';
 
     if (!scenarioDescription || scenarioDescription.trim() === '') {
       try {
-        // 🔴 BUSCAR O CONTROLE PRIMEIRO
         const control = await Control.findById(assignment.controlId);
         if (!control) {
           logger.warn(`⚠️ Controle não encontrado para o assignment ${assignmentId}`);
         } else {
-          // 🔴 USAR O CAMPO 'id' DO CONTROLE (STRING) PARA BUSCAR A PERGUNTA
           const question = await Question.findOne({ 
             controlId: control.id,
             active: true 
@@ -202,6 +202,42 @@ export class UserService {
     }
 
     logger.info(`Resposta salva para o usuário ${userId} - Controle: ${assignment.controlId}`);
+
+    // 🔴 NOTIFICAÇÃO: Enviar notificação para o preposto
+    try {
+      const assignmentPopulated = await Assignment.findById(assignmentId)
+        .populate('assignedBy', 'name email');
+      
+      if (assignmentPopulated && assignmentPopulated.assignedBy) {
+        const preposto = assignmentPopulated.assignedBy as any;
+        
+        // Buscar o controle para obter o nome
+        const control = await Control.findById(assignment.controlId);
+        
+        // Mapear nível para texto
+        const levelMap: Record<string, string> = {
+          '2': 'Implementado',
+          '1': 'Parcialmente implementado',
+          '0': 'Não implementado',
+          '-1': 'Não se aplica'
+        };
+        
+        const statusText = levelMap[maturityLevel] || maturityLevel;
+        
+        await NotificationService.notifyResponse(
+          preposto._id.toString(),
+          user.companyId?.toString() || '',
+          user.name || 'Usuário',
+          control?.nome || 'Controle',
+          control?.id || assignment.controlId,
+          response._id.toString()
+        );
+        
+        logger.info(`📬 Notificação enviada para o preposto ${preposto.email} sobre a resposta do usuário ${user.email}`);
+      }
+    } catch (notifyError) {
+      logger.error('❌ Erro ao enviar notificação de resposta:', notifyError);
+    }
 
     return response;
   }
