@@ -417,14 +417,49 @@ export class AdminService {
             }
 
             // Atualizar branding da empresa
-            const branding = company.branding || {};
+            const branding = company.branding || {
+              logo: {
+                url: '',
+                filename: '',
+                size: 0,
+                mimeType: '',
+                dimensions: { width: 0, height: 0 },
+                uploadedAt: null,
+                uploadedBy: null,
+              },
+              favicon: {
+                url: '',
+                filename: '',
+                size: 0,
+                mimeType: '',
+                uploadedAt: null,
+                uploadedBy: null,
+              },
+              colors: {
+                primary: '#122A40',
+                secondary: '#1E5359',
+                accent: '#30736C',
+                background: '#F2F2F2',
+                text: '#122A40',
+                extractedFrom: null,
+              },
+              settings: {
+                showLogoInHeader: true,
+                showLogoInReport: true,
+                useCustomColors: false,
+              },
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            };
+
+            // Atualizar apenas o logo mantendo o restante do branding
             branding.logo = {
               url: `/uploads/logo/${companyId}/${file.filename}`,
               filename: file.filename,
               size: file.size,
               mimeType: file.mimetype,
               dimensions: {
-                width: 0, // Será preenchido após processamento
+                width: 0,
                 height: 0,
               },
               uploadedAt: new Date(),
@@ -489,7 +524,41 @@ export class AdminService {
             }
 
             // Atualizar branding da empresa
-            const branding = company.branding || {};
+            const branding = company.branding || {
+              logo: {
+                url: '',
+                filename: '',
+                size: 0,
+                mimeType: '',
+                dimensions: { width: 0, height: 0 },
+                uploadedAt: null,
+                uploadedBy: null,
+              },
+              favicon: {
+                url: '',
+                filename: '',
+                size: 0,
+                mimeType: '',
+                uploadedAt: null,
+                uploadedBy: null,
+              },
+              colors: {
+                primary: '#122A40',
+                secondary: '#1E5359',
+                accent: '#30736C',
+                background: '#F2F2F2',
+                text: '#122A40',
+                extractedFrom: null,
+              },
+              settings: {
+                showLogoInHeader: true,
+                showLogoInReport: true,
+                useCustomColors: false,
+              },
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            };
+
             branding.favicon = {
               url: `/uploads/favicon/${companyId}/${file.filename}`,
               filename: file.filename,
@@ -540,25 +609,46 @@ export class AdminService {
               throw new NotFoundError('Empresa', companyId);
             }
 
+            // Garantir que o branding tenha todos os campos
+            const branding = company.branding || {
+              logo: {
+                url: '',
+                filename: '',
+                size: 0,
+                mimeType: '',
+                dimensions: { width: 0, height: 0 },
+                uploadedAt: null,
+                uploadedBy: null,
+              },
+              favicon: {
+                url: '',
+                filename: '',
+                size: 0,
+                mimeType: '',
+                uploadedAt: null,
+                uploadedBy: null,
+              },
+              colors: {
+                primary: '#122A40',
+                secondary: '#1E5359',
+                accent: '#30736C',
+                background: '#F2F2F2',
+                text: '#122A40',
+                extractedFrom: null,
+              },
+              settings: {
+                showLogoInHeader: true,
+                showLogoInReport: true,
+                useCustomColors: false,
+              },
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            };
+
             return {
               companyId: company._id,
               companyName: company.name,
-              branding: company.branding || {
-                logo: null,
-                favicon: null,
-                colors: {
-                  primary: '#122A40',
-                  secondary: '#1E5359',
-                  accent: '#30736C',
-                  background: '#F2F2F2',
-                  text: '#122A40',
-                },
-                settings: {
-                  showLogoInHeader: true,
-                  showLogoInReport: true,
-                  useCustomColors: false,
-                },
-              },
+              branding: branding,
             };
           }, 'AdminService.getBranding');
         }, 'AdminService.getBranding');
@@ -590,16 +680,47 @@ export class AdminService {
               throw new NotFoundError('Empresa', companyId);
             }
 
-            const branding = company.branding || {};
+            const branding = company.branding || {
+              logo: {
+                url: '',
+                filename: '',
+                size: 0,
+                mimeType: '',
+                dimensions: { width: 0, height: 0 },
+                uploadedAt: null,
+                uploadedBy: null,
+              },
+              favicon: {
+                url: '',
+                filename: '',
+                size: 0,
+                mimeType: '',
+                uploadedAt: null,
+                uploadedBy: null,
+              },
+              colors: {
+                primary: '#122A40',
+                secondary: '#1E5359',
+                accent: '#30736C',
+                background: '#F2F2F2',
+                text: '#122A40',
+                extractedFrom: null,
+              },
+              settings: {
+                showLogoInHeader: true,
+                showLogoInReport: true,
+                useCustomColors: false,
+              },
+            };
             
             return {
               companyId: company._id,
               companyName: company.name,
-              logo: branding.logo ? {
+              logo: branding.logo && branding.logo.url ? {
                 url: branding.logo.url,
                 filename: branding.logo.filename,
               } : null,
-              favicon: branding.favicon ? {
+              favicon: branding.favicon && branding.favicon.url ? {
                 url: branding.favicon.url,
                 filename: branding.favicon.filename,
               } : null,
@@ -643,19 +764,55 @@ export class AdminService {
               throw new NotFoundError('Empresa', companyId);
             }
 
-            if (company.branding) {
-              company.branding.logo = {
-                url: '',
-                filename: '',
-                size: 0,
-                mimeType: '',
-                dimensions: { width: 0, height: 0 },
-                uploadedAt: null,
-                uploadedBy: null,
+            // Inicializar branding se não existir
+            if (!company.branding) {
+              company.branding = {
+                logo: {
+                  url: '',
+                  filename: '',
+                  size: 0,
+                  mimeType: '',
+                  dimensions: { width: 0, height: 0 },
+                  uploadedAt: null,
+                  uploadedBy: null,
+                },
+                favicon: {
+                  url: '',
+                  filename: '',
+                  size: 0,
+                  mimeType: '',
+                  uploadedAt: null,
+                  uploadedBy: null,
+                },
+                colors: {
+                  primary: '#122A40',
+                  secondary: '#1E5359',
+                  accent: '#30736C',
+                  background: '#F2F2F2',
+                  text: '#122A40',
+                  extractedFrom: null,
+                },
+                settings: {
+                  showLogoInHeader: true,
+                  showLogoInReport: true,
+                  useCustomColors: false,
+                },
+                createdAt: new Date(),
+                updatedAt: new Date(),
               };
-              company.branding.updatedAt = new Date();
-              await company.save();
             }
+
+            company.branding.logo = {
+              url: '',
+              filename: '',
+              size: 0,
+              mimeType: '',
+              dimensions: { width: 0, height: 0 },
+              uploadedAt: null,
+              uploadedBy: null,
+            };
+            company.branding.updatedAt = new Date();
+            await company.save();
 
             logger.info(`Logo removida da empresa ${company.name}`);
 
@@ -691,18 +848,54 @@ export class AdminService {
               throw new NotFoundError('Empresa', companyId);
             }
 
-            if (company.branding) {
-              company.branding.favicon = {
-                url: '',
-                filename: '',
-                size: 0,
-                mimeType: '',
-                uploadedAt: null,
-                uploadedBy: null,
+            // Inicializar branding se não existir
+            if (!company.branding) {
+              company.branding = {
+                logo: {
+                  url: '',
+                  filename: '',
+                  size: 0,
+                  mimeType: '',
+                  dimensions: { width: 0, height: 0 },
+                  uploadedAt: null,
+                  uploadedBy: null,
+                },
+                favicon: {
+                  url: '',
+                  filename: '',
+                  size: 0,
+                  mimeType: '',
+                  uploadedAt: null,
+                  uploadedBy: null,
+                },
+                colors: {
+                  primary: '#122A40',
+                  secondary: '#1E5359',
+                  accent: '#30736C',
+                  background: '#F2F2F2',
+                  text: '#122A40',
+                  extractedFrom: null,
+                },
+                settings: {
+                  showLogoInHeader: true,
+                  showLogoInReport: true,
+                  useCustomColors: false,
+                },
+                createdAt: new Date(),
+                updatedAt: new Date(),
               };
-              company.branding.updatedAt = new Date();
-              await company.save();
             }
+
+            company.branding.favicon = {
+              url: '',
+              filename: '',
+              size: 0,
+              mimeType: '',
+              uploadedAt: null,
+              uploadedBy: null,
+            };
+            company.branding.updatedAt = new Date();
+            await company.save();
 
             logger.info(`Favicon removido da empresa ${company.name}`);
 
@@ -745,6 +938,7 @@ export class AdminService {
               throw new NotFoundError('Empresa', companyId);
             }
 
+            // Inicializar branding se não existir
             if (!company.branding) {
               company.branding = {
                 logo: {
