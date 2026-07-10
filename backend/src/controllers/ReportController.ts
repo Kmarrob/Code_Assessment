@@ -346,4 +346,47 @@ export class ReportController {
       next(error);
     }
   }
+
+  /**
+   * 🔴 NOVO: Obter dados para a Matriz de Priorização
+   * GET /api/reports/priorization/:companyId
+   * Acesso: ADMIN ou REP (da empresa)
+   */
+  static async getPriorizationMatrix(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const user = req.user;
+      
+      if (!user) {
+        throw new AppError('Usuário não autenticado', 401);
+      }
+
+      const { companyId } = req.params;
+      if (!companyId) {
+        throw new AppError('ID da empresa é obrigatório', 400);
+      }
+
+      // Verificar permissões
+      if (user.role !== UserRole.ADMIN && user.companyId?.toString() !== companyId) {
+        throw new AppError('Você não tem permissão para acessar esta matriz', 403);
+      }
+
+      const matrixData = await ReportService.getPriorizationMatrix(companyId);
+
+      res.json({
+        success: true,
+        data: {
+          matrix: matrixData,
+          total: matrixData.length,
+        },
+        statusCode: 200,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }

@@ -46,6 +46,16 @@ router.get(
 );
 
 // ============================================
+// 🔴 NOVA ROTA: Matriz de Priorização
+// ============================================
+router.get(
+  '/priorization/:companyId',
+  authorize(UserRole.REP, UserRole.ADMIN),
+  authenticatedRateLimiter,
+  ReportController.getPriorizationMatrix
+);
+
+// ============================================
 // ROTAS POR EMPRESA
 // ============================================
 

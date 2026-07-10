@@ -5,7 +5,7 @@ import { Report, ReportDashboardData, ReportListResponse, UpdateReportData } fro
 
 export const reportService = {
   /**
-   * Obter dashboard do relat贸rio da empresa do preposto
+   * Obter dashboard do relatório da empresa do preposto
    * GET /api/reports/dashboard
    */
   async getDashboard(): Promise<ReportDashboardData> {
@@ -14,7 +14,7 @@ export const reportService = {
   },
 
   /**
-   * 馃敶 NOVO: Obter dashboard completo do relat贸rio para ADMIN (com companyId)
+   * ?? NOVO: Obter dashboard completo do relatório para ADMIN (com companyId)
    * GET /api/reports/admin/dashboard/:companyId
    */
   async getAdminDashboard(companyId: string): Promise<ReportDashboardData> {
@@ -23,7 +23,7 @@ export const reportService = {
   },
 
   /**
-   * Obter relat贸rio de uma empresa espec铆fica
+   * Obter relatório de uma empresa específica
    * GET /api/reports/company/:companyId
    */
   async getReportByCompany(companyId: string): Promise<Report> {
@@ -32,7 +32,7 @@ export const reportService = {
   },
 
   /**
-   * Gerar dados autom谩ticos do relat贸rio
+   * Gerar dados automáticos do relatório
    * POST /api/reports/company/:companyId/generate
    */
   async generateReport(companyId: string): Promise<Report> {
@@ -41,7 +41,7 @@ export const reportService = {
   },
 
   /**
-   * Atualizar relat贸rio (campos edit谩veis)
+   * Atualizar relatório (campos editáveis)
    * PUT /api/reports/company/:companyId
    */
   async updateReport(companyId: string, data: UpdateReportData): Promise<Report> {
@@ -50,7 +50,7 @@ export const reportService = {
   },
 
   /**
-   * Listar todos os relat贸rios (apenas ADMIN)
+   * Listar todos os relatórios (apenas ADMIN)
    * GET /api/reports
    */
   async listReports(params?: {
@@ -61,5 +61,14 @@ export const reportService = {
   }): Promise<ReportListResponse> {
     const response = await api.get<ApiResponse<ReportListResponse>>('/reports', { params });
     return response.data.data;
+  },
+
+  /**
+   * ?? NOVO: Obter dados para a Matriz de Prioriza??o
+   * GET /api/reports/priorization/:companyId
+   */
+  async getPriorizationMatrix(companyId: string): Promise<any[]> {
+    const response = await api.get<ApiResponse<any[]>>(`/reports/priorization/${companyId}`);
+    return response.data.data.matrix || response.data.data || [];
   },
 };
