@@ -26,15 +26,19 @@ router.use(adminPerformance_js_1.adminPerformanceMiddleware);
 // ROTAS DE DASHBOARD
 // ============================================
 // Dashboard das empresas
-router.get('/dashboard/companies', rateLimit_js_1.authenticatedRateLimiter, DashboardController_js_1.DashboardController.listCompaniesSummary);
-router.get('/dashboard/companies/:companyId', rateLimit_js_1.authenticatedRateLimiter, DashboardController_js_1.DashboardController.getAdminCompanyDashboard);
+router.get('/dashboard/companies', rateLimit_js_1.adminRateLimiter, // CORREÇÃO: adminRateLimiter em vez de authenticatedRateLimiter
+DashboardController_js_1.DashboardController.listCompaniesSummary);
+router.get('/dashboard/companies/:companyId', rateLimit_js_1.adminRateLimiter, // CORREÇÃO: adminRateLimiter em vez de authenticatedRateLimiter
+DashboardController_js_1.DashboardController.getAdminCompanyDashboard);
 // ============================================
 // ROTAS CRUD DE USUÁRIOS
 // ============================================
 // Listar usuários
-router.get('/users', rateLimit_js_1.authenticatedRateLimiter, cache_js_1.noCache, AdminController_js_1.AdminController.listUsers);
+router.get('/users', rateLimit_js_1.adminRateLimiter, // CORREÇÃO: adminRateLimiter em vez de authenticatedRateLimiter
+cache_js_1.noCache, AdminController_js_1.AdminController.listUsers);
 // Buscar usuário por ID
-router.get('/users/:id', rateLimit_js_1.authenticatedRateLimiter, cache_js_1.noCache, AdminController_js_1.AdminController.getUserById);
+router.get('/users/:id', rateLimit_js_1.adminRateLimiter, // CORREÇÃO: adminRateLimiter em vez de authenticatedRateLimiter
+cache_js_1.noCache, AdminController_js_1.AdminController.getUserById);
 // Criar usuário
 router.post('/users', rateLimit_js_1.adminRateLimiter, cache_js_1.noCache, AdminController_js_1.AdminController.createUser);
 // Atualizar usuário
@@ -49,29 +53,38 @@ router.post('/users/:id/reset-password', rateLimit_js_1.adminRateLimiter, cache_
 // ROTAS DE CONTROLES - LEITURA
 // ============================================
 // Listar controles (com filtros e paginação)
-router.get('/controls', rateLimit_js_1.authenticatedRateLimiter, cache_js_1.noCache, ControlController_js_1.ControlController.listControls);
+router.get('/controls', rateLimit_js_1.adminRateLimiter, // CORREÇÃO: adminRateLimiter em vez de authenticatedRateLimiter
+cache_js_1.noCache, ControlController_js_1.ControlController.listControls);
 // Buscar controle por ID
-router.get('/controls/:id', rateLimit_js_1.authenticatedRateLimiter, cache_js_1.noCache, ControlController_js_1.ControlController.getControlById);
+router.get('/controls/:id', rateLimit_js_1.adminRateLimiter, // CORREÇÃO: adminRateLimiter em vez de authenticatedRateLimiter
+cache_js_1.noCache, ControlController_js_1.ControlController.getControlById);
 // Buscar controles por domínio
-router.get('/controls/domain/:dominio', rateLimit_js_1.authenticatedRateLimiter, cache_js_1.noCache, ControlController_js_1.ControlController.getControlsByDomain);
+router.get('/controls/domain/:dominio', rateLimit_js_1.adminRateLimiter, // CORREÇÃO: adminRateLimiter em vez de authenticatedRateLimiter
+cache_js_1.noCache, ControlController_js_1.ControlController.getControlsByDomain);
 // Estatísticas dos controles
-router.get('/controls/stats', rateLimit_js_1.authenticatedRateLimiter, cache_js_1.noCache, ControlController_js_1.ControlController.getControlStats);
+router.get('/controls/stats', rateLimit_js_1.adminRateLimiter, // CORREÇÃO: adminRateLimiter em vez de authenticatedRateLimiter
+cache_js_1.noCache, ControlController_js_1.ControlController.getControlStats);
 // ============================================
 // ROTAS DE CONTROLES - ESCRITA (CRUD)
 // ============================================
 // Criar novo controle
-router.post('/controls', rateLimit_js_1.sensitiveRateLimiter, cache_js_1.noCache, ControlController_js_1.ControlController.createControl);
+router.post('/controls', rateLimit_js_1.adminRateLimiter, // CORREÇÃO: adminRateLimiter em vez de sensitiveRateLimiter
+cache_js_1.noCache, ControlController_js_1.ControlController.createControl);
 // Atualizar controle existente
-router.put('/controls/:id', rateLimit_js_1.sensitiveRateLimiter, cache_js_1.noCache, ControlController_js_1.ControlController.updateControl);
+router.put('/controls/:id', rateLimit_js_1.adminRateLimiter, // CORREÇÃO: adminRateLimiter em vez de sensitiveRateLimiter
+cache_js_1.noCache, ControlController_js_1.ControlController.updateControl);
 // Deletar controle
-router.delete('/controls/:id', rateLimit_js_1.sensitiveRateLimiter, cache_js_1.noCache, ControlController_js_1.ControlController.deleteControl);
+router.delete('/controls/:id', rateLimit_js_1.adminRateLimiter, // CORREÇÃO: adminRateLimiter em vez de sensitiveRateLimiter
+cache_js_1.noCache, ControlController_js_1.ControlController.deleteControl);
 // ============================================
 // ROTAS DE EMPRESAS (COMPANIES)
 // ============================================
 // Listar empresas
-router.get('/companies', rateLimit_js_1.authenticatedRateLimiter, cache_js_1.noCache, CompanyController_js_1.CompanyController.listCompanies);
+router.get('/companies', rateLimit_js_1.adminRateLimiter, // CORREÇÃO: adminRateLimiter em vez de authenticatedRateLimiter
+cache_js_1.noCache, CompanyController_js_1.CompanyController.listCompanies);
 // Buscar empresa por ID
-router.get('/companies/:id', rateLimit_js_1.authenticatedRateLimiter, cache_js_1.noCache, CompanyController_js_1.CompanyController.getCompanyById);
+router.get('/companies/:id', rateLimit_js_1.adminRateLimiter, // CORREÇÃO: adminRateLimiter em vez de authenticatedRateLimiter
+cache_js_1.noCache, CompanyController_js_1.CompanyController.getCompanyById);
 // Criar empresa
 router.post('/companies', rateLimit_js_1.adminRateLimiter, cache_js_1.noCache, CompanyController_js_1.CompanyController.createCompany);
 // Atualizar empresa
@@ -83,16 +96,20 @@ router.post('/companies/:id/reactivate', rateLimit_js_1.adminRateLimiter, cache_
 // Atribuir todos os controles à empresa
 router.post('/companies/:id/assign-all-controls', rateLimit_js_1.adminRateLimiter, cache_js_1.noCache, CompanyController_js_1.CompanyController.assignAllControls);
 // Estatísticas das empresas
-router.get('/companies/stats', rateLimit_js_1.authenticatedRateLimiter, cache_js_1.noCache, CompanyController_js_1.CompanyController.getStats);
+router.get('/companies/stats', rateLimit_js_1.adminRateLimiter, // CORREÇÃO: adminRateLimiter em vez de authenticatedRateLimiter
+cache_js_1.noCache, CompanyController_js_1.CompanyController.getStats);
 // ============================================
 // ROTAS DE PERGUNTAS (QUESTIONS)
 // ============================================
 // Listar perguntas
-router.get('/questions', rateLimit_js_1.authenticatedRateLimiter, cache_js_1.noCache, QuestionController_js_1.QuestionController.listQuestions);
+router.get('/questions', rateLimit_js_1.adminRateLimiter, // CORREÇÃO: adminRateLimiter em vez de authenticatedRateLimiter
+cache_js_1.noCache, QuestionController_js_1.QuestionController.listQuestions);
 // Buscar perguntas por controle
-router.get('/questions/control/:controlId', rateLimit_js_1.authenticatedRateLimiter, cache_js_1.noCache, QuestionController_js_1.QuestionController.getQuestionsByControl);
+router.get('/questions/control/:controlId', rateLimit_js_1.adminRateLimiter, // CORREÇÃO: adminRateLimiter em vez de authenticatedRateLimiter
+cache_js_1.noCache, QuestionController_js_1.QuestionController.getQuestionsByControl);
 // Buscar pergunta por ID
-router.get('/questions/:id', rateLimit_js_1.authenticatedRateLimiter, cache_js_1.noCache, QuestionController_js_1.QuestionController.getQuestionById);
+router.get('/questions/:id', rateLimit_js_1.adminRateLimiter, // CORREÇÃO: adminRateLimiter em vez de authenticatedRateLimiter
+cache_js_1.noCache, QuestionController_js_1.QuestionController.getQuestionById);
 // Criar pergunta
 router.post('/questions', rateLimit_js_1.adminRateLimiter, cache_js_1.noCache, QuestionController_js_1.QuestionController.createQuestion);
 // Atualizar pergunta

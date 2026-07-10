@@ -10,6 +10,18 @@ export declare class RepController {
      */
     static createUser(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void>;
     /**
+     * 🔴 NOVO: Editar usuário pelo preposto
+     */
+    static updateUser(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void>;
+    /**
+     * 🔴 NOVO: Inativar usuário com justificativa
+     */
+    static inactivateUser(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void>;
+    /**
+     * 🔴 NOVO: Revogar controle com reatribuição
+     */
+    static revokeControl(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void>;
+    /**
      * Atribuir controles a um usuário
      */
     static assignControls(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void>;
@@ -29,5 +41,10 @@ export declare class RepController {
      * Obter controles da empresa do preposto
      */
     static getCompanyControls(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void>;
+    /**
+     * Busca todos os usuários do preposto com suas respostas (otimizado)
+     * GET /api/rep/users-with-responses
+     */
+    static getUsersWithResponses(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void>;
 }
 //# sourceMappingURL=RepController.d.ts.map

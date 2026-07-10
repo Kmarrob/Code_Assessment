@@ -13,7 +13,7 @@ const Company_js_1 = require("../models/Company.js");
 const errorHandler_js_1 = require("../middleware/errorHandler.js");
 class DashboardService {
     /**
-     * Obter dados de maturidade de uma empresa
+     * Obter dados de maturidade de uma empresa - CORRIGIDO
      */
     static async getCompanyMaturity(companyId, filters) {
         // Verificar se a empresa existe
@@ -21,13 +21,26 @@ class DashboardService {
         if (!company) {
             throw new errorHandler_js_1.NotFoundError('Empresa não encontrada');
         }
-        // Buscar usuários da empresa
-        const userFilter = { companyId, isActive: true };
+        // ============================================
+        // CORREÇÃO: Buscar usuários por companyId OU pelo nome da empresa
+        // ============================================
+        const userFilter = {
+            $or: [
+                { companyId: new mongoose_1.default.Types.ObjectId(companyId) },
+                { company: company.name } // Fallback: busca pelo nome da empresa
+            ],
+            isActive: true
+        };
         if (filters?.userId) {
             userFilter._id = new mongoose_1.default.Types.ObjectId(filters.userId);
         }
         const users = await User_js_1.User.find(userFilter).select('_id');
         const userIds = users.map(u => u._id);
+        // Logs adicionados estrategicamente após a resolução dos usuários e IDs
+        console.log('🔍 DashboardService - companyId:', companyId);
+        console.log('🔍 DashboardService - company.name:', company.name);
+        console.log('🔍 DashboardService - users encontrados:', users.length);
+        console.log('🔍 DashboardService - userIds:', userIds);
         if (userIds.length === 0) {
             return this.getEmptyMaturityData();
         }
@@ -39,16 +52,30 @@ class DashboardService {
         const responses = await Response_js_1.Response.find({
             userId: { $in: userIds }
         }).lean();
+        // Logs adicionados após a busca de assignments e responses
+        console.log('🔍 DashboardService - assignments encontrados:', assignments.length);
+        console.log('🔍 DashboardService - responses encontrados:', responses.length);
         // Criar mapa de respostas por assignmentId
         const responseMap = new Map();
         responses.forEach(r => {
             responseMap.set(r.assignmentId.toString(), r);
         });
-        // Mapear status de cada controle com base no maturityLevel
+        // Extrair IDs dos controles únicos das atribuições
+        const assignedControlIds = new Set();
+        assignments.forEach(a => {
+            const control = a.controlId;
+            if (control?._id) {
+                assignedControlIds.add(control._id.toString());
+            }
+        });
+        // Buscar os controles completos que estão atribuídos
+        const allControls = await Control_js_1.Control.find({
+            _id: { $in: Array.from(assignedControlIds) }
+        }).lean();
+        // Mapear status de cada controle com base nas respostas
         const controlsWithStatus = assignments.map(a => {
             const response = responseMap.get(a._id.toString());
             const control = a.controlId;
-            // Mapear maturityLevel para status
             let status = 'Não implementado';
             if (response) {
                 switch (response.maturityLevel) {
@@ -78,10 +105,6 @@ class DashboardService {
                 assignedAt: a.assignedAt,
             };
         });
-        // Buscar todos os controles da empresa (atribuídos ou não)
-        const allControls = await Control_js_1.Control.find({
-            _id: { $in: company.assignedControls || [] }
-        }).lean();
         // Mapear status para todos os controles
         const controlStatusMap = new Map();
         allControls.forEach(c => {
@@ -93,13 +116,28 @@ class DashboardService {
                 response: assigned?.response || null,
             });
         });
+        const controls = Array.from(controlStatusMap.values());
+        // Logs adicionados antes do cálculo estatístico final
+        console.log('🔍 DashboardService - assignedControlIds encontrados:', assignedControlIds.size);
+        console.log('🔍 DashboardService - allControls encontrados:', allControls.length);
+        console.log('🔍 DashboardService - controls finais:', controls.length);
+        const summary = this.calculateMaturityStats({ controls });
         return {
             company: {
                 id: company._id,
                 name: company.name,
             },
-            totalControls: allControls.length,
-            controls: Array.from(controlStatusMap.values()),
+            summary: {
+                totalControls: controls.length,
+                Implementado: summary.statusCounts.Implementado || 0,
+                Parcialmente: summary.statusCounts['Parcialmente implementado'] || 0,
+                NaoImplementado: summary.statusCounts['Não implementado'] || 0,
+                NaoSeAplica: summary.statusCounts['Não se aplica'] || 0,
+                percentages: summary.percentages,
+                maturityLevels: summary.maturityLevels,
+            },
+            totalControls: controls.length,
+            controls: controls,
             assignments: controlsWithStatus,
             users: users.length,
         };
@@ -110,6 +148,20 @@ class DashboardService {
     static getEmptyMaturityData() {
         return {
             company: { id: null, name: null },
+            summary: {
+                totalControls: 0,
+                Implementado: 0,
+                Parcialmente: 0,
+                NaoImplementado: 0,
+                NaoSeAplica: 0,
+                percentages: {
+                    Implementado: 0,
+                    Parcialmente: 0,
+                    NaoImplementado: 0,
+                    NaoSeAplica: 0,
+                },
+                maturityLevels: {},
+            },
             totalControls: 0,
             controls: [],
             assignments: [],
@@ -148,7 +200,7 @@ class DashboardService {
         };
     }
     /**
-     * Calcular níveis de maturidade
+     * Calcular níveis de maturidade - CORRIGIDO com nullish coalescing
      */
     static calculateMaturityLevels(controls) {
         const levels = {
@@ -156,35 +208,42 @@ class DashboardService {
             '0': 0,
             '1': 0,
             '2': 0,
-            '3': 0,
-            '4': 0,
-            '5': 0,
         };
         controls.forEach(c => {
             const level = c.maturityLevel || 'N/A';
-            if (level in levels) {
-                levels[level]++;
+            if (Object.hasOwn(levels, level)) {
+                levels[level] = (levels[level] ?? 0) + 1;
             }
         });
         return levels;
     }
+    // ============================================
+    // MÉTODOS DE AGRUPAMENTO
+    // ============================================
     /**
      * Agrupar controles por domínio
      */
     static groupByDomain(controls) {
         const domains = ['Defesa', 'Resiliência', 'Governança e ecossistema', 'Proteção'];
-        const result = {};
-        domains.forEach(d => {
-            const filtered = controls.filter(c => c.control?.dominioDeSI?.includes(d));
-            result[d] = {
+        const result = new Map();
+        domains.forEach(domain => {
+            const filtered = controls.filter(c => {
+                const control = c.control || c;
+                const dominios = control?.dominioDeSI || [];
+                if (Array.isArray(dominios)) {
+                    return dominios.includes(domain);
+                }
+                return dominios === domain;
+            });
+            result.set(domain, {
                 total: filtered.length,
                 implemented: filtered.filter(c => c.status === 'Implementado').length,
                 partial: filtered.filter(c => c.status === 'Parcialmente implementado').length,
                 notImpl: filtered.filter(c => c.status === 'Não implementado').length,
                 na: filtered.filter(c => c.status === 'Não se aplica').length,
-            };
+            });
         });
-        return result;
+        return Object.fromEntries(result);
     }
     /**
      * Agrupar controles por categoria
@@ -196,54 +255,90 @@ class DashboardService {
             'Controles Físicos',
             'Controles Tecnológicos'
         ];
-        const result = {};
-        categories.forEach(cat => {
-            const filtered = controls.filter(c => c.control?.tiposDeControles?.includes(cat));
-            result[cat] = {
+        const result = new Map();
+        categories.forEach(category => {
+            const filtered = controls.filter(c => {
+                const control = c.control || c;
+                const tipos = control?.tiposDeControles || control?.tipoDeControle || [];
+                if (Array.isArray(tipos)) {
+                    return tipos.includes(category);
+                }
+                return tipos === category;
+            });
+            result.set(category, {
                 total: filtered.length,
                 implemented: filtered.filter(c => c.status === 'Implementado').length,
                 partial: filtered.filter(c => c.status === 'Parcialmente implementado').length,
                 notImpl: filtered.filter(c => c.status === 'Não implementado').length,
                 na: filtered.filter(c => c.status === 'Não se aplica').length,
-            };
+            });
         });
-        return result;
+        return Object.fromEntries(result);
     }
     /**
-     * Agrupar controles por tipo
+     * Agrupar controles por tipo - Evita dupla contagem
      */
     static groupByType(controls) {
         const types = ['Preventivo', 'Detectivo', 'Corretivo'];
-        const result = {};
-        types.forEach(t => {
-            const filtered = controls.filter(c => c.control?.tipoDeControle?.includes(t));
-            result[t] = {
+        const result = new Map();
+        types.forEach(type => {
+            const uniqueControlIds = new Set();
+            controls.forEach(c => {
+                const control = c.control || c;
+                const tipoDeControle = control?.tipoDeControle || [];
+                let hasType = false;
+                if (Array.isArray(tipoDeControle)) {
+                    hasType = tipoDeControle.includes(type);
+                }
+                else {
+                    hasType = tipoDeControle === type;
+                }
+                if (hasType) {
+                    const id = control?._id?.toString() || c.controlId?.toString();
+                    if (id) {
+                        uniqueControlIds.add(id);
+                    }
+                }
+            });
+            const filtered = controls.filter(c => {
+                const control = c.control || c;
+                const id = control?._id?.toString() || c.controlId?.toString();
+                return uniqueControlIds.has(id);
+            });
+            result.set(type, {
                 total: filtered.length,
                 implemented: filtered.filter(c => c.status === 'Implementado').length,
                 partial: filtered.filter(c => c.status === 'Parcialmente implementado').length,
                 notImpl: filtered.filter(c => c.status === 'Não implementado').length,
                 na: filtered.filter(c => c.status === 'Não se aplica').length,
-            };
+            });
         });
-        return result;
+        return Object.fromEntries(result);
     }
     /**
      * Agrupar controles por conceito cibernético
      */
     static groupByCyberConcept(controls) {
         const concepts = ['Identificar', 'Proteger', 'Detectar', 'Responder', 'Restaurar'];
-        const result = {};
+        const result = new Map();
         concepts.forEach(concept => {
-            const filtered = controls.filter(c => c.control?.conceitoDeSegurancaCibernetica?.includes(concept));
-            result[concept] = {
+            const filtered = controls.filter(c => {
+                const control = c.control || c;
+                const conceitos = control?.conceitoDeSegurancaCibernetica || [];
+                if (Array.isArray(conceitos)) {
+                    return conceitos.includes(concept);
+                }
+                return conceitos === concept;
+            });
+            result.set(concept, {
                 total: filtered.length,
                 implemented: filtered.filter(c => c.status === 'Implementado').length,
                 partial: filtered.filter(c => c.status === 'Parcialmente implementado').length,
                 notImpl: filtered.filter(c => c.status === 'Não implementado').length,
                 na: filtered.filter(c => c.status === 'Não se aplica').length,
-            };
+            });
         });
-        return result;
+        return Object.fromEntries(result);
     }
     /**
      * Agrupar controles por capacidade operacional
@@ -266,10 +361,17 @@ class DashboardService {
             'Gestão de criptografia',
             'Garantia de segurança da informação',
         ];
-        const result = {};
-        capabilities.forEach(cap => {
-            const filtered = controls.filter(c => c.control?.capacidadesOperacionais?.includes(cap));
-            result[cap] = {
+        const result = new Map();
+        capabilities.forEach(capability => {
+            const filtered = controls.filter(c => {
+                const control = c.control || c;
+                const capacidades = control?.capacidadesOperacionais || [];
+                if (Array.isArray(capacidades)) {
+                    return capacidades.includes(capability);
+                }
+                return capacidades === capability;
+            });
+            result.set(capability, {
                 total: filtered.length,
                 implemented: filtered.filter(c => c.status === 'Implementado').length,
                 partial: filtered.filter(c => c.status === 'Parcialmente implementado').length,
@@ -278,9 +380,9 @@ class DashboardService {
                 aderente: filtered.length > 0
                     ? Math.round((filtered.filter(c => c.status === 'Implementado').length / filtered.length) * 100)
                     : 0,
-            };
+            });
         });
-        return result;
+        return Object.fromEntries(result);
     }
 }
 exports.DashboardService = DashboardService;

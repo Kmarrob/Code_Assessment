@@ -5,6 +5,7 @@ const AuthService_js_1 = require("../services/AuthService.js");
 const validation_js_1 = require("../utils/validation.js");
 const User_js_1 = require("../models/User.js");
 const errorHandler_js_1 = require("../middleware/errorHandler.js");
+const logger_js_1 = require("../utils/logger.js");
 class AuthController {
     static async register(req, res, next) {
         try {
@@ -200,6 +201,87 @@ class AuthController {
             res.json({
                 success: true,
                 data: { user },
+                statusCode: 200,
+                timestamp: new Date().toISOString(),
+            });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    /**
+     * 🔴 NOVO: Validar token de redefinição de senha
+     * POST /auth/validate-reset-token
+     */
+    static async validateResetToken(req, res, next) {
+        try {
+            const { token } = req.body;
+            if (!token) {
+                throw new errorHandler_js_1.AppError('Token é obrigatório', 400);
+            }
+            // Verificar se o usuário existe com este token
+            const user = await User_js_1.User.findOne({
+                _id: token,
+                isActive: true
+            });
+            if (!user) {
+                throw new errorHandler_js_1.AppError('Token inválido ou usuário não encontrado', 404);
+            }
+            res.json({
+                success: true,
+                message: 'Token válido',
+                data: { userId: user._id },
+                statusCode: 200,
+                timestamp: new Date().toISOString(),
+            });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    /**
+     * 🔴 NOVO: Redefinir senha
+     * POST /auth/reset-password
+     */
+    static async resetPassword(req, res, next) {
+        try {
+            const { token, newPassword } = req.body;
+            if (!token) {
+                throw new errorHandler_js_1.AppError('Token é obrigatório', 400);
+            }
+            if (!newPassword) {
+                throw new errorHandler_js_1.AppError('Nova senha é obrigatória', 400);
+            }
+            // Validar senha
+            if (newPassword.length < 8) {
+                throw new errorHandler_js_1.AppError('Senha deve ter no mínimo 8 caracteres', 400);
+            }
+            if (!/[A-Z]/.test(newPassword)) {
+                throw new errorHandler_js_1.AppError('Senha deve conter pelo menos 1 letra maiúscula', 400);
+            }
+            if (!/[a-z]/.test(newPassword)) {
+                throw new errorHandler_js_1.AppError('Senha deve conter pelo menos 1 letra minúscula', 400);
+            }
+            if (!/[0-9]/.test(newPassword)) {
+                throw new errorHandler_js_1.AppError('Senha deve conter pelo menos 1 número', 400);
+            }
+            if (!/[^A-Za-z0-9]/.test(newPassword)) {
+                throw new errorHandler_js_1.AppError('Senha deve conter pelo menos 1 caractere especial', 400);
+            }
+            // Buscar usuário pelo token (ID)
+            const user = await User_js_1.User.findById(token).select('+password');
+            if (!user) {
+                throw new errorHandler_js_1.AppError('Token inválido ou usuário não encontrado', 404);
+            }
+            // 🔴 CORREÇÃO CRÍTICA: Passamos o texto plano. O userSchema.pre('save') cuidará do hash de forma única.
+            user.password = newPassword;
+            user.mustChangePassword = false;
+            user.passwordChangedAt = new Date();
+            await user.save();
+            logger_js_1.logger.info(`Senha redefinida para o usuário: ${user.email}`);
+            res.json({
+                success: true,
+                message: 'Senha redefinida com sucesso',
                 statusCode: 200,
                 timestamp: new Date().toISOString(),
             });

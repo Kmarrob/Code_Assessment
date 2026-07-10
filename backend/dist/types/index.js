@@ -18,6 +18,7 @@ var ResponseStatus;
     ResponseStatus["COMPLETED"] = "completed";
     ResponseStatus["SKIPPED"] = "skipped";
     ResponseStatus["EXPIRED"] = "expired";
+    ResponseStatus["REVOKED"] = "revoked";
 })(ResponseStatus || (exports.ResponseStatus = ResponseStatus = {}));
 var MaturityLevel;
 (function (MaturityLevel) {

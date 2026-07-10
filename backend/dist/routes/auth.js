@@ -12,6 +12,9 @@ const router = (0, express_1.Router)();
 router.post('/register', rateLimit_js_1.registerRateLimiter, cache_js_1.noCache, AuthController_js_1.AuthController.register);
 router.post('/login', rateLimit_js_1.authRateLimiter, cache_js_1.noCache, AuthController_js_1.AuthController.login);
 router.post('/refresh-token', rateLimit_js_1.refreshRateLimiter, cache_js_1.noCache, AuthController_js_1.AuthController.refreshToken);
+// 🔴 NOVO: Rotas públicas de redefinição de senha
+router.post('/validate-reset-token', rateLimit_js_1.authRateLimiter, cache_js_1.noCache, AuthController_js_1.AuthController.validateResetToken);
+router.post('/reset-password', rateLimit_js_1.authRateLimiter, cache_js_1.noCache, AuthController_js_1.AuthController.resetPassword);
 // Rotas autenticadas (cache privado)
 router.use(auth_js_1.authenticate);
 router.post('/logout', rateLimit_js_1.authenticatedRateLimiter, cache_js_1.noCache, AuthController_js_1.AuthController.logout);

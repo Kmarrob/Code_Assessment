@@ -37,7 +37,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.User = void 0;
-// backend/src/models/User.ts
 const mongoose_1 = __importStar(require("mongoose"));
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const index_js_1 = require("../types/index.js");
@@ -54,14 +53,14 @@ const userSchema = new mongoose_1.Schema({
     email: {
         type: String,
         required: [true, 'Email é obrigatório'],
-        unique: true,
+        unique: true, // Mantido aqui, removido do bloco inferior de índices manuais redundantes
         trim: true,
         lowercase: true,
         match: [/^\S+@\S+\.\S+$/, 'Email inválido'],
     },
     password: {
         type: String,
-        required: [true, 'Senha é obrigatória'],
+        required: false, // Senha opcional (gerada automaticamente)
         minlength: [8, 'Senha deve ter pelo menos 8 caracteres'],
         select: false,
     },
@@ -118,13 +117,42 @@ const userSchema = new mongoose_1.Schema({
     passwordExpiresAt: {
         type: Date,
     },
+    mustChangePassword: {
+        type: Boolean,
+        default: false,
+    },
+    inactivationReason: {
+        type: String,
+        enum: ['Desligado', 'Mudou de setor', 'Outros'],
+        required: false,
+    },
+    inactivationDescription: {
+        type: String,
+        maxlength: [500, 'Descrição deve ter no máximo 500 caracteres'],
+        required: false,
+    },
+    inactivatedAt: {
+        type: Date,
+        required: false,
+    },
+    inactivatedBy: {
+        type: mongoose_1.Schema.Types.ObjectId,
+        ref: 'User',
+        required: false,
+    },
 }, {
     timestamps: true,
     toJSON: {
         transform: (_, ret) => {
-            delete ret.password;
-            delete ret.refreshToken;
-            delete ret.passwordHistory;
+            if (ret.password) {
+                delete ret.password;
+            }
+            if (ret.refreshToken) {
+                delete ret.refreshToken;
+            }
+            if (ret.passwordHistory) {
+                delete ret.passwordHistory;
+            }
             return ret;
         },
     },
@@ -134,9 +162,17 @@ const userSchema = new mongoose_1.Schema({
 // ============================================
 userSchema.methods.comparePassword = async function (candidatePassword) {
     try {
-        if (!this.password)
+        if (!this.password) {
+            logger_js_1.logger.warn('🔍 comparePassword: password é undefined ou null');
             return false;
-        return await bcryptjs_1.default.compare(candidatePassword, this.password);
+        }
+        const cleanHash = this.password.trim();
+        const cleanPassword = candidatePassword.trim();
+        logger_js_1.logger.info(`🔍 comparePassword - Senha fornecida: ${cleanPassword}`);
+        logger_js_1.logger.info(`🔍 comparePassword - Hash armazenado (limpo): ${cleanHash}`);
+        const result = await bcryptjs_1.default.compare(cleanPassword, cleanHash);
+        logger_js_1.logger.info(`🔍 comparePassword - Resultado da comparação: ${result}`);
+        return result;
     }
     catch (error) {
         logger_js_1.logger.error('Error comparing passwords:', error);
@@ -159,7 +195,16 @@ userSchema.pre('save', async function (next) {
         if (!this.password) {
             return next(new Error('Senha não fornecida para modificação'));
         }
-        const validation = PasswordPolicy_js_1.passwordPolicy.validate(this.password, {
+        const isAlreadyHashed = this.password.startsWith('$2a$') ||
+            this.password.startsWith('$2b$') ||
+            this.password.startsWith('$2y$');
+        if (isAlreadyHashed) {
+            logger_js_1.logger.info(`🔍 pre-save - Senha já hasheada, pulando hash`);
+            return next();
+        }
+        const cleanPassword = this.password.trim();
+        logger_js_1.logger.info(`🔍 pre-save - Validando senha em texto plano: ${cleanPassword}`);
+        const validation = PasswordPolicy_js_1.passwordPolicy.validate(cleanPassword, {
             name: this.name,
             email: this.email,
         });
@@ -175,7 +220,8 @@ userSchema.pre('save', async function (next) {
         this.passwordChangedAt = new Date();
         this.passwordExpiresAt = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
         const salt = await bcryptjs_1.default.genSalt(12);
-        this.password = await bcryptjs_1.default.hash(this.password, salt);
+        this.password = await bcryptjs_1.default.hash(cleanPassword, salt);
+        logger_js_1.logger.info(`🔍 pre-save - Hash gerado: ${this.password}`);
         next();
     }
     catch (error) {
@@ -199,9 +245,8 @@ userSchema.pre('save', async function (next) {
     }
 });
 // ============================================
-// ÍNDICES
+// ÍNDICES (Limpos de duplicidades com propriedades diretas do Schema)
 // ============================================
-userSchema.index({ email: 1 }, { unique: true });
 userSchema.index({ role: 1 });
 userSchema.index({ isActive: 1 });
 userSchema.index({ role: 1, isActive: 1, createdAt: -1 });
@@ -214,6 +259,9 @@ userSchema.index({ consultantId: 1, role: 1 });
 userSchema.index({ name: 'text', email: 'text' });
 userSchema.index({ lastLogin: -1 });
 userSchema.index({ passwordExpiresAt: 1 });
+userSchema.index({ inactivatedBy: 1 });
+userSchema.index({ inactivationReason: 1 });
+userSchema.index({ mustChangePassword: 1 });
 // ============================================
 // MÉTODOS ESTÁTICOS
 // ============================================

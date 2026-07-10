@@ -4,7 +4,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuthService = void 0;
-// backend/src/services/AuthService.ts
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const User_js_1 = require("../models/User.js");
 const env_js_1 = require("../config/env.js");
@@ -47,17 +46,24 @@ class AuthService {
     }
     static async login(email, password) {
         try {
+            logger_js_1.logger.info(`🔍 Tentando login para: ${email}`);
+            // 🔴 CORREÇÃO CRÍTICA: Adicionado '+password' para forçar a busca do campo que está com select: false
             const user = await User_js_1.User.findOne({ email })
-                .select('_id name email password role company department isActive refreshToken')
+                .select('+password _id name email role company department isActive refreshToken passwordChangedAt')
                 .exec();
             if (!user) {
+                logger_js_1.logger.warn(`❌ Usuário não encontrado: ${email}`);
                 throw new errorHandler_js_1.AuthenticationError('Email ou senha inválidos');
             }
             if (!user.isActive) {
+                logger_js_1.logger.warn(`❌ Usuário inativo: ${email}`);
                 throw new errorHandler_js_1.AuthenticationError('Usuário inativo');
             }
+            logger_js_1.logger.info(`🔍 Hash da senha no banco: ${user.password}`);
             const isPasswordValid = await user.comparePassword(password);
+            logger_js_1.logger.info(`🔍 Resultado da comparação: ${isPasswordValid}`);
             if (!isPasswordValid) {
+                logger_js_1.logger.warn(`❌ Senha inválida para: ${email}`);
                 throw new errorHandler_js_1.AuthenticationError('Email ou senha inválidos');
             }
             user.lastLogin = new Date();
@@ -79,6 +85,7 @@ class AuthService {
                 lastLogin: user.lastLogin,
                 passwordChangedAt: user.passwordChangedAt,
             };
+            logger_js_1.logger.info(`✅ Login bem-sucedido: ${email}`);
             return { user: userResponse, tokens };
         }
         catch (error) {

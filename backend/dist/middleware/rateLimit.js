@@ -9,6 +9,15 @@ exports.createRateLimiter = createRateLimiter;
 const express_rate_limit_1 = __importDefault(require("express-rate-limit"));
 const env_js_1 = require("../config/env.js");
 const logger_js_1 = require("../utils/logger.js");
+// ============================================
+// CORREÇÃO: Função auxiliar para verificar se é admin
+// ============================================
+function isAdmin(req) {
+    return req.user && req.user.role === 'admin';
+}
+// ============================================
+// MIDDLEWARES DE RATE LIMIT
+// ============================================
 exports.authRateLimiter = (0, express_rate_limit_1.default)({
     windowMs: 15 * 60 * 1000,
     max: 5,
@@ -65,6 +74,9 @@ exports.refreshRateLimiter = (0, express_rate_limit_1.default)({
     standardHeaders: true,
     legacyHeaders: false,
 });
+// ============================================
+// CORREÇÃO: authenticatedRateLimiter com isenção para admin
+// ============================================
 exports.authenticatedRateLimiter = (0, express_rate_limit_1.default)({
     windowMs: 60 * 1000,
     max: 100,
@@ -77,7 +89,12 @@ exports.authenticatedRateLimiter = (0, express_rate_limit_1.default)({
     standardHeaders: true,
     legacyHeaders: false,
     skip: (req) => {
-        return env_js_1.config.NODE_ENV === 'development' && req.user?.role === 'admin';
+        // CORREÇÃO: Admin tem acesso ilimitado
+        if (isAdmin(req)) {
+            return true;
+        }
+        // Desenvolvimento também pode ser ignorado
+        return env_js_1.config.NODE_ENV === 'development';
     },
     handler: (req, res) => {
         logger_js_1.logger.warn(`Rate limit exceeded for authenticated user: ${req.user?.email || req.ip}`);
@@ -126,9 +143,18 @@ exports.sensitiveRateLimiter = (0, express_rate_limit_1.default)({
     standardHeaders: true,
     legacyHeaders: false,
 });
+// ============================================
+// CORREÇÃO: adminRateLimiter com isenção total para admin
+// ============================================
 exports.adminRateLimiter = (0, express_rate_limit_1.default)({
     windowMs: 60 * 1000,
-    max: 100,
+    max: (req) => {
+        // CORREÇÃO: Admin não tem limite
+        if (isAdmin(req)) {
+            return Infinity;
+        }
+        return 100;
+    },
     message: {
         success: false,
         message: 'Muitas tentativas de operações. Tente novamente em 1 minuto.',
@@ -137,6 +163,13 @@ exports.adminRateLimiter = (0, express_rate_limit_1.default)({
     },
     standardHeaders: true,
     legacyHeaders: false,
+    skip: (req) => {
+        // CORREÇÃO: Pular rate limit para admin
+        if (isAdmin(req)) {
+            return true;
+        }
+        return false;
+    },
     handler: (req, res) => {
         logger_js_1.logger.warn(`Rate limit exceeded for admin operation: ${req.user?.email || req.ip}`);
         res.status(429).json({
@@ -150,7 +183,13 @@ exports.adminRateLimiter = (0, express_rate_limit_1.default)({
 function createRateLimiter(options) {
     return (0, express_rate_limit_1.default)({
         windowMs: options.windowMs || 60 * 1000,
-        max: options.max || 100,
+        max: (req) => {
+            // CORREÇÃO: Se for admin e não tiver skip específico, permitir ilimitado
+            if (isAdmin(req) && !options.skip) {
+                return Infinity;
+            }
+            return options.max || 100;
+        },
         message: {
             success: false,
             message: options.message || 'Muitas requisições. Tente novamente mais tarde.',
@@ -159,7 +198,13 @@ function createRateLimiter(options) {
         },
         standardHeaders: true,
         legacyHeaders: false,
-        skip: options.skip,
+        skip: (req) => {
+            // CORREÇÃO: Admin sempre pula o rate limit
+            if (isAdmin(req)) {
+                return true;
+            }
+            return options.skip ? options.skip(req) : false;
+        },
         handler: (req, res) => {
             logger_js_1.logger.warn(`Rate limit exceeded: ${req.ip}`);
             res.status(429).json({

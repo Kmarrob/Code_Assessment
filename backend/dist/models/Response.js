@@ -53,6 +53,13 @@ const responseSchema = new mongoose_1.Schema({
         ref: 'Control',
         required: [true, 'Controle é obrigatório'],
     },
+    // 🔴 CAMPO ADICIONADO
+    companyId: {
+        type: mongoose_1.Schema.Types.ObjectId,
+        ref: 'Company',
+        required: [true, 'Empresa é obrigatória'],
+        index: true,
+    },
     maturityLevel: {
         type: String,
         enum: ['N/A', '0', '1', '2'],
@@ -86,6 +93,8 @@ responseSchema.index({ assignmentId: 1 }, { unique: true });
 responseSchema.index({ userId: 1, controlId: 1 });
 responseSchema.index({ userId: 1, maturityLevel: 1 });
 responseSchema.index({ controlId: 1, maturityLevel: 1 });
+// 🔴 NOVO ÍNDICE
+responseSchema.index({ companyId: 1, userId: 1 });
 // ============================================
 // MÉTODOS ESTÁTICOS
 // ============================================

@@ -19,6 +19,12 @@ const envSchema = zod_1.z.object({
     CORS_ORIGIN: zod_1.z.string().default('http://localhost:5173,https://cisatool.com.br,https://code-assessment-frontend.onrender.com,https://code-assessment-898z.onrender.com'),
     RATE_LIMIT_WINDOW_MS: zod_1.z.string().transform(Number).default('900000'),
     RATE_LIMIT_MAX: zod_1.z.string().transform(Number).default('100'),
+    // 🔴 ADICIONADO: Google OAuth2 para Email
+    GOOGLE_CLIENT_ID: zod_1.z.string().default(''),
+    GOOGLE_CLIENT_SECRET: zod_1.z.string().default(''),
+    GOOGLE_REFRESH_TOKEN: zod_1.z.string().default(''),
+    SMTP_USER: zod_1.z.string().default('codeassessment@gmail.com'),
+    SMTP_FROM: zod_1.z.string().default('Code_Assessment <codeassessment@gmail.com>'),
 });
 const result = envSchema.safeParse(process.env);
 if (!result.success) {

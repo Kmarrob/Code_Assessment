@@ -4,7 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext.js';
 import { reportService } from '../services/report.service.js';
 import { recommendationService } from '../services/recommendation.service.js';
-import { Report, ReportStats } from '../types/report.js';
+import { Report, ReportStats, RoadmapData } from '../types/report.js';
 import {
   FileText,
   Loader2,
@@ -76,6 +76,7 @@ export const ReportView: React.FC = () => {
   const [resultados, setResultados] = useState<any>(null);
   const [recomendacoes, setRecomendacoes] = useState<any[]>([]);
   const [matrizPriorizacao, setMatrizPriorizacao] = useState<any[]>([]);
+  const [roadmapData, setRoadmapData] = useState<RoadmapData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -94,6 +95,8 @@ export const ReportView: React.FC = () => {
     recomendacoes: true,
     resultados: true,
     cenarioAtual: true,
+    matrizPriorizacao: true,
+    roadmap: true,
   });
   const [formData, setFormData] = useState({
     projectNumber: '',
@@ -146,6 +149,14 @@ export const ReportView: React.FC = () => {
         } catch (matrixErr) {
           console.error('Erro ao carregar matriz de priorização:', matrixErr);
           setMatrizPriorizacao([]);
+        }
+
+        try {
+          const roadmap = await reportService.getRoadmap(companyId);
+          setRoadmapData(roadmap);
+        } catch (roadmapErr) {
+          console.error('Erro ao carregar roadmap:', roadmapErr);
+          setRoadmapData(null);
         }
       }
     } catch (err: any) {
@@ -1204,119 +1215,288 @@ export const ReportView: React.FC = () => {
               )}
             </div>
 
-   {/* 9. Matriz de Priorização */}
-<div className="py-6 border-b border-gray-200 page-break">
-  <h2 className="text-xl font-bold text-gray-900 mb-3 text-center">9. Matriz de Priorização</h2>
-  
-  <p className="text-gray-700 text-justify mb-3 text-sm">
-    Eventual plano de ação para adequação, em razão do resultado deste assessment, deve considerar estratégias de SI e esforços. Para subsidiar as decisões inerentes, elaboramos a <strong>{companyName}</strong> - Matriz de Priorização 27001:2022, documento anexo que contém sugestão de priorização, analisando-se probabilidade e impacto de riscos se materializarem perante das vulnerabilidades identificadas no ambiente da organização.
-  </p>
+            {/* 9. Matriz de Priorização */}
+            <div className="py-6 border-b border-gray-200 page-break">
+              <h2 className="text-xl font-bold text-gray-900 mb-3 text-center">9. Matriz de Priorização</h2>
+              
+              <p className="text-gray-700 text-justify mb-3 text-sm">
+                Eventual plano de ação para adequação, em razão do resultado deste assessment, deve considerar estratégias de SI e esforços. Para subsidiar as decisões inerentes, elaboramos a <strong>{companyName}</strong> - Matriz de Priorização 27001:2022, documento anexo que contém sugestão de priorização, analisando-se probabilidade e impacto de riscos se materializarem perante das vulnerabilidades identificadas no ambiente da organização.
+              </p>
 
-  <div className="overflow-x-auto mt-4">
-    <table className="w-full text-sm border-collapse" style={{ fontSize: '8.5pt' }}>
-      <thead>
-        <tr className="bg-blue-50">
-          <th className="text-left py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '8pt' }}>METODOLOGIA</th>
-          <th className="text-center py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '8pt' }}>ID REF.</th>
-          <th className="text-center py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '8pt' }}>ID Controle</th>
-          <th className="text-left py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '8pt' }}>Controle</th>
-          <th className="text-center py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '8pt' }}>Maturidade</th>
-          <th className="text-left py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '8pt' }}>Cenário identificado</th>
-          <th className="text-left py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '8pt' }}>Vulnerabilidades e Ameaças</th>
-          <th className="text-left py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '8pt' }}>Soluções técnicas</th>
-          <th className="text-center py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '8pt' }}>Probabilidade</th>
-          <th className="text-center py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '8pt' }}>Impacto</th>
-          <th className="text-center py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '8pt' }}>Classificação</th>
-          <th className="text-center py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '8pt' }}>Priorização</th>
-        </tr>
-      </thead>
-      <tbody>
-        {matrizPriorizacao.length === 0 ? (
-          <tr>
-            <td className="py-2 px-2 border border-gray-300 text-center text-gray-500" colSpan={12}>
-              Nenhum dado disponível para a matriz de priorização.
-            </td>
-          </tr>
-        ) : (
-          matrizPriorizacao.map((item, index) => {
-            const priorityStyles = {
-              'Crítico': { bg: 'bg-red-100' },
-              'Muito Alto': { bg: 'bg-orange-100' },
-              'Alto': { bg: 'bg-yellow-100' },
-              'Médio': { bg: 'bg-blue-100' },
-              'Baixo': { bg: 'bg-green-100' },
-              'Muito Baixo': { bg: 'bg-gray-100' },
-            };
-            const priorityStyle = priorityStyles[item.priority as keyof typeof priorityStyles] || { bg: 'bg-gray-100' };
-            
-            const hasRecommendation = recomendacoes.some(r => r.controlId === item.controlId);
-            
-            return (
-              <tr key={index} className={priorityStyle.bg}>
-                <td className="py-1 px-2 border border-gray-300 text-black" style={{ fontSize: '8pt' }}>ISO 27001</td>
-                <td className="py-1 px-2 border border-gray-300 text-center text-black" style={{ fontSize: '8pt' }}>{item.refId || (index + 1)}</td>
-                <td className="py-1 px-2 border border-gray-300 text-center text-black" style={{ fontSize: '8pt' }}>{item.controlId}</td>
-                <td className="py-1 px-2 border border-gray-300 text-black" style={{ fontSize: '8pt' }}>{item.controlName}</td>
-                <td className="py-1 px-2 border border-gray-300 text-center text-black" style={{ fontSize: '8pt' }}>{item.maturity}</td>
-                <td className="py-1 px-2 border border-gray-300 text-black" style={{ fontSize: '7.5pt' }}>{item.scenario}</td>
-                <td className="py-1 px-2 border border-gray-300 whitespace-pre-wrap text-black" style={{ fontSize: '7.5pt' }}>{item.vulnerabilities}</td>
-                <td className="py-1 px-2 border border-gray-300 text-black" style={{ fontSize: '7.5pt' }}>
-                  {hasRecommendation ? (
-                    <a 
-                      href={`#recomendacao-${item.controlId}`}
-                      className="text-blue-600 underline hover:text-blue-800 font-medium"
-                    >
-                      Ver soluções técnicas
-                    </a>
-                  ) : (
-                    <span className="text-gray-400">-</span>
-                  )}
-                </td>
-                <td className="py-1 px-2 border border-gray-300 text-center font-bold text-black" style={{ fontSize: '8pt' }}>{item.probability}</td>
-                <td className="py-1 px-2 border border-gray-300 text-center font-bold text-black" style={{ fontSize: '8pt' }}>{item.impact}</td>
-                <td className="py-1 px-2 border border-gray-300 text-center font-bold text-black" style={{ fontSize: '8pt' }}>{item.riskScore}</td>
-                <td className="py-1 px-2 border border-gray-300 text-center text-xs font-bold text-black" style={{ fontSize: '7pt' }}>
-                  {item.priority}
-                </td>
-              </tr>
-            );
-          })
-        )}
-      </tbody>
-    </table>
-  </div>
+              <div className="overflow-x-auto mt-4">
+                <table className="w-full text-sm border-collapse" style={{ fontSize: '8.5pt' }}>
+                  <thead>
+                    <tr className="bg-blue-50">
+                      <th className="text-left py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '8pt' }}>METODOLOGIA</th>
+                      <th className="text-center py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '8pt' }}>ID REF.</th>
+                      <th className="text-center py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '8pt' }}>ID Controle</th>
+                      <th className="text-left py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '8pt' }}>Controle</th>
+                      <th className="text-center py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '8pt' }}>Maturidade</th>
+                      <th className="text-left py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '8pt' }}>Cenário identificado</th>
+                      <th className="text-left py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '8pt' }}>Vulnerabilidades e Ameaças</th>
+                      <th className="text-left py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '8pt' }}>Soluções técnicas</th>
+                      <th className="text-center py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '8pt' }}>Probabilidade</th>
+                      <th className="text-center py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '8pt' }}>Impacto</th>
+                      <th className="text-center py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '8pt' }}>Classificação</th>
+                      <th className="text-center py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '8pt' }}>Priorização</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {matrizPriorizacao.length === 0 ? (
+                      <tr>
+                        <td className="py-2 px-2 border border-gray-300 text-center text-gray-500" colSpan={12}>
+                          Nenhum dado disponível para a matriz de priorização.
+                        </td>
+                      </tr>
+                    ) : (
+                      matrizPriorizacao.map((item, index) => {
+                        const priorityStyles = {
+                          'Crítico': { bg: 'bg-red-100' },
+                          'Muito Alto': { bg: 'bg-orange-100' },
+                          'Alto': { bg: 'bg-yellow-100' },
+                          'Médio': { bg: 'bg-blue-100' },
+                          'Baixo': { bg: 'bg-green-100' },
+                          'Muito Baixo': { bg: 'bg-gray-100' },
+                        };
+                        const priorityStyle = priorityStyles[item.priority as keyof typeof priorityStyles] || { bg: 'bg-gray-100' };
+                        
+                        const hasRecommendation = recomendacoes.some(r => r.controlId === item.controlId);
+                        
+                        return (
+                          <tr key={index} className={priorityStyle.bg}>
+                            <td className="py-1 px-2 border border-gray-300 text-black" style={{ fontSize: '8pt' }}>ISO 27001</td>
+                            <td className="py-1 px-2 border border-gray-300 text-center text-black" style={{ fontSize: '8pt' }}>{item.refId || (index + 1)}</td>
+                            <td className="py-1 px-2 border border-gray-300 text-center text-black" style={{ fontSize: '8pt' }}>{item.controlId}</td>
+                            <td className="py-1 px-2 border border-gray-300 text-black" style={{ fontSize: '8pt' }}>{item.controlName}</td>
+                            <td className="py-1 px-2 border border-gray-300 text-center text-black" style={{ fontSize: '8pt' }}>{item.maturity}</td>
+                            <td className="py-1 px-2 border border-gray-300 text-black" style={{ fontSize: '7.5pt' }}>{item.scenario}</td>
+                            <td className="py-1 px-2 border border-gray-300 whitespace-pre-wrap text-black" style={{ fontSize: '7.5pt' }}>{item.vulnerabilities}</td>
+                            <td className="py-1 px-2 border border-gray-300 text-black" style={{ fontSize: '7.5pt' }}>
+                              {hasRecommendation ? (
+                                <a 
+                                  href={`#recomendacao-${item.controlId}`}
+                                  className="text-blue-600 underline hover:text-blue-800 font-medium"
+                                >
+                                  Ver soluções técnicas
+                                </a>
+                              ) : (
+                                <span className="text-gray-400">-</span>
+                              )}
+                            </td>
+                            <td className="py-1 px-2 border border-gray-300 text-center font-bold text-black" style={{ fontSize: '8pt' }}>{item.probability}</td>
+                            <td className="py-1 px-2 border border-gray-300 text-center font-bold text-black" style={{ fontSize: '8pt' }}>{item.impact}</td>
+                            <td className="py-1 px-2 border border-gray-300 text-center font-bold text-black" style={{ fontSize: '8pt' }}>{item.riskScore}</td>
+                            <td className="py-1 px-2 border border-gray-300 text-center text-xs font-bold text-black" style={{ fontSize: '7pt' }}>
+                              {item.priority}
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
 
-  {/* Legenda da Matriz de Priorização */}
-  <div className="mt-4 p-3 bg-gray-50 border border-gray-200 rounded-lg">
-    <p className="text-xs font-semibold text-gray-700 mb-1">Nível de Priorização</p>
-    <div className="grid grid-cols-3 md:grid-cols-6 gap-1">
-      <div className="flex items-center gap-1">
-        <span className="w-3 h-3 bg-red-500 rounded"></span>
-        <span className="text-xs text-gray-600">Crítico (9)</span>
-      </div>
-      <div className="flex items-center gap-1">
-        <span className="w-3 h-3 bg-orange-400 rounded"></span>
-        <span className="text-xs text-gray-600">Muito Alto (8)</span>
-      </div>
-      <div className="flex items-center gap-1">
-        <span className="w-3 h-3 bg-yellow-400 rounded"></span>
-        <span className="text-xs text-gray-600">Alto (7)</span>
-      </div>
-      <div className="flex items-center gap-1">
-        <span className="w-3 h-3 bg-blue-400 rounded"></span>
-        <span className="text-xs text-gray-600">Médio (6,5,4)</span>
-      </div>
-      <div className="flex items-center gap-1">
-        <span className="w-3 h-3 bg-green-400 rounded"></span>
-        <span className="text-xs text-gray-600">Baixo (3,2,1)</span>
-      </div>
-      <div className="flex items-center gap-1">
-        <span className="w-3 h-3 bg-gray-400 rounded"></span>
-        <span className="text-xs text-gray-600">Muito Baixo (0)</span>
-      </div>
-    </div>
-  </div>
-</div>
+              {/* Legenda da Matriz de Priorização */}
+              <div className="mt-4 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                <p className="text-xs font-semibold text-gray-700 mb-1">Nível de Priorização</p>
+                <div className="grid grid-cols-3 md:grid-cols-6 gap-1">
+                  <div className="flex items-center gap-1">
+                    <span className="w-3 h-3 bg-red-500 rounded"></span>
+                    <span className="text-xs text-gray-600">Crítico (9)</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="w-3 h-3 bg-orange-400 rounded"></span>
+                    <span className="text-xs text-gray-600">Muito Alto (8)</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="w-3 h-3 bg-yellow-400 rounded"></span>
+                    <span className="text-xs text-gray-600">Alto (7)</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="w-3 h-3 bg-blue-400 rounded"></span>
+                    <span className="text-xs text-gray-600">Médio (6,5,4)</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="w-3 h-3 bg-green-400 rounded"></span>
+                    <span className="text-xs text-gray-600">Baixo (3,2,1)</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="w-3 h-3 bg-gray-400 rounded"></span>
+                    <span className="text-xs text-gray-600">Muito Baixo (0)</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 10. Roadmap de Implementação */}
+            <div className="py-6 border-b border-gray-200 page-break">
+              <h2 className="text-xl font-bold text-gray-900 mb-3 text-center">10. Roadmap de Implementação</h2>
+
+              {!roadmapData ? (
+                <p className="text-gray-500 text-center py-6">
+                  Carregando roadmap...
+                </p>
+              ) : (
+                <>
+                  <p className="text-gray-700 text-justify mb-4 text-sm">
+                    O Roadmap de Implementação apresenta um conjunto estruturado de recomendações organizadas em três 
+                    categorias principais: <strong>Medidas Processuais</strong>, <strong>Políticas</strong> e 
+                    <strong>Soluções Técnicas</strong>, todas alinhadas com os controles da ISO 27001:2022 e 
+                    organizadas por nível de priorização.
+                  </p>
+
+                  <p className="text-sm text-gray-600 mb-4 text-justify">
+                    <strong>Resumo:</strong> Total de {roadmapData.summary.totalItems} itens distribuídos entre 
+                    Crítico ({roadmapData.summary.byPriority.critico}), Muito Alto ({roadmapData.summary.byPriority.muitoAlto}), 
+                    Alto ({roadmapData.summary.byPriority.alto}) e Médio ({roadmapData.summary.byPriority.medio}).
+                  </p>
+
+                  {/* 10.1 Medidas Processuais */}
+                  <h3 className="text-lg font-semibold text-gray-800 mt-4 mb-2 text-left">
+                    10.1 {roadmapData.sections.processuais.title}
+                  </h3>
+                  <p className="text-sm text-gray-600 mb-3 text-justify">
+                    {roadmapData.sections.processuais.description}
+                  </p>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm border-collapse" style={{ fontSize: '8.5pt' }}>
+                      <thead>
+                        <tr className="bg-blue-50">
+                          <th className="text-left py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '8pt' }}>#</th>
+                          <th className="text-left py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '8pt' }}>Medida Processual</th>
+                          <th className="text-left py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '8pt' }}>Descrição</th>
+                          <th className="text-center py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '8pt' }}>Prioridade</th>
+                          <th className="text-center py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '8pt' }}>Controles</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {roadmapData.sections.processuais.items.map((item, idx) => {
+                          const priorityColors = {
+                            'Crítico': 'text-red-600 font-bold',
+                            'Muito Alto': 'text-orange-600 font-bold',
+                            'Alto': 'text-yellow-600 font-bold',
+                            'Médio': 'text-blue-600',
+                            'Baixo': 'text-gray-500',
+                          };
+                          return (
+                            <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                              <td className="py-1 px-2 border border-gray-300 text-center text-black">{idx + 1}</td>
+                              <td className="py-1 px-2 border border-gray-300 text-black">{item.name}</td>
+                              <td className="py-1 px-2 border border-gray-300 text-black" style={{ fontSize: '7.5pt' }}>{item.description || '-'}</td>
+                              <td className={`py-1 px-2 border border-gray-300 text-center ${priorityColors[item.priority] || 'text-gray-700'}`} style={{ fontSize: '7.5pt' }}>
+                                {item.priority}
+                              </td>
+                              <td className="py-1 px-2 border border-gray-300 text-center text-black" style={{ fontSize: '7.5pt' }}>
+                                {item.relatedControls?.length ? item.relatedControls.join(', ') : '-'}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* 10.2 Políticas Recomendadas */}
+                  <h3 className="text-lg font-semibold text-gray-800 mt-6 mb-2 text-left">
+                    10.2 {roadmapData.sections.politicas.title}
+                  </h3>
+                  <p className="text-sm text-gray-600 mb-3 text-justify">
+                    {roadmapData.sections.politicas.description}
+                  </p>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm border-collapse" style={{ fontSize: '8.5pt' }}>
+                      <thead>
+                        <tr className="bg-blue-50">
+                          <th className="text-left py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '8pt' }}>#</th>
+                          <th className="text-left py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '8pt' }}>Política</th>
+                          <th className="text-left py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '8pt' }}>Descrição</th>
+                          <th className="text-center py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '8pt' }}>Prioridade</th>
+                          <th className="text-center py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '8pt' }}>Controles</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {roadmapData.sections.politicas.items.map((item, idx) => {
+                          const priorityColors = {
+                            'Crítico': 'text-red-600 font-bold',
+                            'Muito Alto': 'text-orange-600 font-bold',
+                            'Alto': 'text-yellow-600 font-bold',
+                            'Médio': 'text-blue-600',
+                            'Baixo': 'text-gray-500',
+                          };
+                          return (
+                            <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                              <td className="py-1 px-2 border border-gray-300 text-center text-black">{idx + 1}</td>
+                              <td className="py-1 px-2 border border-gray-300 text-black">{item.name}</td>
+                              <td className="py-1 px-2 border border-gray-300 text-black" style={{ fontSize: '7.5pt' }}>{item.description || '-'}</td>
+                              <td className={`py-1 px-2 border border-gray-300 text-center ${priorityColors[item.priority] || 'text-gray-700'}`} style={{ fontSize: '7.5pt' }}>
+                                {item.priority}
+                              </td>
+                              <td className="py-1 px-2 border border-gray-300 text-center text-black" style={{ fontSize: '7.5pt' }}>
+                                {item.relatedControls?.length ? item.relatedControls.join(', ') : '-'}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* 10.3 Soluções Técnicas */}
+                  <h3 className="text-lg font-semibold text-gray-800 mt-6 mb-2 text-left">
+                    10.3 {roadmapData.sections.tecnicas.title}
+                  </h3>
+                  <p className="text-sm text-gray-600 mb-3 text-justify">
+                    {roadmapData.sections.tecnicas.description}
+                  </p>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm border-collapse" style={{ fontSize: '8.5pt' }}>
+                      <thead>
+                        <tr className="bg-blue-50">
+                          <th className="text-left py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '8pt' }}>#</th>
+                          <th className="text-left py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '8pt' }}>Solução Técnica</th>
+                          <th className="text-left py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '8pt' }}>Descrição</th>
+                          <th className="text-center py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '8pt' }}>Prioridade</th>
+                          <th className="text-center py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '8pt' }}>Controles</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {roadmapData.sections.tecnicas.items.map((item, idx) => {
+                          const priorityColors = {
+                            'Crítico': 'text-red-600 font-bold',
+                            'Muito Alto': 'text-orange-600 font-bold',
+                            'Alto': 'text-yellow-600 font-bold',
+                            'Médio': 'text-blue-600',
+                            'Baixo': 'text-gray-500',
+                          };
+                          return (
+                            <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                              <td className="py-1 px-2 border border-gray-300 text-center text-black">{idx + 1}</td>
+                              <td className="py-1 px-2 border border-gray-300 text-black">{item.name}</td>
+                              <td className="py-1 px-2 border border-gray-300 text-black" style={{ fontSize: '7.5pt' }}>{item.description || '-'}</td>
+                              <td className={`py-1 px-2 border border-gray-300 text-center ${priorityColors[item.priority] || 'text-gray-700'}`} style={{ fontSize: '7.5pt' }}>
+                                {item.priority}
+                              </td>
+                              <td className="py-1 px-2 border border-gray-300 text-center text-black" style={{ fontSize: '7.5pt' }}>
+                                {item.relatedControls?.length ? item.relatedControls.join(', ') : '-'}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div className="mt-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                    <p className="text-xs text-gray-700 text-justify">
+                      <strong>Legenda:</strong> Os itens listados acima representam um conjunto de recomendações organizadas por nível de priorização, 
+                      baseadas nos controles da ISO/IEC 27001:2022. A implementação deve seguir a ordem de criticidade para garantir a conformidade 
+                      e a melhoria contínua da segurança da informação.
+                    </p>
+                  </div>
+                </>
+              )}
+            </div>
 
             {/* Botão para sair do modo de impressão */}
             <div className="text-center py-6 print:hidden no-print">
@@ -1532,6 +1712,7 @@ export const ReportView: React.FC = () => {
                 { id: 'resultados', label: '7. Resultados da Avaliação', icon: BarChart3 },
                 { id: 'cenarioAtual', label: '8. Cenário atual e Recomendações', icon: Lightbulb },
                 { id: 'matrizPriorizacao', label: '9. Matriz de Priorização', icon: Target },
+                { id: 'roadmap', label: '10. Roadmap de Implementação', icon: Rocket },
               ].map((item) => {
                 const Icon = item.icon;
                 return (

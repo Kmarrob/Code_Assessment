@@ -36,15 +36,21 @@ class DashboardController {
             const byType = DashboardService_js_1.DashboardService.groupByType(maturityData.controls);
             const byCyberConcept = DashboardService_js_1.DashboardService.groupByCyberConcept(maturityData.controls);
             const byCapability = DashboardService_js_1.DashboardService.groupByCapability(maturityData.controls);
+            // CORREÇÃO: Usar o summary completo do maturityData
+            const summary = maturityData.summary || {
+                totalControls: maturityData.totalControls,
+                Implementado: stats.statusCounts.Implementado || 0,
+                Parcialmente: stats.statusCounts['Parcialmente implementado'] || 0,
+                NaoImplementado: stats.statusCounts['Não implementado'] || 0,
+                NaoSeAplica: stats.statusCounts['Não se aplica'] || 0,
+                percentages: stats.percentages,
+                maturityLevels: stats.maturityLevels,
+            };
             res.json({
                 success: true,
                 data: {
                     company: maturityData.company,
-                    summary: {
-                        totalControls: maturityData.totalControls,
-                        totalUsers: maturityData.users,
-                        ...stats,
-                    },
+                    summary: summary,
                     byDomain,
                     byCategory,
                     byType,
@@ -77,15 +83,21 @@ class DashboardController {
             const byType = DashboardService_js_1.DashboardService.groupByType(maturityData.controls);
             const byCyberConcept = DashboardService_js_1.DashboardService.groupByCyberConcept(maturityData.controls);
             const byCapability = DashboardService_js_1.DashboardService.groupByCapability(maturityData.controls);
+            // CORREÇÃO: Usar o summary completo do maturityData
+            const summary = maturityData.summary || {
+                totalControls: maturityData.totalControls,
+                Implementado: stats.statusCounts.Implementado || 0,
+                Parcialmente: stats.statusCounts['Parcialmente implementado'] || 0,
+                NaoImplementado: stats.statusCounts['Não implementado'] || 0,
+                NaoSeAplica: stats.statusCounts['Não se aplica'] || 0,
+                percentages: stats.percentages,
+                maturityLevels: stats.maturityLevels,
+            };
             res.json({
                 success: true,
                 data: {
                     company: maturityData.company,
-                    summary: {
-                        totalControls: maturityData.totalControls,
-                        totalUsers: maturityData.users,
-                        ...stats,
-                    },
+                    summary: summary,
                     byDomain,
                     byCategory,
                     byType,

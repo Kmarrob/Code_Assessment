@@ -1,6 +1,47 @@
-// backend/src/types/index.ts
 import { Request } from 'express';
 import { Types, Document } from 'mongoose';
+
+// ============================================================
+// TIPOS PARA O ROADMAP DE IMPLEMENTAÇÃO
+// ============================================================
+
+export interface RoadmapItem {
+  id: string;
+  name: string;
+  description?: string;
+  priority: 'Crítico' | 'Muito Alto' | 'Alto' | 'Médio' | 'Baixo';
+  category: 'processual' | 'politica' | 'tecnica';
+  controlId?: string; // Referência ao controle ISO 27001 relacionado
+  relatedControls?: string[]; // IDs dos controles relacionados
+}
+
+export interface RoadmapSection {
+  title: string;
+  description: string;
+  items: RoadmapItem[];
+  priority: 'Crítico' | 'Muito Alto' | 'Alto' | 'Médio' | 'Baixo';
+}
+
+export interface RoadmapData {
+  companyId: string;
+  companyName: string;
+  generatedAt: Date;
+  sections: {
+    processuais: RoadmapSection;
+    politicas: RoadmapSection;
+    tecnicas: RoadmapSection;
+  };
+  summary: {
+    totalItems: number;
+    byPriority: {
+      critico: number;
+      muitoAlto: number;
+      alto: number;
+      medio: number;
+      baixo: number;
+    };
+  };
+}
 
 // ============================================
 // ENUMS

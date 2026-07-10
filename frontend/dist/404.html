@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Code_Assessment</title>
+  <style>
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f4f7fb;
+      color: #1e293b;
+    }
+    .container {
+      text-align: center;
+      padding: 20px;
+    }
+    .spinner {
+      border: 4px solid #e9edf4;
+      border-top: 4px solid #1a56db;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 16px;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    p {
+      color: #94a3b8;
+      font-size: 14px;
+    }
+  </style>
+  <script>
+    // Redirecionar para a página inicial
+    window.location.href = '/';
+  </script>
+</head>
+<body>
+  <div class="container">
+    <div class="spinner"></div>
+    <p>Redirecionando para o sistema...</p>
+  </div>
+</body>
+</html>

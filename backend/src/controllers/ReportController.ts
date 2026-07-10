@@ -389,4 +389,44 @@ export class ReportController {
       next(error);
     }
   }
+
+  /**
+   * 🔴 NOVO: Obter Roadmap de Implementação
+   * GET /api/reports/roadmap/:companyId
+   * Acesso: ADMIN ou REP (da empresa)
+   */
+  static async getRoadmap(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const user = req.user;
+      
+      if (!user) {
+        throw new AppError('Usuário não autenticado', 401);
+      }
+
+      const { companyId } = req.params;
+      if (!companyId) {
+        throw new AppError('ID da empresa é obrigatório', 400);
+      }
+
+      // Verificar permissões
+      if (user.role !== UserRole.ADMIN && user.companyId?.toString() !== companyId) {
+        throw new AppError('Você não tem permissão para acessar este roadmap', 403);
+      }
+
+      const roadmapData = await ReportService.getRoadmap(companyId);
+
+      res.json({
+        success: true,
+        data: roadmapData,
+        statusCode: 200,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }

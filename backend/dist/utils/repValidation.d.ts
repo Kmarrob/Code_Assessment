@@ -2,19 +2,19 @@ import { z } from 'zod';
 export declare const repCreateUserSchema: z.ZodObject<{
     name: z.ZodString;
     email: z.ZodString;
-    password: z.ZodString;
+    password: z.ZodOptional<z.ZodString>;
     company: z.ZodOptional<z.ZodString>;
     department: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
-    password: string;
     name: string;
     email: string;
+    password?: string | undefined;
     company?: string | undefined;
     department?: string | undefined;
 }, {
-    password: string;
     name: string;
     email: string;
+    password?: string | undefined;
     company?: string | undefined;
     department?: string | undefined;
 }>;
@@ -46,19 +46,33 @@ export declare const repListUsersSchema: z.ZodObject<{
 }>;
 export declare const repUpdateUserSchema: z.ZodObject<{
     name: z.ZodOptional<z.ZodString>;
-    company: z.ZodOptional<z.ZodString>;
     department: z.ZodOptional<z.ZodString>;
-    isActive: z.ZodOptional<z.ZodBoolean>;
 }, "strip", z.ZodTypeAny, {
     name?: string | undefined;
-    company?: string | undefined;
     department?: string | undefined;
-    isActive?: boolean | undefined;
 }, {
     name?: string | undefined;
-    company?: string | undefined;
     department?: string | undefined;
-    isActive?: boolean | undefined;
+}>;
+export declare const repInactivateUserSchema: z.ZodObject<{
+    reason: z.ZodEnum<["Desligado", "Mudou de setor", "Outros"]>;
+    description: z.ZodEffects<z.ZodOptional<z.ZodString>, string | undefined, string | undefined>;
+}, "strip", z.ZodTypeAny, {
+    reason: "Desligado" | "Mudou de setor" | "Outros";
+    description?: string | undefined;
+}, {
+    reason: "Desligado" | "Mudou de setor" | "Outros";
+    description?: string | undefined;
+}>;
+export declare const repRevokeControlSchema: z.ZodObject<{
+    confirmRevoke: z.ZodEffects<z.ZodBoolean, boolean, boolean>;
+    newUserId: z.ZodEffects<z.ZodOptional<z.ZodString>, string | undefined, string | undefined>;
+}, "strip", z.ZodTypeAny, {
+    confirmRevoke: boolean;
+    newUserId?: string | undefined;
+}, {
+    confirmRevoke: boolean;
+    newUserId?: string | undefined;
 }>;
 export declare const repResponseSchema: z.ZodObject<{
     assignmentId: z.ZodString;

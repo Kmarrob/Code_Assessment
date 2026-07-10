@@ -9,5 +9,15 @@ export declare class AuthController {
     static updateProfile(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void>;
     static listUsers(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void>;
     static getUserById(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void>;
+    /**
+     * 🔴 NOVO: Validar token de redefinição de senha
+     * POST /auth/validate-reset-token
+     */
+    static validateResetToken(req: Request, res: Response, next: NextFunction): Promise<void>;
+    /**
+     * 🔴 NOVO: Redefinir senha
+     * POST /auth/reset-password
+     */
+    static resetPassword(req: Request, res: Response, next: NextFunction): Promise<void>;
 }
 //# sourceMappingURL=AuthController.d.ts.map

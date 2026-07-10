@@ -14,6 +14,10 @@ const Company_js_1 = require("../models/Company.js");
 const errorHandler_js_1 = require("../middleware/errorHandler.js");
 const logger_js_1 = require("../utils/logger.js");
 const index_js_1 = require("../types/index.js");
+// 🔴 NOVO: Import do EmailJSService
+const EmailJSService_js_1 = require("./EmailJSService.js");
+// 🔴 NOVO: Import do NotificationService
+const NotificationService_js_1 = require("./NotificationService.js");
 class RepService {
     /**
      * Listar usuários de um preposto (usuários que ele cadastrou)
@@ -94,7 +98,7 @@ class RepService {
         };
     }
     /**
-     * Criar usuário pelo preposto
+     * Criar usuário pelo preposto (com senha automática)
      */
     static async createUser(repId, userData) {
         // Verificar se o preposto existe
@@ -125,51 +129,241 @@ class RepService {
         if (!companyId) {
             throw new errorHandler_js_1.AppError('Preposto não possui empresa associada. Contate o administrador.', 400);
         }
-        // Criar usuário - MAPEANDO EXPLICITAMENTE os campos
+        // ============================================
+        // CORREÇÃO: Senha NÃO é gerada para primeiro acesso
+        // O usuário deve criar a senha via link de redefinição
+        // ============================================
+        let generatedPassword = userData.password;
+        if (!generatedPassword) {
+            generatedPassword = undefined;
+            logger_js_1.logger.info(`Usuário criado para primeiro acesso (sem senha): ${userData.email}`);
+        }
+        // Criar usuário
         const user = new User_js_1.User({
             name: userData.name,
             email: userData.email,
-            password: userData.password,
+            ...(generatedPassword && { password: generatedPassword }),
             department: userData.department || '',
             role: index_js_1.UserRole.USER,
             createdBy: repId,
             companyId: companyId,
             isActive: true,
+            mustChangePassword: true,
         });
         await user.save();
         logger_js_1.logger.info(`Usuário criado pelo preposto ${rep.email}: ${user.email} (Empresa: ${companyId})`);
-        return user.toJSON();
+        // Enviar e-mail de boas-vindas com link para criar senha
+        try {
+            const frontendUrl = process.env.FRONTEND_URL || 'https://code-assessment-frontend.onrender.com';
+            const resetToken = user._id;
+            const resetLink = `${frontendUrl}/reset-password/${resetToken}`;
+            await EmailJSService_js_1.emailjsService.sendPasswordResetEmail({
+                to: user.email,
+                userName: user.name,
+                userEmail: user.email,
+                resetLink: resetLink,
+                expiryTime: '24 horas',
+            });
+            logger_js_1.logger.info(`📧 E-mail de boas-vindas enviado para ${user.email}`);
+        }
+        catch (emailError) {
+            logger_js_1.logger.error(`❌ Erro ao enviar e-mail de boas-vindas para ${user.email}:`, emailError);
+        }
+        const userResponse = user.toJSON();
+        delete userResponse.password;
+        return userResponse;
     }
     /**
-     * Atribuir controles a um usuário (sem repetição)
-     * Se um controle já estiver atribuído a outro usuário, pode ser movido com force=true
+     * Editar usuário pelo preposto
      */
-    static async assignControls(repId, data) {
-        const { userId, controlIds, force = false } = data;
-        // Verificar se o preposto existe
+    static async updateUser(repId, userId, data) {
         const rep = await User_js_1.User.findById(repId);
         if (!rep) {
             throw new errorHandler_js_1.NotFoundError('Preposto não encontrado');
         }
-        // Verificar se o usuário existe
         const user = await User_js_1.User.findById(userId);
         if (!user) {
             throw new errorHandler_js_1.NotFoundError('Usuário não encontrado');
         }
-        // Verificar se o usuário pertence ao preposto
         if (user.createdBy?.toString() !== repId) {
             throw new errorHandler_js_1.AppError('Usuário não pertence a este preposto', 403);
         }
-        // Verificar se o usuário está na mesma empresa do preposto
         if (rep.companyId && user.companyId?.toString() !== rep.companyId.toString()) {
             throw new errorHandler_js_1.AppError('Usuário não pertence à mesma empresa do preposto', 403);
         }
-        // Verificar se os controles existem
+        if (data.email && data.email !== user.email) {
+            const existingUser = await User_js_1.User.findOne({
+                email: data.email,
+                _id: { $ne: userId },
+            });
+            if (existingUser) {
+                throw new errorHandler_js_1.ValidationError({ email: ['Email já está em uso por outro usuário'] });
+            }
+        }
+        const updateData = {};
+        if (data.name)
+            updateData.name = data.name;
+        if (data.email)
+            updateData.email = data.email;
+        if (data.department !== undefined)
+            updateData.department = data.department;
+        const updatedUser = await User_js_1.User.findByIdAndUpdate(userId, { $set: updateData }, { new: true, runValidators: true }).select('_id name email department role isActive');
+        logger_js_1.logger.info(`Usuário ${user.email} atualizado pelo preposto ${rep.email}`);
+        return updatedUser;
+    }
+    /**
+     * Inativar usuário com justificativa
+     */
+    static async inactivateUser(repId, userId, data) {
+        const rep = await User_js_1.User.findById(repId);
+        if (!rep) {
+            throw new errorHandler_js_1.NotFoundError('Preposto não encontrado');
+        }
+        const user = await User_js_1.User.findById(userId);
+        if (!user) {
+            throw new errorHandler_js_1.NotFoundError('Usuário não encontrado');
+        }
+        if (user.createdBy?.toString() !== repId) {
+            throw new errorHandler_js_1.AppError('Usuário não pertence a este preposto', 403);
+        }
+        if (rep.companyId && user.companyId?.toString() !== rep.companyId.toString()) {
+            throw new errorHandler_js_1.AppError('Usuário não pertence à mesma empresa do preposto', 403);
+        }
+        if (!user.isActive) {
+            throw new errorHandler_js_1.AppError('Usuário já está inativo', 400);
+        }
+        const updatedUser = await User_js_1.User.findByIdAndUpdate(userId, {
+            $set: {
+                isActive: false,
+                inactivationReason: data.reason,
+                inactivationDescription: data.description || '',
+                inactivatedAt: new Date(),
+                inactivatedBy: repId,
+            },
+        }, { new: true }).select('_id name email role isActive inactivationReason inactivationDescription inactivatedAt');
+        logger_js_1.logger.info(`Usuário ${user.email} inativado pelo preposto ${rep.email}. Motivo: ${data.reason}`);
+        await Assignment_js_1.Assignment.updateMany({ userId, status: index_js_1.ResponseStatus.PENDING }, { $set: { status: index_js_1.ResponseStatus.REVOKED } });
+        // 🔴 NOTIFICAÇÃO: Usuário inativado
+        try {
+            await NotificationService_js_1.NotificationService.notifyUserInactivated(userId, rep.companyId?.toString() || '', rep.name || rep.email, `${data.reason} - ${data.description || ''}`);
+        }
+        catch (notifyError) {
+            logger_js_1.logger.error('❌ Erro ao enviar notificação de inativação:', notifyError);
+        }
+        return updatedUser;
+    }
+    /**
+     * Revogar controle com reatribuição
+     */
+    static async revokeControl(repId, assignmentId, newUserId) {
+        const rep = await User_js_1.User.findById(repId);
+        if (!rep) {
+            throw new errorHandler_js_1.NotFoundError('Preposto não encontrado');
+        }
+        const assignment = await Assignment_js_1.Assignment.findById(assignmentId)
+            .populate('userId', 'name email')
+            .populate('controlId', 'id nome');
+        if (!assignment) {
+            throw new errorHandler_js_1.NotFoundError('Atribuição não encontrada');
+        }
+        const currentUser = await User_js_1.User.findById(assignment.userId);
+        if (!currentUser || currentUser.companyId?.toString() !== rep.companyId?.toString()) {
+            throw new errorHandler_js_1.AppError('Atribuição não pertence à sua empresa', 403);
+        }
+        if (assignment.status === index_js_1.ResponseStatus.COMPLETED) {
+            throw new errorHandler_js_1.AppError('Não é possível revogar um controle já respondido', 400);
+        }
+        const oldUserId = assignment.userId;
+        const oldUser = currentUser;
+        const control = assignment.controlId;
+        // 🔴 NOTIFICAÇÃO: Controle revogado (antes de deletar)
+        try {
+            await NotificationService_js_1.NotificationService.notifyControlRevoked(oldUserId.toString(), rep.companyId?.toString() || '', control?.nome || 'Controle', control?.id || assignment.controlId, `Revogado por ${rep.name || rep.email}${newUserId ? ' e reatribuído' : ''}`);
+        }
+        catch (notifyError) {
+            logger_js_1.logger.error('❌ Erro ao enviar notificação de revogação:', notifyError);
+        }
+        // Remover a atribuição atual
+        await Assignment_js_1.Assignment.findByIdAndDelete(assignmentId);
+        let newAssignment = null;
+        // Se novo usuário foi especificado, criar nova atribuição
+        if (newUserId) {
+            const newUser = await User_js_1.User.findOne({
+                _id: newUserId,
+                createdBy: repId,
+                role: index_js_1.UserRole.USER,
+                isActive: true,
+            });
+            if (!newUser) {
+                throw new errorHandler_js_1.NotFoundError('Usuário destino não encontrado ou inativo');
+            }
+            if (newUser.companyId?.toString() !== rep.companyId?.toString()) {
+                throw new errorHandler_js_1.AppError('Usuário destino não pertence à mesma empresa', 403);
+            }
+            const existingAssignment = await Assignment_js_1.Assignment.findOne({
+                userId: newUserId,
+                controlId: assignment.controlId,
+            });
+            if (existingAssignment) {
+                throw new errorHandler_js_1.AppError('Este controle já está atribuído ao usuário destino', 400);
+            }
+            // Criar nova atribuição
+            newAssignment = new Assignment_js_1.Assignment({
+                userId: newUserId,
+                controlId: assignment.controlId,
+                assignedBy: repId,
+                assignedAt: new Date(),
+                status: index_js_1.ResponseStatus.PENDING,
+                dueDate: assignment.dueDate,
+            });
+            await newAssignment.save();
+            await newAssignment.populate('userId', 'name email');
+            await newAssignment.populate('controlId', 'id nome');
+            // 🔴 NOTIFICAÇÃO: Novo controle atribuído (para o novo usuário)
+            try {
+                await NotificationService_js_1.NotificationService.notifyAssignment(newUserId, rep.companyId?.toString() || '', control?.nome || 'Controle', control?.id || assignment.controlId, rep.name || rep.email);
+            }
+            catch (notifyError) {
+                logger_js_1.logger.error('❌ Erro ao enviar notificação de atribuição para novo usuário:', notifyError);
+            }
+            logger_js_1.logger.info(`Controle ${control?.id || assignment.controlId} revogado do usuário ${oldUser?.email} e reatribuído para ${newUser.email} pelo preposto ${rep.email}`);
+        }
+        else {
+            logger_js_1.logger.info(`Controle ${control?.id || assignment.controlId} revogado do usuário ${oldUser?.email} pelo preposto ${rep.email}`);
+        }
+        return {
+            revoked: true,
+            oldUserId,
+            oldUserEmail: oldUser?.email,
+            controlId: assignment.controlId,
+            controlName: control?.nome || 'Controle',
+            newUserId: newUserId || null,
+            newAssignment: newAssignment || null,
+        };
+    }
+    /**
+     * Atribuir controles a um usuário (sem repetição)
+     */
+    static async assignControls(repId, data) {
+        const { userId, controlIds, force = false } = data;
+        const rep = await User_js_1.User.findById(repId);
+        if (!rep) {
+            throw new errorHandler_js_1.NotFoundError('Preposto não encontrado');
+        }
+        const user = await User_js_1.User.findById(userId);
+        if (!user) {
+            throw new errorHandler_js_1.NotFoundError('Usuário não encontrado');
+        }
+        if (user.createdBy?.toString() !== repId) {
+            throw new errorHandler_js_1.AppError('Usuário não pertence a este preposto', 403);
+        }
+        if (rep.companyId && user.companyId?.toString() !== rep.companyId.toString()) {
+            throw new errorHandler_js_1.AppError('Usuário não pertence à mesma empresa do preposto', 403);
+        }
         const controls = await Control_js_1.Control.find({ _id: { $in: controlIds } });
         if (controls.length !== controlIds.length) {
             throw new errorHandler_js_1.NotFoundError('Um ou mais controles não foram encontrados');
         }
-        // Verificar quais controles já estão atribuídos a OUTROS usuários da mesma empresa
         const otherUsers = await User_js_1.User.find({
             companyId: rep.companyId,
             _id: { $ne: userId },
@@ -181,7 +375,6 @@ class RepService {
             controlId: { $in: controlIds },
         });
         const otherAssignedControlIds = existingOtherAssignments.map(a => a.controlId.toString());
-        // Se houver controles atribuídos a outros usuários e force=false, retornar conflitos
         if (otherAssignedControlIds.length > 0 && !force) {
             return {
                 assigned: 0,
@@ -190,7 +383,6 @@ class RepService {
                 conflictMessage: `Os seguintes controles já estão atribuídos a outros usuários: ${otherAssignedControlIds.join(', ')}. Use force=true para substituir.`,
             };
         }
-        // Se force=true, remover atribuições existentes para outros usuários
         let removedCount = 0;
         if (force && otherAssignedControlIds.length > 0) {
             const removed = await Assignment_js_1.Assignment.deleteMany({
@@ -200,14 +392,12 @@ class RepService {
             removedCount = removed.deletedCount || 0;
             logger_js_1.logger.info(`Removidas ${removedCount} atribuições de controles para outros usuários`);
         }
-        // Verificar quais controles já estão atribuídos a este usuário
         const existingAssignments = await Assignment_js_1.Assignment.find({
             userId,
             controlId: { $in: controlIds },
         });
         const existingControlIds = existingAssignments.map((a) => a.controlId.toString());
         const newControlIds = controlIds.filter((id) => !existingControlIds.includes(id));
-        // Criar novas atribuições para este usuário
         const assignments = newControlIds.map((controlId) => ({
             userId,
             controlId,
@@ -219,6 +409,18 @@ class RepService {
         if (assignments.length > 0) {
             const result = await Assignment_js_1.Assignment.insertMany(assignments);
             created = result.length;
+            // 🔴 NOTIFICAÇÃO: Para cada controle atribuído
+            for (const assignmentData of assignments) {
+                const control = controls.find(c => c._id.toString() === assignmentData.controlId);
+                if (control) {
+                    try {
+                        await NotificationService_js_1.NotificationService.notifyAssignment(userId, rep.companyId?.toString() || '', control.nome || control.id || assignmentData.controlId, control.id || assignmentData.controlId, rep.name || rep.email);
+                    }
+                    catch (notifyError) {
+                        logger_js_1.logger.error('❌ Erro ao enviar notificação de atribuição:', notifyError);
+                    }
+                }
+            }
         }
         logger_js_1.logger.info(`${created} controles atribuídos ao usuário ${user.email} pelo preposto ${rep.email}`);
         return {
@@ -233,42 +435,33 @@ class RepService {
      * Obter progresso de um usuário
      */
     static async getUserProgress(repId, userId) {
-        // Verificar se o preposto existe
         const rep = await User_js_1.User.findById(repId);
         if (!rep) {
             throw new errorHandler_js_1.NotFoundError('Preposto não encontrado');
         }
-        // Verificar se o usuário existe
         const user = await User_js_1.User.findById(userId);
         if (!user) {
             throw new errorHandler_js_1.NotFoundError('Usuário não encontrado');
         }
-        // Verificar se o usuário pertence ao preposto
         if (user.createdBy?.toString() !== repId) {
             throw new errorHandler_js_1.AppError('Usuário não pertence a este preposto', 403);
         }
-        // Verificar se o usuário está na mesma empresa do preposto
         if (rep.companyId && user.companyId?.toString() !== rep.companyId.toString()) {
             throw new errorHandler_js_1.AppError('Usuário não pertence à mesma empresa do preposto', 403);
         }
-        // Buscar todas as atribuições do usuário
         const assignments = await Assignment_js_1.Assignment.find({ userId })
             .populate('controlId', 'id nome')
             .lean();
-        // Buscar respostas do usuário
         const responses = await Response_js_1.Response.find({ userId })
             .populate('controlId', 'id nome')
             .lean();
-        // Mapear respostas por assignmentId
         const responseMap = new Map();
         responses.forEach((r) => {
             responseMap.set(r.assignmentId.toString(), r);
         });
-        // Calcular estatísticas
         const total = assignments.length;
         const completed = responses.length;
         const pending = total - completed;
-        // Calcular distribuição de maturidade
         const maturityDistribution = {
             'N/A': 0,
             '0': 0,
@@ -281,9 +474,7 @@ class RepService {
                 maturityDistribution[level]++;
             }
         });
-        // Calcular porcentagem
         const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
-        // Detalhar cada atribuição
         const details = assignments.map((assignment) => {
             const control = assignment.controlId;
             return {
@@ -310,12 +501,10 @@ class RepService {
      * Obter progresso geral do preposto
      */
     static async getOverallProgress(repId) {
-        // Verificar se o preposto existe
         const rep = await User_js_1.User.findById(repId);
         if (!rep) {
             throw new errorHandler_js_1.NotFoundError('Preposto não encontrado');
         }
-        // Buscar todos os usuários do preposto (mesma empresa)
         const filter = {
             createdBy: repId,
             role: index_js_1.UserRole.USER,
@@ -325,18 +514,15 @@ class RepService {
         }
         const users = await User_js_1.User.find(filter).select('_id name email');
         const userIds = users.map((u) => u._id);
-        // Buscar atribuições e respostas
         const [assignments, responses] = await Promise.all([
             Assignment_js_1.Assignment.find({ userId: { $in: userIds } }),
             Response_js_1.Response.find({ userId: { $in: userIds } }),
         ]);
-        // Estatísticas gerais
         const totalAssignments = assignments.length;
         const totalResponses = responses.length;
         const overallPercentage = totalAssignments > 0
             ? Math.round((totalResponses / totalAssignments) * 100)
             : 0;
-        // Progresso por usuário
         const userProgress = users.map((user) => {
             const userAssignments = assignments.filter((a) => a.userId.toString() === user._id.toString());
             const userResponses = responses.filter((r) => r.userId.toString() === user._id.toString());
@@ -363,34 +549,38 @@ class RepService {
      * Obter estatísticas do preposto
      */
     static async getStats(repId) {
-        // Verificar se o preposto existe
         const rep = await User_js_1.User.findById(repId);
         if (!rep) {
             throw new errorHandler_js_1.NotFoundError('Preposto não encontrado');
         }
-        // Total de usuários do preposto (mesma empresa)
         const filter = {
             createdBy: repId,
             role: index_js_1.UserRole.USER,
+            isActive: true,
         };
         if (rep.companyId) {
             filter.companyId = rep.companyId;
         }
+        const activeUsers = await User_js_1.User.find(filter).select('_id');
+        const activeUserIds = activeUsers.map(u => u._id);
         const totalUsers = await User_js_1.User.countDocuments(filter);
-        // Total de atribuições
         const totalAssignments = await Assignment_js_1.Assignment.countDocuments({
             assignedBy: repId,
+            userId: { $in: activeUserIds },
         });
-        // Atribuições por status
         const statusCounts = await Assignment_js_1.Assignment.aggregate([
-            { $match: { assignedBy: new mongoose_1.default.Types.ObjectId(repId) } },
+            {
+                $match: {
+                    assignedBy: new mongoose_1.default.Types.ObjectId(repId),
+                    userId: { $in: activeUserIds }
+                }
+            },
             { $group: { _id: '$status', count: { $sum: 1 } } },
         ]);
         const statusMap = {};
         statusCounts.forEach((item) => {
             statusMap[item._id] = item.count;
         });
-        // Total de respostas
         const totalResponses = await Response_js_1.Response.aggregate([
             {
                 $lookup: {
@@ -401,10 +591,14 @@ class RepService {
                 },
             },
             { $unwind: '$assignment' },
-            { $match: { 'assignment.assignedBy': new mongoose_1.default.Types.ObjectId(repId) } },
+            {
+                $match: {
+                    'assignment.assignedBy': new mongoose_1.default.Types.ObjectId(repId),
+                    'assignment.userId': { $in: activeUserIds }
+                }
+            },
             { $count: 'total' },
         ]);
-        // Média de maturidade
         const maturityAvg = await Response_js_1.Response.aggregate([
             {
                 $lookup: {
@@ -415,7 +609,12 @@ class RepService {
                 },
             },
             { $unwind: '$assignment' },
-            { $match: { 'assignment.assignedBy': new mongoose_1.default.Types.ObjectId(repId) } },
+            {
+                $match: {
+                    'assignment.assignedBy': new mongoose_1.default.Types.ObjectId(repId),
+                    'assignment.userId': { $in: activeUserIds }
+                }
+            },
             {
                 $group: {
                     _id: null,
@@ -423,15 +622,17 @@ class RepService {
                 },
             },
         ]);
+        const totalResponsesCount = totalResponses[0]?.total || 0;
+        const completionRate = totalAssignments > 0
+            ? Math.round((totalResponsesCount / totalAssignments) * 100)
+            : 0;
         return {
             totalUsers,
             totalAssignments,
-            totalResponses: totalResponses[0]?.total || 0,
+            totalResponses: totalResponsesCount,
             statusDistribution: statusMap,
             averageMaturity: maturityAvg[0]?.avgMaturity || 0,
-            completionRate: totalAssignments > 0
-                ? Math.round(((totalResponses[0]?.total || 0) / totalAssignments) * 100)
-                : 0,
+            completionRate,
         };
     }
 }

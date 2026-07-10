@@ -22,12 +22,12 @@ export declare class RepService {
         status?: 'all' | 'active' | 'inactive';
     }): Promise<ListUsersResult>;
     /**
-     * Criar usuário pelo preposto
+     * Criar usuário pelo preposto (com senha automática)
      */
     static createUser(repId: string, userData: {
         name: string;
         email: string;
-        password: string;
+        password?: string;
         department?: string;
     }): Promise<mongoose.FlattenMaps<import("../models/User.js").IUserDocument> & Required<{
         _id: mongoose.Types.ObjectId;
@@ -35,8 +35,46 @@ export declare class RepService {
         __v: number;
     }>;
     /**
+     * Editar usuário pelo preposto
+     */
+    static updateUser(repId: string, userId: string, data: {
+        name?: string;
+        email?: string;
+        department?: string;
+    }): Promise<(mongoose.Document<unknown, {}, import("../models/User.js").IUserDocument, {}, {}> & import("../models/User.js").IUserDocument & Required<{
+        _id: mongoose.Types.ObjectId;
+    }> & {
+        __v: number;
+    }) | null>;
+    /**
+     * Inativar usuário com justificativa
+     */
+    static inactivateUser(repId: string, userId: string, data: {
+        reason: 'Desligado' | 'Mudou de setor' | 'Outros';
+        description: string;
+    }): Promise<(mongoose.Document<unknown, {}, import("../models/User.js").IUserDocument, {}, {}> & import("../models/User.js").IUserDocument & Required<{
+        _id: mongoose.Types.ObjectId;
+    }> & {
+        __v: number;
+    }) | null>;
+    /**
+     * Revogar controle com reatribuição
+     */
+    static revokeControl(repId: string, assignmentId: string, newUserId: string | null): Promise<{
+        revoked: boolean;
+        oldUserId: mongoose.Types.ObjectId;
+        oldUserEmail: string;
+        controlId: mongoose.Types.ObjectId;
+        controlName: any;
+        newUserId: string | null;
+        newAssignment: (mongoose.Document<unknown, {}, import("../types/index.js").IAssignment, {}, {}> & import("../types/index.js").IAssignment & Required<{
+            _id: mongoose.Types.ObjectId;
+        }> & {
+            __v: number;
+        }) | null;
+    }>;
+    /**
      * Atribuir controles a um usuário (sem repetição)
-     * Se um controle já estiver atribuído a outro usuário, pode ser movido com force=true
      */
     static assignControls(repId: string, data: {
         userId: string;

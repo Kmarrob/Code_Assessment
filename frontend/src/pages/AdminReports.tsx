@@ -50,7 +50,14 @@ export const AdminReports: React.FC = () => {
         status: statusFilter,
         search: search || undefined,
       });
-      setReports(response.reports || []);
+      
+      // 🔴 CORREÇÃO 1: Filtrar relatórios que têm empresa válida
+      const validReports = (response.reports || []).filter((report: Report) => {
+        const company = (report as any).companyId as any;
+        return company && company._id && company.name;
+      });
+      
+      setReports(validReports);
       setPagination(response.pagination);
     } catch (err: any) {
       console.error('Erro ao carregar relatórios:', err);
@@ -80,8 +87,9 @@ export const AdminReports: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleViewReport = (companyId: string) => {
-    navigate(`/admin/reports/${companyId}`);
+  // 🔴 CORREÇÃO 2: Usar a rota que funciona (/rep/report com companyId)
+  const goToReport = (companyId: string) => {
+    navigate(`/rep/report?companyId=${companyId}`);
   };
 
   const handleRefresh = () => {
@@ -212,7 +220,7 @@ export const AdminReports: React.FC = () => {
             <div className="flex items-center justify-between">
               <CardTitle>Lista de Relatórios</CardTitle>
               <span className="text-sm text-gray-500">
-                {pagination?.total || 0} {pagination?.total === 1 ? 'relatório' : 'relatórios'}
+                {reports.length} {reports.length === 1 ? 'relatório' : 'relatórios'}
               </span>
             </div>
           </CardHeader>
@@ -251,6 +259,8 @@ export const AdminReports: React.FC = () => {
                     {reports.map((report) => {
                       const status = getStatusLabel(report.status);
                       const company = (report as any).companyId as any;
+                      const companyId = report.companyId?._id || report.companyId;
+                      const companyName = company?.name || 'Empresa não identificada';
                       
                       return (
                         <tr key={report._id} className="hover:bg-gray-50">
@@ -258,7 +268,7 @@ export const AdminReports: React.FC = () => {
                             <div className="flex items-center gap-2">
                               <Building2 className="h-4 w-4 text-gray-400" />
                               <span className="font-medium text-gray-900">
-                                {company?.name || 'Empresa não identificada'}
+                                {companyName}
                               </span>
                             </div>
                           </td>
@@ -297,26 +307,34 @@ export const AdminReports: React.FC = () => {
                           </td>
                           <td className="py-3 px-4">
                             <div className="flex items-center gap-2">
+                              {/* 🔴 CORREÇÃO: Todos os botões usam goToReport com /rep/report?companyId= */}
                               <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={() => handleViewReport(report.companyId)}
+                                onClick={() => goToReport(companyId)}
+                                title="Visualizar relatório"
                               >
                                 <Eye className="h-4 w-4 mr-1" />
                                 Visualizar
                               </Button>
+                              
                               <Button
                                 size="sm"
                                 variant="outline"
                                 className="text-green-600 border-green-200 hover:bg-green-50"
+                                onClick={() => goToReport(companyId)}
+                                title="Visualizar para exportar PDF"
                               >
                                 <Download className="h-4 w-4 mr-1" />
                                 PDF
                               </Button>
+                              
                               <Button
                                 size="sm"
                                 variant="outline"
                                 className="text-purple-600 border-purple-200 hover:bg-purple-50"
+                                onClick={() => goToReport(companyId)}
+                                title="Visualizar para imprimir"
                               >
                                 <Printer className="h-4 w-4" />
                               </Button>

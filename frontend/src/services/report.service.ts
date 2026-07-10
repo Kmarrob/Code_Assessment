@@ -1,7 +1,7 @@
 // frontend/src/services/report.service.ts
 import api from './api.js';
 import { ApiResponse } from '../types/index.js';
-import { Report, ReportDashboardData, ReportListResponse, UpdateReportData } from '../types/report.js';
+import { Report, ReportDashboardData, ReportListResponse, UpdateReportData, RoadmapData } from '../types/report.js';
 
 export const reportService = {
   /**
@@ -70,5 +70,14 @@ export const reportService = {
   async getPriorizationMatrix(companyId: string): Promise<any[]> {
     const response = await api.get<ApiResponse<any[]>>(`/reports/priorization/${companyId}`);
     return response.data.data.matrix || response.data.data || [];
+  },
+
+  /**
+   * ?? NOVO: Obter Roadmap de Implementacao
+   * GET /api/reports/roadmap/:companyId
+   */
+  async getRoadmap(companyId: string): Promise<RoadmapData> {
+    const response = await api.get<ApiResponse<RoadmapData>>(`/reports/roadmap/${companyId}`);
+    return response.data.data;
   },
 };

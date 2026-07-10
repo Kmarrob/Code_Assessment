@@ -56,6 +56,16 @@ router.get(
 );
 
 // ============================================
+// 🔴 NOVA ROTA: Roadmap de Implementação
+// ============================================
+router.get(
+  '/roadmap/:companyId',
+  authorize(UserRole.REP, UserRole.ADMIN),
+  authenticatedRateLimiter,
+  ReportController.getRoadmap
+);
+
+// ============================================
 // ROTAS POR EMPRESA
 // ============================================
 

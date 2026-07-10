@@ -21,7 +21,7 @@ export declare class UserService {
         inProgress: number;
     }>;
     /**
-     * Salvar resposta de um controle
+     * Salvar resposta de um controle com automação do scenarioDescription
      */
     static saveResponse(userId: string, data: {
         assignmentId: string;

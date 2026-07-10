@@ -89,7 +89,10 @@ function authorize(...allowedRoles) {
             });
             return;
         }
-        if (!allowedRoles.includes(user.role)) {
+        // 🔴 CORREÇÃO RESILIENTE: Garante que "rep" e "REP" correspondam perfeitamente na comparação por caixa baixa
+        const userRoleLower = user.role ? user.role.toLowerCase() : '';
+        const isAllowed = allowedRoles.some(role => role && role.toLowerCase() === userRoleLower);
+        if (!isAllowed) {
             res.status(403).json({
                 success: false,
                 message: 'Acesso negado: permissão insuficiente',

@@ -3,6 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+// backend/src/server.ts
 const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
 const helmet_1 = __importDefault(require("helmet"));
@@ -17,6 +18,12 @@ const admin_js_1 = __importDefault(require("./routes/admin.js"));
 const rep_routes_js_1 = __importDefault(require("./routes/rep.routes.js"));
 const user_routes_js_1 = __importDefault(require("./routes/user.routes.js"));
 const consultant_routes_js_1 = __importDefault(require("./routes/consultant.routes.js"));
+const review_routes_js_1 = __importDefault(require("./routes/review.routes.js"));
+const notification_routes_js_1 = __importDefault(require("./routes/notification.routes.js"));
+const document_routes_js_1 = __importDefault(require("./routes/document.routes.js")); // 🔴 NOVO
+const report_routes_js_1 = __importDefault(require("./routes/report.routes.js")); // 🔴 NOVO (v17)
+const recommendation_routes_js_1 = __importDefault(require("./routes/recommendation.routes.js")); // 🔴 NOVO (v19)
+require("./services/EmailService.js");
 const cache_js_1 = require("./middleware/cache.js");
 const SitemapController_js_1 = require("./controllers/SitemapController.js");
 const adminPerformance_js_1 = require("./middleware/adminPerformance.js");
@@ -67,18 +74,16 @@ app.use((0, helmet_1.default)({
     xssFilter: true,
 }));
 // ============================================
-// CONFIGURAÇÃO CORS CORRIGIDA - MÚLTIPLAS ORIGENS
+// CONFIGURAÇÃO CORS CORRIGIDA - PERMITE REQUISIÇÕES SEM ORIGIN
 // ============================================
 // Processar CORS_ORIGIN como array de origens permitidas
 const corsOrigins = env_js_1.config.CORS_ORIGIN.split(',').map(origin => origin.trim());
 app.use((0, cors_1.default)({
     origin: function (origin, callback) {
-        // Permitir requisições sem origin (como Postman) em desenvolvimento
+        // Permitir requisições sem origin (health checks, ferramentas, etc.)
+        // Render faz health checks sem header Origin
         if (!origin) {
-            if (env_js_1.config.NODE_ENV === 'development') {
-                return callback(null, true);
-            }
-            return callback(new Error('Not allowed by CORS'));
+            return callback(null, true);
         }
         // Verificar se a origem está na lista de permitidas
         if (corsOrigins.indexOf(origin) !== -1) {
@@ -97,15 +102,25 @@ app.use((0, cors_1.default)({
 app.use(express_1.default.json({ limit: '10mb' }));
 app.use(express_1.default.urlencoded({ extended: true, limit: '10mb' }));
 app.use(logger_js_1.httpLogger);
+// ============================================
+// CORREÇÃO: Rate Limit com isenção para admin
+// ============================================
+// Public rate limiter para rotas públicas (menos restritivo)
 app.use(rateLimit_js_1.publicRateLimiter);
 // ============================================
 // ROTAS DA API
 // ============================================
 app.use('/api/auth', auth_js_1.default);
-app.use('/api/admin', admin_js_1.default);
+// CORREÇÃO: Rotas admin com adminRateLimiter (admin tem acesso ilimitado)
+app.use('/api/admin', rateLimit_js_1.adminRateLimiter, admin_js_1.default);
 app.use('/api/rep', rep_routes_js_1.default);
 app.use('/api/user', user_routes_js_1.default);
 app.use('/api/consultant', consultant_routes_js_1.default);
+app.use('/api/review', review_routes_js_1.default);
+app.use('/api/notifications', notification_routes_js_1.default);
+app.use('/api/documents', document_routes_js_1.default); // 🔴 NOVO - Rotas de documentos
+app.use('/api/reports', report_routes_js_1.default); // 🔴 NOVO (v17) - Rotas de relatórios
+app.use('/api/recommendations', recommendation_routes_js_1.default); // 🔴 NOVO (v19) - Rotas de recomendações
 app.get('/health', cache_js_1.noCache, (_req, res) => {
     res.json({
         status: 'ok',
@@ -168,6 +183,11 @@ async function startServer() {
             logger_js_1.logger.info(`👤 Rep Routes: http://localhost:${PORT}/api/rep`);
             logger_js_1.logger.info(`👤 User Routes: http://localhost:${PORT}/api/user`);
             logger_js_1.logger.info(`👤 Consultant Routes: http://localhost:${PORT}/api/consultant`);
+            logger_js_1.logger.info(`📋 Review Routes: http://localhost:${PORT}/api/review`);
+            logger_js_1.logger.info(`🔔 Notification Routes: http://localhost:${PORT}/api/notifications`);
+            logger_js_1.logger.info(`📄 Document Routes: http://localhost:${PORT}/api/documents`);
+            logger_js_1.logger.info(`📊 Report Routes: http://localhost:${PORT}/api/reports`);
+            logger_js_1.logger.info(`📋 Recommendation Routes: http://localhost:${PORT}/api/recommendations`); // 🔴 NOVO (v19)
         });
     }
     catch (error) {

@@ -1,0 +1,230 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.NotificationController = void 0;
+const NotificationService_js_1 = require("../services/NotificationService.js");
+const errors_js_1 = require("../utils/errors.js");
+class NotificationController {
+    /**
+     * Buscar notificações do usuário autenticado
+     * GET /api/notifications
+     */
+    static async getNotifications(req, res, next) {
+        try {
+            const userId = req.userId;
+            if (!userId) {
+                throw new errors_js_1.AppError('Usuário não autenticado', 401);
+            }
+            const page = parseInt(req.query.page) || 1;
+            const limit = parseInt(req.query.limit) || 20;
+            const filter = req.query.filter || 'all';
+            const result = await NotificationService_js_1.NotificationService.getNotifications(userId, {
+                page,
+                limit,
+                filter,
+            });
+            res.status(200).json({
+                success: true,
+                data: result.notifications,
+                pagination: {
+                    page,
+                    limit,
+                    total: result.total,
+                    totalPages: Math.ceil(result.total / limit),
+                },
+                unreadCount: result.unreadCount,
+                timestamp: new Date().toISOString(),
+            });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    /**
+     * Buscar apenas notificações não lidas
+     * GET /api/notifications/unread
+     */
+    static async getUnreadNotifications(req, res, next) {
+        try {
+            const userId = req.userId;
+            if (!userId) {
+                throw new errors_js_1.AppError('Usuário não autenticado', 401);
+            }
+            const notifications = await NotificationService_js_1.NotificationService.getUnreadNotifications(userId);
+            res.status(200).json({
+                success: true,
+                data: notifications,
+                count: notifications.length,
+                timestamp: new Date().toISOString(),
+            });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    /**
+     * Contar notificações não lidas
+     * GET /api/notifications/unread/count
+     */
+    static async countUnread(req, res, next) {
+        try {
+            const userId = req.userId;
+            if (!userId) {
+                throw new errors_js_1.AppError('Usuário não autenticado', 401);
+            }
+            const count = await NotificationService_js_1.NotificationService.countUnread(userId);
+            res.status(200).json({
+                success: true,
+                data: { count },
+                timestamp: new Date().toISOString(),
+            });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    /**
+     * 🔴 NOVO: Criar uma notificação (para testes e admin)
+     * POST /api/notifications
+     */
+    static async createNotification(req, res, next) {
+        try {
+            const userId = req.userId;
+            if (!userId) {
+                throw new errors_js_1.AppError('Usuário não autenticado', 401);
+            }
+            const { targetUserId, companyId, type, title, message, link, metadata } = req.body;
+            if (!targetUserId) {
+                throw new errors_js_1.AppError('ID do usuário destino é obrigatório', 400);
+            }
+            if (!companyId) {
+                throw new errors_js_1.AppError('ID da empresa é obrigatório', 400);
+            }
+            if (!type) {
+                throw new errors_js_1.AppError('Tipo de notificação é obrigatório', 400);
+            }
+            if (!title || !message) {
+                throw new errors_js_1.AppError('Título e mensagem são obrigatórios', 400);
+            }
+            const notification = await NotificationService_js_1.NotificationService.createNotification({
+                userId: targetUserId,
+                companyId,
+                type,
+                title,
+                message,
+                link,
+                metadata,
+            });
+            res.status(201).json({
+                success: true,
+                data: notification,
+                message: 'Notificação criada com sucesso',
+                timestamp: new Date().toISOString(),
+            });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    /**
+     * Marcar notificação como lida
+     * PATCH /api/notifications/:id/read
+     */
+    static async markAsRead(req, res, next) {
+        try {
+            const userId = req.userId;
+            if (!userId) {
+                throw new errors_js_1.AppError('Usuário não autenticado', 401);
+            }
+            const { id } = req.params;
+            if (!id) {
+                throw new errors_js_1.AppError('ID da notificação é obrigatório', 400);
+            }
+            const notification = await NotificationService_js_1.NotificationService.markAsRead(id, userId);
+            res.status(200).json({
+                success: true,
+                data: notification,
+                message: 'Notificação marcada como lida',
+                timestamp: new Date().toISOString(),
+            });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    /**
+     * Marcar todas as notificações como lidas
+     * PATCH /api/notifications/read-all
+     */
+    static async markAllAsRead(req, res, next) {
+        try {
+            const userId = req.userId;
+            if (!userId) {
+                throw new errors_js_1.AppError('Usuário não autenticado', 401);
+            }
+            const count = await NotificationService_js_1.NotificationService.markAllAsRead(userId);
+            res.status(200).json({
+                success: true,
+                data: { count },
+                message: `${count} notificações marcadas como lidas`,
+                timestamp: new Date().toISOString(),
+            });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    /**
+     * Excluir notificação
+     * DELETE /api/notifications/:id
+     */
+    static async deleteNotification(req, res, next) {
+        try {
+            const userId = req.userId;
+            if (!userId) {
+                throw new errors_js_1.AppError('Usuário não autenticado', 401);
+            }
+            const { id } = req.params;
+            if (!id) {
+                throw new errors_js_1.AppError('ID da notificação é obrigatório', 400);
+            }
+            await NotificationService_js_1.NotificationService.deleteNotification(id, userId);
+            res.status(200).json({
+                success: true,
+                message: 'Notificação excluída com sucesso',
+                timestamp: new Date().toISOString(),
+            });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    /**
+     * Excluir notificações antigas (admin apenas)
+     * DELETE /api/notifications/old
+     */
+    static async deleteOldNotifications(req, res, next) {
+        try {
+            const userId = req.userId;
+            if (!userId) {
+                throw new errors_js_1.AppError('Usuário não autenticado', 401);
+            }
+            // Verificar se é admin
+            if (req.user?.role !== 'admin') {
+                throw new errors_js_1.AppError('Apenas administradores podem executar esta ação', 403);
+            }
+            const days = parseInt(req.query.days) || 30;
+            const count = await NotificationService_js_1.NotificationService.deleteOldNotifications(days);
+            res.status(200).json({
+                success: true,
+                data: { deleted: count },
+                message: `${count} notificações antigas excluídas`,
+                timestamp: new Date().toISOString(),
+            });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+}
+exports.NotificationController = NotificationController;
+//# sourceMappingURL=NotificationController.js.map

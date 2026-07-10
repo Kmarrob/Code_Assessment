@@ -5,9 +5,13 @@ exports.UserService = void 0;
 const Assignment_js_1 = require("../models/Assignment.js");
 const Response_js_1 = require("../models/Response.js");
 const User_js_1 = require("../models/User.js");
+const Question_js_1 = require("../models/Question.js");
+const Control_js_1 = require("../models/Control.js");
 const errorHandler_js_1 = require("../middleware/errorHandler.js");
 const logger_js_1 = require("../utils/logger.js");
 const index_js_1 = require("../types/index.js");
+// 🔴 NOVO: Import do NotificationService
+const NotificationService_js_1 = require("./NotificationService.js");
 class UserService {
     /**
      * Obter controles atribuídos ao usuário
@@ -76,7 +80,7 @@ class UserService {
         };
     }
     /**
-     * Salvar resposta de um controle
+     * Salvar resposta de um controle com automação do scenarioDescription
      */
     static async saveResponse(userId, data) {
         const { assignmentId, maturityLevel, scenarioDescription, evidence, notes } = data;
@@ -88,6 +92,12 @@ class UserService {
         if (!assignment) {
             throw new errorHandler_js_1.AppError('Atribuição não encontrada ou não pertence ao usuário', 404);
         }
+        // Buscar o usuário para obter o companyId
+        const user = await User_js_1.User.findById(userId);
+        if (!user) {
+            throw new errorHandler_js_1.AppError('Usuário não encontrado', 404);
+        }
+        const companyId = user.companyId;
         // Converter evidence para string se for array
         let evidenceString = '';
         if (evidence) {
@@ -98,25 +108,62 @@ class UserService {
                 evidenceString = evidence;
             }
         }
+        // Automação: Buscar descrição automática
+        let autoScenarioDescription = scenarioDescription || '';
+        if (!scenarioDescription || scenarioDescription.trim() === '') {
+            try {
+                const control = await Control_js_1.Control.findById(assignment.controlId);
+                if (!control) {
+                    logger_js_1.logger.warn(`⚠️ Controle não encontrado para o assignment ${assignmentId}`);
+                }
+                else {
+                    const question = await Question_js_1.Question.findOne({
+                        controlId: control.id,
+                        active: true
+                    });
+                    if (question) {
+                        const level = Number(maturityLevel);
+                        if (level === 2) {
+                            autoScenarioDescription = question.answerImplemented || '';
+                        }
+                        else if (level === 1) {
+                            autoScenarioDescription = question.answerPartial || '';
+                        }
+                        else if (level === 0) {
+                            autoScenarioDescription = question.answerNotImplemented || '';
+                        }
+                        logger_js_1.logger.info(`🔍 Descrição automática preenchida para controle ${control.id} - Nível: ${level}`);
+                    }
+                    else {
+                        logger_js_1.logger.warn(`⚠️ Pergunta não encontrada para o controle ${control.id}`);
+                    }
+                }
+            }
+            catch (error) {
+                logger_js_1.logger.error(`❌ Erro ao buscar pergunta para o controle ${assignment.controlId}:`, error);
+                autoScenarioDescription = scenarioDescription || '';
+            }
+        }
         // Verificar se já existe uma resposta
         let response = await Response_js_1.Response.findOne({ assignmentId });
         if (response) {
             // Atualizar resposta existente
             response.maturityLevel = maturityLevel;
-            response.scenarioDescription = scenarioDescription || '';
+            response.scenarioDescription = autoScenarioDescription;
             response.evidence = evidenceString ? [evidenceString] : [];
             response.observations = notes || '';
             await response.save();
         }
         else {
-            // Criar nova resposta
+            // Criar nova resposta com companyId
             response = new Response_js_1.Response({
                 assignmentId,
                 userId,
                 controlId: assignment.controlId,
+                companyId: companyId,
                 maturityLevel,
-                scenarioDescription: scenarioDescription || '',
-                evidence: evidenceString ? [evidenceString] : [], // Correção aqui: envolvendo em array string[]
+                scenarioDescription: autoScenarioDescription,
+                evidence: evidenceString ? [evidenceString] : [],
                 observations: notes || '',
                 submittedAt: new Date(),
             });
@@ -126,6 +173,29 @@ class UserService {
             await assignment.save();
         }
         logger_js_1.logger.info(`Resposta salva para o usuário ${userId} - Controle: ${assignment.controlId}`);
+        // 🔴 NOTIFICAÇÃO: Enviar notificação para o preposto
+        try {
+            const assignmentPopulated = await Assignment_js_1.Assignment.findById(assignmentId)
+                .populate('assignedBy', 'name email');
+            if (assignmentPopulated && assignmentPopulated.assignedBy) {
+                const preposto = assignmentPopulated.assignedBy;
+                // Buscar o controle para obter o nome
+                const control = await Control_js_1.Control.findById(assignment.controlId);
+                // Mapear nível para texto
+                const levelMap = {
+                    '2': 'Implementado',
+                    '1': 'Parcialmente implementado',
+                    '0': 'Não implementado',
+                    '-1': 'Não se aplica'
+                };
+                const statusText = levelMap[maturityLevel] || maturityLevel;
+                await NotificationService_js_1.NotificationService.notifyResponse(preposto._id.toString(), user.companyId?.toString() || '', user.name || 'Usuário', control?.nome || 'Controle', control?.id || assignment.controlId, response._id.toString());
+                logger_js_1.logger.info(`📬 Notificação enviada para o preposto ${preposto.email} sobre a resposta do usuário ${user.email}`);
+            }
+        }
+        catch (notifyError) {
+            logger_js_1.logger.error('❌ Erro ao enviar notificação de resposta:', notifyError);
+        }
         return response;
     }
     /**

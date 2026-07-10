@@ -11,7 +11,8 @@ export declare enum ResponseStatus {
     IN_PROGRESS = "in_progress",
     COMPLETED = "completed",
     SKIPPED = "skipped",
-    EXPIRED = "expired"
+    EXPIRED = "expired",
+    REVOKED = "revoked"
 }
 export declare enum MaturityLevel {
     N_A = "N/A",
@@ -38,6 +39,10 @@ export interface IUser {
     updatedAt: Date;
     lastLogin?: Date;
     passwordChangedAt?: Date;
+    inactivationReason?: 'Desligado' | 'Mudou de setor' | 'Outros';
+    inactivationDescription?: string;
+    inactivatedAt?: Date;
+    inactivatedBy?: Types.ObjectId;
 }
 export interface IUserDocument extends IUser, Document {
     comparePassword(candidatePassword: string): Promise<boolean>;
@@ -89,6 +94,7 @@ export interface IResponse {
     assignmentId: Types.ObjectId;
     userId: Types.ObjectId;
     controlId: Types.ObjectId;
+    companyId: Types.ObjectId;
     maturityLevel: MaturityLevel;
     scenarioDescription?: string;
     evidence?: string[];

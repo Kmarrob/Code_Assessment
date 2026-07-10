@@ -11,6 +11,11 @@ declare const envSchema: z.ZodObject<{
     CORS_ORIGIN: z.ZodDefault<z.ZodString>;
     RATE_LIMIT_WINDOW_MS: z.ZodDefault<z.ZodEffects<z.ZodString, number, string>>;
     RATE_LIMIT_MAX: z.ZodDefault<z.ZodEffects<z.ZodString, number, string>>;
+    GOOGLE_CLIENT_ID: z.ZodDefault<z.ZodString>;
+    GOOGLE_CLIENT_SECRET: z.ZodDefault<z.ZodString>;
+    GOOGLE_REFRESH_TOKEN: z.ZodDefault<z.ZodString>;
+    SMTP_USER: z.ZodDefault<z.ZodString>;
+    SMTP_FROM: z.ZodDefault<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
     NODE_ENV: "development" | "test" | "production";
     PORT: number;
@@ -23,6 +28,11 @@ declare const envSchema: z.ZodObject<{
     CORS_ORIGIN: string;
     RATE_LIMIT_WINDOW_MS: number;
     RATE_LIMIT_MAX: number;
+    GOOGLE_CLIENT_ID: string;
+    GOOGLE_CLIENT_SECRET: string;
+    GOOGLE_REFRESH_TOKEN: string;
+    SMTP_USER: string;
+    SMTP_FROM: string;
 }, {
     MONGODB_URI: string;
     JWT_SECRET: string;
@@ -35,6 +45,11 @@ declare const envSchema: z.ZodObject<{
     CORS_ORIGIN?: string | undefined;
     RATE_LIMIT_WINDOW_MS?: string | undefined;
     RATE_LIMIT_MAX?: string | undefined;
+    GOOGLE_CLIENT_ID?: string | undefined;
+    GOOGLE_CLIENT_SECRET?: string | undefined;
+    GOOGLE_REFRESH_TOKEN?: string | undefined;
+    SMTP_USER?: string | undefined;
+    SMTP_FROM?: string | undefined;
 }>;
 export declare const config: {
     NODE_ENV: "development" | "test" | "production";
@@ -48,6 +63,11 @@ export declare const config: {
     CORS_ORIGIN: string;
     RATE_LIMIT_WINDOW_MS: number;
     RATE_LIMIT_MAX: number;
+    GOOGLE_CLIENT_ID: string;
+    GOOGLE_CLIENT_SECRET: string;
+    GOOGLE_REFRESH_TOKEN: string;
+    SMTP_USER: string;
+    SMTP_FROM: string;
 };
 export type EnvConfig = z.infer<typeof envSchema>;
 export {};

@@ -11,6 +11,8 @@ const index_js_1 = require("../types/index.js");
 const retry_js_1 = require("../utils/retry.js");
 const circuitBreaker_js_1 = require("../utils/circuitBreaker.js");
 const timeout_js_1 = require("../middleware/timeout.js");
+// 🔴 NOVO: Import do EmailJSService
+const EmailJSService_js_1 = require("./EmailJSService.js");
 class AdminService {
     static async listUsers(filters = {}, page = 1, limit = 10) {
         try {
@@ -124,6 +126,24 @@ class AdminService {
                         });
                         await user.save();
                         logger_js_1.logger.info(`Usuário criado pelo admin: ${user.email} (${user.role}) - Empresa: ${companyId || 'Nenhuma'}`);
+                        // 🔴 NOVO: Enviar e-mail de boas-vindas com link para criar senha
+                        try {
+                            const frontendUrl = process.env.FRONTEND_URL || 'https://code-assessment-frontend.onrender.com';
+                            const resetToken = user._id; // Usar ID como token simples
+                            const resetLink = `${frontendUrl}/reset-password/${resetToken}`;
+                            await EmailJSService_js_1.emailjsService.sendPasswordResetEmail({
+                                to: user.email,
+                                userName: user.name,
+                                userEmail: user.email,
+                                resetLink: resetLink,
+                                expiryTime: '24 horas',
+                            });
+                            logger_js_1.logger.info(`📧 E-mail de boas-vindas enviado para ${user.email} (Admin)`);
+                        }
+                        catch (emailError) {
+                            // Não interrompe o fluxo se o e-mail falhar
+                            logger_js_1.logger.error(`❌ Erro ao enviar e-mail de boas-vindas para ${user.email}:`, emailError);
+                        }
                         return user.toJSON();
                     }, 'AdminService.createUser');
                 }, 'AdminService.createUser');

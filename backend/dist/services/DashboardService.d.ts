@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 export declare class DashboardService {
     /**
-     * Obter dados de maturidade de uma empresa
+     * Obter dados de maturidade de uma empresa - CORRIGIDO
      */
     static getCompanyMaturity(companyId: string, filters?: {
         userId?: string;
@@ -9,6 +9,20 @@ export declare class DashboardService {
         company: {
             id: null;
             name: null;
+        };
+        summary: {
+            totalControls: number;
+            Implementado: number;
+            Parcialmente: number;
+            NaoImplementado: number;
+            NaoSeAplica: number;
+            percentages: {
+                Implementado: number;
+                Parcialmente: number;
+                NaoImplementado: number;
+                NaoSeAplica: number;
+            };
+            maturityLevels: {};
         };
         totalControls: number;
         controls: never[];
@@ -18,6 +32,20 @@ export declare class DashboardService {
         company: {
             id: mongoose.Types.ObjectId;
             name: string;
+        };
+        summary: {
+            totalControls: number;
+            Implementado: number;
+            Parcialmente: number;
+            NaoImplementado: number;
+            NaoSeAplica: number;
+            percentages: {
+                Implementado: number;
+                Parcialmente: number;
+                NaoImplementado: number;
+                NaoSeAplica: number;
+            };
+            maturityLevels: Record<string, number>;
         };
         totalControls: number;
         controls: any[];
@@ -53,39 +81,41 @@ export declare class DashboardService {
             NaoImplementado: number;
             NaoSeAplica: number;
         };
-        maturityLevels: {
-            'N/A': number;
-            '0': number;
-            '1': number;
-            '2': number;
-            '3': number;
-            '4': number;
-            '5': number;
-        };
+        maturityLevels: Record<string, number>;
     };
     /**
-     * Calcular níveis de maturidade
+     * Calcular níveis de maturidade - CORRIGIDO com nullish coalescing
      */
     private static calculateMaturityLevels;
     /**
      * Agrupar controles por domínio
      */
-    static groupByDomain(controls: any[]): any;
+    static groupByDomain(controls: any[]): {
+        [k: string]: any;
+    };
     /**
      * Agrupar controles por categoria
      */
-    static groupByCategory(controls: any[]): any;
+    static groupByCategory(controls: any[]): {
+        [k: string]: any;
+    };
     /**
-     * Agrupar controles por tipo
+     * Agrupar controles por tipo - Evita dupla contagem
      */
-    static groupByType(controls: any[]): any;
+    static groupByType(controls: any[]): {
+        [k: string]: any;
+    };
     /**
      * Agrupar controles por conceito cibernético
      */
-    static groupByCyberConcept(controls: any[]): any;
+    static groupByCyberConcept(controls: any[]): {
+        [k: string]: any;
+    };
     /**
      * Agrupar controles por capacidade operacional
      */
-    static groupByCapability(controls: any[]): any;
+    static groupByCapability(controls: any[]): {
+        [k: string]: any;
+    };
 }
 //# sourceMappingURL=DashboardService.d.ts.map
