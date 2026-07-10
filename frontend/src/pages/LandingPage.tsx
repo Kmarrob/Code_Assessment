@@ -6,7 +6,10 @@ import {
   Shield, Users, BarChart3, Zap, 
   ArrowRight, FileText, PieChart, 
   TrendingUp, Layers, Award, Database,
-  Building2
+  Building2, CheckCircle, Clock, 
+  Package, Box, HardDrive, FileCheck,
+  ShieldCheck, Lock, CreditCard, FileSearch,
+  Boxes
 } from 'lucide-react';
 import { FadeTransition } from '../components/ui/Transition.js';
 import { Typewriter } from '../components/ui/MicroInteractions.js';
@@ -58,6 +61,56 @@ const features = [
     icon: Database,
     title: 'Multi-tenant Seguro',
     description: 'Dados isolados por empresa com controle de acesso granular por perfis.',
+  },
+];
+
+// ============================================
+// CARDS DE PRODUTOS/SERVIÇOS (COM IMAGENS MAIORES)
+// ============================================
+const products = [
+  {
+    id: 'code-assessment',
+    name: 'Code_Assessment',
+    image: '/products/code-assessment.png',
+    description: 'Avaliação completa de maturidade em Segurança da Informação baseada na ISO 27001. Gerencie controles, usuários e relatórios em tempo real.',
+    status: 'available',
+    statusLabel: 'Disponível',
+    statusColor: '#10b981',
+    link: '/register',
+    linkLabel: 'Começar Agora',
+  },
+  {
+    id: 'lgpd',
+    name: 'LGPD',
+    image: '/products/lgpd.png',
+    description: 'Sistema de adequação à Lei Geral de Proteção de Dados. Mapeamento de dados pessoais, avaliação de riscos e plano de conformidade.',
+    status: 'coming-soon',
+    statusLabel: 'Em breve',
+    statusColor: '#f59e0b',
+    link: '#',
+    linkLabel: 'Saiba mais',
+  },
+  {
+    id: 'pci-dss',
+    name: 'PCI_DSS',
+    image: '/products/pci-dss.png',
+    description: 'Avaliação de conformidade para o Padrão de Segurança de Dados da Indústria de Cartões de Pagamento. Proteja dados de cartão e evite violações.',
+    status: 'coming-soon',
+    statusLabel: 'Em breve',
+    statusColor: '#f59e0b',
+    link: '#',
+    linkLabel: 'Saiba mais',
+  },
+  {
+    id: 'politicas-processos',
+    name: 'Políticas, Processos e Procedimentos',
+    image: '/products/politicas.png',
+    description: 'Portfólio completo de documentos para o SGSI. Políticas de segurança, procedimentos operacionais, planos de continuidade e muito mais.',
+    status: 'coming-soon',
+    statusLabel: 'Em breve',
+    statusColor: '#f59e0b',
+    link: '#',
+    linkLabel: 'Saiba mais',
   },
 ];
 
@@ -177,6 +230,9 @@ export const LandingPage: React.FC = () => {
         </header>
 
         <main>
+          {/* ============================================
+              SEÇÃO 1: HERO
+              ============================================ */}
           <section 
             className="container mx-auto px-4 pt-32 pb-20 md:pt-40 md:pb-32"
             aria-labelledby="hero-title"
@@ -259,6 +315,125 @@ export const LandingPage: React.FC = () => {
             </div>
           </section>
 
+          {/* ============================================
+              SEÇÃO 2: PRODUTOS/SERVIÇOS (COM IMAGENS MAIORES)
+              ============================================ */}
+          <section 
+            className="py-20"
+            style={{ backgroundColor: colors.background || '#FFFFFF' }}
+            aria-labelledby="products-title"
+          >
+            <div className="container mx-auto px-4">
+              <div className="text-center mb-16">
+                <h2 id="products-title" className="text-4xl font-bold mb-4" style={{ color: colors.primary }}>
+                  Nossas Soluções
+                </h2>
+                <p className="text-lg max-w-2xl mx-auto" style={{ color: colors.secondary }}>
+                  Conheça nosso portfólio de produtos e serviços para segurança da informação
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                {products.map((product) => {
+                  const isAvailable = product.status === 'available';
+                  
+                  return (
+                    <div
+                      key={product.id}
+                      className="group relative bg-white rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-500 overflow-hidden"
+                      style={{ 
+                        borderColor: colors.accent + '20',
+                      }}
+                    >
+                      {/* Badge de Status */}
+                      <div className="absolute top-4 right-4 z-10">
+                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium text-white`}
+                          style={{ backgroundColor: product.statusColor }}
+                        >
+                          {isAvailable ? (
+                            <CheckCircle className="h-3 w-3" />
+                          ) : (
+                            <Clock className="h-3 w-3" />
+                          )}
+                          {product.statusLabel}
+                        </span>
+                      </div>
+
+                      {/* Imagem do Produto (a "caixa" - MAIOR) */}
+                      <div className="relative w-full aspect-square overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100">
+                        <img
+                          src={product.image}
+                          alt={product.name}
+                          className="w-full h-full object-contain p-4 transition-transform duration-500 group-hover:scale-105"
+                          style={{ padding: '8%' }}
+                          onError={(e) => {
+                            // Fallback se a imagem não carregar
+                            e.currentTarget.style.display = 'none';
+                            const fallback = document.createElement('div');
+                            fallback.className = 'w-full h-full flex items-center justify-center';
+                            fallback.innerHTML = `
+                              <div class="text-center">
+                                <div class="w-28 h-28 mx-auto rounded-2xl flex items-center justify-center" 
+                                     style="background-color: ${isAvailable ? colors.accent + '20' : colors.secondary + '15'}; color: ${isAvailable ? colors.accent : colors.secondary};">
+                                  <svg class="w-14 h-14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+                                  </svg>
+                                </div>
+                                <p class="text-base font-medium mt-3" style="color: ${colors.primary};">${product.name}</p>
+                              </div>
+                            `;
+                            e.currentTarget.parentNode?.appendChild(fallback);
+                          }}
+                        />
+                      </div>
+
+                      {/* Conteúdo abaixo da imagem */}
+                      <div className="p-5 relative z-10">
+                        {/* Nome do Produto */}
+                        <h3 className="text-xl font-bold mb-2" style={{ color: colors.primary }}>
+                          {product.name}
+                        </h3>
+
+                        {/* Descrição */}
+                        <p className="text-sm leading-relaxed mb-4" style={{ color: colors.text }}>
+                          {product.description}
+                        </p>
+
+                        {/* Botão de Ação */}
+                        <Link to={product.link}>
+                          <Button
+                            variant={isAvailable ? 'default' : 'outline'}
+                            className="w-full py-2.5 group-hover:shadow-md transition-all duration-300"
+                            style={{
+                              backgroundColor: isAvailable ? colors.accent : 'transparent',
+                              color: isAvailable ? '#FFFFFF' : colors.primary,
+                              borderColor: isAvailable ? colors.accent : colors.accent + '40',
+                            }}
+                          >
+                            {product.linkLabel}
+                            <ArrowRight className="ml-2 h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
+                          </Button>
+                        </Link>
+                      </div>
+
+                      {/* Linha inferior colorida */}
+                      <div 
+                        className="h-1.5 w-full transition-all duration-300 group-hover:h-2"
+                        style={{ 
+                          backgroundColor: product.statusColor,
+                          opacity: isAvailable ? 1 : 0.6,
+                        }}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </section>
+
+          {/* ============================================
+              SEÇÃO 3: FUNCIONALIDADES (EXISTENTE)
+              ============================================ */}
           <section 
             className="py-16"
             style={{ backgroundColor: colors.background || '#FFFFFF' }}
@@ -305,6 +480,9 @@ export const LandingPage: React.FC = () => {
             </div>
           </section>
 
+          {/* ============================================
+              SEÇÃO 4: CTA (EXISTENTE)
+              ============================================ */}
           <section 
             className="py-16 text-white"
             style={{ 
