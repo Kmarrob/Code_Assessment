@@ -14,6 +14,15 @@ export const reportService = {
   },
 
   /**
+   * 🔴 NOVO: Obter dashboard completo do relatório para ADMIN (com companyId)
+   * GET /api/reports/admin/dashboard/:companyId
+   */
+  async getAdminDashboard(companyId: string): Promise<ReportDashboardData> {
+    const response = await api.get<ApiResponse<ReportDashboardData>>(`/reports/admin/dashboard/${companyId}`);
+    return response.data.data;
+  },
+
+  /**
    * Obter relatório de uma empresa específica
    * GET /api/reports/company/:companyId
    */

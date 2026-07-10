@@ -36,6 +36,16 @@ router.get(
 );
 
 // ============================================
+// 🔴 NOVA ROTA: ADMIN dashboard por empresa
+// ============================================
+router.get(
+  '/admin/dashboard/:companyId',
+  authorize(UserRole.ADMIN),
+  adminRateLimiter,
+  ReportController.getAdminDashboardByCompany
+);
+
+// ============================================
 // ROTAS POR EMPRESA
 // ============================================
 

@@ -19,6 +19,8 @@ import AdminConsultants from './pages/AdminConsultants.js';
 import AdminConsultantForm from './pages/AdminConsultantForm.js';
 import UserAnswer from './pages/UserAnswer.js';
 import AdminConsultantView from './pages/AdminConsultantView.js';
+// 🔴 NOVO: Import da página de detalhes da empresa
+import AdminCompanyDetail from './pages/AdminCompanyDetail.js';
 
 // ============================================
 // IMPORTAÇÕES DO DASHBOARD (DIRETAS - CORRIGIDO)
@@ -43,13 +45,13 @@ import RepAssignControls from './pages/RepAssignControls.js';
 import RepResponses from './pages/RepResponses.js';
 import RepEditUser from './pages/RepEditUser.js';
 import RepDocuments from './pages/RepDocuments.js';
-import ResetPassword from './pages/ResetPassword.js'; // 🔴 NOVO
+import ResetPassword from './pages/ResetPassword.js';
 import ConsultantDashboard from './pages/ConsultantDashboard.js';
 import UserDashboard from './pages/UserDashboard.js';
 import ProfilePage from './pages/ProfilePage.js';
-import ReportView from './pages/ReportView.js'; // 🔴 NOVO (v17)
-import AdminReports from './pages/AdminReports.js'; // 🔴 NOVO (v17)
-import AdminRecommendations from './pages/AdminRecommendations.js'; // 🔴 NOVO (v19)
+import ReportView from './pages/ReportView.js';
+import AdminReports from './pages/AdminReports.js';
+import AdminRecommendations from './pages/AdminRecommendations.js';
 
 // 🔴 NOVO: Import do Layout
 import { Layout } from './components/Layout.js';
@@ -98,7 +100,7 @@ function App() {
                 <Route path="/" element={<LandingPage />} />
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/register" element={<RegisterPage />} />
-                <Route path="/reset-password/:token" element={<ResetPassword />} /> {/* 🔴 NOVO */}
+                <Route path="/reset-password/:token" element={<ResetPassword />} />
 
                 { /* ============================================
                     ROTAS PROTEGIDAS (qualquer usuário autenticado)
@@ -136,6 +138,12 @@ function App() {
                       <AdminCompanies />
                     </Layout>
                   } />
+                  {/* 🔴 NOVO: Rota para detalhes da empresa */}
+                  <Route path="/admin/empresas/:companyId/detalhes" element={
+                    <Layout>
+                      <AdminCompanyDetail />
+                    </Layout>
+                  } />
                   <Route path="/admin/perguntas" element={
                     <Layout>
                       <AdminQuestions />
@@ -161,12 +169,18 @@ function App() {
                       <AdminConsultantView />
                     </Layout>
                   } />
-                  <Route path="/admin/relatorios" element={ /* 🔴 NOVO (v17) */
+                  <Route path="/admin/relatorios" element={
                     <Layout>
                       <AdminReports />
                     </Layout>
                   } />
-                  <Route path="/admin/recomendacoes" element={ /* 🔴 NOVO (v19) */
+                  {/* 🔴 NOVO: Rota para visualizar um relatório específico no admin */}
+                  <Route path="/admin/relatorios/:companyId" element={
+                    <Layout>
+                      <ReportView />
+                    </Layout>
+                  } />
+                  <Route path="/admin/recomendacoes" element={
                     <Layout>
                       <AdminRecommendations />
                     </Layout>
@@ -244,7 +258,7 @@ function App() {
                       <RepDocuments />
                     </Layout>
                   } />
-                  <Route path="/rep/report" element={ /* 🔴 NOVO (v17) */
+                  <Route path="/rep/report" element={
                     <Layout>
                       <ReportView />
                     </Layout>

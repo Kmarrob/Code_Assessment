@@ -1,7 +1,7 @@
 // backend/src/controllers/ReportController.ts
 import { Request, Response, NextFunction } from 'express';
 import { ReportService } from '../services/ReportService.js';
-import { ReportResultService } from '../services/ReportResultService.js'; // 🔴 NOVO
+import { ReportResultService } from '../services/ReportResultService.js';
 import { AppError, NotFoundError, ValidationError } from '../middleware/errorHandler.js';
 import { logger } from '../utils/logger.js';
 import { AuthenticatedRequest, UserRole } from '../types/index.js';
@@ -40,7 +40,7 @@ export class ReportController {
         report = await ReportService.generateReportData(companyId);
       }
 
-      // 🔴 POPULAR companyId para obter o nome da empresa
+      // POPULAR companyId para obter o nome da empresa
       await report.populate('companyId', 'name cnpj');
 
       res.json({
@@ -79,7 +79,7 @@ export class ReportController {
 
       const report = await ReportService.generateReportData(companyId);
 
-      // 🔴 POPULAR companyId para obter o nome da empresa
+      // POPULAR companyId para obter o nome da empresa
       await report.populate('companyId', 'name cnpj');
 
       res.json({
@@ -130,7 +130,7 @@ export class ReportController {
         userId
       );
 
-      // 🔴 POPULAR companyId para obter o nome da empresa
+      // POPULAR companyId para obter o nome da empresa
       await report.populate('companyId', 'name cnpj');
 
       res.json({
@@ -226,10 +226,10 @@ export class ReportController {
         reportData = await ReportService.generateReportData(companyId);
       }
 
-      // 🔴 POPULAR companyId para obter o nome da empresa
+      // POPULAR companyId para obter o nome da empresa
       await reportData.populate('companyId', 'name cnpj');
 
-      // 🔴 NOVO: Buscar dados de resultados (categorização e capacidades)
+      // Buscar dados de resultados (categorização e capacidades)
       const resultados = await ReportResultService.getResultadosData(companyId);
 
       // Buscar estatísticas para o dashboard
@@ -259,7 +259,85 @@ export class ReportController {
             totalControls,
             completionRate: totalControls > 0 ? Math.round((totalResponses / totalControls) * 100) : 0,
           },
-          resultados: resultados, // 🔴 NOVO
+          resultados: resultados,
+        },
+        statusCode: 200,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * 🔴 NOVO: Obter dashboard completo do relatório para ADMIN (com companyId)
+   * GET /api/reports/admin/dashboard/:companyId
+   * Acesso: ADMIN
+   */
+  static async getAdminDashboardByCompany(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const user = req.user;
+      
+      if (!user) {
+        throw new AppError('Usuário não autenticado', 401);
+      }
+
+      if (user.role !== UserRole.ADMIN) {
+        throw new AppError('Acesso restrito a administradores', 403);
+      }
+
+      const { companyId } = req.params;
+      if (!companyId) {
+        throw new AppError('ID da empresa é obrigatório', 400);
+      }
+
+      // Buscar ou criar relatório
+      const report = await ReportService.getOrCreateReport(companyId);
+      
+      // Gerar dados se estiver vazio
+      let reportData = report;
+      if (report.clientTeam.length === 0) {
+        reportData = await ReportService.generateReportData(companyId);
+      }
+
+      // POPULAR companyId para obter o nome da empresa
+      await reportData.populate('companyId', 'name cnpj');
+
+      // Buscar dados de resultados (categorização e capacidades)
+      const resultados = await ReportResultService.getResultadosData(companyId);
+
+      // Buscar estatísticas para o dashboard
+      const totalUsers = await User.countDocuments({
+        companyId: companyId,
+        isActive: true,
+        role: UserRole.USER,
+      });
+
+      const totalResponses = await ResponseModel.countDocuments({ companyId: companyId });
+
+      // Buscar usuários da empresa
+      const users = await User.find({ companyId: companyId, isActive: true }).select('_id');
+      const userIds = users.map(u => u._id);
+
+      const totalControls = await Assignment.countDocuments({ 
+        userId: { $in: userIds }
+      });
+
+      res.json({
+        success: true,
+        data: {
+          report: reportData,
+          stats: {
+            totalUsers,
+            totalResponses,
+            totalControls,
+            completionRate: totalControls > 0 ? Math.round((totalResponses / totalControls) * 100) : 0,
+          },
+          resultados: resultados,
         },
         statusCode: 200,
         timestamp: new Date().toISOString(),

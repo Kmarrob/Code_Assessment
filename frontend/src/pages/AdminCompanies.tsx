@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Building2, Plus, Search, ChevronLeft, ChevronRight, 
-  Loader2, Edit, Trash2, Users, RefreshCw, ClipboardList  // <-- ADICIONADO
+  Loader2, Edit, Trash2, Users, RefreshCw, ClipboardList
 } from 'lucide-react';
 import { Card, CardContent } from '../components/ui/Card.js';
 import { Button } from '../components/ui/Button.js';
@@ -15,6 +15,7 @@ import { CompanyFormModal } from '../components/admin/CompanyFormModal.js';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog.js';
 
 export const AdminCompanies: React.FC = () => {
+  const navigate = useNavigate();
   const [companies, setCompanies] = useState<Company[]>([]);
   const [pagination, setPagination] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -141,7 +142,7 @@ export const AdminCompanies: React.FC = () => {
   };
 
   // ============================================
-  // ATRIBUIR CONTROLES À EMPRESA - ADICIONADO
+  // ATRIBUIR CONTROLES À EMPRESA
   // ============================================
   const handleAssignControls = async (company: Company) => {
     if (!confirm(`Deseja atribuir todos os 93 controles à empresa "${company.name}"?`)) return;
@@ -277,7 +278,7 @@ export const AdminCompanies: React.FC = () => {
                     <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider py-3 px-4">CNPJ</th>
                     <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider py-3 px-4">Plano</th>
                     <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider py-3 px-4">Usuários</th>
-                    <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider py-3 px-4">Controles</th>  {/* <-- ADICIONADO */}
+                    <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider py-3 px-4">Controles</th>
                     <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider py-3 px-4">Status</th>
                     <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider py-3 px-4 text-center">Ações</th>
                   </tr>
@@ -287,8 +288,14 @@ export const AdminCompanies: React.FC = () => {
                     <tr key={company._id} className="hover:bg-gray-50">
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-2">
-                          <Building2 className="h-4 w-4 text-gray-400" />
-                          <span className="font-medium text-gray-900">{company.name}</span>
+                          <Building2 className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                          {/* 🔴 CORREÇÃO: Nome da empresa clicável */}
+                          <button
+                            onClick={() => navigate(`/admin/empresas/${company._id}/detalhes`)}
+                            className="font-medium text-blue-600 hover:text-blue-800 hover:underline text-left cursor-pointer"
+                          >
+                            {company.name}
+                          </button>
                         </div>
                       </td>
                       <td className="py-3 px-4 text-gray-600 font-mono text-sm">
@@ -303,7 +310,7 @@ export const AdminCompanies: React.FC = () => {
                           <span>{company.userCount || 0}</span>
                         </div>
                       </td>
-                      <td className="py-3 px-4">  {/* <-- ADICIONADO */}
+                      <td className="py-3 px-4">
                         <div className="flex items-center gap-1 text-gray-600">
                           <ClipboardList className="h-4 w-4" />
                           <span>{company.assignedControlsCount || 0}/93</span>
@@ -314,7 +321,7 @@ export const AdminCompanies: React.FC = () => {
                       </td>
                       <td className="py-3 px-4">
                         <div className="flex items-center justify-center gap-2">
-                          {/* Botão Atribuir Controles - ADICIONADO */}
+                          {/* Botão Atribuir Controles */}
                           <button
                             onClick={() => handleAssignControls(company)}
                             className="text-green-600 hover:text-green-800 transition-colors p-1 rounded hover:bg-green-50"

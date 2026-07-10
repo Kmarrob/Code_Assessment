@@ -1,6 +1,6 @@
 // frontend/src/pages/ReportView.tsx
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom'; // 🔴 ADICIONADO useParams
 import { useAuth } from '../contexts/AuthContext.js';
 import { reportService } from '../services/report.service.js';
 import { recommendationService } from '../services/recommendation.service.js';
@@ -70,6 +70,7 @@ import { RadarChart } from '../components/dashboard/RadarChart.js';
 export const ReportView: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const params = useParams<{ companyId: string }>(); // 🔴 ADICIONADO
   const [report, setReport] = useState<Report | null>(null);
   const [stats, setStats] = useState<ReportStats | null>(null);
   const [resultados, setResultados] = useState<any>(null);
@@ -106,11 +107,24 @@ export const ReportView: React.FC = () => {
     return () => window.removeEventListener('afterprint', handleAfterPrint);
   }, []);
 
+  // 🔴 loadData MODIFICADO
   const loadData = async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const data = await reportService.getDashboard();
+      // Verificar se há companyId na URL (admin) ou usar do usuário (preposto)
+      const companyIdFromUrl = params.companyId;
+      
+      let data;
+      
+      // Se veio da URL (admin), usa a rota admin com companyId
+      if (companyIdFromUrl) {
+        data = await reportService.getAdminDashboard(companyIdFromUrl);
+      } else {
+        // Se veio do usuário (preposto), usa o dashboard normal
+        data = await reportService.getDashboard();
+      }
+      
       setReport(data.report);
       setStats(data.stats);
       setResultados(data.resultados || null);
