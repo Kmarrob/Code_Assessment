@@ -5,6 +5,7 @@ import { User } from '../models/User.js';
 import { Response } from '../models/Response.js';
 import { Assignment } from '../models/Assignment.js';
 import { Company } from '../models/Company.js';
+import { Control } from '../models/Control.js';
 import { AppError, NotFoundError } from '../middleware/errorHandler.js';
 import { logger } from '../utils/logger.js';
 import { UserRole } from '../types/index.js';
@@ -425,5 +426,165 @@ export class ReportService {
       reports: reports as any[], 
       total 
     };
+  }
+
+  /**
+   * 🔴 CORRIGIDO: Gerar dados para a Matriz de Priorização
+   * Retorna apenas controles com RESPOSTA E maturidade 0 (Não implementado) ou 1 (Parcial)
+   */
+  static async getPriorizationMatrix(companyId: string): Promise<any[]> {
+    console.log('🔍 [getPriorizationMatrix] Iniciando para companyId:', companyId);
+    
+    try {
+      // 1. Buscar todos os controles
+      const controls = await Control.find({}).sort({ id: 1 }).lean();
+      console.log(`🔍 [getPriorizationMatrix] Total de controles: ${controls.length}`);
+
+      // 2. Buscar todas as respostas da empresa
+      const responses = await Response.find({ companyId }).lean();
+      console.log(`🔍 [getPriorizationMatrix] Respostas encontradas: ${responses.length}`);
+
+      // 3. Criar mapa de respostas por controlId (ObjectId)
+      const responseMap = new Map();
+      responses.forEach((response: any) => {
+        const controlId = response.controlId?.toString();
+        if (controlId) {
+          if (!responseMap.has(controlId)) {
+            responseMap.set(controlId, response);
+          }
+        }
+      });
+
+      // 4. Buscar recomendações
+      let recommendations = [];
+      try {
+        const Recommendation = (await import('../models/Recommendation.js')).Recommendation;
+        recommendations = await Recommendation.find({}).lean();
+      } catch (err) {
+        console.log('⚠️ [getPriorizationMatrix] Nenhuma recomendação encontrada');
+      }
+      
+      const recMap = new Map();
+      recommendations.forEach((rec: any) => {
+        const controlId = rec.controlId?.toString();
+        if (controlId) {
+          recMap.set(controlId, rec);
+        }
+      });
+
+      // 5. Montar a matriz - APENAS controles com RESPOSTA E maturidade 0 ou 1
+      const matrixData = [];
+      let refId = 1;
+
+      for (const control of controls) {
+        // Usar o _id do controle para fazer o match com a resposta
+        const controlObjectId = control._id?.toString();
+        if (!controlObjectId) continue;
+
+        const response = responseMap.get(controlObjectId);
+        
+        // 🔴 CORREÇÃO: Converter string para número
+        let maturity = 0;
+        if (response) {
+          maturity = parseInt(response.maturityLevel) || 0;
+        }
+        
+        // 🔴 NOVO FILTRO: APENAS controles com RESPOSTA E maturidade 0 ou 1
+        if (!response || (maturity !== 0 && maturity !== 1)) {
+          if (!response) {
+            console.log(`⏭️ [getPriorizationMatrix] Pulando controle ${control.id || controlObjectId} (sem resposta)`);
+          } else {
+            console.log(`⏭️ [getPriorizationMatrix] Pulando controle ${control.id || controlObjectId} (maturity ${maturity} - Implementado)`);
+          }
+          continue;
+        }
+
+        console.log(`✅ [getPriorizationMatrix] Incluindo controle ${control.id || controlObjectId} (maturity ${maturity})`);
+
+        const recommendation = recMap.get(controlObjectId);
+
+        let scenario = 'Inserir Cenário identificado';
+        let observations = '';
+        let vulnerabilities = '-';
+        let solutions = '-';
+
+        if (response) {
+          scenario = response.scenarioDescription || 'Inserir Cenário identificado';
+          observations = response.observations || '';
+          
+          if (!response.scenarioDescription && observations) {
+            scenario = observations;
+          }
+
+          if (response.threats && response.threats.length > 0) {
+            vulnerabilities = response.threats.map((t: string) => `- ${t}`).join('\n');
+          } else if (maturity === 0) {
+            vulnerabilities = `- Ausência de implementação do controle ${control.id || controlObjectId}\n- Processos não documentados\n- Risco de não conformidade com a ISO 27001`;
+          } else if (maturity === 1) {
+            vulnerabilities = `- Implementação parcial do controle ${control.id || controlObjectId}\n- Processos não completamente documentados\n- Risco de lacunas na segurança da informação`;
+          }
+        }
+
+        const controlName = control.nome || control.name || control.id || controlObjectId;
+
+        if (recommendation) {
+          if (recommendation.solucoesTecnicas && recommendation.solucoesTecnicas.length > 0) {
+            solutions = recommendation.solucoesTecnicas.join(', ');
+          }
+          if (recommendation.recomendacoes && recommendation.recomendacoes.length > 0) {
+            const recText = recommendation.recomendacoes.join(', ');
+            if (solutions === '-') {
+              solutions = recText;
+            } else {
+              solutions = `${solutions}; ${recText}`;
+            }
+          }
+        }
+
+        // 🔴 NOVO: Criar resumo para a coluna de soluções técnicas
+        const solutionsSummary = solutions && solutions.length > 80 
+          ? solutions.substring(0, 80) + '...' 
+          : solutions || '-';
+
+        // Probabilidade e Impacto
+        const probability = Math.max(0, 9 - (maturity * 3));
+        const impact = Math.max(0, 9 - (maturity * 3));
+        const riskScore = Math.round((probability + impact) / 2);
+
+        let priority = 'Médio';
+        if (riskScore >= 8) priority = 'Crítico';
+        else if (riskScore >= 7) priority = 'Muito Alto';
+        else if (riskScore >= 6) priority = 'Alto';
+        else if (riskScore >= 4) priority = 'Médio';
+        else if (riskScore >= 2) priority = 'Baixo';
+        else priority = 'Muito Baixo';
+
+        matrixData.push({
+          refId: refId++,
+          controlId: control.id || controlObjectId,
+          controlName: controlName,
+          maturity: maturity,
+          scenario: scenario,
+          vulnerabilities: vulnerabilities,
+          solutions: solutions,
+          solutionsSummary: solutionsSummary,
+          probability: probability,
+          impact: impact,
+          riskScore: riskScore,
+          priority: priority,
+          status: maturity === 0 ? 'Não Implementado' : 'Parcial',
+        });
+      }
+
+      // Ordenar por prioridade (Crítico primeiro)
+      const priorityOrder = { 'Crítico': 0, 'Muito Alto': 1, 'Alto': 2, 'Médio': 3, 'Baixo': 4, 'Muito Baixo': 5 };
+      matrixData.sort((a, b) => (priorityOrder[a.priority as keyof typeof priorityOrder] || 99) - (priorityOrder[b.priority as keyof typeof priorityOrder] || 99));
+
+      console.log(`✅ [getPriorizationMatrix] Matriz gerada com ${matrixData.length} itens (apenas controles respondidos como Não implementados ou Parciais)`);
+      return matrixData;
+    } catch (error) {
+      console.error('❌ [getPriorizationMatrix] Erro:', error);
+      return [];
+    }
   }
 }
