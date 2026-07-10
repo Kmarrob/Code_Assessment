@@ -24,6 +24,8 @@ import { SitemapController } from './controllers/SitemapController.js';
 import { adminMetricsHandler } from './middleware/adminPerformance.js';
 import { authenticate, authorize } from './middleware/auth.js';
 import { UserRole } from './types/index.js';
+// 🔴 NOVO: Import do AdminController para a rota pública de branding
+import { AdminController } from './controllers/AdminController.js';
 
 const app = express();
 
@@ -125,6 +127,11 @@ app.use('/api/documents', documentRoutes); // 🔴 NOVO - Rotas de documentos
 app.use('/api/reports', reportRoutes); // 🔴 NOVO (v17) - Rotas de relatórios
 app.use('/api/recommendations', recommendationRoutes); // 🔴 NOVO (v19) - Rotas de recomendações
 
+// ============================================
+// ROTA PÚBLICA DE BRANDING (sem autenticação)
+// ============================================
+app.get('/api/branding/:companyId', noCache, AdminController.getPublicBranding);
+
 app.get('/health', noCache, (_req, res) => {
   res.json({
     status: 'ok',
@@ -197,7 +204,8 @@ async function startServer() {
       logger.info(`🔔 Notification Routes: http://localhost:${PORT}/api/notifications`);
       logger.info(`📄 Document Routes: http://localhost:${PORT}/api/documents`);
       logger.info(`📊 Report Routes: http://localhost:${PORT}/api/reports`);
-      logger.info(`📋 Recommendation Routes: http://localhost:${PORT}/api/recommendations`); // 🔴 NOVO (v19)
+      logger.info(`📋 Recommendation Routes: http://localhost:${PORT}/api/recommendations`);
+      logger.info(`🏷️ Branding Routes: http://localhost:${PORT}/api/branding/:companyId`);
     });
 
   } catch (error) {

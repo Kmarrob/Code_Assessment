@@ -12,15 +12,30 @@ import {
   Building2,
   ArrowLeft
 } from 'lucide-react';
+import { PublicBrandingData } from '../../services/branding.service.js';
+
+// Cores da paleta MRS
+const MRS_COLORS = {
+  primary: '#122A40',
+  secondary: '#1E5359',
+  accent: '#30736C',
+  background: '#F2F2F2',
+  text: '#122A40',
+};
+
+// Logo da MRS Consultoria (caminho fixo - imagem local - FALLBACK)
+const MRS_LOGO_FALLBACK = '/images/brand/logo-mrs.png';
 
 interface DashboardSidebarProps {
   companyId?: string;
   onBack?: () => void;
+  branding?: PublicBrandingData | null;
 }
 
 export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ 
   companyId, 
-  onBack 
+  onBack,
+  branding
 }) => {
   const { user } = useAuth();
   const params = useParams();
@@ -34,6 +49,9 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
   
   // Verifica se há um companyId válido
   const hasValidCompany = !!currentCompanyId && currentCompanyId !== 'undefined';
+
+  // Obter cores do branding ou usar padrão
+  const colors = branding?.colors || MRS_COLORS;
 
   const basePath = user?.role === 'admin' ? '/admin/dashboard' : '/rep/dashboard';
 
@@ -99,33 +117,82 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
     },
   ];
 
+  const showLogo = branding?.settings?.showLogoInHeader !== false;
+  const logoUrl = branding?.logo?.url;
+
+  // Determinar qual logo usar: a da API ou a fallback local
+  const finalLogoUrl = (showLogo && logoUrl) ? logoUrl : MRS_LOGO_FALLBACK;
+
   return (
-    <aside className="w-64 bg-white border-r border-gray-200 min-h-screen flex-shrink-0 sticky top-0">
-      <div className="p-4 border-b border-gray-200">
+    <aside 
+      className="w-64 border-r min-h-screen flex-shrink-0 sticky top-0 flex flex-col"
+      style={{ 
+        backgroundColor: colors.background || '#FFFFFF',
+        borderColor: colors.accent || '#E5E7EB'
+      }}
+    >
+      {/* Header da Sidebar com Logo */}
+      <div className="p-4 border-b" style={{ borderColor: colors.accent || '#E5E7EB' }}>
         <div className="flex items-center gap-2">
-          <Building2 className="w-5 h-5 text-blue-600" />
-          <span className="font-semibold text-gray-900">Maturidade</span>
+          <img
+            src={finalLogoUrl}
+            alt="MRS Consultoria"
+            className="h-28 w-auto object-contain"
+            style={{ maxHeight: '112px' }}
+            onError={(e) => {
+              if (e.currentTarget.src !== MRS_LOGO_FALLBACK) {
+                e.currentTarget.src = MRS_LOGO_FALLBACK;
+              } else {
+                e.currentTarget.style.display = 'none';
+                const fallback = document.createElement('div');
+                fallback.className = 'flex items-center gap-2';
+                const icon = document.createElement('div');
+                icon.className = 'p-1.5 rounded';
+                icon.style.backgroundColor = colors.accent + '20';
+                const span = document.createElement('span');
+                span.className = 'font-semibold';
+                span.style.color = colors.primary || '#122A40';
+                span.textContent = 'Maturidade';
+                fallback.appendChild(icon);
+                fallback.appendChild(span);
+                e.currentTarget.parentNode?.appendChild(fallback);
+              }
+            }}
+          />
         </div>
-        <p className="text-xs text-gray-500 mt-0.5">Dashboard Analítico</p>
+        <p className="text-xs mt-0.5" style={{ color: colors.secondary || '#1E5359' }}>
+          Dashboard Analítico
+        </p>
       </div>
 
       {/* Botão Voltar */}
       {onBack && (
         <button
           onClick={onBack}
-          className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 transition-colors border-b border-gray-100"
+          className="w-full flex items-center gap-2 px-4 py-2 text-sm transition-colors border-b"
+          style={{ 
+            color: colors.text || '#122A40',
+            borderColor: colors.accent || '#E5E7EB'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = colors.accent + '15' || '#f3f4f6';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'transparent';
+          }}
         >
           <ArrowLeft className="w-4 h-4" />
           Voltar
         </button>
       )}
 
-      <nav className="p-3 space-y-1">
+      <nav className="p-3 space-y-1 flex-1">
         {navItems.map((item) => (
           item.disabled ? (
             <div
               key={item.to}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-400 cursor-not-allowed opacity-50"
+              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm cursor-not-allowed opacity-50"
+              style={{ color: colors.text || '#122A40' }}
               title="Selecione uma empresa primeiro"
             >
               {item.icon}
@@ -139,10 +206,24 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
               className={({ isActive }) =>
                 `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200 ${
                   isActive
-                    ? 'bg-blue-50 text-blue-700 font-medium'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                    ? 'font-medium'
+                    : 'hover:bg-opacity-10'
                 }`
               }
+              style={({ isActive }) => ({
+                color: isActive ? colors.primary || '#122A40' : colors.text || '#122A40',
+                backgroundColor: isActive ? (colors.accent || '#30736C') + '15' : 'transparent',
+              })}
+              onMouseEnter={(e) => {
+                if (!e.currentTarget.classList.contains('font-medium')) {
+                  e.currentTarget.style.backgroundColor = (colors.accent || '#30736C') + '10';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!e.currentTarget.classList.contains('font-medium')) {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }
+              }}
             >
               {item.icon}
               {item.label}
@@ -151,10 +232,13 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
         ))}
       </nav>
 
-      <div className="p-4 border-t border-gray-200 mt-auto">
-        <div className="bg-gray-50 rounded-lg p-3">
-          <p className="text-[10px] text-gray-500">ISO/IEC 27002:2022</p>
-          <p className="text-[10px] text-gray-400 mt-0.5">
+      {/* Rodapé */}
+      <div className="p-4 border-t" style={{ borderColor: colors.accent || '#E5E7EB' }}>
+        <div className="rounded-lg p-3" style={{ backgroundColor: colors.accent + '10' || '#f9fafb' }}>
+          <p className="text-[10px]" style={{ color: colors.secondary || '#1E5359' }}>
+            ISO/IEC 27002:2022
+          </p>
+          <p className="text-[10px] mt-0.5" style={{ color: colors.text || '#122A40' }}>
             Análise de maturidade em tempo real
           </p>
         </div>

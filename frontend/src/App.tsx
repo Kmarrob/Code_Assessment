@@ -21,6 +21,8 @@ import UserAnswer from './pages/UserAnswer.js';
 import AdminConsultantView from './pages/AdminConsultantView.js';
 // 🔴 NOVO: Import da página de detalhes da empresa
 import AdminCompanyDetail from './pages/AdminCompanyDetail.js';
+// 🔴 NOVO: Import da página de branding (corrigido)
+import AdminBranding from './pages/AdminBranding.js';
 
 // ============================================
 // IMPORTAÇÕES DO DASHBOARD (DIRETAS - CORRIGIDO)
@@ -183,6 +185,12 @@ function App() {
                   <Route path="/admin/recomendacoes" element={
                     <Layout>
                       <AdminRecommendations />
+                    </Layout>
+                  } />
+                  {/* 🔴 NOVO: Rota para gerenciamento de branding (logo e favicon) */}
+                  <Route path="/admin/branding" element={
+                    <Layout>
+                      <AdminBranding />
                     </Layout>
                   } />
                   

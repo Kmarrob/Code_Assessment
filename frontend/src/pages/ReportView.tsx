@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext.js';
 import { reportService } from '../services/report.service.js';
 import { recommendationService } from '../services/recommendation.service.js';
 import { Report, ReportStats, RoadmapData } from '../types/report.js';
+import { brandingService, PublicBrandingData } from '../services/branding.service.js';
 import {
   FileText,
   Loader2,
@@ -77,6 +78,7 @@ export const ReportView: React.FC = () => {
   const [recomendacoes, setRecomendacoes] = useState<any[]>([]);
   const [matrizPriorizacao, setMatrizPriorizacao] = useState<any[]>([]);
   const [roadmapData, setRoadmapData] = useState<RoadmapData | null>(null);
+  const [branding, setBranding] = useState<PublicBrandingData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -157,6 +159,14 @@ export const ReportView: React.FC = () => {
         } catch (roadmapErr) {
           console.error('Erro ao carregar roadmap:', roadmapErr);
           setRoadmapData(null);
+        }
+
+        try {
+          const brandingData = await brandingService.getPublicBranding(companyId);
+          setBranding(brandingData);
+        } catch (brandingErr) {
+          console.error('Erro ao carregar branding para o relatório:', brandingErr);
+          setBranding(null);
         }
       }
     } catch (err: any) {
@@ -496,8 +506,19 @@ export const ReportView: React.FC = () => {
         
         <div className="custom-print-header">
           <div>
-            <span className="logo-text-blue">Code</span>
-            <span className="logo-text-gray">_Assessment</span>
+            {branding?.logo?.url ? (
+              <img
+                src={branding.logo.url}
+                alt="MRS Consultoria"
+                className="h-28 w-auto object-contain"
+                style={{ maxHeight: '112px' }}
+              />
+            ) : (
+              <>
+                <span className="logo-text-blue">Code</span>
+                <span className="logo-text-gray">_Assessment</span>
+              </>
+            )}
           </div>
           <div className="user-info">
             Emitido por: {user?.name || 'Consultor Técnico'}<br />
@@ -506,8 +527,8 @@ export const ReportView: React.FC = () => {
         </div>
 
         <div className="custom-print-footer">
-          <div>Sistema de Gestão de Conformidade e Segurança · code_assessment</div>
-          <div>MRS Consultoria</div>
+          <div>Sistema de Gestão de Conformidade e Segurança · MRS Consultoria</div>
+          <div>code_assessment</div>
         </div>
 
         <div className="bg-white p-8 max-w-4xl mx-auto print:p-0 print-container">
@@ -536,11 +557,19 @@ export const ReportView: React.FC = () => {
             {/* Capa */}
             <div className="text-center py-12 min-h-[75vh] flex flex-col justify-center items-center">
               <div className="mb-6">
-                <div className="w-28 h-28 mx-auto bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 border-2 border-dashed border-gray-300">
-                  <Building2 className="h-10 w-10" />
-                  <span className="sr-only">Logo do cliente</span>
-                </div>
-                <p className="text-sm text-gray-400 mt-2 text-center print:hidden">Inserir Logo do cliente</p>
+                {branding?.logo?.url ? (
+                  <img
+                    src={branding.logo.url}
+                    alt="MRS Consultoria"
+                    className="h-28 w-auto object-contain mx-auto"
+                    style={{ maxHeight: '112px' }}
+                  />
+                ) : (
+                  <div className="w-28 h-28 mx-auto bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 border-2 border-dashed border-gray-300">
+                    <Building2 className="h-10 w-10" />
+                    <span className="sr-only">Logo da MRS Consultoria</span>
+                  </div>
+                )}
               </div>
               <h1 className="text-2xl font-bold text-gray-900 mb-2 text-center">
                 Consultoria para avaliação de maturidade ABNT NBR ISO 27001:2022

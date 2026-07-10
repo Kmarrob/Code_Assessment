@@ -1,8 +1,21 @@
 // frontend/src/components/Layout.tsx
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext.js';
 import { NotificationBell } from './NotificationBell.js';
+import { brandingService, PublicBrandingData } from '../services/branding.service.js';
+
+// Cores da paleta MRS
+const MRS_COLORS = {
+  primary: '#122A40',
+  secondary: '#1E5359',
+  accent: '#30736C',
+  background: '#F2F2F2',
+  text: '#122A40',
+};
+
+// Logo da MRS Consultoria (caminho fixo - imagem local - FALLBACK)
+const MRS_LOGO_FALLBACK = '/images/brand/logo-mrs.png';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -11,33 +24,129 @@ interface LayoutProps {
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [branding, setBranding] = useState<PublicBrandingData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [companyId, setCompanyId] = useState<string | null>(null);
+
+  // Buscar companyId do usuário
+  useEffect(() => {
+    const getCompanyId = async () => {
+      try {
+        if (user?.companyId) {
+          setCompanyId(user.companyId as string);
+          return;
+        }
+
+        const response = await fetch('/api/admin/companies', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          if (data.data?.companies?.length > 0) {
+            setCompanyId(data.data.companies[0]._id);
+            return;
+          }
+        }
+
+        console.warn('⚠️ Nenhuma empresa encontrada, usando fallback');
+        setCompanyId('67f8a1b2c3d4e5f6g7h8i9j0');
+      } catch (error) {
+        console.error('Erro ao buscar companyId:', error);
+        setCompanyId('67f8a1b2c3d4e5f6g7h8i9j0');
+      }
+    };
+
+    getCompanyId();
+  }, [user]);
+
+  // Buscar branding quando tiver o companyId
+  useEffect(() => {
+    const loadBranding = async () => {
+      if (!companyId) return;
+      
+      try {
+        const data = await brandingService.getPublicBranding(companyId);
+        setBranding(data);
+      } catch (error) {
+        console.error('Erro ao carregar branding:', error);
+        setBranding(null);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (companyId) {
+      loadBranding();
+    }
+  }, [companyId]);
 
   const handleLogout = async () => {
     await logout();
     navigate('/login');
   };
 
+  const colors = branding?.colors || MRS_COLORS;
+  const showLogo = branding?.settings?.showLogoInHeader !== false;
+  const logoUrl = branding?.logo?.url;
+
+  // Determinar qual logo usar: a da API ou a fallback local
+  const finalLogoUrl = (showLogo && logoUrl) ? logoUrl : MRS_LOGO_FALLBACK;
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50" style={{ backgroundColor: colors.background || '#F2F2F2' }}>
       {/* Navbar */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
-        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+      <header 
+        className="bg-white border-b border-gray-200 sticky top-0 z-40"
+        style={{ 
+          backgroundColor: colors.background || '#FFFFFF',
+          borderBottomColor: colors.accent || '#30736C',
+        }}
+      >
+        <div className="container mx-auto px-4 py-3 flex items-center justify-between" style={{ minHeight: '80px' }}>
           <div className="flex items-center gap-2">
             <Link to="/" className="flex items-center gap-2">
-              <span className="text-lg font-semibold text-gray-900">Code_Assessment</span>
+              {showLogo ? (
+                <img
+                  src={finalLogoUrl}
+                  alt="MRS Consultoria"
+                  className="h-32 w-auto object-contain"
+                  style={{ maxHeight: '128px' }}
+                  onError={(e) => {
+                    if (e.currentTarget.src !== MRS_LOGO_FALLBACK) {
+                      e.currentTarget.src = MRS_LOGO_FALLBACK;
+                    } else {
+                      e.currentTarget.style.display = 'none';
+                      const fallback = document.createElement('span');
+                      fallback.className = 'text-lg font-semibold';
+                      fallback.style.color = colors.primary || '#122A40';
+                      fallback.textContent = 'MRS Consultoria';
+                      e.currentTarget.parentNode?.appendChild(fallback);
+                    }
+                  }}
+                />
+              ) : (
+                <span className="text-lg font-semibold" style={{ color: colors.primary || '#122A40' }}>
+                  MRS Consultoria
+                </span>
+              )}
             </Link>
           </div>
           <div className="flex items-center gap-4">
             {user && (
               <>
                 <NotificationBell />
-                <span className="text-sm text-gray-600">{user.name}</span>
+                <span className="text-sm font-medium" style={{ color: colors.text || '#122A40' }}>
+                  {user.name}
+                </span>
                 <button
                   onClick={handleLogout}
-                  className="text-gray-400 hover:text-red-600 transition-colors"
+                  className="text-sm transition-colors hover:opacity-70"
+                  style={{ color: colors.accent || '#30736C' }}
                   aria-label="Sair"
                 >
-                  <span className="text-sm">Sair</span>
+                  Sair
                 </button>
               </>
             )}

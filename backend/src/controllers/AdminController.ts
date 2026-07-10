@@ -422,6 +422,337 @@ export class AdminController {
     }
   }
 
+  // ============================================
+  // MÉTODOS DE BRANDING - LOGO E FAVICON
+  // ============================================
+
+  /**
+   * Upload da logo da empresa (apenas ADMIN)
+   * POST /api/admin/company/:companyId/branding/logo
+   */
+  static async uploadLogo(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const { companyId } = req.params;
+
+      if (!companyId) {
+        throw new ValidationError({ companyId: ['ID da empresa é obrigatório'] });
+      }
+
+      // Verificar se o usuário é ADMIN
+      if (req.user?.role !== UserRole.ADMIN) {
+        throw new AppError('Apenas administradores podem fazer upload da logo', 403);
+      }
+
+      // Verificar se o arquivo foi enviado
+      if (!req.file) {
+        throw new ValidationError({ logo: ['Arquivo de logo é obrigatório'] });
+      }
+
+      const result = await AdminService.uploadLogo(
+        companyId,
+        req.file,
+        req.userId!
+      );
+
+      res.json({
+        success: true,
+        message: 'Logo enviada com sucesso',
+        data: result,
+        statusCode: 200,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      ErrorLogger.logError(error as Error, {
+        userId: req.userId,
+        email: req.user?.email,
+        ip: req.ip,
+        userAgent: req.headers['user-agent'],
+        path: req.path,
+        method: req.method,
+        params: req.params,
+        body: req.body,
+      });
+      next(error);
+    }
+  }
+
+  /**
+   * Upload do favicon da empresa (apenas ADMIN)
+   * POST /api/admin/company/:companyId/branding/favicon
+   */
+  static async uploadFavicon(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const { companyId } = req.params;
+
+      if (!companyId) {
+        throw new ValidationError({ companyId: ['ID da empresa é obrigatório'] });
+      }
+
+      // Verificar se o usuário é ADMIN
+      if (req.user?.role !== UserRole.ADMIN) {
+        throw new AppError('Apenas administradores podem fazer upload do favicon', 403);
+      }
+
+      // Verificar se o arquivo foi enviado
+      if (!req.file) {
+        throw new ValidationError({ favicon: ['Arquivo de favicon é obrigatório'] });
+      }
+
+      const result = await AdminService.uploadFavicon(
+        companyId,
+        req.file,
+        req.userId!
+      );
+
+      res.json({
+        success: true,
+        message: 'Favicon enviado com sucesso',
+        data: result,
+        statusCode: 200,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      ErrorLogger.logError(error as Error, {
+        userId: req.userId,
+        email: req.user?.email,
+        ip: req.ip,
+        userAgent: req.headers['user-agent'],
+        path: req.path,
+        method: req.method,
+        params: req.params,
+        body: req.body,
+      });
+      next(error);
+    }
+  }
+
+  /**
+   * Obter branding da empresa
+   * GET /api/admin/company/:companyId/branding
+   */
+  static async getBranding(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const { companyId } = req.params;
+
+      if (!companyId) {
+        throw new ValidationError({ companyId: ['ID da empresa é obrigatório'] });
+      }
+
+      // Verificar se o usuário é ADMIN
+      if (req.user?.role !== UserRole.ADMIN) {
+        throw new AppError('Apenas administradores podem visualizar o branding', 403);
+      }
+
+      const branding = await AdminService.getBranding(companyId);
+
+      res.json({
+        success: true,
+        data: branding,
+        statusCode: 200,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      ErrorLogger.logError(error as Error, {
+        userId: req.userId,
+        email: req.user?.email,
+        ip: req.ip,
+        userAgent: req.headers['user-agent'],
+        path: req.path,
+        method: req.method,
+        params: req.params,
+      });
+      next(error);
+    }
+  }
+
+  /**
+   * Remover logo da empresa (apenas ADMIN)
+   * DELETE /api/admin/company/:companyId/branding/logo
+   */
+  static async removeLogo(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const { companyId } = req.params;
+
+      if (!companyId) {
+        throw new ValidationError({ companyId: ['ID da empresa é obrigatório'] });
+      }
+
+      // Verificar se o usuário é ADMIN
+      if (req.user?.role !== UserRole.ADMIN) {
+        throw new AppError('Apenas administradores podem remover a logo', 403);
+      }
+
+      const result = await AdminService.removeLogo(companyId);
+
+      res.json({
+        success: true,
+        message: 'Logo removida com sucesso',
+        data: result,
+        statusCode: 200,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      ErrorLogger.logError(error as Error, {
+        userId: req.userId,
+        email: req.user?.email,
+        ip: req.ip,
+        userAgent: req.headers['user-agent'],
+        path: req.path,
+        method: req.method,
+        params: req.params,
+      });
+      next(error);
+    }
+  }
+
+  /**
+   * Remover favicon da empresa (apenas ADMIN)
+   * DELETE /api/admin/company/:companyId/branding/favicon
+   */
+  static async removeFavicon(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const { companyId } = req.params;
+
+      if (!companyId) {
+        throw new ValidationError({ companyId: ['ID da empresa é obrigatório'] });
+      }
+
+      // Verificar se o usuário é ADMIN
+      if (req.user?.role !== UserRole.ADMIN) {
+        throw new AppError('Apenas administradores podem remover o favicon', 403);
+      }
+
+      const result = await AdminService.removeFavicon(companyId);
+
+      res.json({
+        success: true,
+        message: 'Favicon removido com sucesso',
+        data: result,
+        statusCode: 200,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      ErrorLogger.logError(error as Error, {
+        userId: req.userId,
+        email: req.user?.email,
+        ip: req.ip,
+        userAgent: req.headers['user-agent'],
+        path: req.path,
+        method: req.method,
+        params: req.params,
+      });
+      next(error);
+    }
+  }
+
+  /**
+   * Atualizar configurações de branding (apenas ADMIN)
+   * PUT /api/admin/company/:companyId/branding/settings
+   */
+  static async updateBrandingSettings(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const { companyId } = req.params;
+
+      if (!companyId) {
+        throw new ValidationError({ companyId: ['ID da empresa é obrigatório'] });
+      }
+
+      // Verificar se o usuário é ADMIN
+      if (req.user?.role !== UserRole.ADMIN) {
+        throw new AppError('Apenas administradores podem atualizar as configurações de branding', 403);
+      }
+
+      const { showLogoInHeader, showLogoInReport, useCustomColors } = req.body;
+
+      const result = await AdminService.updateBrandingSettings(
+        companyId,
+        { showLogoInHeader, showLogoInReport, useCustomColors }
+      );
+
+      res.json({
+        success: true,
+        message: 'Configurações de branding atualizadas com sucesso',
+        data: result,
+        statusCode: 200,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      ErrorLogger.logError(error as Error, {
+        userId: req.userId,
+        email: req.user?.email,
+        ip: req.ip,
+        userAgent: req.headers['user-agent'],
+        path: req.path,
+        method: req.method,
+        params: req.params,
+        body: req.body,
+      });
+      next(error);
+    }
+  }
+
+  /**
+   * Obter branding público da empresa (para frontend sem autenticação)
+   * GET /api/branding/:companyId
+   */
+  static async getPublicBranding(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const { companyId } = req.params;
+
+      if (!companyId) {
+        throw new ValidationError({ companyId: ['ID da empresa é obrigatório'] });
+      }
+
+      const branding = await AdminService.getPublicBranding(companyId);
+
+      res.json({
+        success: true,
+        data: branding,
+        statusCode: 200,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      ErrorLogger.logError(error as Error, {
+        userId: req.userId,
+        email: req.user?.email,
+        ip: req.ip,
+        userAgent: req.headers['user-agent'],
+        path: req.path,
+        method: req.method,
+        params: req.params,
+      });
+      next(error);
+    }
+  }
+
   static async listUsersFallback(req: AuthenticatedRequest, res: Response): Promise<void> {
     res.status(503).json({
       success: false,

@@ -296,4 +296,56 @@ router.patch(
   QuestionController.toggleActive
 );
 
+// ============================================
+// ROTAS DE BRANDING - LOGO E FAVICON
+// ============================================
+
+// Upload da logo
+router.post(
+  '/company/:companyId/branding/logo',
+  adminRateLimiter,
+  noCache,
+  AdminController.uploadLogo
+);
+
+// Upload do favicon
+router.post(
+  '/company/:companyId/branding/favicon',
+  adminRateLimiter,
+  noCache,
+  AdminController.uploadFavicon
+);
+
+// Obter branding da empresa
+router.get(
+  '/company/:companyId/branding',
+  adminRateLimiter,
+  noCache,
+  AdminController.getBranding
+);
+
+// Remover logo
+router.delete(
+  '/company/:companyId/branding/logo',
+  adminRateLimiter,
+  noCache,
+  AdminController.removeLogo
+);
+
+// Remover favicon
+router.delete(
+  '/company/:companyId/branding/favicon',
+  adminRateLimiter,
+  noCache,
+  AdminController.removeFavicon
+);
+
+// Atualizar configurações de branding
+router.put(
+  '/company/:companyId/branding/settings',
+  adminRateLimiter,
+  noCache,
+  AdminController.updateBrandingSettings
+);
+
 export default router;

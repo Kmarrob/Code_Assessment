@@ -1,5 +1,5 @@
 // frontend/src/pages/LoginPage.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -10,9 +10,22 @@ import { PasswordInput } from '../components/ui/PasswordInput.js';
 import { Container } from '../components/ui/Container.js';
 import { Form, FormGroup } from '../components/ui/Form.js';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../components/ui/Card.js';
-import { Shield } from 'lucide-react';
+import { Shield, Building2 } from 'lucide-react';
 import { LoginMetaTags } from '../components/MetaTags.js';
 import { SchemaMarkup } from '../components/SchemaMarkup.js';
+import { brandingService, PublicBrandingData } from '../services/branding.service.js';
+
+// Cores da paleta MRS
+const MRS_COLORS = {
+  primary: '#122A40',
+  secondary: '#1E5359',
+  accent: '#30736C',
+  background: '#F2F2F2',
+  text: '#122A40',
+};
+
+// Logo da MRS Consultoria (caminho fixo - imagem local - FALLBACK)
+const MRS_LOGO_FALLBACK = '/images/brand/logo-mrs.png';
 
 const loginSchema = z.object({
   email: z.string().email('Email inválido'),
@@ -25,6 +38,22 @@ export const LoginPage: React.FC = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
+  const [branding, setBranding] = useState<PublicBrandingData | null>(null);
+
+  // Buscar branding ao carregar
+  useEffect(() => {
+    const loadBranding = async () => {
+      try {
+        // TODO: Buscar o companyId da empresa principal
+        const companyId = '67f8a1b2c3d4e5f6g7h8i9j0';
+        const data = await brandingService.getPublicBranding(companyId);
+        setBranding(data);
+      } catch (error) {
+        console.error('Erro ao carregar branding no login:', error);
+      }
+    };
+    loadBranding();
+  }, []);
 
   const {
     register,
@@ -37,10 +66,8 @@ export const LoginPage: React.FC = () => {
   const onSubmit = async (data: LoginFormData) => {
     try {
       setIsLoading(true);
-      // O login agora retorna o usuário
       const user = await login(data.email, data.password);
       
-      // Redirecionar baseado no role
       if (user) {
         const role = user.role;
         if (role === 'admin') {
@@ -53,7 +80,6 @@ export const LoginPage: React.FC = () => {
           navigate('/dashboard');
         }
       } else {
-        // Fallback
         navigate('/dashboard');
       }
     } catch (error) {
@@ -63,32 +89,79 @@ export const LoginPage: React.FC = () => {
     }
   };
 
+  // Obter cores do branding ou usar padrão
+  const colors = branding?.colors || MRS_COLORS;
+  const showLogo = branding?.settings?.showLogoInHeader !== false;
+  const logoUrl = branding?.logo?.url;
+
+  // Determinar qual logo usar: a da API ou a fallback local
+  const finalLogoUrl = (showLogo && logoUrl) ? logoUrl : MRS_LOGO_FALLBACK;
+
   const loginSchemaMarkup = {
     '@context': 'https://schema.org',
     '@type': 'WebPage',
-    name: 'Login - Code_Assessment',
-    description: 'Faça login no Code_Assessment para acessar o sistema',
+    name: 'Login - MRS Consultoria',
+    description: 'Faça login no sistema MRS Consultoria para acessar o painel',
     url: 'https://code-assessment.com/login',
+  };
+
+  // Gradiente personalizado com as cores da marca
+  const gradientStyle = {
+    background: `linear-gradient(135deg, ${colors.primary}15 0%, ${colors.secondary}10 50%, ${colors.accent}15 100%)`
   };
 
   return (
     <>
       <LoginMetaTags />
       <SchemaMarkup schema={loginSchemaMarkup} />
-      <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 via-white to-primary-50 p-4">
+      <main 
+        className="min-h-screen flex items-center justify-center p-4"
+        style={gradientStyle}
+      >
         <Container size="sm">
           <section aria-labelledby="login-title">
-            <Card className="glass-card animate-fade-in">
+            <Card 
+              className="animate-fade-in border-0 shadow-xl"
+              style={{ 
+                backgroundColor: colors.background || '#FFFFFF',
+                borderColor: colors.accent + '30' || '#E5E7EB',
+              }}
+            >
               <CardHeader className="space-y-1 text-center">
                 <div className="flex justify-center mb-4">
-                  <div className="p-3 bg-primary-100 rounded-full">
-                    <Shield className="h-8 w-8 text-primary-600" aria-hidden="true" />
-                  </div>
+                  <img
+                    src={finalLogoUrl}
+                    alt="MRS Consultoria"
+                    className="h-28 w-auto object-contain"
+                    style={{ maxHeight: '112px' }}
+                    onError={(e) => {
+                      // Se a imagem da API falhar, tenta a fallback
+                      if (e.currentTarget.src !== MRS_LOGO_FALLBACK) {
+                        e.currentTarget.src = MRS_LOGO_FALLBACK;
+                      } else {
+                        // Se a fallback também falhar, mostra o ícone
+                        e.currentTarget.style.display = 'none';
+                        const fallback = document.createElement('div');
+                        fallback.className = 'p-3 rounded-full';
+                        fallback.style.backgroundColor = colors.accent + '20' || '#f0fdf4';
+                        const icon = document.createElement('div');
+                        icon.className = 'h-8 w-8';
+                        icon.style.color = colors.primary || '#122A40';
+                        icon.textContent = '🏢';
+                        fallback.appendChild(icon);
+                        e.currentTarget.parentNode?.appendChild(fallback);
+                      }
+                    }}
+                  />
                 </div>
-                <CardTitle id="login-title" className="text-2xl font-bold">
+                <CardTitle 
+                  id="login-title" 
+                  className="text-2xl font-bold"
+                  style={{ color: colors.primary || '#122A40' }}
+                >
                   Bem-vindo de volta
                 </CardTitle>
-                <CardDescription>
+                <CardDescription style={{ color: colors.secondary || '#1E5359' }}>
                   Entre com suas credenciais para acessar o sistema
                 </CardDescription>
               </CardHeader>
@@ -120,9 +193,13 @@ export const LoginPage: React.FC = () => {
                 </Form>
               </CardContent>
               <CardFooter className="flex justify-center">
-                <p className="text-sm text-gray-600">
+                <p className="text-sm" style={{ color: colors.text || '#122A40' }}>
                   Não tem uma conta?{' '}
-                  <Link to="/register" className="text-primary-600 hover:text-primary-700 font-medium">
+                  <Link 
+                    to="/register" 
+                    className="font-medium hover:opacity-70 transition-opacity"
+                    style={{ color: colors.accent || '#30736C' }}
+                  >
                     Cadastre-se
                   </Link>
                 </p>

@@ -375,4 +375,440 @@ export class AdminService {
       throw new AppError('Erro ao obter estatísticas. Tente novamente mais tarde.', 500);
     }
   }
+
+  // ============================================
+  // MÉTODOS DE BRANDING - LOGO E FAVICON
+  // ============================================
+
+  /**
+   * Upload da logo da empresa
+   */
+  static async uploadLogo(
+    companyId: string,
+    file: Express.Multer.File,
+    userId: string
+  ): Promise<any> {
+    try {
+      return await databaseCircuitBreaker.execute(async () => {
+        return await retryDatabase(async () => {
+          return await withDbTimeout(async () => {
+            if (!Types.ObjectId.isValid(companyId)) {
+              throw new AppError('ID da empresa inválido', 400);
+            }
+
+            if (!Types.ObjectId.isValid(userId)) {
+              throw new AppError('ID do usuário inválido', 400);
+            }
+
+            const company = await Company.findById(companyId);
+            if (!company) {
+              throw new NotFoundError('Empresa', companyId);
+            }
+
+            // Validações do arquivo
+            const allowedMimeTypes = ['image/png', 'image/jpeg', 'image/svg+xml', 'image/webp'];
+            if (!allowedMimeTypes.includes(file.mimetype)) {
+              throw new AppError('Formato de arquivo não suportado. Use PNG, JPG, SVG ou WEBP.', 400);
+            }
+
+            const maxSize = 2 * 1024 * 1024; // 2MB
+            if (file.size > maxSize) {
+              throw new AppError('Arquivo muito grande. Máximo 2MB.', 400);
+            }
+
+            // Atualizar branding da empresa
+            const branding = company.branding || {};
+            branding.logo = {
+              url: `/uploads/logo/${companyId}/${file.filename}`,
+              filename: file.filename,
+              size: file.size,
+              mimeType: file.mimetype,
+              dimensions: {
+                width: 0, // Será preenchido após processamento
+                height: 0,
+              },
+              uploadedAt: new Date(),
+              uploadedBy: new Types.ObjectId(userId),
+            };
+            branding.updatedAt = new Date();
+
+            company.branding = branding;
+            await company.save();
+
+            logger.info(`Logo enviada para empresa ${company.name} por ${userId}`);
+
+            return {
+              logo: company.branding.logo,
+              companyId: company._id,
+              companyName: company.name,
+            };
+          }, 'AdminService.uploadLogo');
+        }, 'AdminService.uploadLogo');
+      });
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error('Erro ao fazer upload da logo:', error);
+      throw new AppError('Erro ao fazer upload da logo. Tente novamente mais tarde.', 500);
+    }
+  }
+
+  /**
+   * Upload do favicon da empresa
+   */
+  static async uploadFavicon(
+    companyId: string,
+    file: Express.Multer.File,
+    userId: string
+  ): Promise<any> {
+    try {
+      return await databaseCircuitBreaker.execute(async () => {
+        return await retryDatabase(async () => {
+          return await withDbTimeout(async () => {
+            if (!Types.ObjectId.isValid(companyId)) {
+              throw new AppError('ID da empresa inválido', 400);
+            }
+
+            if (!Types.ObjectId.isValid(userId)) {
+              throw new AppError('ID do usuário inválido', 400);
+            }
+
+            const company = await Company.findById(companyId);
+            if (!company) {
+              throw new NotFoundError('Empresa', companyId);
+            }
+
+            // Validações do arquivo
+            const allowedMimeTypes = ['image/png', 'image/jpeg', 'image/svg+xml', 'image/x-icon', 'image/webp'];
+            if (!allowedMimeTypes.includes(file.mimetype)) {
+              throw new AppError('Formato de arquivo não suportado. Use PNG, JPG, SVG, ICO ou WEBP.', 400);
+            }
+
+            const maxSize = 512 * 1024; // 512KB
+            if (file.size > maxSize) {
+              throw new AppError('Arquivo muito grande. Máximo 512KB.', 400);
+            }
+
+            // Atualizar branding da empresa
+            const branding = company.branding || {};
+            branding.favicon = {
+              url: `/uploads/favicon/${companyId}/${file.filename}`,
+              filename: file.filename,
+              size: file.size,
+              mimeType: file.mimetype,
+              uploadedAt: new Date(),
+              uploadedBy: new Types.ObjectId(userId),
+            };
+            branding.updatedAt = new Date();
+
+            company.branding = branding;
+            await company.save();
+
+            logger.info(`Favicon enviado para empresa ${company.name} por ${userId}`);
+
+            return {
+              favicon: company.branding.favicon,
+              companyId: company._id,
+              companyName: company.name,
+            };
+          }, 'AdminService.uploadFavicon');
+        }, 'AdminService.uploadFavicon');
+      });
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error('Erro ao fazer upload do favicon:', error);
+      throw new AppError('Erro ao fazer upload do favicon. Tente novamente mais tarde.', 500);
+    }
+  }
+
+  /**
+   * Obter branding da empresa
+   */
+  static async getBranding(companyId: string): Promise<any> {
+    try {
+      return await databaseCircuitBreaker.execute(async () => {
+        return await retryDatabase(async () => {
+          return await withDbTimeout(async () => {
+            if (!Types.ObjectId.isValid(companyId)) {
+              throw new AppError('ID da empresa inválido', 400);
+            }
+
+            const company = await Company.findById(companyId)
+              .select('branding name')
+              .lean();
+
+            if (!company) {
+              throw new NotFoundError('Empresa', companyId);
+            }
+
+            return {
+              companyId: company._id,
+              companyName: company.name,
+              branding: company.branding || {
+                logo: null,
+                favicon: null,
+                colors: {
+                  primary: '#122A40',
+                  secondary: '#1E5359',
+                  accent: '#30736C',
+                  background: '#F2F2F2',
+                  text: '#122A40',
+                },
+                settings: {
+                  showLogoInHeader: true,
+                  showLogoInReport: true,
+                  useCustomColors: false,
+                },
+              },
+            };
+          }, 'AdminService.getBranding');
+        }, 'AdminService.getBranding');
+      });
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error('Erro ao obter branding:', error);
+      throw new AppError('Erro ao obter branding. Tente novamente mais tarde.', 500);
+    }
+  }
+
+  /**
+   * Obter branding público da empresa (sem autenticação)
+   */
+  static async getPublicBranding(companyId: string): Promise<any> {
+    try {
+      return await databaseCircuitBreaker.execute(async () => {
+        return await retryDatabase(async () => {
+          return await withDbTimeout(async () => {
+            if (!Types.ObjectId.isValid(companyId)) {
+              throw new AppError('ID da empresa inválido', 400);
+            }
+
+            const company = await Company.findById(companyId)
+              .select('branding name')
+              .lean();
+
+            if (!company) {
+              throw new NotFoundError('Empresa', companyId);
+            }
+
+            const branding = company.branding || {};
+            
+            return {
+              companyId: company._id,
+              companyName: company.name,
+              logo: branding.logo ? {
+                url: branding.logo.url,
+                filename: branding.logo.filename,
+              } : null,
+              favicon: branding.favicon ? {
+                url: branding.favicon.url,
+                filename: branding.favicon.filename,
+              } : null,
+              colors: branding.colors || {
+                primary: '#122A40',
+                secondary: '#1E5359',
+                accent: '#30736C',
+                background: '#F2F2F2',
+                text: '#122A40',
+              },
+              settings: branding.settings || {
+                showLogoInHeader: true,
+                showLogoInReport: true,
+                useCustomColors: false,
+              },
+            };
+          }, 'AdminService.getPublicBranding');
+        }, 'AdminService.getPublicBranding');
+      });
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error('Erro ao obter branding público:', error);
+      throw new AppError('Erro ao obter branding público. Tente novamente mais tarde.', 500);
+    }
+  }
+
+  /**
+   * Remover logo da empresa
+   */
+  static async removeLogo(companyId: string): Promise<any> {
+    try {
+      return await databaseCircuitBreaker.execute(async () => {
+        return await retryDatabase(async () => {
+          return await withDbTimeout(async () => {
+            if (!Types.ObjectId.isValid(companyId)) {
+              throw new AppError('ID da empresa inválido', 400);
+            }
+
+            const company = await Company.findById(companyId);
+            if (!company) {
+              throw new NotFoundError('Empresa', companyId);
+            }
+
+            if (company.branding) {
+              company.branding.logo = {
+                url: '',
+                filename: '',
+                size: 0,
+                mimeType: '',
+                dimensions: { width: 0, height: 0 },
+                uploadedAt: null,
+                uploadedBy: null,
+              };
+              company.branding.updatedAt = new Date();
+              await company.save();
+            }
+
+            logger.info(`Logo removida da empresa ${company.name}`);
+
+            return {
+              companyId: company._id,
+              companyName: company.name,
+              logoRemoved: true,
+            };
+          }, 'AdminService.removeLogo');
+        }, 'AdminService.removeLogo');
+      });
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error('Erro ao remover logo:', error);
+      throw new AppError('Erro ao remover logo. Tente novamente mais tarde.', 500);
+    }
+  }
+
+  /**
+   * Remover favicon da empresa
+   */
+  static async removeFavicon(companyId: string): Promise<any> {
+    try {
+      return await databaseCircuitBreaker.execute(async () => {
+        return await retryDatabase(async () => {
+          return await withDbTimeout(async () => {
+            if (!Types.ObjectId.isValid(companyId)) {
+              throw new AppError('ID da empresa inválido', 400);
+            }
+
+            const company = await Company.findById(companyId);
+            if (!company) {
+              throw new NotFoundError('Empresa', companyId);
+            }
+
+            if (company.branding) {
+              company.branding.favicon = {
+                url: '',
+                filename: '',
+                size: 0,
+                mimeType: '',
+                uploadedAt: null,
+                uploadedBy: null,
+              };
+              company.branding.updatedAt = new Date();
+              await company.save();
+            }
+
+            logger.info(`Favicon removido da empresa ${company.name}`);
+
+            return {
+              companyId: company._id,
+              companyName: company.name,
+              faviconRemoved: true,
+            };
+          }, 'AdminService.removeFavicon');
+        }, 'AdminService.removeFavicon');
+      });
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error('Erro ao remover favicon:', error);
+      throw new AppError('Erro ao remover favicon. Tente novamente mais tarde.', 500);
+    }
+  }
+
+  /**
+   * Atualizar configurações de branding
+   */
+  static async updateBrandingSettings(
+    companyId: string,
+    settings: {
+      showLogoInHeader?: boolean;
+      showLogoInReport?: boolean;
+      useCustomColors?: boolean;
+    }
+  ): Promise<any> {
+    try {
+      return await databaseCircuitBreaker.execute(async () => {
+        return await retryDatabase(async () => {
+          return await withDbTimeout(async () => {
+            if (!Types.ObjectId.isValid(companyId)) {
+              throw new AppError('ID da empresa inválido', 400);
+            }
+
+            const company = await Company.findById(companyId);
+            if (!company) {
+              throw new NotFoundError('Empresa', companyId);
+            }
+
+            if (!company.branding) {
+              company.branding = {
+                logo: {
+                  url: '',
+                  filename: '',
+                  size: 0,
+                  mimeType: '',
+                  dimensions: { width: 0, height: 0 },
+                  uploadedAt: null,
+                  uploadedBy: null,
+                },
+                favicon: {
+                  url: '',
+                  filename: '',
+                  size: 0,
+                  mimeType: '',
+                  uploadedAt: null,
+                  uploadedBy: null,
+                },
+                colors: {
+                  primary: '#122A40',
+                  secondary: '#1E5359',
+                  accent: '#30736C',
+                  background: '#F2F2F2',
+                  text: '#122A40',
+                  extractedFrom: null,
+                },
+                settings: {
+                  showLogoInHeader: true,
+                  showLogoInReport: true,
+                  useCustomColors: false,
+                },
+                createdAt: new Date(),
+                updatedAt: new Date(),
+              };
+            }
+
+            if (settings.showLogoInHeader !== undefined) {
+              company.branding.settings.showLogoInHeader = settings.showLogoInHeader;
+            }
+            if (settings.showLogoInReport !== undefined) {
+              company.branding.settings.showLogoInReport = settings.showLogoInReport;
+            }
+            if (settings.useCustomColors !== undefined) {
+              company.branding.settings.useCustomColors = settings.useCustomColors;
+            }
+            company.branding.updatedAt = new Date();
+
+            await company.save();
+
+            logger.info(`Configurações de branding atualizadas para empresa ${company.name}`);
+
+            return {
+              companyId: company._id,
+              companyName: company.name,
+              settings: company.branding.settings,
+            };
+          }, 'AdminService.updateBrandingSettings');
+        }, 'AdminService.updateBrandingSettings');
+      });
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error('Erro ao atualizar configurações de branding:', error);
+      throw new AppError('Erro ao atualizar configurações de branding. Tente novamente mais tarde.', 500);
+    }
+  }
 }
