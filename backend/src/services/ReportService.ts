@@ -456,12 +456,12 @@ export class ReportService {
       });
 
       // 4. Buscar recomendações
-      let recommendations = [];
-      try {
-        const Recommendation = (await import('../models/Recommendation.js')).Recommendation;
-        recommendations = await Recommendation.find({}).lean();
-      } catch (err) {
-        console.log('⚠️ [getPriorizationMatrix] Nenhuma recomendação encontrada');
+     let recommendations: any[] = [];
+try {
+  const Recommendation = (await import('../models/Recommendation.js')).Recommendation;
+  recommendations = await Recommendation.find({}).lean();
+} catch (err) {
+  console.log('⚠️ [getPriorizationMatrix] Nenhuma recomendação encontrada');
       }
       
       const recMap = new Map();
@@ -525,7 +525,7 @@ export class ReportService {
           }
         }
 
-        const controlName = control.nome || control.name || control.id || controlObjectId;
+const controlName = control.nome || control.id || controlObjectId;
 
         if (recommendation) {
           if (recommendation.solucoesTecnicas && recommendation.solucoesTecnicas.length > 0) {
