@@ -718,6 +718,7 @@ export class AdminController {
   /**
    * Obter branding público da empresa (para frontend sem autenticação)
    * GET /api/branding/:companyId
+   * CORRIGIDO: Retorna valores padrão mesmo se o companyId não existir
    */
   static async getPublicBranding(
     req: AuthenticatedRequest,
@@ -731,11 +732,59 @@ export class AdminController {
         throw new ValidationError({ companyId: ['ID da empresa é obrigatório'] });
       }
 
-      const branding = await AdminService.getPublicBranding(companyId);
+      let branding;
+      try {
+        branding = await AdminService.getPublicBranding(companyId);
+      } catch (error) {
+        // Se a empresa não for encontrada, retorna valores padrão
+        console.warn(`⚠️ Empresa ${companyId} não encontrada para branding, usando valores padrão`);
+        branding = {
+          companyId: companyId,
+          companyName: 'MRS Consultoria',
+          logo: null,
+          favicon: null,
+          colors: {
+            primary: '#122A40',
+            secondary: '#1E5359',
+            accent: '#30736C',
+            background: '#F2F2F2',
+            text: '#122A40',
+          },
+          settings: {
+            showLogoInHeader: true,
+            showLogoInReport: true,
+            useCustomColors: false,
+          },
+        };
+      }
+
+      // Garantir que todos os campos existam
+      const defaultColors = {
+        primary: '#122A40',
+        secondary: '#1E5359',
+        accent: '#30736C',
+        background: '#F2F2F2',
+        text: '#122A40',
+      };
+
+      const defaultSettings = {
+        showLogoInHeader: true,
+        showLogoInReport: true,
+        useCustomColors: false,
+      };
+
+      const responseData = {
+        companyId: branding?.companyId || companyId,
+        companyName: branding?.companyName || 'MRS Consultoria',
+        logo: branding?.logo || null,
+        favicon: branding?.favicon || null,
+        colors: branding?.colors || defaultColors,
+        settings: branding?.settings || defaultSettings,
+      };
 
       res.json({
         success: true,
-        data: branding,
+        data: responseData,
         statusCode: 200,
         timestamp: new Date().toISOString(),
       });
