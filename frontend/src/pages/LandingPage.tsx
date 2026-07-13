@@ -239,12 +239,13 @@ export const LandingPage: React.FC = () => {
           >
             <div className="max-w-4xl mx-auto text-center">
               <FadeTransition show={true}>
+                {/* Tarja - CORRIGIDA com cores da paleta MRS */}
                 <div 
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium mb-6"
                   style={{ 
-                    backgroundColor: colors.accent + '25',
-                    color: colors.primary,
-                    border: `1px solid ${colors.accent}40`
+                    backgroundColor: colors.primary + '15',
+                    color: colors.secondary,
+                    border: `1px solid ${colors.primary}20`
                   }}
                 >
                   <span className="relative flex h-2 w-2">
@@ -257,26 +258,28 @@ export const LandingPage: React.FC = () => {
                       style={{ backgroundColor: colors.accent }}
                     ></span>
                   </span>
-                  Transforme seu assessment manual em digital
+                  Avaliação de maturidade ISO 27001 em tempo real
                 </div>
               </FadeTransition>
 
-              <h1 id="hero-title" className="text-4xl md:text-6xl font-extrabold leading-tight mb-6" style={{ color: colors.primary }}>
-                Avalie sua maturidade em
-                <br />
-                <span 
-                  className="bg-clip-text text-transparent"
-                  style={{ 
-                    background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.secondary} 50%, ${colors.accent} 100%)`
-                  }}
-                >
-                  <Typewriter
-                    text="Segurança da Informação"
-                    speed={100}
-                    delay={1000}
-                  />
-                </span>
-              </h1>
+            <h1 id="hero-title" className="text-4xl md:text-6xl font-extrabold leading-tight mb-6" style={{ color: colors.primary }}>
+  Avalie sua maturidade em
+  <br />
+  <span 
+    className="bg-clip-text text-transparent"
+    style={{ 
+      background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.secondary} 60%, ${colors.accent} 100%)`,
+      WebkitBackgroundClip: 'text',
+      WebkitTextFillColor: 'transparent',
+    }}
+  >
+    <Typewriter
+      text="Segurança da Informação"
+      speed={100}
+      delay={1000}
+    />
+  </span>
+</h1>
 
               <FadeTransition show={true}>
                 <p className="text-xl max-w-2xl mx-auto mb-10" style={{ color: colors.text }}>
