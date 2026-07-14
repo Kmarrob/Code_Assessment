@@ -186,7 +186,7 @@ export class PaymentService {
               return payment;
             }
 
-            // Atualizar status
+            // 🔴 CORREÇÃO: Atualizar status usando o array diretamente
             payment.status = 'paid';
             payment.amountPaid = amountPaid;
             payment.paidAt = paidAt;
@@ -194,8 +194,10 @@ export class PaymentService {
             payment.webhookReceived = true;
             payment.webhookProcessedAt = new Date();
             payment.webhookPayload = metadata;
-            // 🔴 CORREÇÃO: payment.addStatusHistory existe no schema
-            payment.addStatusHistory('paid');
+            payment.statusHistory.push({
+              status: 'paid',
+              changedAt: new Date(),
+            });
 
             await payment.save();
 
@@ -244,8 +246,13 @@ export class PaymentService {
               throw new AppError('Pagamento já foi confirmado', 400);
             }
 
+            // 🔴 CORREÇÃO: Atualizar status usando o array diretamente
             payment.status = 'failed';
-            payment.addStatusHistory('failed', reason);
+            payment.statusHistory.push({
+              status: 'failed',
+              changedAt: new Date(),
+              reason,
+            });
             payment.notes = payment.notes ? `${payment.notes} | Falha: ${reason}` : `Falha: ${reason}`;
 
             await payment.save();
@@ -288,10 +295,15 @@ export class PaymentService {
               throw new AppError('Apenas pagamentos confirmados podem ser estornados', 400);
             }
 
+            // 🔴 CORREÇÃO: Atualizar status usando o array diretamente
             payment.status = 'refunded';
             payment.amountRefunded = payment.amountPaid;
             payment.refundedAt = new Date();
-            payment.addStatusHistory('refunded', reason);
+            payment.statusHistory.push({
+              status: 'refunded',
+              changedAt: new Date(),
+              reason,
+            });
             payment.updatedBy = new Types.ObjectId(userId);
             payment.notes = payment.notes ? `${payment.notes} | Estornado: ${reason || 'Solicitado'}` : `Estornado: ${reason || 'Solicitado'}`;
 
@@ -540,8 +552,13 @@ export class PaymentService {
       });
 
       for (const payment of expiredPayments) {
+        // 🔴 CORREÇÃO: Atualizar status usando o array diretamente
         payment.status = 'expired';
-        payment.addStatusHistory('expired', 'Boleto expirado');
+        payment.statusHistory.push({
+          status: 'expired',
+          changedAt: new Date(),
+          reason: 'Boleto expirado',
+        });
         await payment.save();
         result.expired++;
       }
@@ -580,7 +597,6 @@ export class PaymentService {
       return await databaseCircuitBreaker.execute(async () => {
         return await retryDatabase(async () => {
           return await withDbTimeout(async () => {
-            // 🔴 CORREÇÃO: Usar SubscriptionService.getSubscriptionById
             const subscription = await SubscriptionService.getSubscriptionById(subscriptionId);
             if (!subscription) {
               throw new NotFoundError('Assinatura', subscriptionId);
@@ -591,10 +607,8 @@ export class PaymentService {
               throw new NotFoundError('Empresa', subscription.companyId);
             }
 
-            // Buscar o plano
             const plan = await PlanService.getPlanById(subscription.planId.toString());
 
-            // Calcular próximo período de faturamento
             const startDate = new Date();
             let endDate = new Date();
             if (subscription.billingCycle === 'annual') {
@@ -603,7 +617,6 @@ export class PaymentService {
               endDate.setMonth(endDate.getMonth() + 1);
             }
 
-            // Gerar itens da fatura
             const items = [
               {
                 description: `Plano ${plan?.displayName || 'N/A'} - ${subscription.billingCycle === 'annual' ? 'Anual' : 'Mensal'}`,
@@ -614,7 +627,6 @@ export class PaymentService {
               },
             ];
 
-            // Se houver usuários extras, adicionar item
             const extraUsers = Math.max(0, subscription.currentUsers - subscription.maxUsers);
             if (extraUsers > 0 && plan) {
               const extraPrice = extraUsers * (plan.pricePerUser || 0);
@@ -632,7 +644,6 @@ export class PaymentService {
             // 🔴 CORREÇÃO: subscription._id é ObjectId, converter para string
             const subscriptionIdStr = subscription._id.toString();
 
-            // Criar pagamento
             const payment = await PaymentService.createPayment({
               companyId: subscription.companyId.toString(),
               subscriptionId: subscriptionIdStr,
@@ -641,7 +652,7 @@ export class PaymentService {
               transactionType: 'subscription',
               paymentMethod: 'credit_card',
               paymentProvider: 'manual',
-              dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 dias
+              dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
               billingPeriod: { start: startDate, end: endDate },
               items,
               notes: `Fatura gerada automaticamente para assinatura ${subscription._id}`,

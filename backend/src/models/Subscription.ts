@@ -361,6 +361,7 @@ subscriptionSchema.methods.getDaysUntilTrialEnd = function(): number {
 
 /**
  * Obtém o status de forma legível
+ * 🔴 CORREÇÃO: Adicionado tipo explícito para this.status
  */
 subscriptionSchema.methods.getStatusLabel = function(): string {
   const statusMap: Record<SubscriptionStatus, string> = {
@@ -373,7 +374,7 @@ subscriptionSchema.methods.getStatusLabel = function(): string {
     'pending': 'Aguardando Pagamento',
     'trialing': 'Em Teste',
   };
-  return statusMap[this.status] || this.status;
+  return statusMap[this.status as SubscriptionStatus] || this.status;
 };
 
 /**

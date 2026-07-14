@@ -144,6 +144,19 @@ export interface IPayment {
   updatedAt: Date;
   createdBy?: mongoose.Types.ObjectId;
   updatedBy?: mongoose.Types.ObjectId;
+
+  // ============================================
+  // 🔴 MÉTODOS DO SCHEMA (declarados na interface)
+  // ============================================
+  isPaid(): boolean;
+  isPending(): boolean;
+  isRefunded(): boolean;
+  isFailed(): boolean;
+  isOverdue(): boolean;
+  getStatusLabel(): string;
+  getPaymentMethodLabel(): string;
+  getTotalWithFees(): number;
+  addStatusHistory(status: PaymentStatus, reason?: string): void;
 }
 
 /**
