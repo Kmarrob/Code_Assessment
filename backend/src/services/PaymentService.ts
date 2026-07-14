@@ -194,6 +194,7 @@ export class PaymentService {
             payment.webhookReceived = true;
             payment.webhookProcessedAt = new Date();
             payment.webhookPayload = metadata;
+            // 🔴 CORREÇÃO: payment.addStatusHistory existe no schema
             payment.addStatusHistory('paid');
 
             await payment.save();
@@ -628,10 +629,13 @@ export class PaymentService {
 
             const totalAmount = items.reduce((sum: number, item: any) => sum + item.totalPrice, 0);
 
+            // 🔴 CORREÇÃO: subscription._id é ObjectId, converter para string
+            const subscriptionIdStr = subscription._id.toString();
+
             // Criar pagamento
-            const payment = await this.createPayment({
+            const payment = await PaymentService.createPayment({
               companyId: subscription.companyId.toString(),
-              subscriptionId: subscription._id.toString(),
+              subscriptionId: subscriptionIdStr,
               userId,
               amount: totalAmount,
               transactionType: 'subscription',
