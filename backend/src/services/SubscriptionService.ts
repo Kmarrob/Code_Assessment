@@ -711,4 +711,34 @@ export class SubscriptionService {
       throw new AppError('Erro ao buscar assinatura. Tente novamente mais tarde.', 500);
     }
   }
+
+  /**
+   * 🔴 NOVO (v29): Buscar assinaturas que vão expirar em breve
+   * Para jobs de renovação automática
+   */
+  static async getSubscriptionsExpiringSoon(days: number = 7): Promise<ISubscription[]> {
+    try {
+      return await databaseCircuitBreaker.execute(async () => {
+        return await retryDatabase(async () => {
+          return await withDbTimeout(async () => {
+            const now = new Date();
+            const future = new Date();
+            future.setDate(future.getDate() + days);
+
+            return Subscription.find({
+              status: 'active',
+              autoRenew: true,
+              endDate: {
+                $gte: now,
+                $lte: future,
+              },
+            }).populate('planId');
+          }, 'SubscriptionService.getSubscriptionsExpiringSoon');
+        }, 'SubscriptionService.getSubscriptionsExpiringSoon');
+      });
+    } catch (error) {
+      logger.error('Erro ao buscar assinaturas prestes a expirar:', error);
+      throw new AppError('Erro ao buscar assinaturas. Tente novamente mais tarde.', 500);
+    }
+  }
 }

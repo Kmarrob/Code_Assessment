@@ -60,7 +60,7 @@ export class PaymentJobs {
               if (response.success && response.status === 'paid') {
                 await PaymentService.updatePaymentStatus(payment._id.toString(), {
                   status: 'paid',
-                  paidAt: new Date().toISOString(),
+                  paidAt: new Date(),
                 });
 
                 // Ativar assinatura se houver
@@ -122,10 +122,10 @@ export class PaymentJobs {
             amount: subscription.amount,
             currency: subscription.currency || 'BRL',
             description: `Renovação de assinatura - ${subscription.planName}`,
-            dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+            dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
             billingPeriod: {
-              start: new Date().toISOString(),
-              end: subscription.endDate.toISOString(),
+              start: new Date(),
+              end: new Date(subscription.endDate),
             },
             items: [
               {
@@ -133,7 +133,7 @@ export class PaymentJobs {
                 quantity: 1,
                 unitPrice: subscription.amount,
                 totalPrice: subscription.amount,
-                type: 'subscription',
+                type: 'plan',
               },
             ],
           });
