@@ -682,4 +682,32 @@ export class SubscriptionService {
       throw new AppError('Erro ao obter métricas. Tente novamente mais tarde.', 500);
     }
   }
+
+  /**
+   * 🔴 NOVO: Obter assinatura por ID
+   */
+  static async getSubscriptionById(subscriptionId: string): Promise<ISubscription> {
+    try {
+      return await databaseCircuitBreaker.execute(async () => {
+        return await retryDatabase(async () => {
+          return await withDbTimeout(async () => {
+            if (!Types.ObjectId.isValid(subscriptionId)) {
+              throw new AppError('ID da assinatura inválido', 400);
+            }
+
+            const subscription = await Subscription.findById(subscriptionId).populate('planId');
+            if (!subscription) {
+              throw new NotFoundError('Assinatura', subscriptionId);
+            }
+
+            return subscription;
+          }, 'SubscriptionService.getSubscriptionById');
+        }, 'SubscriptionService.getSubscriptionById');
+      });
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error('Erro ao buscar assinatura por ID:', error);
+      throw new AppError('Erro ao buscar assinatura. Tente novamente mais tarde.', 500);
+    }
+  }
 }

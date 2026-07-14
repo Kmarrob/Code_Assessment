@@ -574,8 +574,8 @@ export class PaymentController {
         throw new ValidationError({ subscriptionId: ['ID da assinatura é obrigatório'] });
       }
 
-      // Verificar permissões
-      const subscription = await SubscriptionService['getSubscriptionById'](subscriptionId);
+      // 🔴 CORREÇÃO: Usar SubscriptionService.getSubscriptionById
+      const subscription = await SubscriptionService.getSubscriptionById(subscriptionId);
       if (!subscription) {
         throw new AppError('Assinatura não encontrada', 404);
       }

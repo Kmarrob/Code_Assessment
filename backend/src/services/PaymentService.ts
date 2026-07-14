@@ -579,7 +579,8 @@ export class PaymentService {
       return await databaseCircuitBreaker.execute(async () => {
         return await retryDatabase(async () => {
           return await withDbTimeout(async () => {
-            const subscription = await Subscription.findById(subscriptionId).populate('planId');
+            // 🔴 CORREÇÃO: Usar SubscriptionService.getSubscriptionById
+            const subscription = await SubscriptionService.getSubscriptionById(subscriptionId);
             if (!subscription) {
               throw new NotFoundError('Assinatura', subscriptionId);
             }
@@ -589,7 +590,8 @@ export class PaymentService {
               throw new NotFoundError('Empresa', subscription.companyId);
             }
 
-            const plan = subscription.planId as any;
+            // Buscar o plano
+            const plan = await PlanService.getPlanById(subscription.planId.toString());
 
             // Calcular próximo período de faturamento
             const startDate = new Date();
@@ -603,7 +605,7 @@ export class PaymentService {
             // Gerar itens da fatura
             const items = [
               {
-                description: `Plano ${plan.displayName} - ${subscription.billingCycle === 'annual' ? 'Anual' : 'Mensal'}`,
+                description: `Plano ${plan?.displayName || 'N/A'} - ${subscription.billingCycle === 'annual' ? 'Anual' : 'Mensal'}`,
                 quantity: 1,
                 unitPrice: subscription.amount,
                 totalPrice: subscription.amount,
@@ -613,7 +615,7 @@ export class PaymentService {
 
             // Se houver usuários extras, adicionar item
             const extraUsers = Math.max(0, subscription.currentUsers - subscription.maxUsers);
-            if (extraUsers > 0) {
+            if (extraUsers > 0 && plan) {
               const extraPrice = extraUsers * (plan.pricePerUser || 0);
               items.push({
                 description: `${extraUsers} usuário(s) adicional(is)`,
@@ -624,7 +626,7 @@ export class PaymentService {
               });
             }
 
-            const totalAmount = items.reduce((sum, item) => sum + item.totalPrice, 0);
+            const totalAmount = items.reduce((sum: number, item: any) => sum + item.totalPrice, 0);
 
             // Criar pagamento
             const payment = await this.createPayment({

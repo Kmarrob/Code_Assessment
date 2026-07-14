@@ -443,7 +443,7 @@ paymentSchema.methods.getStatusLabel = function(): string {
     'cancelled': 'Cancelado',
     'expired': 'Expirado',
   };
-  return statusMap[this.status] || this.status;
+  return statusMap[this.status as PaymentStatus] || this.status;
 };
 
 /**
@@ -456,16 +456,16 @@ paymentSchema.methods.getPaymentMethodLabel = function(): string {
     'pix': 'Pix',
     'bank_transfer': 'Transferência Bancária',
   };
-  return methodMap[this.paymentMethod] || this.paymentMethod;
+  return methodMap[this.paymentMethod as PaymentMethod] || this.paymentMethod;
 };
 
 /**
  * Obtém o valor total com desconto e taxas
  */
 paymentSchema.methods.getTotalWithFees = function(): number {
-  const totalItems = this.items.reduce((sum, item) => sum + item.totalPrice, 0);
-  const totalDiscounts = this.discounts.reduce((sum, d) => sum + d.amount, 0);
-  const totalFees = this.fees.reduce((sum, f) => sum + f.amount, 0);
+  const totalItems = this.items.reduce((sum: number, item: any) => sum + item.totalPrice, 0);
+  const totalDiscounts = this.discounts.reduce((sum: number, d: any) => sum + d.amount, 0);
+  const totalFees = this.fees.reduce((sum: number, f: any) => sum + f.amount, 0);
   return totalItems - totalDiscounts + totalFees;
 };
 

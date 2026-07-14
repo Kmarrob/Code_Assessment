@@ -376,8 +376,8 @@ export class SubscriptionController {
 
       const { reason } = req.body;
 
-      // Verificar permissões
-      const subscription = await SubscriptionService['getSubscriptionById'](id);
+      // 🔴 CORREÇÃO: Usar SubscriptionService.getSubscriptionById
+      const subscription = await SubscriptionService.getSubscriptionById(id);
       if (!subscription) {
         throw new AppError('Assinatura não encontrada', 404);
       }
