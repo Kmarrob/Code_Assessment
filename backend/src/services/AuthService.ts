@@ -73,7 +73,7 @@ export class AuthService {
 
       // 🔴 CORREÇÃO CRÍTICA: Adicionado '+password' para forçar a busca do campo que está com select: false
       const user = await User.findOne({ email })
-        .select('+password _id name email role company department isActive refreshToken passwordChangedAt')
+        .select('+password _id name email role company companyId department isActive refreshToken passwordChangedAt')
         .exec();
 
       if (!user) {
@@ -108,6 +108,7 @@ export class AuthService {
       user.refreshToken = tokens.refreshToken;
       await user.save();
 
+      // 🔴 CORREÇÃO: Adicionado companyId ao userResponse
       const userResponse: IUser = {
         _id: user._id,
         name: user.name,
@@ -115,6 +116,7 @@ export class AuthService {
         password: '',
         role: user.role,
         company: user.company,
+        companyId: user.companyId, // ✅ ADICIONADO
         department: user.department,
         isActive: user.isActive,
         createdAt: user.createdAt,
@@ -234,14 +236,14 @@ export class AuthService {
 
   static async getUserById(userId: string): Promise<IUser | null> {
     return User.findById(userId)
-      .select('_id name email role company department isActive lastLogin')
+      .select('_id name email role company companyId department isActive lastLogin')
       .lean()
       .exec() as Promise<IUser | null>;
   }
 
   static async getUserByEmail(email: string): Promise<IUser | null> {
     return User.findOne({ email })
-      .select('_id name email role company department isActive lastLogin')
+      .select('_id name email role company companyId department isActive lastLogin')
       .lean()
       .exec() as Promise<IUser | null>;
   }

@@ -8,6 +8,7 @@ import { AuthenticatedRequest, UserRole } from '../types/index.js';
 import { User } from '../models/User.js';
 import { Response as ResponseModel } from '../models/Response.js';
 import { Assignment } from '../models/Assignment.js';
+import { Company } from '../models/Company.js';
 
 export class ReportController {
   /**
@@ -242,6 +243,95 @@ export class ReportController {
       const totalResponses = await ResponseModel.countDocuments({ companyId: companyId });
 
       // Buscar usuários da empresa
+      const users = await User.find({ companyId: companyId, isActive: true }).select('_id');
+      const userIds = users.map(u => u._id);
+
+      const totalControls = await Assignment.countDocuments({ 
+        userId: { $in: userIds }
+      });
+
+      res.json({
+        success: true,
+        data: {
+          report: reportData,
+          stats: {
+            totalUsers,
+            totalResponses,
+            totalControls,
+            completionRate: totalControls > 0 ? Math.round((totalResponses / totalControls) * 100) : 0,
+          },
+          resultados: resultados,
+        },
+        statusCode: 200,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * 🔴 NOVO: Obter dashboard do relatório por nome da empresa
+   * GET /api/reports/dashboard/company/:companyName
+   * Acesso: REP ou ADMIN
+   */
+  static async getReportDashboardByCompanyName(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const user = req.user;
+      
+      if (!user) {
+        throw new AppError('Usuário não autenticado', 401);
+      }
+
+      if (user.role !== UserRole.REP && user.role !== UserRole.ADMIN) {
+        throw new AppError('Acesso restrito a prepostos e administradores', 403);
+      }
+
+      const { companyName } = req.params;
+      if (!companyName) {
+        throw new AppError('Nome da empresa é obrigatório', 400);
+      }
+
+      // Buscar empresa pelo nome (case insensitive)
+      const company = await Company.findOne({ 
+        name: { $regex: new RegExp('^' + companyName + '$', 'i') } 
+      });
+
+      if (!company) {
+        throw new NotFoundError(`Empresa "${companyName}" não encontrada`);
+      }
+
+      const companyId = company._id.toString();
+
+      // Verificar permissões (REP só pode acessar sua própria empresa)
+      if (user.role === UserRole.REP && user.companyId?.toString() !== companyId) {
+        throw new AppError('Você não tem permissão para acessar o dashboard desta empresa', 403);
+      }
+
+      // Usar o companyId para buscar o dashboard
+      const report = await ReportService.getOrCreateReport(companyId);
+      
+      let reportData = report;
+      if (report.clientTeam.length === 0) {
+        reportData = await ReportService.generateReportData(companyId);
+      }
+
+      await reportData.populate('companyId', 'name cnpj');
+
+      const resultados = await ReportResultService.getResultadosData(companyId);
+
+      const totalUsers = await User.countDocuments({
+        companyId: companyId,
+        isActive: true,
+        role: UserRole.USER,
+      });
+
+      const totalResponses = await ResponseModel.countDocuments({ companyId: companyId });
+
       const users = await User.find({ companyId: companyId, isActive: true }).select('_id');
       const userIds = users.map(u => u._id);
 

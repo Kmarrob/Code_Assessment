@@ -288,12 +288,39 @@ export const DashboardOverview: React.FC = () => {
   const [isPrinting, setIsPrinting] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
 
+  // ============================================
+  // 🔴 CORREÇÃO: getCompanyId - retorna apenas ID válido
+  // ============================================
   const getCompanyId = (): string | undefined => {
+    // Prioridade 1: ID da URL (param)
     if (paramCompanyId) return paramCompanyId;
+    
+    // Prioridade 2: ID do usuário
     if (user) {
       const userAny = user as any;
-      return userAny.companyId || userAny.company?._id || userAny.company || undefined;
+      
+      // Verifica se é um ObjectId válido (24 caracteres hex)
+      const isValidObjectId = (id: string): boolean => /^[0-9a-fA-F]{24}$/.test(id);
+      
+      // Tenta obter o companyId de diferentes fontes
+      const possibleIds = [
+        userAny.companyId,
+        userAny.company?._id,
+        userAny.company?.id,
+        // Só usa o company se for um ObjectId válido (não é nome)
+        typeof userAny.company === 'string' && isValidObjectId(userAny.company) ? userAny.company : undefined,
+      ];
+      
+      for (const id of possibleIds) {
+        if (id && typeof id === 'string' && isValidObjectId(id)) {
+          return id;
+        }
+      }
+      
+      // Se não encontrou nenhum ID válido, retorna undefined
+      return undefined;
     }
+    
     return undefined;
   };
 
@@ -301,17 +328,14 @@ export const DashboardOverview: React.FC = () => {
 
   // 🔴 CORREÇÃO: Função de impressão com requestAnimationFrame
   const handlePrint = async () => {
-    // Ativa o modo de impressão
     setIsPrinting(true);
     
-    // Aguarda 2 ciclos de renderização para o React atualizar o DOM
     await new Promise(resolve => 
       requestAnimationFrame(() => 
         requestAnimationFrame(resolve)
       )
     );
     
-    // Agora imprime
     window.print();
   };
 
@@ -328,18 +352,52 @@ export const DashboardOverview: React.FC = () => {
     };
   }, []);
 
+  // ============================================
+  // 🔴 CORREÇÃO: Aguardar companyId estar pronto
+  // ============================================
   useEffect(() => {
     const loadData = async () => {
-      if (!companyId) {
+      // Se não tem companyId, tenta obter novamente após pequeno delay
+      let finalCompanyId = companyId;
+      
+      if (!finalCompanyId && user) {
+        // Aguarda 300ms para o Layout terminar de carregar o companyId
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        // Tenta obter novamente
+        const userAny = user as any;
+        const isValidObjectId = (id: string): boolean => /^[0-9a-fA-F]{24}$/.test(id);
+        
+        const possibleIds = [
+          userAny.companyId,
+          userAny.company?._id,
+          userAny.company?.id,
+          typeof userAny.company === 'string' && isValidObjectId(userAny.company) ? userAny.company : undefined,
+        ];
+        
+        for (const id of possibleIds) {
+          if (id && typeof id === 'string' && isValidObjectId(id)) {
+            finalCompanyId = id;
+            break;
+          }
+        }
+      }
+
+      if (!finalCompanyId) {
         if (user?.role === 'admin') {
           setError('Selecione uma empresa para visualizar o dashboard');
           setLoading(false);
           return;
         }
-        if (user?.role === 'rep' && user) {
+        if (user?.role === 'rep') {
+          // Tenta extrair companyId mais uma vez
           const userAny = user as any;
-          const id = userAny.companyId || userAny.company?._id || userAny.company || null;
-          if (id) {
+          const hasValidCompanyId = (id: string): boolean => /^[0-9a-fA-F]{24}$/.test(id);
+          
+          const possibleId = userAny.companyId || 
+                            (typeof userAny.company === 'string' && hasValidCompanyId(userAny.company) ? userAny.company : null);
+          
+          if (possibleId) {
             setLoading(false);
             window.location.reload();
             return;
@@ -355,9 +413,9 @@ export const DashboardOverview: React.FC = () => {
       try {
         let dashboardData;
         if (user?.role === 'admin') {
-          dashboardData = await dashboardService.getAdminCompanyDashboard(companyId);
+          dashboardData = await dashboardService.getAdminCompanyDashboard(finalCompanyId);
         } else {
-          dashboardData = await dashboardService.getRepDashboard(companyId);
+          dashboardData = await dashboardService.getRepDashboard(finalCompanyId);
         }
         setData(dashboardData);
       } catch (err: any) {
@@ -370,7 +428,7 @@ export const DashboardOverview: React.FC = () => {
     };
 
     loadData();
-  }, [companyId, user?.role]);
+  }, [companyId, user?.role, user]);
 
   // ============================================
   // ESTILOS DE IMPRESSÃO — CORREÇÃO ESTRUTURAL

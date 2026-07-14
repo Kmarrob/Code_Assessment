@@ -36,6 +36,16 @@ router.get(
 );
 
 // ============================================
+// 🔴 NOVA ROTA: Dashboard por nome da empresa
+// ============================================
+router.get(
+  '/dashboard/company/:companyName',
+  authorize(UserRole.REP, UserRole.ADMIN),
+  authenticatedRateLimiter,
+  ReportController.getReportDashboardByCompanyName
+);
+
+// ============================================
 // 🔴 NOVA ROTA: ADMIN dashboard por empresa
 // ============================================
 router.get(

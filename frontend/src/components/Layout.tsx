@@ -25,43 +25,68 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [branding, setBranding] = useState<PublicBrandingData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [companyId, setCompanyId] = useState<string | null>(null);
 
-  // Buscar companyId do usuário
+  // ============================================
+  // 🔴 CORREÇÃO: Buscar companyId sem bloquear a renderização
+  // ============================================
   useEffect(() => {
     const getCompanyId = async () => {
-      try {
-        if (user?.companyId) {
-          setCompanyId(user.companyId as string);
+      if (!user) {
+        setCompanyId(null);
+        return;
+      }
+
+      // REP ou USER: usar companyId do usuário
+      if (user.companyId) {
+        setCompanyId(user.companyId as string);
+        return;
+      }
+
+      // REP: tentar extrair company de outras formas
+      if (user.role === 'rep') {
+        const userAny = user as any;
+        if (userAny.company && typeof userAny.company === 'object' && userAny.company._id) {
+          setCompanyId(userAny.company._id);
           return;
         }
-
-        const response = await fetch('/api/admin/companies', {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        });
-        if (response.ok) {
-          const data = await response.json();
-          if (data.data?.companies?.length > 0) {
-            setCompanyId(data.data.companies[0]._id);
-            return;
-          }
+        if (typeof userAny.company === 'string' && /^[0-9a-fA-F]{24}$/.test(userAny.company)) {
+          setCompanyId(userAny.company);
+          return;
         }
-
-        console.warn('⚠️ Nenhuma empresa encontrada, usando fallback');
-        setCompanyId('67f8a1b2c3d4e5f6g7h8i9j0');
-      } catch (error) {
-        console.error('Erro ao buscar companyId:', error);
-        setCompanyId('67f8a1b2c3d4e5f6g7h8i9j0');
       }
+
+      // ADMIN: buscar empresas
+      if (user.role === 'admin') {
+        try {
+          const response = await fetch('/api/admin/companies', {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+          });
+          if (response.ok) {
+            const data = await response.json();
+            if (data.data?.companies?.length > 0) {
+              setCompanyId(data.data.companies[0]._id);
+              return;
+            }
+          }
+          setCompanyId('67f8a1b2c3d4e5f6g7h8i9j0');
+        } catch {
+          setCompanyId('67f8a1b2c3d4e5f6g7h8i9j0');
+        }
+        return;
+      }
+
+      setCompanyId(null);
     };
 
     getCompanyId();
   }, [user]);
 
-  // Buscar branding quando tiver o companyId
+  // ============================================
+  // Buscar branding (não bloqueia a renderização)
+  // ============================================
   useEffect(() => {
     const loadBranding = async () => {
       if (!companyId) return;
@@ -72,14 +97,10 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       } catch (error) {
         console.error('Erro ao carregar branding:', error);
         setBranding(null);
-      } finally {
-        setIsLoading(false);
       }
     };
 
-    if (companyId) {
-      loadBranding();
-    }
+    loadBranding();
   }, [companyId]);
 
   const handleLogout = async () => {
@@ -90,8 +111,6 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const colors = branding?.colors || MRS_COLORS;
   const showLogo = branding?.settings?.showLogoInHeader !== false;
   const logoUrl = branding?.logo?.url;
-
-  // Determinar qual logo usar: a da API ou a fallback local
   const finalLogoUrl = (showLogo && logoUrl) ? logoUrl : MRS_LOGO_FALLBACK;
 
   return (
