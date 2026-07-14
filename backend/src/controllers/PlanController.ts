@@ -1,6 +1,6 @@
 // backend/src/controllers/PlanController.ts
 import { Response, NextFunction } from 'express';
-import { PlanService } from '../services/PlanService.js';
+import { PlanService } from '../services/PlanService';
 import { AuthenticatedRequest, UserRole } from '../types/index.js';
 import { AppError, ValidationError } from '../middleware/errorHandler.js';
 import { ErrorLogger } from '../utils/errorLogger.js';

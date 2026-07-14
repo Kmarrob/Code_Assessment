@@ -1,11 +1,12 @@
 // backend/src/services/PlanService.ts
 import { Types } from 'mongoose';
-import { Plan, IPlan } from '../models/Plan.js';
-import { logger } from '../utils/logger.js';
-import { AppError, NotFoundError } from '../middleware/errorHandler.js';
-import { retryDatabase } from '../utils/retry.js';
-import { databaseCircuitBreaker } from '../utils/circuitBreaker.js';
-import { withDbTimeout } from '../middleware/timeout.js';
+import { Plan } from '../models/Plan';
+import { IPlan } from '../types/plan.types.js';
+import { logger } from '../utils/logger';
+import { AppError, NotFoundError } from '../middleware/errorHandler';
+import { retryDatabase } from '../utils/retry';
+import { databaseCircuitBreaker } from '../utils/circuitBreaker';
+import { withDbTimeout } from '../middleware/timeout';
 
 export interface CreatePlanData {
   name: 'basic' | 'pro' | 'enterprise' | 'trial';
@@ -155,7 +156,7 @@ export class PlanService {
     }
   }
 
-  /**
+    /**
    * Obter planos públicos (para página de planos)
    */
   static async getPublicPlans(): Promise<IPlan[]> {
@@ -163,6 +164,47 @@ export class PlanService {
       return await databaseCircuitBreaker.execute(async () => {
         return await retryDatabase(async () => {
           return await withDbTimeout(async () => {
+
+            // ==========================================================
+            // LOGS DE DIAGNÓSTICO (REMOVER APÓS IDENTIFICAR O PROBLEMA)
+            // ==========================================================
+
+            console.log('\n===================================================');
+            console.log('DIAGNÓSTICO - PlanService.getPublicPlans()');
+            console.log('===================================================');
+
+            console.log('Mongo URI:', process.env.MONGODB_URI);
+
+            const total = await Plan.countDocuments({});
+            console.log('Total de planos:', total);
+
+            const ativos = await Plan.countDocuments({
+              isActive: true,
+            });
+            console.log('Planos ativos:', ativos);
+
+            const publicos = await Plan.countDocuments({
+              isPublic: true,
+            });
+            console.log('Planos públicos:', publicos);
+
+            const ativosPublicos = await Plan.countDocuments({
+              isActive: true,
+              isPublic: true,
+            });
+            console.log('Planos ativos e públicos:', ativosPublicos);
+
+            const todos = await Plan.find().lean();
+
+            console.log('\nTodos os documentos encontrados:\n');
+            console.log(JSON.stringify(todos, null, 2));
+
+            console.log('===================================================\n');
+
+            // ==========================================================
+            // CONSULTA ORIGINAL
+            // ==========================================================
+
             const plans = await Plan.find({
               isActive: true,
               isPublic: true,
@@ -170,13 +212,21 @@ export class PlanService {
               .sort({ sortOrder: 1 })
               .lean();
 
+            console.log(
+              `Retornando ${plans.length} plano(s) para a API /api/plans/public`
+            );
+
             return plans as unknown as IPlan[];
+
           }, 'PlanService.getPublicPlans');
         }, 'PlanService.getPublicPlans');
       });
     } catch (error) {
       logger.error('Erro ao buscar planos públicos:', error);
-      throw new AppError('Erro ao buscar planos públicos. Tente novamente mais tarde.', 500);
+      throw new AppError(
+        'Erro ao buscar planos públicos. Tente novamente mais tarde.',
+        500
+      );
     }
   }
 
@@ -416,3 +466,4 @@ export class PlanService {
     }
   }
 }
+

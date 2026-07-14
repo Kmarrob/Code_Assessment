@@ -50,11 +50,20 @@ export class Database {
 
       this.isConnected = true;
       this.reconnectAttempts = 0;
-      
+
       logger.info('📦 MongoDB connected successfully');
-      
+
+      // =====================================================
+      // DIAGNÓSTICO (NÃO ALTERA O FUNCIONAMENTO DO SISTEMA)
+      // =====================================================
+      logger.info(`📍 Mongo URI.......: ${config.MONGODB_URI}`);
+      logger.info(`📍 DB configurado..: ${config.MONGODB_DB_NAME}`);
+      logger.info(`📍 DB conectado....: ${mongoose.connection.name}`);
+      logger.info(`📍 Collection Plan.: ${mongoose.connection.collection('plans').collectionName}`);
+      // =====================================================
+
       this.setupEventHandlers();
-      
+
     } catch (error) {
       logger.error('❌ Failed to connect to MongoDB:', error);
       throw error;
@@ -97,15 +106,23 @@ export class Database {
 
     this.reconnectAttempts++;
 
-    const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts - 1), 30000);
-    
-    logger.info(`🔄 Attempting reconnect ${this.reconnectAttempts}/${this.maxReconnectAttempts} in ${delay}ms`);
+    const delay = Math.min(
+      1000 * Math.pow(2, this.reconnectAttempts - 1),
+      30000
+    );
+
+    logger.info(
+      `🔄 Attempting reconnect ${this.reconnectAttempts}/${this.maxReconnectAttempts} in ${delay}ms`
+    );
 
     setTimeout(async () => {
       try {
         await this.connect();
       } catch (error) {
-        logger.error(`❌ Reconnect attempt ${this.reconnectAttempts} failed:`, error);
+        logger.error(
+          `❌ Reconnect attempt ${this.reconnectAttempts} failed:`,
+          error
+        );
         this.attemptReconnect();
       }
     }, delay);
