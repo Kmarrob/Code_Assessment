@@ -633,11 +633,12 @@ export class PaymentService {
 
             const totalAmount = items.reduce((sum: number, item: any) => sum + item.totalPrice, 0);
 
-            // 🔴 CORREÇÃO DEFINITIVA: Converter usando as string com casting
-            const subscriptionIdStr = subscription._id as unknown as string;
+            // 🔴 CORREÇÃO: Forçar conversão para string com String()
+            const subscriptionIdStr: string = String(subscription._id);
+            const companyIdStr: string = String(subscription.companyId);
 
             const payment = await PaymentService.createPayment({
-              companyId: subscription.companyId.toString(),
+              companyId: companyIdStr,
               subscriptionId: subscriptionIdStr,
               userId,
               amount: totalAmount,
