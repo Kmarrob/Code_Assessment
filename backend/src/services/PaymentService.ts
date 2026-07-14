@@ -592,7 +592,7 @@ export class PaymentService {
               throw new NotFoundError('Empresa', subscription.companyId);
             }
 
-            // CORREÇÃO: Forçando conversão para string explícita para evitar o TS2345
+            // CORREÇÃO: Forçando conversão para string explícita para evitar o TS2345 - v25.0
             const plan = await PlanService.getPlanById(String(subscription.planId));
 
             const startDate = new Date();
