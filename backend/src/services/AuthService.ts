@@ -1,3 +1,4 @@
+// backend/src/services/AuthService.ts
 import jwt from 'jsonwebtoken';
 import { User } from '../models/User.js';
 import { config } from '../config/env.js';
@@ -42,6 +43,7 @@ export class AuthService {
     company?: string;
     department?: string;
     role?: UserRole;
+    plan?: 'basic' | 'pro' | 'enterprise';
   }): Promise<IUser> {
     try {
       const existingUser = await User.findOne({ email: userData.email }).select('_id').lean();
@@ -49,15 +51,26 @@ export class AuthService {
         throw new AppError('Email já está em uso', 400);
       }
 
+      // Se um plano foi selecionado, o plano padrão será basic
+      const userPlan = userData.plan || 'basic';
+
       const user = new User({
         ...userData,
         role: userData.role || UserRole.USER,
         isActive: true,
+        // O plano será associado à empresa ou ao usuário
+        // Por enquanto, armazenamos como metadado
+        metadata: {
+          selectedPlan: userPlan,
+        },
       });
 
       await user.save();
 
-      logger.info(`Novo usuário registrado: ${user.email} (${user.role})`);
+      // TODO: Criar assinatura para o usuário com o plano selecionado
+      // Isso será implementado na Fase 5 (integração com pagamento)
+
+      logger.info(`Novo usuário registrado: ${user.email} (${user.role}) - Plano: ${userPlan}`);
       return user;
 
     } catch (error) {
@@ -116,7 +129,7 @@ export class AuthService {
         password: '',
         role: user.role,
         company: user.company,
-        companyId: user.companyId, // ✅ ADICIONADO
+        companyId: user.companyId,
         department: user.department,
         isActive: user.isActive,
         createdAt: user.createdAt,

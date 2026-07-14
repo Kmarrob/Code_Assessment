@@ -37,6 +37,7 @@ export const registerSchema = z.object({
   company: z.string().max(100).optional(),
   department: z.string().max(100).optional(),
   role: z.enum(['admin', 'rep', 'consultant', 'user']).optional(),
+  plan: z.enum(['basic', 'pro', 'enterprise']).optional(),
 });
 
 export const loginSchema = z.object({
