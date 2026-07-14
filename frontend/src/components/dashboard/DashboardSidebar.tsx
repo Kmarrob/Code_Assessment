@@ -23,9 +23,6 @@ const MRS_COLORS = {
   text: '#122A40',
 };
 
-// Logo da MRS Consultoria (caminho fixo - imagem local - FALLBACK)
-const MRS_LOGO_FALLBACK = '/images/brand/logo-mrs.png';
-
 interface DashboardSidebarProps {
   companyId?: string;
   onBack?: () => void;
@@ -117,12 +114,6 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
     },
   ];
 
-  const showLogo = branding?.settings?.showLogoInHeader !== false;
-  const logoUrl = branding?.logo?.url;
-
-  // Determinar qual logo usar: a da API ou a fallback local
-  const finalLogoUrl = (showLogo && logoUrl) ? logoUrl : MRS_LOGO_FALLBACK;
-
   return (
     <aside 
       className="w-64 border-r min-h-screen flex-shrink-0 sticky top-0 flex flex-col"
@@ -131,34 +122,13 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
         borderColor: colors.accent || '#E5E7EB'
       }}
     >
-      {/* Header da Sidebar com Logo */}
+      {/* Header da Sidebar */}
       <div className="p-4 border-b" style={{ borderColor: colors.accent || '#E5E7EB' }}>
         <div className="flex items-center gap-2">
-          <img
-            src={finalLogoUrl}
-            alt="MRS Consultoria"
-            className="h-28 w-auto object-contain"
-            style={{ maxHeight: '112px' }}
-            onError={(e) => {
-              if (e.currentTarget.src !== MRS_LOGO_FALLBACK) {
-                e.currentTarget.src = MRS_LOGO_FALLBACK;
-              } else {
-                e.currentTarget.style.display = 'none';
-                const fallback = document.createElement('div');
-                fallback.className = 'flex items-center gap-2';
-                const icon = document.createElement('div');
-                icon.className = 'p-1.5 rounded';
-                icon.style.backgroundColor = colors.accent + '20';
-                const span = document.createElement('span');
-                span.className = 'font-semibold';
-                span.style.color = colors.primary || '#122A40';
-                span.textContent = 'Maturidade';
-                fallback.appendChild(icon);
-                fallback.appendChild(span);
-                e.currentTarget.parentNode?.appendChild(fallback);
-              }
-            }}
-          />
+          <Building2 className="w-5 h-5" style={{ color: colors.primary || '#122A40' }} />
+          <span className="font-semibold" style={{ color: colors.primary || '#122A40' }}>
+            Maturidade
+          </span>
         </div>
         <p className="text-xs mt-0.5" style={{ color: colors.secondary || '#1E5359' }}>
           Dashboard Analítico

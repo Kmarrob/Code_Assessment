@@ -131,7 +131,11 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                   src={finalLogoUrl}
                   alt="MRS Consultoria"
                   className="h-32 w-auto object-contain"
-                  style={{ maxHeight: '128px' }}
+                  style={{ 
+                    maxHeight: '128px',
+                    background: 'transparent',
+                    backgroundColor: 'transparent',
+                  }}
                   onError={(e) => {
                     if (e.currentTarget.src !== MRS_LOGO_FALLBACK) {
                       e.currentTarget.src = MRS_LOGO_FALLBACK;
