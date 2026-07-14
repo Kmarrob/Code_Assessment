@@ -1,501 +1,446 @@
 // frontend/src/pages/PlansPage.tsx
-import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { CheckCircle, X, ArrowRight, Crown, Sparkles, Star, Shield, Clock } from 'lucide-react';
-import { Button } from '../components/ui/Button.js';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card.js';
-import { Container } from '../components/ui/Container.js';
-import { planService, Plan } from '../services/plan.service.js';
-import { useAuth } from '../contexts/AuthContext.js';
-import { MetaTags } from '../components/MetaTags.js';
-import toast from 'react-hot-toast';
 
-export const PlansPage: React.FC = () => {
-  const { user } = useAuth();
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { Check, Crown, Sparkles, TrendingUp, Rocket, Shield, Users, Clock, ArrowRight, Loader2 } from 'lucide-react';
+import { Button } from '../components/ui/Button.js';
+import { Plan, formatPrice } from '../types/plan.js';
+import { planService } from '../services/plan.service.js';
+import { useAuth } from '../contexts/AuthContext.js';
+
+const PlansPage: React.FC = () => {
   const navigate = useNavigate();
+  const { user, isAuthenticated } = useAuth();
+  const [searchParams] = useSearchParams();
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
-  const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly');
+  const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
+  // 🔴 ADICIONADO: LOGS PARA DEPURAÇÃO
   useEffect(() => {
-    const loadPlans = async () => {
-      try {
-        const data = await planService.getPublicPlans();
-        setPlans(data.plans || []);
-        
-        // Selecionar plano padrão (o do meio, geralmente o mais popular)
-        const popularPlan = data.plans?.find(p => p.isPopular);
-        if (popularPlan) {
-          setSelectedPlan(popularPlan._id);
-        } else if (data.plans?.length > 0) {
-          setSelectedPlan(data.plans[0]._id);
-        }
-      } catch (error) {
-        console.error('Erro ao carregar planos:', error);
-        toast.error('Erro ao carregar planos');
-        // Fallback: usar planos padrão
-        setPlans([
-          {
-            _id: 'basic',
-            name: 'basic',
-            displayName: 'Básico',
-            description: 'Perfeito para pequenas empresas que estão começando sua jornada de maturidade.',
-            priceMonthly: 149700,
-            priceAnnual: 1497000,
-            pricePerUser: 29700,
-            features: {
-              maxUsers: 3,
-              maxControls: 93,
-              canViewReport: true,
-              canPrintReport: false,
-              canDownloadReport: false,
-              canViewRoadmap: false,
-              canViewComparative: false,
-              canExportData: false,
-              hasConsultingHours: false,
-              consultingHours: 0,
-              consultingHoursUsed: 0,
-              supportPriority: 'low',
-              supportHours: 'business',
-              canCustomizeBranding: false,
-              canAddCustomControls: false,
-              canIntegrateAPI: false,
-              canIntegrateSSO: false,
-            },
-            isActive: true,
-            isPublic: true,
-            trialDays: 7,
-            allowCustomPricing: true,
-            sortOrder: 1,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          },
-          {
-            _id: 'pro',
-            name: 'pro',
-            displayName: 'Profissional',
-            description: 'Ideal para empresas que buscam um assessment completo com suporte especializado.',
-            priceMonthly: 329700,
-            priceAnnual: 3297000,
-            pricePerUser: 29700,
-            features: {
-              maxUsers: 4,
-              maxControls: 93,
-              canViewReport: true,
-              canPrintReport: false,
-              canDownloadReport: false,
-              canViewRoadmap: false,
-              canViewComparative: false,
-              canExportData: true,
-              hasConsultingHours: true,
-              consultingHours: 4,
-              consultingHoursUsed: 0,
-              supportPriority: 'high',
-              supportHours: 'extended',
-              canCustomizeBranding: true,
-              canAddCustomControls: false,
-              canIntegrateAPI: false,
-              canIntegrateSSO: false,
-            },
-            isActive: true,
-            isPublic: true,
-            trialDays: 7,
-            allowCustomPricing: true,
-            sortOrder: 2,
-            badge: 'Mais Popular',
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          },
-          {
-            _id: 'enterprise',
-            name: 'enterprise',
-            displayName: 'Enterprise',
-            description: 'Solução completa para grandes organizações com necessidades avançadas.',
-            priceMonthly: 599700,
-            priceAnnual: 5997000,
-            pricePerUser: 29700,
-            features: {
-              maxUsers: 10,
-              maxControls: 93,
-              canViewReport: true,
-              canPrintReport: true,
-              canDownloadReport: true,
-              canViewRoadmap: true,
-              canViewComparative: true,
-              canExportData: true,
-              hasConsultingHours: true,
-              consultingHours: 12,
-              consultingHoursUsed: 0,
-              supportPriority: 'critical',
-              supportHours: '24x7',
-              canCustomizeBranding: true,
-              canAddCustomControls: true,
-              canIntegrateAPI: true,
-              canIntegrateSSO: true,
-            },
-            isActive: true,
-            isPublic: true,
-            trialDays: 7,
-            allowCustomPricing: true,
-            sortOrder: 3,
-            badge: 'Completo',
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          },
-        ]);
-        if (plans.length > 0) {
-          setSelectedPlan(plans[0]._id);
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-
+    console.log('🔍 useEffect do PlansPage executado');
     loadPlans();
-  }, []);
+  }, [searchParams]);
 
-  const handleSelectPlan = (planId: string) => {
-    setSelectedPlan(planId);
-  };
-
-  const handleSubscribe = (planId: string) => {
-    if (user) {
-      // Usuário já logado - redirecionar para checkout
-      navigate(`/checkout?plan=${planId}&cycle=${billingCycle}`);
-    } else {
-      // Usuário não logado - redirecionar para registro com plano selecionado
-      navigate(`/register?plan=${plans.find(p => p._id === planId)?.name || 'basic'}`);
+  const loadPlans = async () => {
+    console.log('🔄 loadPlans iniciado');
+    setLoading(true);
+    setError(null);
+    try {
+      console.log('📡 Chamando planService.getPublicPlans()...');
+      const response = await planService.getPublicPlans();
+      console.log('✅ Dados recebidos da API:', response);
+      
+      // Ordenar: basic, pro, enterprise
+      const order = ['basic', 'pro', 'enterprise'];
+      const sorted = (response.plans || []).sort((a, b) => {
+        const indexA = order.indexOf(a.name);
+        const indexB = order.indexOf(b.name);
+        return indexA - indexB;
+      });
+      
+      console.log('📋 Planos ordenados:', sorted);
+      setPlans(sorted);
+    } catch (error) {
+      console.error('❌ Erro ao carregar planos (usando fallback):', error);
+      setError('Não foi possível carregar os planos. Tente novamente.');
+      
+      // 🔴 FALLBACK ATUALIZADO COM VALORES CORRETOS
+      console.log('📋 Usando fallback com valores corrigidos');
+      setPlans([
+        {
+          _id: 'basic',
+          name: 'basic',
+          displayName: 'Básico',
+          description: 'Perfeito para pequenas empresas que estão começando sua jornada de maturidade em segurança da informação.',
+          priceMonthly: 149700,
+          priceAnnual: 1497000,
+          pricePerUser: 29700,
+          features: {
+            maxUsers: 3,
+            maxControls: 93,
+            canViewReport: true,
+            canPrintReport: true,
+            canDownloadReport: true,
+            canViewRoadmap: true,
+            canViewComparative: false,
+            canExportData: false,
+            hasConsultingHours: false,
+            consultingHours: 0,
+            consultingHoursUsed: 0,
+            supportPriority: 'low',
+            supportHours: 'business',
+            canCustomizeBranding: false,
+            canAddCustomControls: false,
+            canIntegrateAPI: false,
+            canIntegrateSSO: false,
+          },
+          isActive: true,
+          isPublic: true,
+          trialDays: 7,
+          allowCustomPricing: false,
+          sortOrder: 1,
+          badge: 'Para começar',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+        {
+          _id: 'pro',
+          name: 'pro',
+          displayName: 'Profissional',
+          description: 'Ideal para empresas que buscam um assessment completo com suporte especializado.',
+          priceMonthly: 329700,
+          priceAnnual: 3297000,
+          pricePerUser: 29700,
+          features: {
+            maxUsers: 4,
+            maxControls: 93,
+            canViewReport: true,
+            canPrintReport: true,
+            canDownloadReport: true,
+            canViewRoadmap: true,
+            canViewComparative: true,
+            canExportData: true,
+            hasConsultingHours: true,
+            consultingHours: 4,
+            consultingHoursUsed: 0,
+            supportPriority: 'high',
+            supportHours: 'extended',
+            canCustomizeBranding: false,
+            canAddCustomControls: false,
+            canIntegrateAPI: false,
+            canIntegrateSSO: false,
+          },
+          isActive: true,
+          isPublic: true,
+          trialDays: 7,
+          allowCustomPricing: false,
+          sortOrder: 2,
+          badge: 'Mais popular',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+        {
+          _id: 'enterprise',
+          name: 'enterprise',
+          displayName: 'Enterprise',
+          description: 'Solução completa para grandes organizações com necessidades avançadas de conformidade e segurança.',
+          priceMonthly: 599700,
+          priceAnnual: 5997000,
+          pricePerUser: 29700,
+          features: {
+            maxUsers: 10,
+            maxControls: 0,
+            canViewReport: true,
+            canPrintReport: true,
+            canDownloadReport: true,
+            canViewRoadmap: true,
+            canViewComparative: true,
+            canExportData: true,
+            hasConsultingHours: true,
+            consultingHours: 12,
+            consultingHoursUsed: 0,
+            supportPriority: 'critical',
+            supportHours: '24x7',
+            canCustomizeBranding: true,
+            canAddCustomControls: true,
+            canIntegrateAPI: true,
+            canIntegrateSSO: true,
+          },
+          isActive: true,
+          isPublic: true,
+          trialDays: 7,
+          allowCustomPricing: true,
+          sortOrder: 3,
+          badge: 'Completo',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      ]);
+    } finally {
+      setLoading(false);
+      console.log('🏁 loadPlans finalizado, loading:', false);
     }
   };
 
-  const handleContact = () => {
-    window.location.href = 'mailto:contato@cisatool.com.br?subject=Enterprise%20Plan%20-%20Code_Assessment';
+  const handleSelectPlan = (planId: string) => {
+    setSelectedPlanId(planId);
+    if (!isAuthenticated) {
+      navigate(`/register?plan=${planId}`);
+    } else {
+      navigate(`/billing?plan=${planId}`);
+    }
   };
 
-  const formatPrice = (price: number): string => {
-    return (price / 100).toLocaleString('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-    });
+  const getPlanIcon = (name: string) => {
+    switch (name) {
+      case 'basic':
+        return <TrendingUp className="h-6 w-6" />;
+      case 'pro':
+        return <Sparkles className="h-6 w-6" />;
+      case 'enterprise':
+        return <Crown className="h-6 w-6" />;
+      default:
+        return <Check className="h-6 w-6" />;
+    }
   };
 
-  const getPrice = (plan: Plan): number => {
-    return billingCycle === 'annual' ? plan.priceAnnual : plan.priceMonthly;
-  };
-
-  const getPriceDisplay = (plan: Plan): string => {
-    return formatPrice(getPrice(plan));
-  };
-
-  const getPeriodLabel = (): string => {
-    return billingCycle === 'annual' ? '/ano' : '/mês';
-  };
-
-  const getAnnualDiscount = (plan: Plan): number => {
-    if (plan.priceMonthly === 0) return 0;
-    const monthlyTotal = plan.priceMonthly * 12;
-    const annualTotal = plan.priceAnnual;
-    return Math.round(((monthlyTotal - annualTotal) / monthlyTotal) * 100);
+  const getPlanColor = (name: string) => {
+    switch (name) {
+      case 'basic':
+        return 'blue';
+      case 'pro':
+        return 'purple';
+      case 'enterprise':
+        return 'amber';
+      default:
+        return 'gray';
+    }
   };
 
   if (loading) {
     return (
-      <>
-        <MetaTags title="Planos - Code_Assessment" />
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#30736C] mx-auto"></div>
-            <p className="mt-4 text-gray-500">Carregando planos...</p>
-          </div>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 text-[#30736C] animate-spin mx-auto" />
+          <p className="mt-4 text-gray-600">Carregando planos...</p>
+          <p className="text-xs text-gray-400 mt-2">🔍 Verificando API...</p>
         </div>
-      </>
+      </div>
     );
   }
 
-  return (
-    <>
-      <MetaTags
-        title="Planos - Code_Assessment | Avaliação de Maturidade ISO 27001"
-        description="Escolha o plano ideal para sua empresa. Comece com 7 dias grátis em qualquer plano. Básico, Profissional e Enterprise."
-        keywords={['Planos', 'Preços', 'ISO 27001', 'Assessment', 'Maturidade', 'Segurança da Informação']}
-      />
-
-      <div className="min-h-screen bg-gray-50">
-        {/* Header */}
-        <header className="bg-white border-b border-gray-200">
-          <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-            <Link to="/" className="text-xl font-bold text-gray-900">
-              Code<span className="text-[#30736C]">_Assessment</span>
-            </Link>
-            <div className="flex items-center gap-4">
-              <Link to="/login">
-                <Button variant="ghost" size="sm">Entrar</Button>
-              </Link>
-              <Link to="/register">
-                <Button size="sm" style={{ backgroundColor: '#30736C', color: '#FFFFFF' }}>
-                  Começar
-                </Button>
-              </Link>
-            </div>
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center max-w-md">
+          <div className="bg-red-50 text-red-700 p-4 rounded-lg">
+            <p className="font-medium">❌ {error}</p>
+            <button 
+              onClick={loadPlans}
+              className="mt-3 text-red-600 font-medium hover:text-red-700 underline"
+            >
+              Tentar novamente
+            </button>
           </div>
-        </header>
+          <div className="mt-4 text-sm text-gray-500">
+            <p>Usando dados de fallback com valores corrigidos.</p>
+            <p>Verifique o console para mais detalhes.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
-        <main className="py-16">
-          <Container size="lg">
-            {/* Título */}
-            <div className="text-center mb-12">
-              <h1 className="text-4xl font-bold text-gray-900 mb-4">
-                Escolha o Plano Ideal
-              </h1>
-              <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-                Comece com 7 dias grátis em qualquer plano. Cancele quando quiser.
-              </p>
+  // Identificar qual plano é o mais popular (pro)
+  const popularPlanId = plans.find(p => p.name === 'pro')?._id || null;
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Header */}
+        <div className="text-center mb-12">
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <div className="flex justify-center mb-4">
+              <div className="inline-flex items-center gap-2 bg-[#30736C]/10 text-[#30736C] px-4 py-2 rounded-full text-sm font-medium">
+                <Shield className="h-4 w-4" />
+                Planos e Preços
+              </div>
             </div>
+            <h1 className="text-4xl font-bold text-gray-900 mb-4">
+              Escolha o plano ideal para sua empresa
+            </h1>
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+              Comece com <strong>7 dias grátis</strong> em qualquer plano. Cancele quando quiser.
+            </p>
+          </motion.div>
+        </div>
 
-            {/* Toggle de faturamento */}
-            <div className="flex justify-center items-center gap-4 mb-10">
-              <span className={`text-sm font-medium ${billingCycle === 'monthly' ? 'text-gray-900' : 'text-gray-400'}`}>
-                Mensal
-              </span>
-              <button
-                onClick={() => setBillingCycle(billingCycle === 'monthly' ? 'annual' : 'monthly')}
-                className="relative w-14 h-8 rounded-full transition-colors duration-300 focus:outline-none"
-                style={{ backgroundColor: billingCycle === 'annual' ? '#30736C' : '#d1d5db' }}
+        {/* Plans Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+          {plans.map((plan, index) => {
+            const isPopular = plan._id === popularPlanId;
+            const color = getPlanColor(plan.name);
+            
+            return (
+              <motion.div
+                key={plan._id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: index * 0.1 }}
+                className={`relative bg-white rounded-2xl shadow-lg border-2 ${
+                  isPopular ? 'border-[#30736C] shadow-xl' : 'border-gray-200'
+                } hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 flex flex-col`}
               >
-                <span
-                  className={`absolute top-1 left-1 w-6 h-6 bg-white rounded-full transition-transform duration-300 ${
-                    billingCycle === 'annual' ? 'translate-x-6' : 'translate-x-0'
-                  }`}
-                />
-              </button>
-              <span className={`text-sm font-medium ${billingCycle === 'annual' ? 'text-gray-900' : 'text-gray-400'}`}>
-                Anual
-                <span className="ml-1 text-xs text-[#10b981] font-bold">(Economize 10%)</span>
-              </span>
-            </div>
+                {/* Badge Popular */}
+                {isPopular && (
+                  <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 z-10">
+                    <span className="bg-[#30736C] text-white text-xs font-bold px-4 py-1.5 rounded-full shadow-md">
+                      ★ Mais Popular
+                    </span>
+                  </div>
+                )}
 
-            {/* Cards de Planos */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-              {plans.map((plan) => {
-                const isSelected = selectedPlan === plan._id;
-                const isPopular = plan.badge === 'Mais Popular';
-                const price = getPrice(plan);
-                const discount = getAnnualDiscount(plan);
+                {/* Trial Badge */}
+                {plan.trialDays > 0 && (
+                  <div className="absolute top-4 right-4 z-10">
+                    <span className="bg-green-100 text-green-700 text-xs font-medium px-2.5 py-1 rounded-full flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      {plan.trialDays} dias grátis
+                    </span>
+                  </div>
+                )}
 
-                return (
-                  <div
-                    key={plan._id}
-                    className={`relative bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border-2 ${
-                      isSelected
-                        ? 'border-[#30736C] shadow-xl'
-                        : isPopular
-                        ? 'border-[#30736C]/30 shadow-lg'
-                        : 'border-gray-100'
-                    } ${isPopular ? 'scale-105' : ''}`}
-                    onClick={() => handleSelectPlan(plan._id)}
-                  >
-                    {/* Badge */}
+                <div className="p-6 flex flex-col flex-1">
+                  {/* Header */}
+                  <div className="text-center mb-4">
+                    <div className={`inline-flex items-center justify-center w-12 h-12 rounded-full mb-3 ${
+                      color === 'blue' ? 'bg-blue-50 text-blue-600' :
+                      color === 'purple' ? 'bg-purple-50 text-purple-600' :
+                      'bg-amber-50 text-amber-600'
+                    }`}>
+                      {getPlanIcon(plan.name)}
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-900">{plan.displayName}</h3>
                     {plan.badge && (
-                      <div className="absolute top-0 right-0">
-                        <div
-                          className="text-white text-xs font-bold px-4 py-1 rounded-bl-lg"
-                          style={{
-                            backgroundColor: isPopular ? '#30736C' : '#122A40',
-                          }}
-                        >
-                          ★ {plan.badge}
-                        </div>
+                      <span className={`inline-block text-xs font-medium px-2 py-0.5 rounded-full mt-1 ${
+                        color === 'blue' ? 'bg-blue-50 text-blue-600' :
+                        color === 'purple' ? 'bg-purple-50 text-purple-600' :
+                        'bg-amber-50 text-amber-600'
+                      }`}>
+                        {plan.badge}
+                      </span>
+                    )}
+                    <p className="text-sm text-gray-500 mt-1.5 leading-relaxed">{plan.description}</p>
+                  </div>
+
+                  {/* Price */}
+                  <div className="text-center mb-4">
+                    <div className="flex items-end justify-center gap-1">
+                      <span className="text-4xl font-bold text-gray-900">
+                        {formatPrice(plan.priceMonthly)}
+                      </span>
+                      <span className="text-gray-500 text-sm mb-1">/mês</span>
+                    </div>
+                    {plan.priceAnnual > 0 && (
+                      <p className="text-sm text-gray-400 mt-1">
+                        ou {formatPrice(plan.priceAnnual)}/ano <span className="text-green-600 font-medium">(10% de desconto)</span>
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Features */}
+                  <div className="flex-1 space-y-2 mb-6">
+                    {/* Usuários - Destaque principal */}
+                    <div className="flex items-center gap-2 text-sm font-medium text-gray-700 bg-gray-50 p-2 rounded-lg">
+                      <Users className="h-4 w-4 text-[#30736C]" />
+                      <span>
+                        {plan.features.maxUsers >= 999 ? 'Ilimitado' : `Até ${plan.features.maxUsers}`} usuários
+                      </span>
+                    </div>
+
+                    {/* Features principais */}
+                    {plan.features.maxControls > 0 && (
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <Check className="h-4 w-4 text-green-500" />
+                        <span>{plan.features.maxControls} Controles ISO 27001</span>
                       </div>
                     )}
-
-                    {/* 7 dias grátis */}
-                    <div className="absolute top-0 left-0">
-                      <div className="bg-[#10b981] text-white text-[10px] font-bold px-3 py-1 rounded-br-lg flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        7 dias grátis
+                    {plan.features.canViewReport && (
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <Check className="h-4 w-4 text-green-500" />
+                        <span>Visualização do Relatório</span>
                       </div>
-                    </div>
-
-                    <div className="p-6 pt-12">
-                      {/* Nome do Plano */}
-                      <h3 className="text-xl font-bold text-gray-900">{plan.displayName}</h3>
-                      
-                      {/* Preço */}
-                      <div className="mt-4">
-                        <span className="text-4xl font-bold text-gray-900">{getPriceDisplay(plan)}</span>
-                        <span className="text-gray-500 text-sm ml-1">{getPeriodLabel()}</span>
+                    )}
+                    {plan.features.canPrintReport && (
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <Check className="h-4 w-4 text-green-500" />
+                        <span>Impressão/Download do Relatório</span>
                       </div>
-                      {billingCycle === 'annual' && discount > 0 && (
-                        <div className="text-sm text-[#10b981] font-medium mt-1">
-                          Economize {discount}% no plano anual
-                        </div>
-                      )}
-
-                      {/* Descrição */}
-                      <p className="text-sm text-gray-600 mt-4">{plan.description}</p>
-
-                      {/* Usuários */}
-                      <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-                        <span className="text-sm font-medium text-gray-700">
-                          👥 {plan.features.maxUsers >= 999 ? 'Ilimitado' : `Até ${plan.features.maxUsers}`} usuários
-                        </span>
+                    )}
+                    {plan.features.canViewRoadmap && (
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <Check className="h-4 w-4 text-green-500" />
+                        <span>Roadmap de Implementação</span>
                       </div>
-
-                      {/* Features */}
-                      <div className="mt-4 space-y-2">
-                        <p className="text-sm font-semibold text-gray-700 mb-2">O que está incluso:</p>
-                        <div className="space-y-1.5">
-                          <div className="flex items-start gap-2 text-sm">
-                            <CheckCircle className="w-4 h-4 text-[#10b981] flex-shrink-0 mt-0.5" />
-                            <span className="text-gray-600">93 Controles ISO 27001</span>
-                          </div>
-                          <div className="flex items-start gap-2 text-sm">
-                            <CheckCircle className="w-4 h-4 text-[#10b981] flex-shrink-0 mt-0.5" />
-                            <span className="text-gray-600">Dashboards Avançados</span>
-                          </div>
-                          <div className="flex items-start gap-2 text-sm">
-                            <CheckCircle className="w-4 h-4 text-[#10b981] flex-shrink-0 mt-0.5" />
-                            <span className="text-gray-600">Matriz de Priorização</span>
-                          </div>
-                          {plan.features.canExportData && (
-                            <div className="flex items-start gap-2 text-sm">
-                              <CheckCircle className="w-4 h-4 text-[#10b981] flex-shrink-0 mt-0.5" />
-                              <span className="text-gray-600">Exportação de Dados</span>
-                            </div>
-                          )}
-                          {plan.features.canPrintReport && (
-                            <div className="flex items-start gap-2 text-sm">
-                              <CheckCircle className="w-4 h-4 text-[#10b981] flex-shrink-0 mt-0.5" />
-                              <span className="text-gray-600">Impressão/Download do Relatório</span>
-                            </div>
-                          )}
-                          {plan.features.canViewRoadmap && (
-                            <div className="flex items-start gap-2 text-sm">
-                              <CheckCircle className="w-4 h-4 text-[#10b981] flex-shrink-0 mt-0.5" />
-                              <span className="text-gray-600">Roadmap de Implementação</span>
-                            </div>
-                          )}
-                          {plan.features.canViewComparative && (
-                            <div className="flex items-start gap-2 text-sm">
-                              <CheckCircle className="w-4 h-4 text-[#10b981] flex-shrink-0 mt-0.5" />
-                              <span className="text-gray-600">Comparativo com Avaliações Anteriores</span>
-                            </div>
-                          )}
-                          {plan.features.hasConsultingHours && (
-                            <div className="flex items-start gap-2 text-sm">
-                              <CheckCircle className="w-4 h-4 text-[#10b981] flex-shrink-0 mt-0.5" />
-                              <span className="text-gray-600">{plan.features.consultingHours}h de Consultoria</span>
-                            </div>
-                          )}
-                          {plan.features.supportPriority === 'high' && (
-                            <div className="flex items-start gap-2 text-sm">
-                              <CheckCircle className="w-4 h-4 text-[#10b981] flex-shrink-0 mt-0.5" />
-                              <span className="text-gray-600">Suporte Prioritário</span>
-                            </div>
-                          )}
-                          {plan.features.supportHours === '24x7' && (
-                            <div className="flex items-start gap-2 text-sm">
-                              <CheckCircle className="w-4 h-4 text-[#10b981] flex-shrink-0 mt-0.5" />
-                              <span className="text-gray-600">Suporte 24x7</span>
-                            </div>
-                          )}
-                          {plan.features.canIntegrateAPI && (
-                            <div className="flex items-start gap-2 text-sm">
-                              <CheckCircle className="w-4 h-4 text-[#10b981] flex-shrink-0 mt-0.5" />
-                              <span className="text-gray-600">API e SSO</span>
-                            </div>
-                          )}
-                        </div>
+                    )}
+                    {plan.features.canViewComparative && (
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <Check className="h-4 w-4 text-green-500" />
+                        <span>Comparativo Anual</span>
                       </div>
-
-                      {/* Botão CTA */}
-                      <div className="mt-6">
-                        {plan.name === 'enterprise' ? (
-                          <Button
-                            className="w-full py-2.5"
-                            style={{
-                              backgroundColor: '#122A40',
-                              color: '#FFFFFF',
-                            }}
-                            onClick={() => handleContact()}
-                          >
-                            Fale Conosco
-                            <ArrowRight className="ml-2 h-4 w-4" />
-                          </Button>
-                        ) : (
-                          <Button
-                            className="w-full py-2.5"
-                            style={{
-                              backgroundColor: isSelected ? '#30736C' : '#122A40',
-                              color: '#FFFFFF',
-                              opacity: isSelected ? 1 : 0.7,
-                            }}
-                            onClick={() => handleSubscribe(plan._id)}
-                            disabled={!isSelected}
-                          >
-                            {isSelected ? 'Escolher Plano' : 'Selecione este plano'}
-                            {isSelected && <ArrowRight className="ml-2 h-4 w-4" />}
-                          </Button>
-                        )}
+                    )}
+                    {plan.features.canExportData && (
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <Check className="h-4 w-4 text-green-500" />
+                        <span>Exportação de Dados (CSV/Excel)</span>
                       </div>
-                    </div>
+                    )}
+                    {plan.features.hasConsultingHours && plan.features.consultingHours > 0 && (
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <Check className="h-4 w-4 text-green-500" />
+                        <span>{plan.features.consultingHours} Horas de Consultoria Inclusas</span>
+                      </div>
+                    )}
+                    {plan.features.supportPriority === 'high' && (
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <Check className="h-4 w-4 text-green-500" />
+                        <span>Suporte Prioritário</span>
+                      </div>
+                    )}
+                    {plan.features.supportPriority === 'critical' && (
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <Check className="h-4 w-4 text-green-500" />
+                        <span>Suporte 24x7</span>
+                      </div>
+                    )}
+                    {plan.features.canCustomizeBranding && (
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <Check className="h-4 w-4 text-green-500" />
+                        <span>Customização de Branding</span>
+                      </div>
+                    )}
+                    {plan.features.canIntegrateAPI && plan.features.canIntegrateSSO && (
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <Check className="h-4 w-4 text-green-500" />
+                        <span>API e SSO</span>
+                      </div>
+                    )}
                   </div>
-                );
-              })}
-            </div>
 
-            {/* Rodapé dos planos */}
-            <div className="text-center mt-12">
-              <p className="text-sm text-gray-500">
-                Todos os planos incluem 7 dias de teste gratuito. Não é necessário cartão de crédito.
-              </p>
-              <div className="flex justify-center gap-6 mt-4 text-xs text-gray-400">
-                <span>✓ Cancele quando quiser</span>
-                <span>✓ Sem fidelidade</span>
-                <span>✓ Suporte incluso</span>
-              </div>
-            </div>
-
-            {/* FAQ */}
-            <div className="mt-16 bg-white rounded-2xl shadow-sm border border-gray-200 p-8 max-w-3xl mx-auto">
-              <h3 className="text-xl font-bold text-gray-900 text-center mb-6">
-                Perguntas Frequentes
-              </h3>
-              <div className="space-y-4">
-                <div>
-                  <h4 className="text-sm font-semibold text-gray-900">Como funciona o teste gratuito de 7 dias?</h4>
-                  <p className="text-sm text-gray-600 mt-1">
-                    Você tem acesso completo a todas as funcionalidades do plano escolhido por 7 dias, sem custo. 
-                    Não é necessário cartão de crédito para começar.
-                  </p>
+                  {/* Button */}
+                  <Button
+                    onClick={() => handleSelectPlan(plan._id)}
+                    className={`w-full py-3 text-base ${
+                      isPopular 
+                        ? 'bg-[#30736C] hover:bg-[#265a54] text-white' 
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    {isAuthenticated ? 'Selecionar Plano' : 'Começar Agora'}
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
                 </div>
-                <div>
-                  <h4 className="text-sm font-semibold text-gray-900">Posso mudar de plano depois?</h4>
-                  <p className="text-sm text-gray-600 mt-1">
-                    Sim! Você pode fazer upgrade ou downgrade a qualquer momento. O valor será ajustado proporcionalmente.
-                  </p>
-                </div>
-                <div>
-                  <h4 className="text-sm font-semibold text-gray-900">O que acontece se eu cancelar?</h4>
-                  <p className="text-sm text-gray-600 mt-1">
-                    Você pode cancelar a qualquer momento. O acesso será mantido até o final do período pago atual.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </Container>
-        </main>
+              </motion.div>
+            );
+          })}
+        </div>
 
         {/* Footer */}
-        <footer className="bg-white border-t border-gray-200 py-8 mt-16">
-          <div className="container mx-auto px-4 text-center">
-            <p className="text-sm text-gray-500">
-              © 2026 Code_Assessment. Todos os direitos reservados.
-            </p>
-          </div>
-        </footer>
+        <div className="mt-12 text-center">
+          <p className="text-sm text-gray-400">
+            Precisa de um plano personalizado? <a href="/contact" className="text-[#30736C] hover:underline">Entre em contato</a>
+          </p>
+        </div>
       </div>
-    </>
+    </div>
   );
 };
+
+export default PlansPage;
