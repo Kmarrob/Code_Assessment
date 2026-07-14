@@ -592,7 +592,8 @@ export class PaymentService {
               throw new NotFoundError('Empresa', subscription.companyId);
             }
 
-            const plan = await PlanService.getPlanById(subscription.planId.toString());
+            // CORREÇÃO: Forçando conversão para string explícita para evitar o TS2345
+            const plan = await PlanService.getPlanById(String(subscription.planId));
 
             const startDate = new Date();
             let endDate = new Date();
@@ -633,7 +634,6 @@ export class PaymentService {
 
             const totalAmount = items.reduce((sum: number, item: any) => sum + item.totalPrice, 0);
 
-            // 🔴 CORREÇÃO: Forçar conversão para string com String()
             const subscriptionIdStr: string = String(subscription._id);
             const companyIdStr: string = String(subscription.companyId);
 
