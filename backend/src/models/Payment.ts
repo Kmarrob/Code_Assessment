@@ -1,5 +1,5 @@
 // backend/src/models/Payment.ts
-import mongoose, { Schema, Model } from 'mongoose';
+import mongoose, { Schema, Model, Types } from 'mongoose';
 
 /**
  * Status do pagamento
@@ -46,25 +46,25 @@ export type TransactionType =
  * Modelo de Pagamento
  */
 export interface IPayment {
-  _id: mongoose.Types.ObjectId;
+  _id: string;  // 🔴 CORRIGIDO: string em vez de mongoose.Types.ObjectId
   
   // Relacionamentos
-  companyId: mongoose.Types.ObjectId;        // Empresa que pagou
-  subscriptionId?: mongoose.Types.ObjectId;  // Assinatura relacionada (se aplicável)
-  userId: mongoose.Types.ObjectId;           // Usuário que realizou o pagamento
+  companyId: string | Types.ObjectId;        // Empresa que pagou
+  subscriptionId?: string | Types.ObjectId;  // Assinatura relacionada (se aplicável)
+  userId: string | Types.ObjectId;           // Usuário que realizou o pagamento
   
   // Valores
-  amount: number;                             // Valor total em centavos
-  amountPaid: number;                         // Valor efetivamente pago
-  amountRefunded: number;                     // Valor estornado (se aplicável)
+  amount: number;
+  amountPaid: number;
+  amountRefunded: number;
   currency: 'BRL' | 'USD';
   
   // Metadados do pagamento
   transactionType: TransactionType;
   paymentMethod: PaymentMethod;
   paymentProvider: PaymentProvider;
-  providerPaymentId?: string;                 // ID do pagamento no provedor
-  providerSubscriptionId?: string;            // ID da assinatura no provedor
+  providerPaymentId?: string;
+  providerSubscriptionId?: string;
   
   // Status
   status: PaymentStatus;
@@ -75,21 +75,21 @@ export interface IPayment {
   }>;
   
   // Datas
-  dueDate: Date;                              // Data de vencimento
-  paidAt?: Date;                              // Data do pagamento
-  processedAt?: Date;                         // Data do processamento
-  refundedAt?: Date;                          // Data do estorno
-  expiresAt?: Date;                           // Data de expiração (boleto)
+  dueDate: Date;
+  paidAt?: Date;
+  processedAt?: Date;
+  refundedAt?: Date;
+  expiresAt?: Date;
   
   // Boleto/Pix
-  boletoUrl?: string;                         // URL do boleto
-  boletoBarcode?: string;                     // Código de barras
-  pixQrCode?: string;                         // QR Code Pix
-  pixCopiaCola?: string;                      // Código Copia e Cola Pix
+  boletoUrl?: string;
+  boletoBarcode?: string;
+  pixQrCode?: string;
+  pixCopiaCola?: string;
   
   // Cartão
-  cardLastDigits?: string;                    // Últimos 4 dígitos do cartão
-  cardBrand?: string;                         // Bandeira do cartão
+  cardLastDigits?: string;
+  cardBrand?: string;
   
   // Período do serviço
   billingPeriod: {
@@ -101,8 +101,8 @@ export interface IPayment {
   items: Array<{
     description: string;
     quantity: number;
-    unitPrice: number;                        // Preço unitário em centavos
-    totalPrice: number;                       // Subtotal em centavos
+    unitPrice: number;
+    totalPrice: number;
     type: 'plan' | 'user' | 'consulting' | 'custom';
     metadata?: Record<string, any>;
   }>;
@@ -112,14 +112,14 @@ export interface IPayment {
     type: 'percentage' | 'fixed';
     value: number;
     description: string;
-    amount: number;                           // Valor do desconto em centavos
+    amount: number;
   }>;
   
   // Taxas
   fees: Array<{
     type: 'payment_gateway' | 'installment' | 'tax';
     description: string;
-    amount: number;                           // Valor da taxa em centavos
+    amount: number;
   }>;
   
   // Metadados
@@ -135,18 +135,18 @@ export interface IPayment {
   userName: string;
   
   // Webhook
-  webhookReceived?: boolean;                  // Webhook foi recebido
-  webhookProcessedAt?: Date;                  // Data de processamento do webhook
-  webhookPayload?: any;                       // Payload do webhook (para debug)
+  webhookReceived?: boolean;
+  webhookProcessedAt?: Date;
+  webhookPayload?: any;
   
   // Auditoria
   createdAt: Date;
   updatedAt: Date;
-  createdBy?: mongoose.Types.ObjectId;
-  updatedBy?: mongoose.Types.ObjectId;
+  createdBy?: string | Types.ObjectId;
+  updatedBy?: string | Types.ObjectId;
 
   // ============================================
-  // 🔴 MÉTODOS DO SCHEMA (declarados na interface)
+  // MÉTODOS DO SCHEMA
   // ============================================
   isPaid(): boolean;
   isPending(): boolean;

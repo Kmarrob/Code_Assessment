@@ -1,5 +1,5 @@
 // backend/src/models/Subscription.ts
-import mongoose, { Schema, Model } from 'mongoose';
+import mongoose, { Schema, Model, Types } from 'mongoose';
 
 /**
  * Status da assinatura
@@ -18,34 +18,34 @@ export type SubscriptionStatus =
  * Modelo de Assinatura
  */
 export interface ISubscription {
-  _id: mongoose.Types.ObjectId;
+  _id: string;  // 🔴 CORRIGIDO: string em vez de mongoose.Types.ObjectId
   
   // Relacionamentos
-  companyId: mongoose.Types.ObjectId;    // Empresa assinante
-  planId: mongoose.Types.ObjectId;       // Plano atual
-  userId: mongoose.Types.ObjectId;       // Usuário que criou/gerencia
+  companyId: string | Types.ObjectId;    // Empresa assinante
+  planId: string | Types.ObjectId;       // Plano atual
+  userId: string | Types.ObjectId;       // Usuário que criou/gerencia
   
   // Status e datas
   status: SubscriptionStatus;
   startDate: Date;
   endDate: Date;
-  trialStartDate?: Date;                 // Início do trial
-  trialEndDate?: Date;                   // Fim do trial
-  cancelledAt?: Date;                    // Data do cancelamento
-  suspendedAt?: Date;                    // Data da suspensão
-  reactivatedAt?: Date;                  // Data da reativação
-  lastPaymentDate?: Date;                // Data do último pagamento
-  nextPaymentDate?: Date;                // Data do próximo pagamento
+  trialStartDate?: Date;
+  trialEndDate?: Date;
+  cancelledAt?: Date;
+  suspendedAt?: Date;
+  reactivatedAt?: Date;
+  lastPaymentDate?: Date;
+  nextPaymentDate?: Date;
   
   // Valores
-  amount: number;                         // Valor total em centavos
+  amount: number;
   currency: 'BRL' | 'USD';
   billingCycle: 'monthly' | 'annual';
-  autoRenew: boolean;                    // Renovação automática
+  autoRenew: boolean;
   
   // Usuários
-  maxUsers: number;                       // Limite de usuários do plano
-  currentUsers: number;                   // Usuários ativos no momento
+  maxUsers: number;
+  currentUsers: number;
   
   // Features (cache das features do plano no momento da assinatura)
   features: {
@@ -69,22 +69,22 @@ export interface ISubscription {
   };
   
   // Consultoria
-  consultingHoursTotal: number;           // Total de horas contratadas
-  consultingHoursUsed: number;            // Horas já utilizadas
-  consultingHoursRemaining: number;       // Horas restantes
+  consultingHoursTotal: number;
+  consultingHoursUsed: number;
+  consultingHoursRemaining: number;
   
   // Pagamento
   paymentMethod?: 'credit_card' | 'boleto' | 'pix' | 'bank_transfer';
   paymentProvider?: 'stripe' | 'pagseguro' | 'mercadopago' | 'manual';
-  paymentId?: string;                     // ID do pagamento no provedor
-  subscriptionId?: string;                // ID da assinatura no provedor
+  paymentId?: string;
+  subscriptionId?: string;
   
   // Histórico
   changeHistory: Array<{
     fromPlan: string;
     toPlan: string;
     changedAt: Date;
-    changedBy: mongoose.Types.ObjectId;
+    changedBy: string | Types.ObjectId;
     reason?: string;
   }>;
   
@@ -95,8 +95,8 @@ export interface ISubscription {
   // Auditoria
   createdAt: Date;
   updatedAt: Date;
-  createdBy?: mongoose.Types.ObjectId;
-  updatedBy?: mongoose.Types.ObjectId;
+  createdBy?: string | Types.ObjectId;
+  updatedBy?: string | Types.ObjectId;
 }
 
 /**
@@ -361,7 +361,6 @@ subscriptionSchema.methods.getDaysUntilTrialEnd = function(): number {
 
 /**
  * Obtém o status de forma legível
- * 🔴 CORREÇÃO: Adicionado tipo explícito para this.status
  */
 subscriptionSchema.methods.getStatusLabel = function(): string {
   const statusMap: Record<SubscriptionStatus, string> = {
