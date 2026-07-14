@@ -633,8 +633,8 @@ export class PaymentService {
 
             const totalAmount = items.reduce((sum: number, item: any) => sum + item.totalPrice, 0);
 
-            // 🔴 CORREÇÃO DEFINITIVA: Garantir que subscriptionId seja string
-            const subscriptionIdStr: string = subscription._id.toString();
+            // 🔴 CORREÇÃO DEFINITIVA: Usar String() em vez de toString()
+            const subscriptionIdStr: string = String(subscription._id);
 
             const payment = await PaymentService.createPayment({
               companyId: subscription.companyId.toString(),
