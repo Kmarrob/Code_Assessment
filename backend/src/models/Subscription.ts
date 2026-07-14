@@ -1,5 +1,5 @@
 // backend/src/models/Subscription.ts
-import mongoose, { Schema, Model, Types } from 'mongoose';
+import mongoose, { Schema, Model } from 'mongoose';
 
 /**
  * Status da assinatura
@@ -18,12 +18,12 @@ export type SubscriptionStatus =
  * Modelo de Assinatura
  */
 export interface ISubscription {
-  _id: string;  // 🔴 CORRIGIDO: string em vez de mongoose.Types.ObjectId
+  _id: mongoose.Types.ObjectId;
   
   // Relacionamentos
-  companyId: string | Types.ObjectId;    // Empresa assinante
-  planId: string | Types.ObjectId;       // Plano atual
-  userId: string | Types.ObjectId;       // Usuário que criou/gerencia
+  companyId: mongoose.Types.ObjectId;    // Empresa assinante
+  planId: mongoose.Types.ObjectId;       // Plano atual
+  userId: mongoose.Types.ObjectId;       // Usuário que criou/gerencia
   
   // Status e datas
   status: SubscriptionStatus;
@@ -47,7 +47,7 @@ export interface ISubscription {
   maxUsers: number;
   currentUsers: number;
   
-  // Features (cache das features do plano no momento da assinatura)
+  // Features
   features: {
     maxUsers: number;
     maxControls: number;
@@ -84,7 +84,7 @@ export interface ISubscription {
     fromPlan: string;
     toPlan: string;
     changedAt: Date;
-    changedBy: string | Types.ObjectId;
+    changedBy: mongoose.Types.ObjectId;
     reason?: string;
   }>;
   
@@ -95,8 +95,8 @@ export interface ISubscription {
   // Auditoria
   createdAt: Date;
   updatedAt: Date;
-  createdBy?: string | Types.ObjectId;
-  updatedBy?: string | Types.ObjectId;
+  createdBy?: mongoose.Types.ObjectId;
+  updatedBy?: mongoose.Types.ObjectId;
 }
 
 /**
