@@ -115,7 +115,7 @@ const products = [
 ];
 
 // ============================================
-// PLANOS E PREÇOS
+// PLANOS E PREÇOS - CORRIGIDO
 // ============================================
 const plans = [
   {
@@ -170,11 +170,11 @@ const plans = [
   },
   {
     id: 'enterprise',
-    name: 'Enterprise',
-    price: '5.997',
-    priceAnnual: '59.970',
-    description: 'Solução completa para grandes organizações com necessidades avançadas de conformidade.',
-    users: 'Ilimitado', // ✅ Correto
+  name: 'Enterprise',
+  price: '5.997',
+  priceAnnual: '59.970',
+  description: 'Solução completa para grandes organizações com necessidades avançadas de conformidade.',
+  users: 'Até 10',
     features: [
       'Tudo do Plano Profissional',
       'Impressão/Download do Relatório',
@@ -187,10 +187,11 @@ const plans = [
     notIncluded: [],
     badge: 'Completo',
     isPopular: false,
-    cta: 'Fale Conosco',
-    link: '/contact',
+    cta: 'Contratar',
+    link: '/register?plan=enterprise', // 🔴 CORRIGIDO: /contact → /register?plan=enterprise
   },
 ];
+
 export const LandingPage: React.FC = () => {
   const [branding, setBranding] = useState<PublicBrandingData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
