@@ -572,87 +572,87 @@ export class PaymentService {
   }
 
   /**
- * Gerar fatura para assinatura
- */
-static async generateInvoice(
-  subscriptionId: string,
-  userId: string
-): Promise<IPayment> {
-  try {
-    return await databaseCircuitBreaker.execute(async () => {
-      return await retryDatabase(async () => {
-        return await withDbTimeout(async () => {
-          const subscription = await SubscriptionService.getSubscriptionById(subscriptionId);
+   * Gerar fatura para assinatura
+   */
+  static async generateInvoice(
+    subscriptionId: string,
+    userId: string
+  ): Promise<IPayment> {
+    try {
+      return await databaseCircuitBreaker.execute(async () => {
+        return await retryDatabase(async () => {
+          return await withDbTimeout(async () => {
+            const subscription = await SubscriptionService.getSubscriptionById(subscriptionId);
 
-          if (!subscription) {
-            throw new NotFoundError('Assinatura', subscriptionId);
-          }
+            if (!subscription) {
+              throw new NotFoundError('Assinatura', subscriptionId);
+            }
 
-          const company = await Company.findById(subscription.companyId);
+            const company = await Company.findById(subscription.companyId);
 
-          if (!company) {
-            throw new NotFoundError(
-              'Empresa',
-              String(subscription.companyId)
+            if (!company) {
+              throw new NotFoundError(
+                'Empresa',
+                String(subscription.companyId)
+              );
+            }
+
+            // Converter ObjectId para string de forma segura
+            const planIdStr = String(subscription.planId);
+            const plan = await PlanService.getPlanById(planIdStr);
+
+            const startDate = new Date();
+            const endDate = new Date();
+
+            if (subscription.billingCycle === 'annual') {
+              endDate.setFullYear(endDate.getFullYear() + 1);
+            } else {
+              endDate.setMonth(endDate.getMonth() + 1);
+            }
+
+            const items: Array<{
+              description: string;
+              quantity: number;
+              unitPrice: number;
+              totalPrice: number;
+              type: 'plan' | 'user' | 'consulting' | 'custom';
+              metadata?: Record<string, any>;
+            }> = [
+              {
+                description: `Plano ${plan.displayName} - ${
+                  subscription.billingCycle === 'annual' ? 'Anual' : 'Mensal'
+                }`,
+                quantity: 1,
+                unitPrice: subscription.amount,
+                totalPrice: subscription.amount,
+                type: 'plan',
+              },
+            ];
+
+            const extraUsers = Math.max(
+              0,
+              subscription.currentUsers - subscription.maxUsers
             );
-          }
 
-          // Converter ObjectId para string de forma segura
-          const planIdStr = String(subscription.planId);
-          const plan = await PlanService.getPlanById(planIdStr);
+            if (extraUsers > 0) {
+              const extraPrice = extraUsers * plan.pricePerUser;
 
-          const startDate = new Date();
-          const endDate = new Date();
+              items.push({
+                description: `${extraUsers} usuário(s) adicional(is)`,
+                quantity: extraUsers,
+                unitPrice: plan.pricePerUser,
+                totalPrice: extraPrice,
+                type: 'user',
+              });
+            }
 
-          if (subscription.billingCycle === 'annual') {
-            endDate.setFullYear(endDate.getFullYear() + 1);
-          } else {
-            endDate.setMonth(endDate.getMonth() + 1);
-          }
-
-          const items: Array<{
-            description: string;
-            quantity: number;
-            unitPrice: number;
-            totalPrice: number;
-            type: 'plan' | 'user' | 'consulting' | 'custom';
-            metadata?: Record<string, any>;
-          }> = [
-            {
-              description: `Plano ${plan.displayName} - ${
-                subscription.billingCycle === 'annual' ? 'Anual' : 'Mensal'
-              }`,
-              quantity: 1,
-              unitPrice: subscription.amount,
-              totalPrice: subscription.amount,
-              type: 'plan',
-            },
-          ];
-
-          const extraUsers = Math.max(
-            0,
-            subscription.currentUsers - subscription.maxUsers
-          );
-
-          if (extraUsers > 0) {
-            const extraPrice = extraUsers * plan.pricePerUser;
-
-            items.push({
-              description: `${extraUsers} usuário(s) adicional(is)`,
-              quantity: extraUsers,
-              unitPrice: plan.pricePerUser,
-              totalPrice: extraPrice,
-              type: 'user',
-            });
-          }
-
-          const totalAmount = items.reduce(
-            (sum, item) => sum + item.totalPrice,
-            0
-          );
+            const totalAmount = items.reduce(
+              (sum, item) => sum + item.totalPrice,
+              0
+            );
             // 🔧 CORREÇÃO COMPLETA: Forçando a extração segura de strings em propriedades do schema
             const subscriptionIdStr = String(subscription._id);
-const companyIdStr = String(subscription.companyId);
+            const companyIdStr = String(subscription.companyId);
 
             const payment = await PaymentService.createPayment({
               companyId: companyIdStr,
@@ -678,6 +678,126 @@ const companyIdStr = String(subscription.companyId);
       if (error instanceof AppError) throw error;
       logger.error('Erro ao gerar fatura:', error);
       throw new AppError('Erro ao gerar fatura. Tente novamente mais tarde.', 500);
+    }
+  }
+
+  // ============================================
+  // 🔴 NOVOS MÉTODOS PARA FASE 5 - GATEWAY DE PAGAMENTO
+  // ============================================
+
+  /**
+   * Obter pagamento por ID do provedor
+   */
+  static async getPaymentByProviderId(providerPaymentId: string): Promise<IPayment | null> {
+    try {
+      return await databaseCircuitBreaker.execute(async () => {
+        return await retryDatabase(async () => {
+          return await withDbTimeout(async () => {
+            return Payment.findOne({ providerPaymentId });
+          }, 'PaymentService.getPaymentByProviderId');
+        }, 'PaymentService.getPaymentByProviderId');
+      });
+    } catch (error) {
+      logger.error('Erro ao buscar pagamento por provider ID:', error);
+      throw new AppError('Erro ao buscar pagamento. Tente novamente mais tarde.', 500);
+    }
+  }
+
+  /**
+   * Atualizar status do pagamento
+   */
+  static async updatePaymentStatus(
+    paymentId: string,
+    data: UpdatePaymentData
+  ): Promise<IPayment> {
+    try {
+      return await databaseCircuitBreaker.execute(async () => {
+        return await retryDatabase(async () => {
+          return await withDbTimeout(async () => {
+            if (!Types.ObjectId.isValid(paymentId)) {
+              throw new AppError('ID do pagamento inválido', 400);
+            }
+
+            const payment = await Payment.findById(paymentId);
+            if (!payment) {
+              throw new NotFoundError('Pagamento', paymentId);
+            }
+
+            if (data.status) {
+              payment.status = data.status;
+              payment.statusHistory.push({
+                status: data.status,
+                changedAt: new Date(),
+              });
+            }
+
+            if (data.amountPaid !== undefined) payment.amountPaid = data.amountPaid;
+            if (data.paidAt) payment.paidAt = new Date(data.paidAt);
+            if (data.processedAt) payment.processedAt = new Date(data.processedAt);
+            if (data.refundedAt) payment.refundedAt = new Date(data.refundedAt);
+            if (data.providerPaymentId) payment.providerPaymentId = data.providerPaymentId;
+            if (data.providerSubscriptionId) payment.providerSubscriptionId = data.providerSubscriptionId;
+            if (data.webhookReceived !== undefined) payment.webhookReceived = data.webhookReceived;
+            if (data.webhookProcessedAt) payment.webhookProcessedAt = new Date(data.webhookProcessedAt);
+            if (data.webhookPayload) payment.webhookPayload = data.webhookPayload;
+            if (data.notes) payment.notes = data.notes;
+
+            await payment.save();
+
+            logger.info(`Status do pagamento ${paymentId} atualizado para ${payment.status}`);
+
+            return payment;
+          }, 'PaymentService.updatePaymentStatus');
+        }, 'PaymentService.updatePaymentStatus');
+      });
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error('Erro ao atualizar status do pagamento:', error);
+      throw new AppError('Erro ao atualizar status do pagamento. Tente novamente mais tarde.', 500);
+    }
+  }
+
+  /**
+   * Obter pagamentos pendentes (para jobs)
+   */
+  static async getPendingPayments(): Promise<IPayment[]> {
+    try {
+      return await databaseCircuitBreaker.execute(async () => {
+        return await retryDatabase(async () => {
+          return await withDbTimeout(async () => {
+            return Payment.find({
+              status: { $in: ['pending', 'processing'] },
+            }).sort({ dueDate: 1 });
+          }, 'PaymentService.getPendingPayments');
+        }, 'PaymentService.getPendingPayments');
+      });
+    } catch (error) {
+      logger.error('Erro ao buscar pagamentos pendentes:', error);
+      throw new AppError('Erro ao buscar pagamentos pendentes. Tente novamente mais tarde.', 500);
+    }
+  }
+
+  /**
+   * Obter pagamentos por assinatura
+   */
+  static async getPaymentsBySubscription(subscriptionId: string): Promise<IPayment[]> {
+    try {
+      return await databaseCircuitBreaker.execute(async () => {
+        return await retryDatabase(async () => {
+          return await withDbTimeout(async () => {
+            if (!Types.ObjectId.isValid(subscriptionId)) {
+              throw new AppError('ID da assinatura inválido', 400);
+            }
+
+            return Payment.find({ subscriptionId: new Types.ObjectId(subscriptionId) })
+              .sort({ createdAt: -1 });
+          }, 'PaymentService.getPaymentsBySubscription');
+        }, 'PaymentService.getPaymentsBySubscription');
+      });
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error('Erro ao buscar pagamentos da assinatura:', error);
+      throw new AppError('Erro ao buscar pagamentos. Tente novamente mais tarde.', 500);
     }
   }
 }

@@ -64,6 +64,11 @@ import { Layout } from './components/Layout.js';
 import { PlansPage } from './pages/PlansPage.js';
 import { BillingPage } from './pages/BillingPage.js';
 
+// ============================================
+// 🔴 NOVO: IMPORTAÇÃO DA FASE 5 - CHECKOUT
+// ============================================
+import { CheckoutPage } from './pages/CheckoutPage.js';
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -111,9 +116,11 @@ function App() {
                 <Route path="/reset-password/:token" element={<ResetPassword />} />
 
                 {/* ============================================
-                    ROTAS PÚBLICAS - PLANOS
+                    ROTAS PÚBLICAS - PLANOS E CHECKOUT
                     ============================================ */}
                 <Route path="/plans" element={<PlansPage />} />
+                {/* 🔴 NOVO: Rota pública de checkout (sem autenticação necessária) */}
+                <Route path="/checkout" element={<CheckoutPage />} />
 
                 { /* ============================================
                     ROTAS PROTEGIDAS (qualquer usuário autenticado)
