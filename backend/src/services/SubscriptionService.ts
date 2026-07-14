@@ -1,7 +1,8 @@
 // backend/src/services/SubscriptionService.ts
 import { Types } from 'mongoose';
 import { Subscription, ISubscription, SubscriptionStatus } from '../models/Subscription.js';
-import { Plan, IPlan } from '../models/Plan.js';
+import { Plan } from '../models/Plan.js';
+import { IPlan } from '../types/plan.types.js';
 import { Company } from '../models/Company.js';
 import { User } from '../models/User.js';
 import { PlanService } from './PlanService.js';
