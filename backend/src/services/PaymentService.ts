@@ -197,10 +197,10 @@ export class PaymentService {
 
             if (payment.subscriptionId) {
               try {
-                await SubscriptionService.activateSubscription(
-                  payment.subscriptionId.toString()
-                );
-                logger.info(`Assinatura ativada após pagamento: ${payment.subscriptionId}`);
+                // 🔧 CORREÇÃO: Conversão explícita e segura de ObjectId para String para evitar TS2345
+                const subscriptionIdStr = String(payment.subscriptionId);
+                await SubscriptionService.activateSubscription(subscriptionIdStr);
+                logger.info(`Assinatura ativada após pagamento: ${subscriptionIdStr}`);
               } catch (subError) {
                 logger.error(`Erro ao ativar assinatura ${payment.subscriptionId}:`, subError);
               }
@@ -592,8 +592,8 @@ export class PaymentService {
               throw new NotFoundError('Empresa', subscription.companyId);
             }
 
-            // 🔧 CORREÇÃO: Conversão explícita de ObjectId para string
-            const plan = await PlanService.getPlanById(String(subscription.planId));
+            // 🔧 CORREÇÃO: Conversão explícita de ObjectId para string de forma segura
+            const plan = await PlanService.getPlanById(subscription.planId ? String(subscription.planId) : '');
 
             const startDate = new Date();
             let endDate = new Date();
