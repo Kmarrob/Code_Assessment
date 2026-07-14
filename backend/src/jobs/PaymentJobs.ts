@@ -121,7 +121,7 @@ export class PaymentJobs {
             subscriptionId: subscription._id.toString(),
             amount: subscription.amount,
             currency: subscription.currency || 'BRL',
-            description: `Renovação de assinatura - ${subscription.planName}`,
+            description: `Renovação de assinatura - ${subscription.planName || 'Plano'}`,
             dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
             billingPeriod: {
               start: new Date(),
@@ -129,7 +129,7 @@ export class PaymentJobs {
             },
             items: [
               {
-                description: `Plano ${subscription.planName}`,
+                description: `Plano ${subscription.planName || 'Plano'}`,
                 quantity: 1,
                 unitPrice: subscription.amount,
                 totalPrice: subscription.amount,

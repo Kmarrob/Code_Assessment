@@ -685,7 +685,7 @@ export class SubscriptionService {
   }
 
   /**
-   * 🔴 NOVO: Obter assinatura por ID
+   * Obter assinatura por ID
    */
   static async getSubscriptionById(subscriptionId: string): Promise<ISubscription> {
     try {
@@ -713,7 +713,7 @@ export class SubscriptionService {
   }
 
   /**
-   * 🔴 NOVO (v29): Buscar assinaturas que vão expirar em breve
+   * Buscar assinaturas que vão expirar em breve
    * Para jobs de renovação automática
    */
   static async getSubscriptionsExpiringSoon(days: number = 7): Promise<ISubscription[]> {
@@ -725,7 +725,7 @@ export class SubscriptionService {
             const future = new Date();
             future.setDate(future.getDate() + days);
 
-            return Subscription.find({
+            const subscriptions = await Subscription.find({
               status: 'active',
               autoRenew: true,
               endDate: {
@@ -733,6 +733,14 @@ export class SubscriptionService {
                 $lte: future,
               },
             }).populate('planId');
+
+            // Adicionar planName virtual para cada assinatura
+            return subscriptions.map(sub => {
+              const subObj = sub.toObject();
+              const plan = sub.planId as any;
+              subObj.planName = plan?.displayName || 'Plano';
+              return subObj as any;
+            });
           }, 'SubscriptionService.getSubscriptionsExpiringSoon');
         }, 'SubscriptionService.getSubscriptionsExpiringSoon');
       });

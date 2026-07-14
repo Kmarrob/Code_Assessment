@@ -55,6 +55,7 @@ export interface CreatePaymentData {
   cardBrand?: string;
   notes?: string;
   metadata?: Record<string, any>;
+  description?: string;
 }
 
 export interface UpdatePaymentData {
@@ -195,7 +196,6 @@ export class PaymentService {
 
             logger.info(`Pagamento confirmado: ${payment._id} - ${amountPaid} ${payment.currency}`);
 
-            // 🔧 CORREÇÃO: Conversão segura contra undefined e tipagem do ObjectId no Mongoose
             if (payment.subscriptionId) {
               try {
                 const subscriptionIdStr = String(payment.subscriptionId);
@@ -597,7 +597,6 @@ export class PaymentService {
               );
             }
 
-            // Converter ObjectId para string de forma segura
             const planIdStr = String(subscription.planId);
             const plan = await PlanService.getPlanById(planIdStr);
 
@@ -650,7 +649,6 @@ export class PaymentService {
               (sum, item) => sum + item.totalPrice,
               0
             );
-            // 🔧 CORREÇÃO COMPLETA: Forçando a extração segura de strings em propriedades do schema
             const subscriptionIdStr = String(subscription._id);
             const companyIdStr = String(subscription.companyId);
 
