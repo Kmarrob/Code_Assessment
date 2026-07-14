@@ -14,6 +14,11 @@ dotenv.config();
  * - Pro: R$ 3.297,00/mês → 329700
  * - Enterprise: R$ 5.997,00/mês → 599700
  * - Usuário extra: R$ 297,00 → 29700
+ * 
+ * LIMITES DE USUÁRIOS:
+ * - Básico: 3 usuários (Preposto + 2)
+ * - Profissional: 4 usuários (Preposto + 3)
+ * - Enterprise: 10 usuários (Preposto + 9)
  */
 const planData = [
   {
@@ -30,7 +35,7 @@ const planData = [
     sortOrder: 1,
     badge: 'Para começar',
     features: {
-      maxUsers: 5,
+      maxUsers: 3, // Preposto + 2 usuários
       maxControls: 93,
       canViewReport: true,
       canPrintReport: true,
@@ -63,7 +68,7 @@ const planData = [
     sortOrder: 2,
     badge: 'Mais popular',
     features: {
-      maxUsers: 10,
+      maxUsers: 4, // Preposto + 3 usuários
       maxControls: 93,
       canViewReport: true,
       canPrintReport: true,
@@ -96,7 +101,7 @@ const planData = [
     sortOrder: 3,
     badge: 'Máximo desempenho',
     features: {
-      maxUsers: 0, // 0 = Ilimitado
+      maxUsers: 10, // Preposto + 9 usuários
       maxControls: 0, // 0 = Ilimitado
       canViewReport: true,
       canPrintReport: true,
