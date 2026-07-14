@@ -99,7 +99,7 @@ export const RegisterPage: React.FC = () => {
             priceAnnual: 1497000,
             pricePerUser: 29700,
             features: {
-              maxUsers: 5,
+              maxUsers: 3,
               maxControls: 93,
               canViewReport: true,
               canPrintReport: false,
@@ -122,7 +122,7 @@ export const RegisterPage: React.FC = () => {
             priceAnnual: 3297000,
             pricePerUser: 29700,
             features: {
-              maxUsers: 10,
+              maxUsers: 4,
               maxControls: 93,
               canViewReport: true,
               canPrintReport: false,
@@ -145,7 +145,7 @@ export const RegisterPage: React.FC = () => {
             priceAnnual: 5997000,
             pricePerUser: 29700,
             features: {
-              maxUsers: 999,
+              maxUsers: 10,
               maxControls: 93,
               canViewReport: true,
               canPrintReport: true,
