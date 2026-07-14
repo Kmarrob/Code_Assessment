@@ -6,11 +6,13 @@ import { useUsers } from '../hooks/useAdmin.js';
 import { 
   Users, Settings, Shield, 
   BarChart3, Database, Activity,
-  LogOut, Building2, ClipboardList, UserCog, LayoutDashboard, FileText, Lightbulb
+  LogOut, Building2, ClipboardList, UserCog, LayoutDashboard, FileText, Lightbulb,
+  Download, Palette
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card.js';
 import { AdminBreadcrumbs } from '../components/admin/AdminBreadcrumbs.js';
 import { AdminMetaTags } from '../components/admin/AdminMetaTags.js';
+import { FeatureGuard } from '../components/common/FeatureGuard.js';
 
 export const AdminDashboard: React.FC = () => {
   const { user, logout } = useAuth();
@@ -47,25 +49,20 @@ export const AdminDashboard: React.FC = () => {
     navigate('/admin/consultores');
   }, [navigate]);
 
-  // ============================================
-  // NOVO HANDLER: DASHBOARD DE MATURIDADE
-  // ============================================
   const handleNavigateToDashboard = useCallback(() => {
     navigate('/admin/dashboard');
   }, [navigate]);
 
-  // ============================================
-  // NOVO HANDLER: RELATÓRIOS (v17)
-  // ============================================
   const handleNavigateToReports = useCallback(() => {
     navigate('/admin/relatorios');
   }, [navigate]);
 
-  // ============================================
-  // NOVO HANDLER: RECOMENDAÇÕES (v19)
-  // ============================================
   const handleNavigateToRecommendations = useCallback(() => {
     navigate('/admin/recomendacoes');
+  }, [navigate]);
+
+  const handleNavigateToBranding = useCallback(() => {
+    navigate('/admin/branding');
   }, [navigate]);
 
   const handleLogout = useCallback(async () => {
@@ -176,7 +173,7 @@ export const AdminDashboard: React.FC = () => {
             </div>
           </section>
 
-          <section aria-label="Ações rápidas" className="grid grid-cols-1 md:grid-cols-7 gap-6 mb-8">
+          <section aria-label="Ações rápidas" className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
             <Card 
               className="hover:shadow-lg transition-shadow cursor-pointer"
               onClick={handleNavigateToUsers}
@@ -262,9 +259,6 @@ export const AdminDashboard: React.FC = () => {
               </CardContent>
             </Card>
 
-            {/* ============================================
-                NOVO CARD: DASHBOARD DE MATURIDADE
-                ============================================ */}
             <Card 
               className="hover:shadow-lg transition-shadow cursor-pointer"
               onClick={handleNavigateToDashboard}
@@ -282,9 +276,6 @@ export const AdminDashboard: React.FC = () => {
               </CardContent>
             </Card>
 
-            {/* ============================================
-                NOVO CARD: RELATÓRIOS (v17)
-                ============================================ */}
             <Card 
               className="hover:shadow-lg transition-shadow cursor-pointer"
               onClick={handleNavigateToReports}
@@ -302,9 +293,6 @@ export const AdminDashboard: React.FC = () => {
               </CardContent>
             </Card>
 
-            {/* ============================================
-                NOVO CARD: RECOMENDAÇÕES (v19)
-                ============================================ */}
             <Card 
               className="hover:shadow-lg transition-shadow cursor-pointer"
               onClick={handleNavigateToRecommendations}
@@ -321,6 +309,51 @@ export const AdminDashboard: React.FC = () => {
                 </div>
               </CardContent>
             </Card>
+
+            {/* 🔴 NOVO: Cards protegidos por FeatureGuard */}
+            
+            {/* Exportar Dados - Apenas Pro e Enterprise */}
+            <FeatureGuard feature="canExportData">
+              <Card 
+                className="hover:shadow-lg transition-shadow cursor-pointer"
+                onClick={() => {
+                  // TODO: Implementar exportação de dados
+                  console.log('Exportar dados do sistema');
+                }}
+              >
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 bg-blue-100 rounded-lg">
+                      <Download className="h-6 w-6 text-blue-600" aria-hidden="true" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-900">Exportar Dados</h3>
+                      <p className="text-sm text-gray-500">Exportar dados do sistema</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </FeatureGuard>
+
+            {/* Branding - Apenas Enterprise */}
+            <FeatureGuard feature="canCustomizeBranding">
+              <Card 
+                className="hover:shadow-lg transition-shadow cursor-pointer"
+                onClick={handleNavigateToBranding}
+              >
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 bg-pink-100 rounded-lg">
+                      <Palette className="h-6 w-6 text-pink-600" aria-hidden="true" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-900">Branding</h3>
+                      <p className="text-sm text-gray-500">Personalizar identidade visual</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </FeatureGuard>
           </section>
 
           {/* Componentes temporariamente removidos para teste */}

@@ -9,6 +9,7 @@ import { AdminMetaTags } from '../components/admin/AdminMetaTags.js';
 import { AdminBreadcrumbs } from '../components/admin/AdminBreadcrumbs.js';
 import { ControlFormModal } from '../components/admin/ControlFormModal.js';
 import { ConfirmDeleteModal } from '../components/admin/ConfirmDeleteModal.js';
+import { FeatureGuard } from '../components/common/FeatureGuard.js';
 
 interface Control {
   _id: string;
@@ -277,10 +278,13 @@ export const AdminControls: React.FC = () => {
             <div className="text-sm text-gray-500">
               Total: <span className="font-bold">{pagination?.total || 0}</span> controles
             </div>
-            <Button onClick={handleCreate} size="sm">
-              <Plus className="h-4 w-4 mr-2" />
-              Novo Controle
-            </Button>
+            {/* 🔴 NOVO: Botão "Novo Controle" protegido por FeatureGuard */}
+            <FeatureGuard feature="canAddCustomControls">
+              <Button onClick={handleCreate} size="sm">
+                <Plus className="h-4 w-4 mr-2" />
+                Novo Controle
+              </Button>
+            </FeatureGuard>
           </div>
         </div>
 

@@ -6,6 +6,7 @@ import { reportService } from '../services/report.service.js';
 import { recommendationService } from '../services/recommendation.service.js';
 import { Report, ReportStats, RoadmapData } from '../types/report.js';
 import { brandingService, PublicBrandingData } from '../services/branding.service.js';
+import { FeatureGuard } from '../components/common/FeatureGuard.js';
 import {
   FileText,
   Loader2,
@@ -1569,15 +1570,17 @@ export const ReportView: React.FC = () => {
                 <Eye className="h-4 w-4 mr-2" />
                 Visualizar Relatório
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="text-blue-600 border-blue-300 hover:bg-blue-50"
-                onClick={handlePrint}
-              >
-                <Printer className="h-4 w-4 mr-2" />
-                Imprimir
-              </Button>
+              <FeatureGuard feature="canPrintReport">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-blue-600 border-blue-300 hover:bg-blue-50"
+                  onClick={handlePrint}
+                >
+                  <Printer className="h-4 w-4 mr-2" />
+                  Imprimir
+                </Button>
+              </FeatureGuard>
             </div>
           </div>
         </div>

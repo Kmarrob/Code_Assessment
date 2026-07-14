@@ -2,9 +2,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext.js';
-import { LayoutDashboard, ClipboardList, CheckCircle, Clock, AlertCircle, Loader2, LogOut } from 'lucide-react';
+import { LayoutDashboard, ClipboardList, CheckCircle, Clock, AlertCircle, Loader2, LogOut, Download } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card.js';
+import { Button } from '../components/ui/Button.js';
 import { userService, UserStats, UserControl } from '../services/user.service.js';
+import { FeatureGuard } from '../components/common/FeatureGuard.js';
 
 export const UserDashboard: React.FC = () => {
   const { user, logout } = useAuth();
@@ -130,11 +132,28 @@ export const UserDashboard: React.FC = () => {
 
       <main className="container mx-auto px-4 py-8">
         {/* Welcome Section */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Meu Dashboard</h1>
-          <p className="text-gray-600 mt-1">
-            Gerencie seus controles atribuídos e acompanhe seu progresso
-          </p>
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Meu Dashboard</h1>
+            <p className="text-gray-600 mt-1">
+              Gerencie seus controles atribuídos e acompanhe seu progresso
+            </p>
+          </div>
+          {/* 🔴 NOVO: Botão de Exportação protegido por FeatureGuard */}
+          <FeatureGuard feature="canExportData">
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-2 md:mt-0"
+              onClick={() => {
+                // TODO: Implementar exportação de dados
+                console.log('Exportar dados do usuário');
+              }}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Exportar Dados
+            </Button>
+          </FeatureGuard>
         </div>
 
         {/* CORREÇÃO: Barra de Progresso Geral */}
