@@ -1,4 +1,5 @@
 import { IReport } from '../models/Report.js';
+import { RoadmapData } from '../types/index.js';
 export declare class ReportService {
     /**
      * 🔴 NOVO: Gerar número do projeto automaticamente
@@ -34,5 +35,15 @@ export declare class ReportService {
         reports: any[];
         total: number;
     }>;
+    /**
+     * 🔴 NOVO: Obter Roadmap de Implementação
+     * Retorna dados estruturados do roadmap com medidas processuais, políticas e soluções técnicas
+     */
+    static getRoadmap(companyId: string): Promise<RoadmapData>;
+    /**
+     * 🔴 CORRIGIDO: Gerar dados para a Matriz de Priorização
+     * Retorna apenas controles com RESPOSTA E maturidade 0 (Não implementado) ou 1 (Parcial)
+     */
+    static getPriorizationMatrix(companyId: string): Promise<any[]>;
 }
 //# sourceMappingURL=ReportService.d.ts.map

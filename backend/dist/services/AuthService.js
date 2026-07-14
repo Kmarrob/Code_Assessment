@@ -49,7 +49,7 @@ class AuthService {
             logger_js_1.logger.info(`🔍 Tentando login para: ${email}`);
             // 🔴 CORREÇÃO CRÍTICA: Adicionado '+password' para forçar a busca do campo que está com select: false
             const user = await User_js_1.User.findOne({ email })
-                .select('+password _id name email role company department isActive refreshToken passwordChangedAt')
+                .select('+password _id name email role company companyId department isActive refreshToken passwordChangedAt')
                 .exec();
             if (!user) {
                 logger_js_1.logger.warn(`❌ Usuário não encontrado: ${email}`);
@@ -71,6 +71,7 @@ class AuthService {
             const tokens = AuthService.generateTokens(user._id.toString(), user.email, user.role);
             user.refreshToken = tokens.refreshToken;
             await user.save();
+            // 🔴 CORREÇÃO: Adicionado companyId ao userResponse
             const userResponse = {
                 _id: user._id,
                 name: user.name,
@@ -78,6 +79,7 @@ class AuthService {
                 password: '',
                 role: user.role,
                 company: user.company,
+                companyId: user.companyId, // ✅ ADICIONADO
                 department: user.department,
                 isActive: user.isActive,
                 createdAt: user.createdAt,
@@ -172,13 +174,13 @@ class AuthService {
     }
     static async getUserById(userId) {
         return User_js_1.User.findById(userId)
-            .select('_id name email role company department isActive lastLogin')
+            .select('_id name email role company companyId department isActive lastLogin')
             .lean()
             .exec();
     }
     static async getUserByEmail(email) {
         return User_js_1.User.findOne({ email })
-            .select('_id name email role company department isActive lastLogin')
+            .select('_id name email role company companyId department isActive lastLogin')
             .lean()
             .exec();
     }

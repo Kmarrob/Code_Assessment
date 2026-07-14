@@ -1,5 +1,40 @@
 import { Request } from 'express';
 import { Types, Document } from 'mongoose';
+export interface RoadmapItem {
+    id: string;
+    name: string;
+    description?: string;
+    priority: 'Crítico' | 'Muito Alto' | 'Alto' | 'Médio' | 'Baixo';
+    category: 'processual' | 'politica' | 'tecnica';
+    controlId?: string;
+    relatedControls?: string[];
+}
+export interface RoadmapSection {
+    title: string;
+    description: string;
+    items: RoadmapItem[];
+    priority: 'Crítico' | 'Muito Alto' | 'Alto' | 'Médio' | 'Baixo';
+}
+export interface RoadmapData {
+    companyId: string;
+    companyName: string;
+    generatedAt: Date;
+    sections: {
+        processuais: RoadmapSection;
+        politicas: RoadmapSection;
+        tecnicas: RoadmapSection;
+    };
+    summary: {
+        totalItems: number;
+        byPriority: {
+            critico: number;
+            muitoAlto: number;
+            alto: number;
+            medio: number;
+            baixo: number;
+        };
+    };
+}
 export declare enum UserRole {
     ADMIN = "admin",
     REP = "rep",

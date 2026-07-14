@@ -12,6 +12,7 @@ const User_js_1 = require("../models/User.js");
 const Control_js_1 = require("../models/Control.js");
 const Company_js_1 = require("../models/Company.js");
 const errors_js_1 = require("../utils/errors.js");
+const logger_js_1 = require("../utils/logger.js"); // 🔴 CORREÇÃO: Import do logger adicionado
 // 🔴 NOVO: Import do NotificationService
 const NotificationService_js_1 = require("./NotificationService.js");
 const promises_1 = __importDefault(require("fs/promises"));
@@ -74,10 +75,10 @@ class ReviewService {
             try {
                 const repPopulated = await User_js_1.User.findById(data.repId).select('name email');
                 await NotificationService_js_1.NotificationService.notifyReviewRequest(data.userId, data.companyId, control?.nome || 'Controle', control?.id || data.controlId, repPopulated?.name || 'Preposto', reviewRequest._id.toString());
-                logger.info(`📬 Notificação de revisão enviada para o usuário ${data.userId}`);
+                logger_js_1.logger.info(`📬 Notificação de revisão enviada para o usuário ${data.userId}`);
             }
             catch (notifyError) {
-                logger.error('❌ Erro ao enviar notificação de solicitação de revisão:', notifyError);
+                logger_js_1.logger.error('❌ Erro ao enviar notificação de solicitação de revisão:', notifyError);
             }
             return reviewRequest;
         }
@@ -187,10 +188,10 @@ class ReviewService {
             try {
                 const control = await Control_js_1.Control.findById(review.controlId);
                 await NotificationService_js_1.NotificationService.notifyReviewCompleted(review.userId.toString(), data.companyId, control?.nome || 'Controle', control?.id || review.controlId, data.status, review._id.toString());
-                logger.info(`📬 Notificação de revisão ${data.status} enviada para o usuário ${review.userId}`);
+                logger_js_1.logger.info(`📬 Notificação de revisão ${data.status} enviada para o usuário ${review.userId}`);
             }
             catch (notifyError) {
-                logger.error('❌ Erro ao enviar notificação de conclusão de revisão:', notifyError);
+                logger_js_1.logger.error('❌ Erro ao enviar notificação de conclusão de revisão:', notifyError);
             }
             return review;
         }

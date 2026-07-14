@@ -29,6 +29,8 @@ const SitemapController_js_1 = require("./controllers/SitemapController.js");
 const adminPerformance_js_1 = require("./middleware/adminPerformance.js");
 const auth_js_2 = require("./middleware/auth.js");
 const index_js_1 = require("./types/index.js");
+// 🔴 NOVO: Import do AdminController para a rota pública de branding
+const AdminController_js_1 = require("./controllers/AdminController.js");
 const app = (0, express_1.default)();
 app.use((0, compression_1.default)({
     level: 6,
@@ -121,6 +123,10 @@ app.use('/api/notifications', notification_routes_js_1.default);
 app.use('/api/documents', document_routes_js_1.default); // 🔴 NOVO - Rotas de documentos
 app.use('/api/reports', report_routes_js_1.default); // 🔴 NOVO (v17) - Rotas de relatórios
 app.use('/api/recommendations', recommendation_routes_js_1.default); // 🔴 NOVO (v19) - Rotas de recomendações
+// ============================================
+// ROTA PÚBLICA DE BRANDING (sem autenticação)
+// ============================================
+app.get('/api/branding/:companyId', cache_js_1.noCache, AdminController_js_1.AdminController.getPublicBranding);
 app.get('/health', cache_js_1.noCache, (_req, res) => {
     res.json({
         status: 'ok',
@@ -187,7 +193,8 @@ async function startServer() {
             logger_js_1.logger.info(`🔔 Notification Routes: http://localhost:${PORT}/api/notifications`);
             logger_js_1.logger.info(`📄 Document Routes: http://localhost:${PORT}/api/documents`);
             logger_js_1.logger.info(`📊 Report Routes: http://localhost:${PORT}/api/reports`);
-            logger_js_1.logger.info(`📋 Recommendation Routes: http://localhost:${PORT}/api/recommendations`); // 🔴 NOVO (v19)
+            logger_js_1.logger.info(`📋 Recommendation Routes: http://localhost:${PORT}/api/recommendations`);
+            logger_js_1.logger.info(`🏷️ Branding Routes: http://localhost:${PORT}/api/branding/:companyId`);
         });
     }
     catch (error) {

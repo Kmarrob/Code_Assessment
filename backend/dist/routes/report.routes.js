@@ -22,6 +22,22 @@ router.get('/', (0, auth_js_1.authorize)(index_js_1.UserRole.ADMIN), rateLimit_j
 // ============================================
 router.get('/dashboard', (0, auth_js_1.authorize)(index_js_1.UserRole.REP, index_js_1.UserRole.ADMIN), rateLimit_js_1.authenticatedRateLimiter, ReportController_js_1.ReportController.getReportDashboard);
 // ============================================
+// 🔴 NOVA ROTA: Dashboard por nome da empresa
+// ============================================
+router.get('/dashboard/company/:companyName', (0, auth_js_1.authorize)(index_js_1.UserRole.REP, index_js_1.UserRole.ADMIN), rateLimit_js_1.authenticatedRateLimiter, ReportController_js_1.ReportController.getReportDashboardByCompanyName);
+// ============================================
+// 🔴 NOVA ROTA: ADMIN dashboard por empresa
+// ============================================
+router.get('/admin/dashboard/:companyId', (0, auth_js_1.authorize)(index_js_1.UserRole.ADMIN), rateLimit_js_1.adminRateLimiter, ReportController_js_1.ReportController.getAdminDashboardByCompany);
+// ============================================
+// 🔴 NOVA ROTA: Matriz de Priorização
+// ============================================
+router.get('/priorization/:companyId', (0, auth_js_1.authorize)(index_js_1.UserRole.REP, index_js_1.UserRole.ADMIN), rateLimit_js_1.authenticatedRateLimiter, ReportController_js_1.ReportController.getPriorizationMatrix);
+// ============================================
+// 🔴 NOVA ROTA: Roadmap de Implementação
+// ============================================
+router.get('/roadmap/:companyId', (0, auth_js_1.authorize)(index_js_1.UserRole.REP, index_js_1.UserRole.ADMIN), rateLimit_js_1.authenticatedRateLimiter, ReportController_js_1.ReportController.getRoadmap);
+// ============================================
 // ROTAS POR EMPRESA
 // ============================================
 // Obter relatório de uma empresa específica

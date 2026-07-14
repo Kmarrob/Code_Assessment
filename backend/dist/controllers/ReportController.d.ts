@@ -31,5 +31,29 @@ export declare class ReportController {
      * Acesso: REP
      */
     static getReportDashboard(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void>;
+    /**
+     * 🔴 NOVO: Obter dashboard do relatório por nome da empresa
+     * GET /api/reports/dashboard/company/:companyName
+     * Acesso: REP ou ADMIN
+     */
+    static getReportDashboardByCompanyName(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void>;
+    /**
+     * 🔴 NOVO: Obter dashboard completo do relatório para ADMIN (com companyId)
+     * GET /api/reports/admin/dashboard/:companyId
+     * Acesso: ADMIN
+     */
+    static getAdminDashboardByCompany(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void>;
+    /**
+     * 🔴 NOVO: Obter dados para a Matriz de Priorização
+     * GET /api/reports/priorization/:companyId
+     * Acesso: ADMIN ou REP (da empresa)
+     */
+    static getPriorizationMatrix(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void>;
+    /**
+     * 🔴 NOVO: Obter Roadmap de Implementação
+     * GET /api/reports/roadmap/:companyId
+     * Acesso: ADMIN ou REP (da empresa)
+     */
+    static getRoadmap(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void>;
 }
 //# sourceMappingURL=ReportController.d.ts.map

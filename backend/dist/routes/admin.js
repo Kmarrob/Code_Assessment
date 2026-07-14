@@ -118,5 +118,20 @@ router.put('/questions/:id', rateLimit_js_1.adminRateLimiter, cache_js_1.noCache
 router.delete('/questions/:id', rateLimit_js_1.adminRateLimiter, cache_js_1.noCache, QuestionController_js_1.QuestionController.deleteQuestion);
 // Ativar/Desativar pergunta
 router.patch('/questions/:id/toggle', rateLimit_js_1.adminRateLimiter, cache_js_1.noCache, QuestionController_js_1.QuestionController.toggleActive);
+// ============================================
+// ROTAS DE BRANDING - LOGO E FAVICON
+// ============================================
+// Upload da logo
+router.post('/company/:companyId/branding/logo', rateLimit_js_1.adminRateLimiter, cache_js_1.noCache, AdminController_js_1.AdminController.uploadLogo);
+// Upload do favicon
+router.post('/company/:companyId/branding/favicon', rateLimit_js_1.adminRateLimiter, cache_js_1.noCache, AdminController_js_1.AdminController.uploadFavicon);
+// Obter branding da empresa
+router.get('/company/:companyId/branding', rateLimit_js_1.adminRateLimiter, cache_js_1.noCache, AdminController_js_1.AdminController.getBranding);
+// Remover logo
+router.delete('/company/:companyId/branding/logo', rateLimit_js_1.adminRateLimiter, cache_js_1.noCache, AdminController_js_1.AdminController.removeLogo);
+// Remover favicon
+router.delete('/company/:companyId/branding/favicon', rateLimit_js_1.adminRateLimiter, cache_js_1.noCache, AdminController_js_1.AdminController.removeFavicon);
+// Atualizar configurações de branding
+router.put('/company/:companyId/branding/settings', rateLimit_js_1.adminRateLimiter, cache_js_1.noCache, AdminController_js_1.AdminController.updateBrandingSettings);
 exports.default = router;
 //# sourceMappingURL=admin.js.map

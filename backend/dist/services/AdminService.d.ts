@@ -42,5 +42,37 @@ export declare class AdminService {
         activeUsers: number;
         newUsersThisMonth: number;
     }>;
+    /**
+     * Upload da logo da empresa
+     */
+    static uploadLogo(companyId: string, file: Express.Multer.File, userId: string): Promise<any>;
+    /**
+     * Upload do favicon da empresa
+     */
+    static uploadFavicon(companyId: string, file: Express.Multer.File, userId: string): Promise<any>;
+    /**
+     * Obter branding da empresa
+     */
+    static getBranding(companyId: string): Promise<any>;
+    /**
+     * Obter branding público da empresa (sem autenticação)
+     */
+    static getPublicBranding(companyId: string): Promise<any>;
+    /**
+     * Remover logo da empresa
+     */
+    static removeLogo(companyId: string): Promise<any>;
+    /**
+     * Remover favicon da empresa
+     */
+    static removeFavicon(companyId: string): Promise<any>;
+    /**
+     * Atualizar configurações de branding
+     */
+    static updateBrandingSettings(companyId: string, settings: {
+        showLogoInHeader?: boolean;
+        showLogoInReport?: boolean;
+        useCustomColors?: boolean;
+    }): Promise<any>;
 }
 //# sourceMappingURL=AdminService.d.ts.map

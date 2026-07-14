@@ -572,73 +572,87 @@ export class PaymentService {
   }
 
   /**
-   * Gerar fatura para assinatura
-   */
-  static async generateInvoice(
-    subscriptionId: string,
-    userId: string
-  ): Promise<IPayment> {
-    try {
-      return await databaseCircuitBreaker.execute(async () => {
-        return await retryDatabase(async () => {
-          return await withDbTimeout(async () => {
-            const subscription = await SubscriptionService.getSubscriptionById(subscriptionId);
-            if (!subscription) {
-              throw new NotFoundError('Assinatura', subscriptionId);
-            }
+ * Gerar fatura para assinatura
+ */
+static async generateInvoice(
+  subscriptionId: string,
+  userId: string
+): Promise<IPayment> {
+  try {
+    return await databaseCircuitBreaker.execute(async () => {
+      return await retryDatabase(async () => {
+        return await withDbTimeout(async () => {
+          const subscription = await SubscriptionService.getSubscriptionById(subscriptionId);
 
-            const company = await Company.findById(subscription.companyId);
-            if (!company) {
-              throw new NotFoundError('Empresa', subscription.companyId);
-            }
+          if (!subscription) {
+            throw new NotFoundError('Assinatura', subscriptionId);
+          }
 
-            // 🔧 CORREÇÃO COMPLETA: Coerção absoluta de ObjectId para string usando casting duplo (any -> string)
-            // Isso evita que o tsc confunda tipos aninhados do Mongoose com tipos nativos.
-            const planIdStr = subscription.planId ? String(subscription.planId as any) : '';
-            const plan = await PlanService.getPlanById(planIdStr);
+          const company = await Company.findById(subscription.companyId);
 
-            const startDate = new Date();
-            let endDate = new Date();
-            if (subscription.billingCycle === 'annual') {
-              endDate.setFullYear(endDate.getFullYear() + 1);
-            } else {
-              endDate.setMonth(endDate.getMonth() + 1);
-            }
+          if (!company) {
+            throw new NotFoundError(
+              'Empresa',
+              String(subscription.companyId)
+            );
+          }
 
-            const items: Array<{
-              description: string;
-              quantity: number;
-              unitPrice: number;
-              totalPrice: number;
-              type: 'plan' | 'user' | 'consulting' | 'custom';
-              metadata?: Record<string, any>;
-            }> = [
-              {
-                description: `Plano ${plan?.displayName || 'N/A'} - ${subscription.billingCycle === 'annual' ? 'Anual' : 'Mensal'}`,
-                quantity: 1,
-                unitPrice: subscription.amount,
-                totalPrice: subscription.amount,
-                type: 'plan' as const,
-              },
-            ];
+          // Converter ObjectId para string de forma segura
+          const planIdStr = String(subscription.planId);
+          const plan = await PlanService.getPlanById(planIdStr);
 
-            const extraUsers = Math.max(0, subscription.currentUsers - subscription.maxUsers);
-            if (extraUsers > 0 && plan) {
-              const extraPrice = extraUsers * (plan.pricePerUser || 0);
-              items.push({
-                description: `${extraUsers} usuário(s) adicional(is)`,
-                quantity: extraUsers,
-                unitPrice: plan.pricePerUser || 0,
-                totalPrice: extraPrice,
-                type: 'user' as const,
-              });
-            }
+          const startDate = new Date();
+          const endDate = new Date();
 
-            const totalAmount = items.reduce((sum: number, item: any) => sum + item.totalPrice, 0);
+          if (subscription.billingCycle === 'annual') {
+            endDate.setFullYear(endDate.getFullYear() + 1);
+          } else {
+            endDate.setMonth(endDate.getMonth() + 1);
+          }
 
+          const items: Array<{
+            description: string;
+            quantity: number;
+            unitPrice: number;
+            totalPrice: number;
+            type: 'plan' | 'user' | 'consulting' | 'custom';
+            metadata?: Record<string, any>;
+          }> = [
+            {
+              description: `Plano ${plan.displayName} - ${
+                subscription.billingCycle === 'annual' ? 'Anual' : 'Mensal'
+              }`,
+              quantity: 1,
+              unitPrice: subscription.amount,
+              totalPrice: subscription.amount,
+              type: 'plan',
+            },
+          ];
+
+          const extraUsers = Math.max(
+            0,
+            subscription.currentUsers - subscription.maxUsers
+          );
+
+          if (extraUsers > 0) {
+            const extraPrice = extraUsers * plan.pricePerUser;
+
+            items.push({
+              description: `${extraUsers} usuário(s) adicional(is)`,
+              quantity: extraUsers,
+              unitPrice: plan.pricePerUser,
+              totalPrice: extraPrice,
+              type: 'user',
+            });
+          }
+
+          const totalAmount = items.reduce(
+            (sum, item) => sum + item.totalPrice,
+            0
+          );
             // 🔧 CORREÇÃO COMPLETA: Forçando a extração segura de strings em propriedades do schema
-            const subscriptionIdStr = String(subscription._id as any);
-            const companyIdStr = String(subscription.companyId as any);
+            const subscriptionIdStr = String(subscription._id);
+const companyIdStr = String(subscription.companyId);
 
             const payment = await PaymentService.createPayment({
               companyId: companyIdStr,

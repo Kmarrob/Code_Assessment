@@ -2,12 +2,13 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ReportController = void 0;
 const ReportService_js_1 = require("../services/ReportService.js");
-const ReportResultService_js_1 = require("../services/ReportResultService.js"); // 🔴 NOVO
+const ReportResultService_js_1 = require("../services/ReportResultService.js");
 const errorHandler_js_1 = require("../middleware/errorHandler.js");
 const index_js_1 = require("../types/index.js");
 const User_js_1 = require("../models/User.js");
 const Response_js_1 = require("../models/Response.js");
 const Assignment_js_1 = require("../models/Assignment.js");
+const Company_js_1 = require("../models/Company.js");
 class ReportController {
     /**
      * Obter ou criar relatório de uma empresa
@@ -30,7 +31,7 @@ class ReportController {
             if (report.clientTeam.length === 0) {
                 report = await ReportService_js_1.ReportService.generateReportData(companyId);
             }
-            // 🔴 POPULAR companyId para obter o nome da empresa
+            // POPULAR companyId para obter o nome da empresa
             await report.populate('companyId', 'name cnpj');
             res.json({
                 success: true,
@@ -60,7 +61,7 @@ class ReportController {
                 throw new errorHandler_js_1.AppError('Você não tem permissão para acessar este relatório', 403);
             }
             const report = await ReportService_js_1.ReportService.generateReportData(companyId);
-            // 🔴 POPULAR companyId para obter o nome da empresa
+            // POPULAR companyId para obter o nome da empresa
             await report.populate('companyId', 'name cnpj');
             res.json({
                 success: true,
@@ -96,7 +97,7 @@ class ReportController {
             }
             const { projectNumber, scope, status } = req.body;
             const report = await ReportService_js_1.ReportService.updateReport(companyId, { projectNumber, scope, status }, userId);
-            // 🔴 POPULAR companyId para obter o nome da empresa
+            // POPULAR companyId para obter o nome da empresa
             await report.populate('companyId', 'name cnpj');
             res.json({
                 success: true,
@@ -170,9 +171,9 @@ class ReportController {
             if (report.clientTeam.length === 0) {
                 reportData = await ReportService_js_1.ReportService.generateReportData(companyId);
             }
-            // 🔴 POPULAR companyId para obter o nome da empresa
+            // POPULAR companyId para obter o nome da empresa
             await reportData.populate('companyId', 'name cnpj');
-            // 🔴 NOVO: Buscar dados de resultados (categorização e capacidades)
+            // Buscar dados de resultados (categorização e capacidades)
             const resultados = await ReportResultService_js_1.ReportResultService.getResultadosData(companyId);
             // Buscar estatísticas para o dashboard
             const totalUsers = await User_js_1.User.countDocuments({
@@ -197,8 +198,204 @@ class ReportController {
                         totalControls,
                         completionRate: totalControls > 0 ? Math.round((totalResponses / totalControls) * 100) : 0,
                     },
-                    resultados: resultados, // 🔴 NOVO
+                    resultados: resultados,
                 },
+                statusCode: 200,
+                timestamp: new Date().toISOString(),
+            });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    /**
+     * 🔴 NOVO: Obter dashboard do relatório por nome da empresa
+     * GET /api/reports/dashboard/company/:companyName
+     * Acesso: REP ou ADMIN
+     */
+    static async getReportDashboardByCompanyName(req, res, next) {
+        try {
+            const user = req.user;
+            if (!user) {
+                throw new errorHandler_js_1.AppError('Usuário não autenticado', 401);
+            }
+            if (user.role !== index_js_1.UserRole.REP && user.role !== index_js_1.UserRole.ADMIN) {
+                throw new errorHandler_js_1.AppError('Acesso restrito a prepostos e administradores', 403);
+            }
+            const { companyName } = req.params;
+            if (!companyName) {
+                throw new errorHandler_js_1.AppError('Nome da empresa é obrigatório', 400);
+            }
+            // Buscar empresa pelo nome (case insensitive)
+            const company = await Company_js_1.Company.findOne({
+                name: { $regex: new RegExp('^' + companyName + '$', 'i') }
+            });
+            if (!company) {
+                throw new errorHandler_js_1.NotFoundError(`Empresa "${companyName}" não encontrada`);
+            }
+            const companyId = company._id.toString();
+            // Verificar permissões (REP só pode acessar sua própria empresa)
+            if (user.role === index_js_1.UserRole.REP && user.companyId?.toString() !== companyId) {
+                throw new errorHandler_js_1.AppError('Você não tem permissão para acessar o dashboard desta empresa', 403);
+            }
+            // Usar o companyId para buscar o dashboard
+            const report = await ReportService_js_1.ReportService.getOrCreateReport(companyId);
+            let reportData = report;
+            if (report.clientTeam.length === 0) {
+                reportData = await ReportService_js_1.ReportService.generateReportData(companyId);
+            }
+            await reportData.populate('companyId', 'name cnpj');
+            const resultados = await ReportResultService_js_1.ReportResultService.getResultadosData(companyId);
+            const totalUsers = await User_js_1.User.countDocuments({
+                companyId: companyId,
+                isActive: true,
+                role: index_js_1.UserRole.USER,
+            });
+            const totalResponses = await Response_js_1.Response.countDocuments({ companyId: companyId });
+            const users = await User_js_1.User.find({ companyId: companyId, isActive: true }).select('_id');
+            const userIds = users.map(u => u._id);
+            const totalControls = await Assignment_js_1.Assignment.countDocuments({
+                userId: { $in: userIds }
+            });
+            res.json({
+                success: true,
+                data: {
+                    report: reportData,
+                    stats: {
+                        totalUsers,
+                        totalResponses,
+                        totalControls,
+                        completionRate: totalControls > 0 ? Math.round((totalResponses / totalControls) * 100) : 0,
+                    },
+                    resultados: resultados,
+                },
+                statusCode: 200,
+                timestamp: new Date().toISOString(),
+            });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    /**
+     * 🔴 NOVO: Obter dashboard completo do relatório para ADMIN (com companyId)
+     * GET /api/reports/admin/dashboard/:companyId
+     * Acesso: ADMIN
+     */
+    static async getAdminDashboardByCompany(req, res, next) {
+        try {
+            const user = req.user;
+            if (!user) {
+                throw new errorHandler_js_1.AppError('Usuário não autenticado', 401);
+            }
+            if (user.role !== index_js_1.UserRole.ADMIN) {
+                throw new errorHandler_js_1.AppError('Acesso restrito a administradores', 403);
+            }
+            const { companyId } = req.params;
+            if (!companyId) {
+                throw new errorHandler_js_1.AppError('ID da empresa é obrigatório', 400);
+            }
+            // Buscar ou criar relatório
+            const report = await ReportService_js_1.ReportService.getOrCreateReport(companyId);
+            // Gerar dados se estiver vazio
+            let reportData = report;
+            if (report.clientTeam.length === 0) {
+                reportData = await ReportService_js_1.ReportService.generateReportData(companyId);
+            }
+            // POPULAR companyId para obter o nome da empresa
+            await reportData.populate('companyId', 'name cnpj');
+            // Buscar dados de resultados (categorização e capacidades)
+            const resultados = await ReportResultService_js_1.ReportResultService.getResultadosData(companyId);
+            // Buscar estatísticas para o dashboard
+            const totalUsers = await User_js_1.User.countDocuments({
+                companyId: companyId,
+                isActive: true,
+                role: index_js_1.UserRole.USER,
+            });
+            const totalResponses = await Response_js_1.Response.countDocuments({ companyId: companyId });
+            // Buscar usuários da empresa
+            const users = await User_js_1.User.find({ companyId: companyId, isActive: true }).select('_id');
+            const userIds = users.map(u => u._id);
+            const totalControls = await Assignment_js_1.Assignment.countDocuments({
+                userId: { $in: userIds }
+            });
+            res.json({
+                success: true,
+                data: {
+                    report: reportData,
+                    stats: {
+                        totalUsers,
+                        totalResponses,
+                        totalControls,
+                        completionRate: totalControls > 0 ? Math.round((totalResponses / totalControls) * 100) : 0,
+                    },
+                    resultados: resultados,
+                },
+                statusCode: 200,
+                timestamp: new Date().toISOString(),
+            });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    /**
+     * 🔴 NOVO: Obter dados para a Matriz de Priorização
+     * GET /api/reports/priorization/:companyId
+     * Acesso: ADMIN ou REP (da empresa)
+     */
+    static async getPriorizationMatrix(req, res, next) {
+        try {
+            const user = req.user;
+            if (!user) {
+                throw new errorHandler_js_1.AppError('Usuário não autenticado', 401);
+            }
+            const { companyId } = req.params;
+            if (!companyId) {
+                throw new errorHandler_js_1.AppError('ID da empresa é obrigatório', 400);
+            }
+            // Verificar permissões
+            if (user.role !== index_js_1.UserRole.ADMIN && user.companyId?.toString() !== companyId) {
+                throw new errorHandler_js_1.AppError('Você não tem permissão para acessar esta matriz', 403);
+            }
+            const matrixData = await ReportService_js_1.ReportService.getPriorizationMatrix(companyId);
+            res.json({
+                success: true,
+                data: {
+                    matrix: matrixData,
+                    total: matrixData.length,
+                },
+                statusCode: 200,
+                timestamp: new Date().toISOString(),
+            });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    /**
+     * 🔴 NOVO: Obter Roadmap de Implementação
+     * GET /api/reports/roadmap/:companyId
+     * Acesso: ADMIN ou REP (da empresa)
+     */
+    static async getRoadmap(req, res, next) {
+        try {
+            const user = req.user;
+            if (!user) {
+                throw new errorHandler_js_1.AppError('Usuário não autenticado', 401);
+            }
+            const { companyId } = req.params;
+            if (!companyId) {
+                throw new errorHandler_js_1.AppError('ID da empresa é obrigatório', 400);
+            }
+            // Verificar permissões
+            if (user.role !== index_js_1.UserRole.ADMIN && user.companyId?.toString() !== companyId) {
+                throw new errorHandler_js_1.AppError('Você não tem permissão para acessar este roadmap', 403);
+            }
+            const roadmapData = await ReportService_js_1.ReportService.getRoadmap(companyId);
+            res.json({
+                success: true,
+                data: roadmapData,
                 statusCode: 200,
                 timestamp: new Date().toISOString(),
             });
