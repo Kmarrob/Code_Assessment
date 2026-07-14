@@ -186,7 +186,7 @@ export class PaymentService {
               return payment;
             }
 
-            // 🔴 CORREÇÃO: Atualizar status usando o array diretamente
+            // Atualizar status usando o array diretamente
             payment.status = 'paid';
             payment.amountPaid = amountPaid;
             payment.paidAt = paidAt;
@@ -246,7 +246,7 @@ export class PaymentService {
               throw new AppError('Pagamento já foi confirmado', 400);
             }
 
-            // 🔴 CORREÇÃO: Atualizar status usando o array diretamente
+            // Atualizar status usando o array diretamente
             payment.status = 'failed';
             payment.statusHistory.push({
               status: 'failed',
@@ -295,7 +295,7 @@ export class PaymentService {
               throw new AppError('Apenas pagamentos confirmados podem ser estornados', 400);
             }
 
-            // 🔴 CORREÇÃO: Atualizar status usando o array diretamente
+            // Atualizar status usando o array diretamente
             payment.status = 'refunded';
             payment.amountRefunded = payment.amountPaid;
             payment.refundedAt = new Date();
@@ -552,7 +552,6 @@ export class PaymentService {
       });
 
       for (const payment of expiredPayments) {
-        // 🔴 CORREÇÃO: Atualizar status usando o array diretamente
         payment.status = 'expired';
         payment.statusHistory.push({
           status: 'expired',
