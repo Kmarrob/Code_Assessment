@@ -26,13 +26,22 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const navigate = useNavigate();
   const [branding, setBranding] = useState<PublicBrandingData | null>(null);
   const [companyId, setCompanyId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   // ============================================
   // 🔴 CORREÇÃO: Buscar companyId sem bloquear a renderização
   // ============================================
   useEffect(() => {
     const getCompanyId = async () => {
+      // ✅ CORREÇÃO: Se não tem usuário, não faz nada
       if (!user) {
+        setCompanyId(null);
+        return;
+      }
+
+      // ✅ CORREÇÃO: Verificar se o token existe no localStorage
+      const token = localStorage.getItem('accessToken');
+      if (!token) {
         setCompanyId(null);
         return;
       }
@@ -56,12 +65,12 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         }
       }
 
-      // ADMIN: buscar empresas
+      // ADMIN: buscar empresas (só se tiver token)
       if (user.role === 'admin') {
         try {
           const response = await fetch('/api/admin/companies', {
             headers: {
-              'Authorization': `Bearer ${localStorage.getItem('token')}`
+              'Authorization': `Bearer ${token}`
             }
           });
           if (response.ok) {
@@ -70,10 +79,17 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
               setCompanyId(data.data.companies[0]._id);
               return;
             }
+          } else if (response.status === 401) {
+            // Token inválido ou expirado
+            console.warn('Sessão expirada, redirecionando para login');
+            await logout();
+            navigate('/login');
+            return;
           }
-          setCompanyId('67f8a1b2c3d4e5f6g7h8i9j0');
-        } catch {
-          setCompanyId('67f8a1b2c3d4e5f6g7h8i9j0');
+          setCompanyId(null);
+        } catch (error) {
+          console.error('Erro ao buscar companyId:', error);
+          setCompanyId(null);
         }
         return;
       }
@@ -82,26 +98,44 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     };
 
     getCompanyId();
-  }, [user]);
+  }, [user, logout, navigate]);
 
   // ============================================
   // Buscar branding (não bloqueia a renderização)
   // ============================================
   useEffect(() => {
     const loadBranding = async () => {
-      if (!companyId) return;
+      // Só buscar branding se tiver companyId válido E usuário autenticado E token existe
+      if (!companyId || !user) {
+        setBranding(null);
+        return;
+      }
+
+      const token = localStorage.getItem('accessToken');
+      if (!token) {
+        setBranding(null);
+        return;
+      }
+
+      // Verificar se o companyId é um ObjectId válido (24 caracteres hex)
+      const isValidObjectId = (id: string): boolean => /^[0-9a-fA-F]{24}$/.test(id);
+      if (!isValidObjectId(companyId)) {
+        setBranding(null);
+        return;
+      }
       
       try {
         const data = await brandingService.getPublicBranding(companyId);
         setBranding(data);
       } catch (error) {
-        console.error('Erro ao carregar branding:', error);
+        // Não logar erro como erro grave, apenas debug
+        console.debug('Erro ao carregar branding:', error);
         setBranding(null);
       }
     };
 
     loadBranding();
-  }, [companyId]);
+  }, [companyId, user]);
 
   const handleLogout = async () => {
     await logout();

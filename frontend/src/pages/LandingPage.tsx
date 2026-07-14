@@ -9,7 +9,7 @@ import {
   Building2, CheckCircle, Clock, 
   Package, Box, HardDrive, FileCheck,
   ShieldCheck, Lock, CreditCard, FileSearch,
-  Boxes
+  Boxes, Crown, Sparkles, Star, Minus
 } from 'lucide-react';
 import { FadeTransition } from '../components/ui/Transition.js';
 import { Typewriter } from '../components/ui/MicroInteractions.js';
@@ -111,6 +111,84 @@ const products = [
     statusColor: '#f59e0b',
     link: '#',
     linkLabel: 'Saiba mais',
+  },
+];
+
+// ============================================
+// PLANOS E PREÇOS
+// ============================================
+const plans = [
+  {
+    id: 'basic',
+    name: 'Básico',
+    price: '1.497',
+    priceAnnual: '14.970',
+    description: 'Perfeito para pequenas empresas que estão começando sua jornada de maturidade em segurança da informação.',
+    users: 'Até 5',
+    features: [
+      '93 Controles ISO 27001',
+      'Dashboards Avançados',
+      'Matriz de Priorização',
+      'Visualização do Relatório',
+      'Suporte por E-mail',
+    ],
+    notIncluded: [
+      'Impressão/Download do Relatório',
+      'Roadmap de Implementação',
+      'Comparativo Anual',
+      'Suporte Prioritário',
+      'Horas de Consultoria',
+    ],
+    badge: null,
+    isPopular: false,
+    cta: 'Começar Agora',
+    link: '/register?plan=basic',
+  },
+  {
+    id: 'pro',
+    name: 'Profissional',
+    price: '3.297',
+    priceAnnual: '32.970',
+    description: 'Ideal para empresas que buscam um assessment completo com suporte especializado.',
+    users: 'Até 10',
+    features: [
+      'Tudo do Plano Básico',
+      'Exportação de Dados (CSV/Excel)',
+      'Customização de Branding',
+      'Suporte Prioritário',
+      '4 Horas de Consultoria Inclusas',
+    ],
+    notIncluded: [
+      'Impressão/Download do Relatório',
+      'Roadmap de Implementação',
+      'Comparativo Anual',
+    ],
+    badge: 'Mais Popular',
+    isPopular: true,
+    cta: 'Começar Agora',
+    link: '/register?plan=pro',
+  },
+  {
+    id: 'enterprise',
+    name: 'Enterprise',
+    price: '5.997',
+    priceAnnual: '59.970',
+    description: 'Solução completa para grandes organizações com necessidades avançadas de conformidade.',
+    users: 'Ilimitado',
+    features: [
+      'Tudo do Plano Profissional',
+      'Impressão/Download do Relatório',
+      'Roadmap de Implementação',
+      'Comparativo Últimos 3 Anos',
+      '12 Horas de Consultoria Inclusas',
+      'Suporte 24x7',
+      'API e SSO',
+    ],
+    notIncluded: [],
+    badge: 'Completo',
+    isPopular: false,
+    cta: 'Fale Conosco',
+    link: '/contact',
   },
 ];
 
@@ -262,24 +340,24 @@ export const LandingPage: React.FC = () => {
                 </div>
               </FadeTransition>
 
-            <h1 id="hero-title" className="text-4xl md:text-6xl font-extrabold leading-tight mb-6" style={{ color: colors.primary }}>
-  Avalie sua maturidade em
-  <br />
-  <span 
-    className="bg-clip-text text-transparent"
-    style={{ 
-      background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.secondary} 60%, ${colors.accent} 100%)`,
-      WebkitBackgroundClip: 'text',
-      WebkitTextFillColor: 'transparent',
-    }}
-  >
-    <Typewriter
-      text="Segurança da Informação"
-      speed={100}
-      delay={1000}
-    />
-  </span>
-</h1>
+              <h1 id="hero-title" className="text-4xl md:text-6xl font-extrabold leading-tight mb-6" style={{ color: colors.primary }}>
+                Avalie sua maturidade em
+                <br />
+                <span 
+                  className="bg-clip-text text-transparent"
+                  style={{ 
+                    background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.secondary} 60%, ${colors.accent} 100%)`,
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                  }}
+                >
+                  <Typewriter
+                    text="Segurança da Informação"
+                    speed={100}
+                    delay={1000}
+                  />
+                </span>
+              </h1>
 
               <FadeTransition show={true}>
                 <p className="text-xl max-w-2xl mx-auto mb-10" style={{ color: colors.text }}>
@@ -484,7 +562,119 @@ export const LandingPage: React.FC = () => {
           </section>
 
           {/* ============================================
-              SEÇÃO 4: CTA (EXISTENTE)
+              SEÇÃO 4: PLANOS E PREÇOS (NOVA)
+              ============================================ */}
+          <section 
+            className="py-16"
+            style={{ backgroundColor: '#FFFFFF' }}
+            aria-labelledby="plans-title"
+          >
+            <div className="container mx-auto px-4">
+              <div className="text-center mb-12">
+                <h2 id="plans-title" className="text-3xl font-bold mb-4" style={{ color: colors.primary }}>
+                  Escolha o Plano Ideal
+                </h2>
+                <p className="max-w-2xl mx-auto" style={{ color: colors.secondary }}>
+                  Comece com 7 dias grátis em qualquer plano. Cancele quando quiser.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+                {plans.map((plan) => (
+                  <div
+                    key={plan.id}
+                    className={`relative bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border-2 ${
+                      plan.isPopular ? 'border-[#30736C] shadow-xl scale-105' : 'border-gray-100'
+                    }`}
+                  >
+                    {/* Badge "Mais Popular" */}
+                    {plan.isPopular && (
+                      <div className="absolute top-0 right-0">
+                        <div className="bg-[#30736C] text-white text-xs font-bold px-4 py-1 rounded-bl-lg">
+                          ★ Mais Popular
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Badge "Completo" */}
+                    {plan.badge && plan.id === 'enterprise' && (
+                      <div className="absolute top-0 right-0">
+                        <div className="bg-[#122A40] text-white text-xs font-bold px-4 py-1 rounded-bl-lg">
+                          ★ {plan.badge}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="p-6">
+                      {/* Nome do Plano */}
+                      <h3 className="text-xl font-bold text-gray-900">{plan.name}</h3>
+                      
+                      {/* Preço */}
+                      <div className="mt-4">
+                        <span className="text-4xl font-bold text-gray-900">R$ {plan.price}</span>
+                        <span className="text-gray-500 text-sm">/mês</span>
+                      </div>
+                      <div className="text-sm text-gray-400 mt-1">
+                        ou R$ {plan.priceAnnual}/ano (10% de desconto)
+                      </div>
+
+                      {/* Descrição */}
+                      <p className="text-sm text-gray-600 mt-4">{plan.description}</p>
+
+                      {/* Usuários */}
+                      <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                        <span className="text-sm font-medium text-gray-700">👥 {plan.users} usuários</span>
+                      </div>
+
+                      {/* Features */}
+                      <div className="mt-4 space-y-2">
+                        {plan.features.map((feature, idx) => (
+                          <div key={idx} className="flex items-start gap-2 text-sm">
+                            <CheckCircle className="w-4 h-4 text-[#10b981] flex-shrink-0 mt-0.5" />
+                            <span className="text-gray-600">{feature}</span>
+                          </div>
+                        ))}
+                        {plan.notIncluded.map((feature, idx) => (
+                          <div key={idx} className="flex items-start gap-2 text-sm text-gray-400">
+                            <Minus className="w-4 h-4 text-gray-300 flex-shrink-0 mt-0.5" />
+                            <span>{feature}</span>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Botão CTA */}
+                      <div className="mt-6">
+                        <Link to={plan.link}>
+                          <Button
+                            className="w-full py-2.5"
+                            style={{
+                              backgroundColor: plan.isPopular ? colors.accent : colors.primary,
+                              color: '#FFFFFF',
+                            }}
+                          >
+                            {plan.cta}
+                            <ArrowRight className="ml-2 h-4 w-4" />
+                          </Button>
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="text-center mt-8">
+                <p className="text-sm text-gray-500">
+                  Todos os planos incluem 7 dias de teste gratuito. Não é necessário cartão de crédito.
+                </p>
+                <Link to="/plans" className="text-sm text-[#30736C] hover:underline font-medium">
+                  Ver todos os detalhes dos planos →
+                </Link>
+              </div>
+            </div>
+          </section>
+
+          {/* ============================================
+              SEÇÃO 5: CTA (EXISTENTE)
               ============================================ */}
           <section 
             className="py-16 text-white"

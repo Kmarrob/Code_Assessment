@@ -58,6 +58,12 @@ import AdminRecommendations from './pages/AdminRecommendations.js';
 // 🔴 NOVO: Import do Layout
 import { Layout } from './components/Layout.js';
 
+// ============================================
+// 🔴 NOVO: IMPORTAÇÕES DA FASE 3 - PLANOS E FATURAMENTO
+// ============================================
+import { PlansPage } from './pages/PlansPage.js';
+import { BillingPage } from './pages/BillingPage.js';
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -104,6 +110,11 @@ function App() {
                 <Route path="/register" element={<RegisterPage />} />
                 <Route path="/reset-password/:token" element={<ResetPassword />} />
 
+                {/* ============================================
+                    ROTAS PÚBLICAS - PLANOS
+                    ============================================ */}
+                <Route path="/plans" element={<PlansPage />} />
+
                 { /* ============================================
                     ROTAS PROTEGIDAS (qualquer usuário autenticado)
                     ============================================ */ }
@@ -111,6 +122,12 @@ function App() {
                   <Route path="/profile" element={
                     <Layout>
                       <ProfilePage />
+                    </Layout>
+                  } />
+                  {/* 🔴 NOVO: Rota de faturamento */}
+                  <Route path="/billing" element={
+                    <Layout>
+                      <BillingPage />
                     </Layout>
                   } />
                 </Route>
