@@ -195,9 +195,9 @@ export class PaymentService {
 
             logger.info(`Pagamento confirmado: ${payment._id} - ${amountPaid} ${payment.currency}`);
 
+            // 🔧 CORREÇÃO: Conversão segura contra undefined e tipagem do ObjectId no Mongoose
             if (payment.subscriptionId) {
               try {
-                // 🔧 CORREÇÃO: Conversão explícita e segura de ObjectId para String para evitar TS2345
                 const subscriptionIdStr = String(payment.subscriptionId);
                 await SubscriptionService.activateSubscription(subscriptionIdStr);
                 logger.info(`Assinatura ativada após pagamento: ${subscriptionIdStr}`);
@@ -592,8 +592,10 @@ export class PaymentService {
               throw new NotFoundError('Empresa', subscription.companyId);
             }
 
-            // 🔧 CORREÇÃO: Conversão explícita de ObjectId para string de forma segura
-            const plan = await PlanService.getPlanById(subscription.planId ? String(subscription.planId) : '');
+            // 🔧 CORREÇÃO COMPLETA: Coerção absoluta de ObjectId para string usando casting duplo (any -> string)
+            // Isso evita que o tsc confunda tipos aninhados do Mongoose com tipos nativos.
+            const planIdStr = subscription.planId ? String(subscription.planId as any) : '';
+            const plan = await PlanService.getPlanById(planIdStr);
 
             const startDate = new Date();
             let endDate = new Date();
@@ -634,9 +636,9 @@ export class PaymentService {
 
             const totalAmount = items.reduce((sum: number, item: any) => sum + item.totalPrice, 0);
 
-            // 🔧 CORREÇÃO: Conversão explícita de ObjectId para string
-            const subscriptionIdStr: string = String(subscription._id);
-            const companyIdStr: string = String(subscription.companyId);
+            // 🔧 CORREÇÃO COMPLETA: Forçando a extração segura de strings em propriedades do schema
+            const subscriptionIdStr = String(subscription._id as any);
+            const companyIdStr = String(subscription.companyId as any);
 
             const payment = await PaymentService.createPayment({
               companyId: companyIdStr,
