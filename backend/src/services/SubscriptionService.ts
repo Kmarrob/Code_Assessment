@@ -54,19 +54,16 @@ export class SubscriptionService {
       return await databaseCircuitBreaker.execute(async () => {
         return await retryDatabase(async () => {
           return await withDbTimeout(async () => {
-            // Validar empresa
             const company = await Company.findById(data.companyId);
             if (!company) {
               throw new NotFoundError('Empresa', data.companyId);
             }
 
-            // Validar plano
             const plan = await PlanService.getPlanById(data.planId);
             if (!plan) {
               throw new NotFoundError('Plano', data.planId);
             }
 
-            // Verificar se já existe uma assinatura ativa
             const existingSubscription = await Subscription.findOne({
               companyId: data.companyId,
               status: { $in: ['active', 'trial', 'trialing'] },
@@ -76,13 +73,11 @@ export class SubscriptionService {
               throw new AppError('Empresa já possui uma assinatura ativa', 400);
             }
 
-            // Buscar usuários ativos da empresa
             const activeUsers = await User.countDocuments({
               companyId: data.companyId,
               isActive: true,
             });
 
-            // Calcular datas
             const startDate = new Date();
             const trialDays = plan.trialDays || 7;
             const trialEndDate = new Date(startDate);
@@ -95,14 +90,12 @@ export class SubscriptionService {
               endDate.setMonth(endDate.getMonth() + 1);
             }
 
-            // Calcular preço
             const priceCalc = await PlanService.calculateEffectivePrice(
               data.planId,
               activeUsers,
               data.billingCycle === 'annual'
             );
 
-            // Criar assinatura
             const subscription = new Subscription({
               companyId: new Types.ObjectId(data.companyId),
               planId: new Types.ObjectId(data.planId),
@@ -133,7 +126,6 @@ export class SubscriptionService {
 
             await subscription.save();
 
-            // Atualizar empresa com o plano
             company.plan = plan.name as 'basic' | 'pro' | 'enterprise';
             await company.save();
 
@@ -163,11 +155,9 @@ export class SubscriptionService {
               throw new NotFoundError('Assinatura', subscriptionId);
             }
 
-            // Atualizar status
             subscription.status = 'active';
             subscription.startDate = new Date();
             
-            // Atualizar data de término baseado no ciclo
             const endDate = new Date(subscription.startDate);
             if (subscription.billingCycle === 'annual') {
               endDate.setFullYear(endDate.getFullYear() + 1);
@@ -176,7 +166,6 @@ export class SubscriptionService {
             }
             subscription.endDate = endDate;
 
-            // Atualizar empresa
             const plan = await PlanService.getPlanById(subscription.planId.toString());
             if (plan) {
               const company = await Company.findById(subscription.companyId);
@@ -326,7 +315,6 @@ export class SubscriptionService {
               throw new NotFoundError('Assinatura', subscriptionId);
             }
 
-            // Registrar mudança de plano
             if (data.planId && data.planId !== subscription.planId.toString()) {
               const oldPlan = await PlanService.getPlanById(subscription.planId.toString());
               const newPlan = await PlanService.getPlanById(data.planId);
@@ -342,11 +330,9 @@ export class SubscriptionService {
               }
             }
 
-            // Atualizar campos
             if (data.status !== undefined) subscription.status = data.status;
             if (data.planId !== undefined) {
               subscription.planId = new Types.ObjectId(data.planId);
-              // Atualizar features com o novo plano
               const plan = await PlanService.getPlanById(data.planId);
               if (plan) {
                 subscription.features = { ...plan.features };
@@ -414,7 +400,6 @@ export class SubscriptionService {
 
             await subscription.save();
 
-            // Atualizar empresa
             const company = await Company.findById(subscription.companyId);
             if (company) {
               company.status = 'inactive';
@@ -466,7 +451,6 @@ export class SubscriptionService {
 
             await subscription.save();
 
-            // Atualizar empresa
             const company = await Company.findById(subscription.companyId);
             if (company) {
               company.status = 'suspended';
@@ -514,7 +498,6 @@ export class SubscriptionService {
             subscription.reactivatedAt = new Date();
             subscription.updatedBy = new Types.ObjectId(userId);
 
-            // Estender data de término
             const endDate = new Date();
             if (subscription.billingCycle === 'annual') {
               endDate.setFullYear(endDate.getFullYear() + 1);
@@ -525,7 +508,6 @@ export class SubscriptionService {
 
             await subscription.save();
 
-            // Atualizar empresa
             const company = await Company.findById(subscription.companyId);
             if (company) {
               company.status = 'active';
@@ -556,7 +538,6 @@ export class SubscriptionService {
     try {
       const result = { renewed: 0, suspended: 0, errors: 0 };
 
-      // Buscar assinaturas que vão expirar em até 7 dias
       const expiringSoon = await Subscription.find({
         status: 'active',
         autoRenew: true,
@@ -568,8 +549,6 @@ export class SubscriptionService {
 
       for (const subscription of expiringSoon) {
         try {
-          // TODO: Integrar com gateway de pagamento para cobrança
-          // Por enquanto, apenas estender a data
           const endDate = new Date(subscription.endDate);
           if (subscription.billingCycle === 'annual') {
             endDate.setFullYear(endDate.getFullYear() + 1);
@@ -587,7 +566,6 @@ export class SubscriptionService {
         }
       }
 
-      // Buscar assinaturas expiradas
       const expired = await Subscription.find({
         status: 'active',
         autoRenew: false,
@@ -716,7 +694,7 @@ export class SubscriptionService {
    * Buscar assinaturas que vão expirar em breve
    * Para jobs de renovação automática
    */
-  static async getSubscriptionsExpiringSoon(days: number = 7): Promise<ISubscription[]> {
+  static async getSubscriptionsExpiringSoon(days: number = 7): Promise<any[]> {
     try {
       return await databaseCircuitBreaker.execute(async () => {
         return await retryDatabase(async () => {
@@ -734,12 +712,11 @@ export class SubscriptionService {
               },
             }).populate('planId');
 
-            // Adicionar planName virtual para cada assinatura
             return subscriptions.map(sub => {
               const subObj = sub.toObject();
               const plan = sub.planId as any;
-              subObj.planName = plan?.displayName || 'Plano';
-              return subObj as any;
+              (subObj as any).planName = plan?.displayName || 'Plano';
+              return subObj;
             });
           }, 'SubscriptionService.getSubscriptionsExpiringSoon');
         }, 'SubscriptionService.getSubscriptionsExpiringSoon');

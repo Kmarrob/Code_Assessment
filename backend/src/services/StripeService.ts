@@ -30,7 +30,7 @@ export class StripeService extends BasePaymentGateway implements PaymentGatewayS
       // Importação dinâmica para evitar erro de módulo não encontrado
       const stripeModule = await import('stripe');
       this.stripe = new stripeModule.default(stripeConfig.secretKey, {
-        apiVersion: '2025-02-24.acacia',
+        apiVersion: '2026-06-24.dahlia', // 🔴 CORRIGIDO: Versão atualizada
       });
       this.initialized = true;
       logger.info('[Stripe] Serviço inicializado com sucesso');

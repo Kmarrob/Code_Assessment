@@ -116,12 +116,22 @@ export class PaymentJobs {
         try {
           if (!subscription.autoRenew) continue;
 
+          // Obter o nome do plano do planId populado
+          const planName = (subscription as any).planName || 'Plano';
+          const companyId = subscription.companyId.toString();
+          const userId = subscription.userId.toString();
+
           // Criar pagamento de renovação
           const payment = await PaymentService.createPayment({
+            companyId: companyId,
+            userId: userId,
             subscriptionId: subscription._id.toString(),
             amount: subscription.amount,
             currency: subscription.currency || 'BRL',
-            description: `Renovação de assinatura - ${subscription.planName || 'Plano'}`,
+            transactionType: 'subscription',
+            paymentMethod: 'credit_card',
+            paymentProvider: 'manual',
+            description: `Renovação de assinatura - ${planName}`,
             dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
             billingPeriod: {
               start: new Date(),
@@ -129,7 +139,7 @@ export class PaymentJobs {
             },
             items: [
               {
-                description: `Plano ${subscription.planName || 'Plano'}`,
+                description: `Plano ${planName}`,
                 quantity: 1,
                 unitPrice: subscription.amount,
                 totalPrice: subscription.amount,
