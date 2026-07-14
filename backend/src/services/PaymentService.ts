@@ -80,30 +80,25 @@ export class PaymentService {
       return await databaseCircuitBreaker.execute(async () => {
         return await retryDatabase(async () => {
           return await withDbTimeout(async () => {
-            // Validar empresa
             const company = await Company.findById(data.companyId);
             if (!company) {
               throw new NotFoundError('Empresa', data.companyId);
             }
 
-            // Validar usuário
             const user = await User.findById(data.userId);
             if (!user) {
               throw new NotFoundError('Usuário', data.userId);
             }
 
-            // Calcular totais
             const totalItems = data.items.reduce((sum, item) => sum + item.totalPrice, 0);
             const totalDiscounts = (data.discounts || []).reduce((sum, d) => sum + d.amount, 0);
             const totalFees = (data.fees || []).reduce((sum, f) => sum + f.amount, 0);
 
-            // Verificar se o valor total bate com os itens
             const calculatedTotal = totalItems - totalDiscounts + totalFees;
             if (Math.abs(calculatedTotal - data.amount) > 1) {
               logger.warn(`Discrepância no valor do pagamento: calculado ${calculatedTotal}, informado ${data.amount}`);
             }
 
-            // Criar pagamento
             const payment = new Payment({
               companyId: new Types.ObjectId(data.companyId),
               subscriptionId: data.subscriptionId ? new Types.ObjectId(data.subscriptionId) : undefined,
@@ -169,10 +164,8 @@ export class PaymentService {
       return await databaseCircuitBreaker.execute(async () => {
         return await retryDatabase(async () => {
           return await withDbTimeout(async () => {
-            // Buscar pagamento pelo ID do provedor
             let payment = await Payment.findOne({ providerPaymentId });
 
-            // Se não encontrou, buscar por subscriptionId
             if (!payment && metadata?.subscriptionId) {
               payment = await Payment.findOne({ subscriptionId: metadata.subscriptionId });
             }
@@ -186,7 +179,6 @@ export class PaymentService {
               return payment;
             }
 
-            // Atualizar status usando o array diretamente
             payment.status = 'paid';
             payment.amountPaid = amountPaid;
             payment.paidAt = paidAt;
@@ -203,7 +195,6 @@ export class PaymentService {
 
             logger.info(`Pagamento confirmado: ${payment._id} - ${amountPaid} ${payment.currency}`);
 
-            // Se tem assinatura, ativar
             if (payment.subscriptionId) {
               try {
                 await SubscriptionService.activateSubscription(
@@ -246,7 +237,6 @@ export class PaymentService {
               throw new AppError('Pagamento já foi confirmado', 400);
             }
 
-            // Atualizar status usando o array diretamente
             payment.status = 'failed';
             payment.statusHistory.push({
               status: 'failed',
@@ -295,7 +285,6 @@ export class PaymentService {
               throw new AppError('Apenas pagamentos confirmados podem ser estornados', 400);
             }
 
-            // Atualizar status usando o array diretamente
             payment.status = 'refunded';
             payment.amountRefunded = payment.amountPaid;
             payment.refundedAt = new Date();
@@ -545,7 +534,6 @@ export class PaymentService {
     try {
       const result = { expired: 0, overdue: 0 };
 
-      // Pagamentos com boleto expirado
       const expiredPayments = await Payment.find({
         status: 'pending',
         expiresAt: { $lt: new Date() },
@@ -562,7 +550,6 @@ export class PaymentService {
         result.expired++;
       }
 
-      // Pagamentos em atraso (vencidos)
       const overduePayments = await Payment.find({
         status: 'pending',
         dueDate: { $lt: new Date() },
@@ -570,7 +557,6 @@ export class PaymentService {
       });
 
       for (const payment of overduePayments) {
-        // Marcar como atrasado (mas não expirar)
         payment.notes = payment.notes 
           ? `${payment.notes} | Vencido desde ${payment.dueDate.toISOString()}`
           : `Vencido desde ${payment.dueDate.toISOString()}`;
@@ -596,6 +582,7 @@ export class PaymentService {
       return await databaseCircuitBreaker.execute(async () => {
         return await retryDatabase(async () => {
           return await withDbTimeout(async () => {
+            // 🔴 CORREÇÃO: Usar SubscriptionService.getSubscriptionById
             const subscription = await SubscriptionService.getSubscriptionById(subscriptionId);
             if (!subscription) {
               throw new NotFoundError('Assinatura', subscriptionId);
@@ -616,7 +603,14 @@ export class PaymentService {
               endDate.setMonth(endDate.getMonth() + 1);
             }
 
-            const items = [
+            const items: Array<{
+              description: string;
+              quantity: number;
+              unitPrice: number;
+              totalPrice: number;
+              type: 'plan' | 'user' | 'consulting' | 'custom';
+              metadata?: Record<string, any>;
+            }> = [
               {
                 description: `Plano ${plan?.displayName || 'N/A'} - ${subscription.billingCycle === 'annual' ? 'Anual' : 'Mensal'}`,
                 quantity: 1,
