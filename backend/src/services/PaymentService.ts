@@ -582,7 +582,6 @@ export class PaymentService {
       return await databaseCircuitBreaker.execute(async () => {
         return await retryDatabase(async () => {
           return await withDbTimeout(async () => {
-            // 🔴 CORREÇÃO: Usar SubscriptionService.getSubscriptionById
             const subscription = await SubscriptionService.getSubscriptionById(subscriptionId);
             if (!subscription) {
               throw new NotFoundError('Assinatura', subscriptionId);
@@ -634,8 +633,8 @@ export class PaymentService {
 
             const totalAmount = items.reduce((sum: number, item: any) => sum + item.totalPrice, 0);
 
-            // 🔴 CORREÇÃO: subscription._id é ObjectId, converter para string
-            const subscriptionIdStr = subscription._id.toString();
+            // 🔴 CORREÇÃO DEFINITIVA: Garantir que subscriptionId seja string
+            const subscriptionIdStr: string = subscription._id.toString();
 
             const payment = await PaymentService.createPayment({
               companyId: subscription.companyId.toString(),
