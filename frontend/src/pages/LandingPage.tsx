@@ -124,7 +124,7 @@ const plans = [
     price: '1.497',
     priceAnnual: '14.970',
     description: 'Perfeito para pequenas empresas que estão começando sua jornada de maturidade em segurança da informação.',
-    users: 'Até 5',
+    users: 'Até 3', // 🔴 CORRIGIDO: 5 → 3
     features: [
       '93 Controles ISO 27001',
       'Dashboards Avançados',
@@ -150,7 +150,7 @@ const plans = [
     price: '3.297',
     priceAnnual: '32.970',
     description: 'Ideal para empresas que buscam um assessment completo com suporte especializado.',
-    users: 'Até 10',
+    users: 'Até 4', // 🔴 CORRIGIDO: 10 → 4
     features: [
       'Tudo do Plano Básico',
       'Exportação de Dados (CSV/Excel)',
@@ -174,7 +174,7 @@ const plans = [
     price: '5.997',
     priceAnnual: '59.970',
     description: 'Solução completa para grandes organizações com necessidades avançadas de conformidade.',
-    users: 'Ilimitado',
+    users: 'Ilimitado', // ✅ Correto
     features: [
       'Tudo do Plano Profissional',
       'Impressão/Download do Relatório',
@@ -191,7 +191,6 @@ const plans = [
     link: '/contact',
   },
 ];
-
 export const LandingPage: React.FC = () => {
   const [branding, setBranding] = useState<PublicBrandingData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
