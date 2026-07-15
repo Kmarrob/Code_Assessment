@@ -156,11 +156,11 @@ export class FunnelAnalyticsService {
         }
       ];
 
-      // 🔴 CORRIGIDO: Verifica se prevStep existe antes de acessar
+      // 🔴 CORRIGIDO: Verifica se step e prevStep existem antes de acessar
       for (let i = 1; i < steps.length; i++) {
         const step = steps[i];
         const prevStep = steps[i - 1];
-        if (prevStep && prevStep.count > 0) {
+        if (step && prevStep && prevStep.count > 0) {
           step.percentage = (step.count / prevStep.count) * 100;
         }
       }

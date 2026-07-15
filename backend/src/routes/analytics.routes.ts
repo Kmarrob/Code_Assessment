@@ -135,7 +135,7 @@ async function getPlanDistribution() {
     }));
   } catch (error) {
     console.error('❌ Erro ao calcular distribuição por plano:', error);
-    return []; // 🔴 CORRIGIDO: Retorna array vazio em caso de erro
+    return [];
   }
 }
 
@@ -168,6 +168,11 @@ async function handleSummary(req: Request, res: Response, next: NextFunction) {
       funnelService.getClientList(start, end, { limit: 10 })
     ]);
 
+    // 🔴 CORRIGIDO: Verifica se recentClients existe e tem clients
+    const recentClientsData = (recentClients && typeof recentClients === 'object' && 'clients' in recentClients)
+      ? recentClients.clients
+      : [];
+
     res.json({
       success: true,
       data: {
@@ -176,8 +181,7 @@ async function handleSummary(req: Request, res: Response, next: NextFunction) {
         churn,
         planDistribution: await getPlanDistribution(),
         statusDistribution,
-        // 🔴 CORRIGIDO: Verifica se recentClients existe e tem clients
-        recentClients: recentClients?.clients || [],
+        recentClients: recentClientsData,
         period: { startDate: start, endDate: end, label, type: period },
         generatedAt: new Date()
       },
