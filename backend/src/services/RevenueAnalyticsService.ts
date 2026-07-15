@@ -79,7 +79,6 @@ export class RevenueAnalyticsService {
         { $group: { _id: null, total: { $sum: '$amount' } } }
       ]);
       
-      // 🔴 CORRIGIDO: Se não houver pagamentos, calcular receita baseada nos planos das empresas
       if (result.length === 0 || result[0].total === 0) {
         console.log('📊 Nenhum pagamento encontrado, calculando receita baseada nos planos das empresas');
         return this.calculateRevenueFromPlans();
@@ -88,7 +87,6 @@ export class RevenueAnalyticsService {
       return result.length > 0 ? result[0].total : 0;
     } catch (error) {
       console.error('❌ Erro ao obter receita total:', error);
-      // 🔴 CORRIGIDO: Fallback para calcular receita baseada nos planos
       return this.calculateRevenueFromPlans();
     }
   }
@@ -112,9 +110,10 @@ export class RevenueAnalyticsService {
 
       let totalRevenue = 0;
       for (const company of companies) {
-        // 🔴 CORRIGIDO: Verificação explícita de undefined
-        if (company.plan && typeof company.plan === 'string') {
-          const planKey = company.plan.toLowerCase();
+        // 🔴 CORRIGIDO: Type guard com verificação de string
+        const plan = company.plan;
+        if (plan && typeof plan === 'string') {
+          const planKey = plan.toLowerCase();
           const price = planPrices[planKey] || 0;
           totalRevenue += price;
         }
@@ -141,8 +140,7 @@ export class RevenueAnalyticsService {
       ]);
       
       if (result.length === 0 || result[0].total === 0) {
-        // 🔴 CORRIGIDO: Para período anterior, usar estimativa baseada em planos
-        return this.calculateRevenueFromPlans() * 0.8; // Estimativa conservadora
+        return this.calculateRevenueFromPlans() * 0.8;
       }
       
       return result.length > 0 ? result[0].total : 0;
@@ -164,7 +162,6 @@ export class RevenueAnalyticsService {
 
       let mrr = activeSubscriptions.length > 0 ? activeSubscriptions[0].totalMRR : 0;
       
-      // 🔴 CORRIGIDO: Se não houver assinaturas, calcular MRR baseada nos planos das empresas
       if (mrr === 0) {
         console.log('📊 Nenhuma assinatura encontrada, calculando MRR baseada nos planos das empresas');
         mrr = await this.calculateMRRFromPlans();
@@ -174,7 +171,6 @@ export class RevenueAnalyticsService {
       return mrr;
     } catch (error) {
       console.error('❌ Erro ao calcular MRR:', error);
-      // 🔴 CORRIGIDO: Fallback para calcular MRR baseada nos planos
       return this.calculateMRRFromPlans();
     }
   }
@@ -198,9 +194,10 @@ export class RevenueAnalyticsService {
 
       let totalMRR = 0;
       for (const company of companies) {
-        // 🔴 CORRIGIDO: Verificação explícita de undefined
-        if (company.plan && typeof company.plan === 'string') {
-          const planKey = company.plan.toLowerCase();
+        // 🔴 CORRIGIDO: Type guard com verificação de string
+        const plan = company.plan;
+        if (plan && typeof plan === 'string') {
+          const planKey = plan.toLowerCase();
           const price = planPrices[planKey] || 0;
           totalMRR += price;
         }
@@ -277,7 +274,6 @@ export class RevenueAnalyticsService {
       const monthNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
         'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 
-      // 🔴 CORRIGIDO: Se não houver pagamentos, gerar dados baseados nos planos
       if (result.length === 0) {
         console.log('📊 Nenhum pagamento encontrado, gerando receita por período baseada nos planos');
         return this.generateRevenueByPeriodFromPlans(startDate, endDate);
@@ -310,19 +306,20 @@ export class RevenueAnalyticsService {
         plan: { $in: ['basic', 'pro', 'enterprise'] }
       });
 
-      // Agrupar por mês de criação
       const monthlyRevenue: Record<string, { total: number; date: Date }> = {};
       
       for (const company of companies) {
-        // 🔴 CORRIGIDO: Verificação explícita de undefined
-        if (company.plan && typeof company.plan === 'string' && company.createdAt) {
-          const createdAt = new Date(company.createdAt);
-          const monthKey = `${createdAt.getFullYear()}-${String(createdAt.getMonth() + 1).padStart(2, '0')}`;
-          const planKey = company.plan.toLowerCase();
+        // 🔴 CORRIGIDO: Type guard com verificação de string e createdAt
+        const plan = company.plan;
+        const createdAt = company.createdAt;
+        if (plan && typeof plan === 'string' && createdAt) {
+          const createdDate = new Date(createdAt);
+          const monthKey = `${createdDate.getFullYear()}-${String(createdDate.getMonth() + 1).padStart(2, '0')}`;
+          const planKey = plan.toLowerCase();
           const price = planPrices[planKey] || 0;
           
           if (!monthlyRevenue[monthKey]) {
-            monthlyRevenue[monthKey] = { total: 0, date: new Date(createdAt.getFullYear(), createdAt.getMonth(), 1) };
+            monthlyRevenue[monthKey] = { total: 0, date: new Date(createdDate.getFullYear(), createdDate.getMonth(), 1) };
           }
           monthlyRevenue[monthKey].total += price;
         }
@@ -334,7 +331,6 @@ export class RevenueAnalyticsService {
       return Object.entries(monthlyRevenue)
         .sort((a, b) => a[0].localeCompare(b[0]))
         .map(([key, value]) => {
-          // 🔴 CORRIGIDO: Desestruturação segura com verificação
           const parts = key.split('-').map(Number);
           const year = parts[0] || 2026;
           const month = parts[1] || 1;
@@ -363,7 +359,6 @@ export class RevenueAnalyticsService {
         { $group: { _id: '$plan.name', total: { $sum: '$amount' }, count: { $sum: 1 } } }
       ]);
 
-      // 🔴 CORRIGIDO: Se não houver pagamentos, calcular receita por plano baseada nos planos das empresas
       if (result.length === 0) {
         console.log('📊 Nenhum pagamento encontrado, calculando receita por plano baseada nas empresas');
         return this.calculateRevenueByPlanFromCompanies();
@@ -407,13 +402,13 @@ export class RevenueAnalyticsService {
         plan: { $in: ['basic', 'pro', 'enterprise'] }
       });
 
-      // Agrupar por plano
       const planData: Record<string, { total: number; count: number }> = {};
       
       for (const company of companies) {
-        // 🔴 CORRIGIDO: Verificação explícita de undefined
-        if (company.plan && typeof company.plan === 'string') {
-          const planKey = company.plan.toLowerCase();
+        // 🔴 CORRIGIDO: Type guard com verificação de string
+        const plan = company.plan;
+        if (plan && typeof plan === 'string') {
+          const planKey = plan.toLowerCase();
           const price = planPrices[planKey] || 0;
           
           if (!planData[planKey]) {
@@ -465,7 +460,6 @@ export class RevenueAnalyticsService {
         { $sort: { '_id.year': 1, '_id.month': 1 } }
       ]);
 
-      // 🔴 CORRIGIDO: Se não houver pagamentos, gerar dados baseados nos planos
       if (result.length === 0) {
         console.log('📊 Nenhum pagamento encontrado, gerando receita customizada baseada nos planos');
         return this.generateRevenueByPeriodFromPlans(startDate, endDate);
