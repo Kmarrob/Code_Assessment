@@ -478,14 +478,14 @@ export const FunnelStatusColors: Record<ClientFunnelStatus, string> = {
 
 /**
  * Cores por plano
+ * 🔴 CORRIGIDO: Removida duplicata 'Enterprise'
  */
 export const PlanColors: Record<string, string> = {
   'Básico': '#6B7280',
   'Profissional': '#3B82F6',
   'Enterprise': '#8B5CF6',
   'Basic': '#6B7280',
-  'Pro': '#3B82F6',
-  'Enterprise': '#8B5CF6'
+  'Pro': '#3B82F6'
 };
 
 /**

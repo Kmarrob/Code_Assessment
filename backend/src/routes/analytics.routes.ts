@@ -2,10 +2,12 @@
  * ============================================
  * ANALYTICS ROUTES
  * ============================================
- * * Rotas para o sistema de funil de conversão.
+ * 
+ * Rotas para o sistema de funil de conversão.
  * Todas as rotas são protegidas por autenticação
  * e requerem permissão de admin.
- * * @module analytics.routes
+ * 
+ * @module analytics.routes
  * @since v30.0
  */
 
@@ -68,11 +70,14 @@ function parsePeriod(
   const days = period === '30d' ? 30 : 90;
   startDate.setDate(startDate.getDate() - days);
   startDate.setHours(0, 0, 0, 0);
-  endDate.setHours(23, 59, 59, 999);
+  
+  // 🔴 CORRIGIDO: Usar uma variável separada para o end
+  const end = new Date(endDate);
+  end.setHours(23, 59, 59, 999);
 
   return {
     startDate,
-    endDate,
+    endDate: end,
     label: `Últimos ${days} dias`
   };
 }
@@ -110,7 +115,7 @@ function getChurnService() {
 
 /**
  * Obtém distribuição por plano usando mongoose.model
- * 🔴 CORRIGIDO: Usando mongoose.model em vez de require dinâmico
+ * 🔴 CORRIGIDO: Retorna array vazio em caso de erro
  */
 async function getPlanDistribution() {
   try {
@@ -130,7 +135,7 @@ async function getPlanDistribution() {
     }));
   } catch (error) {
     console.error('❌ Erro ao calcular distribuição por plano:', error);
-    return [];
+    return []; // 🔴 CORRIGIDO: Retorna array vazio em caso de erro
   }
 }
 
@@ -171,6 +176,7 @@ async function handleSummary(req: Request, res: Response, next: NextFunction) {
         churn,
         planDistribution: await getPlanDistribution(),
         statusDistribution,
+        // 🔴 CORRIGIDO: Verifica se recentClients existe e tem clients
         recentClients: recentClients?.clients || [],
         period: { startDate: start, endDate: end, label, type: period },
         generatedAt: new Date()
