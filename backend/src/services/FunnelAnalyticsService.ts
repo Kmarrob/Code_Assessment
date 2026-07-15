@@ -61,24 +61,57 @@ export class FunnelAnalyticsService {
       const Subscription = this.getSubscription();
       const Payment = this.getPayment();
 
+      // 🔴 CORRIGIDO: Contar TODAS as empresas como registros
       const totalRegistrations = await Company.countDocuments();
-      const activeTrials = await Subscription.countDocuments({
-        status: { $in: ['trial', 'trialing'] },
-        trialEnd: { $gt: new Date() }
-      });
-      const convertedToPaid = await this.getConvertedToPaid(startDate, endDate);
-      const activeSubscriptions = await Subscription.countDocuments({
-        status: { $in: ['active', 'trialing'] }
-      });
-      const churned = await Subscription.countDocuments({
-        status: 'cancelled',
-        updatedAt: { $gte: startDate, $lte: endDate }
-      });
-      const trialExpired = await Subscription.countDocuments({
-        status: 'expired',
-        updatedAt: { $gte: startDate, $lte: endDate }
+      
+      // 🔴 CORRIGIDO: Contar empresas com plano ativo (independente de Subscription)
+      const activeCompanies = await Company.countDocuments({
+        status: 'active',
+        plan: { $in: ['basic', 'pro', 'enterprise'] }
       });
 
+      // 🔴 CORRIGIDO: Calcular conversões baseado em empresas com plano
+      const convertedToPaid = await Company.countDocuments({
+        plan: { $in: ['basic', 'pro', 'enterprise'] }
+      });
+
+      // 🔴 CORRIGIDO: Trials ativos (se houver Subscription)
+      let activeTrials = 0;
+      try {
+        activeTrials = await Subscription.countDocuments({
+          status: { $in: ['trial', 'trialing'] },
+          trialEnd: { $gt: new Date() }
+        });
+      } catch (error) {
+        console.warn('⚠️ Erro ao buscar trials (pode não haver coleção Subscription):', error);
+        activeTrials = 0;
+      }
+
+      // 🔴 CORRIGIDO: Churns (se houver Subscription)
+      let churned = 0;
+      try {
+        churned = await Subscription.countDocuments({
+          status: 'cancelled',
+          updatedAt: { $gte: startDate, $lte: endDate }
+        });
+      } catch (error) {
+        console.warn('⚠️ Erro ao buscar churns (pode não haver coleção Subscription):', error);
+        churned = 0;
+      }
+
+      // 🔴 CORRIGIDO: Trials expirados (se houver Subscription)
+      let trialExpired = 0;
+      try {
+        trialExpired = await Subscription.countDocuments({
+          status: 'expired',
+          updatedAt: { $gte: startDate, $lte: endDate }
+        });
+      } catch (error) {
+        console.warn('⚠️ Erro ao buscar trials expirados (pode não haver coleção Subscription):', error);
+        trialExpired = 0;
+      }
+
+      // Calcular taxas
       const conversionRate = totalRegistrations > 0
         ? (convertedToPaid / totalRegistrations) * 100
         : 0;
@@ -87,13 +120,45 @@ export class FunnelAnalyticsService {
         ? (trialExpired / totalRegistrations) * 100
         : 0;
 
-      const averageTicket = await this.getAverageTicket(convertedToPaid);
+      // 🔴 CORRIGIDO: Ticket médio baseado em empresas com plano
+      let averageTicket = 0;
+      try {
+        const paymentsResult = await Payment.aggregate([
+          { $match: { status: 'paid' } },
+          { $group: { _id: null, total: { $sum: '$amount' }, count: { $sum: 1 } } }
+        ]);
+        if (paymentsResult.length > 0 && paymentsResult[0].count > 0) {
+          averageTicket = paymentsResult[0].total / paymentsResult[0].count;
+        } else {
+          // 🔴 CORRIGIDO: Fallback - usar preços dos planos
+          const plans = await Company.aggregate([
+            { $match: { plan: { $in: ['basic', 'pro', 'enterprise'] } } },
+            { $group: { _id: '$plan', count: { $sum: 1 } } }
+          ]);
+          const planPrices: Record<string, number> = {
+            'basic': 1497,
+            'pro': 3297,
+            'enterprise': 5997
+          };
+          let totalValue = 0;
+          let totalCount = 0;
+          for (const plan of plans) {
+            const price = planPrices[plan._id] || 0;
+            totalValue += price * plan.count;
+            totalCount += plan.count;
+          }
+          averageTicket = totalCount > 0 ? totalValue / totalCount : 0;
+        }
+      } catch (error) {
+        console.warn('⚠️ Erro ao calcular ticket médio:', error);
+        averageTicket = 0;
+      }
 
       const metrics: FunnelMetrics = {
         totalRegistrations,
         activeTrials,
         convertedToPaid,
-        activeSubscriptions,
+        activeSubscriptions: activeCompanies,
         churned,
         conversionRate,
         abandonmentRate,
@@ -211,16 +276,42 @@ export class FunnelAnalyticsService {
 
       const clients: ClientListItem[] = [];
 
-      for (const company of companies) {
-        const subscription = await Subscription.findOne({
-          companyId: company._id,
-          status: { $in: ['trial', 'active', 'trialing', 'past_due', 'cancelled'] }
-        });
+      // 🔴 CORRIGIDO: Mapeamento de preços por plano
+      const planPrices: Record<string, number> = {
+        'basic': 1497,
+        'pro': 3297,
+        'enterprise': 5997
+      };
 
-        const payments = await Payment.find({
-          companyId: company._id,
-          status: 'paid'
-        });
+      // 🔴 CORRIGIDO: Mapeamento de nomes de planos
+      const planNames: Record<string, string> = {
+        'basic': 'Básico',
+        'pro': 'Profissional',
+        'enterprise': 'Enterprise'
+      };
+
+      for (const company of companies) {
+        // 🔴 CORRIGIDO: Buscar subscription (pode não existir)
+        let subscription = null;
+        try {
+          subscription = await Subscription.findOne({
+            companyId: company._id,
+            status: { $in: ['trial', 'active', 'trialing', 'past_due', 'cancelled'] }
+          });
+        } catch (error) {
+          console.warn(`⚠️ Erro ao buscar subscription para ${company.name}:`, error);
+        }
+
+        // 🔴 CORRIGIDO: Buscar payments (pode não existir)
+        let payments: any[] = [];
+        try {
+          payments = await Payment.find({
+            companyId: company._id,
+            status: 'paid'
+          });
+        } catch (error) {
+          console.warn(`⚠️ Erro ao buscar payments para ${company.name}:`, error);
+        }
 
         const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
         const users = await User.find({ companyId: company._id });
@@ -244,14 +335,42 @@ export class FunnelAnalyticsService {
           nextBilling = nextMonth;
         }
 
-        let planName = 'Nenhum';
+        // 🔴 CORRIGIDO: Usar o campo 'plan' da Company como fonte primária
+        let planName = company.plan || 'Nenhum';
         let monthlyValue = 0;
-        if (subscription && subscription.planId) {
-          const plan = await Plan.findById(subscription.planId);
-          if (plan) {
-            planName = plan.name;
-            monthlyValue = plan.price || 0;
+
+        // Se não tiver plano na Company, tentar da Subscription
+        if (planName === 'Nenhum' && subscription && subscription.planId) {
+          try {
+            const plan = await Plan.findById(subscription.planId);
+            if (plan) {
+              planName = plan.name;
+              monthlyValue = plan.price || 0;
+            }
+          } catch (error) {
+            console.warn(`⚠️ Erro ao buscar plan para ${company.name}:`, error);
           }
+        } else if (planName !== 'Nenhum') {
+          // Buscar o valor do plano pelo nome
+          monthlyValue = planPrices[planName.toLowerCase()] || 0;
+          // Usar o nome amigável
+          planName = planNames[planName.toLowerCase()] || planName;
+        }
+
+        // 🔴 CORRIGIDO: Calcular tempo de assinatura
+        let subscriptionDays = 0;
+        let subscriptionMonths = 0;
+        if (subscription && subscription.startDate) {
+          const now = new Date();
+          const diffTime = now.getTime() - new Date(subscription.startDate).getTime();
+          subscriptionDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+          subscriptionMonths = Math.floor(subscriptionDays / 30.44);
+        } else if (company.createdAt) {
+          // Fallback: usar data de criação da empresa
+          const now = new Date();
+          const diffTime = now.getTime() - new Date(company.createdAt).getTime();
+          subscriptionDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+          subscriptionMonths = Math.floor(subscriptionDays / 30.44);
         }
 
         clients.push({
@@ -260,14 +379,17 @@ export class FunnelAnalyticsService {
           document: company.cnpj || undefined,
           planName,
           funnelStatus,
-          subscriptionStatus: subscription?.status || 'none',
+          subscriptionStatus: subscription?.status || (company.plan ? 'active' : 'none'),
           joinedAt: company.createdAt,
           lastLogin: lastLogin || undefined,
           monthlyValue,
           totalPaid,
           nextBilling,
-          userCount
-        });
+          userCount,
+          // 🔴 NOVO: Campos adicionais para exibição
+          subscriptionDays,
+          subscriptionMonths
+        } as any);
       }
 
       let filteredClients = clients;
@@ -323,14 +445,24 @@ export class FunnelAnalyticsService {
       const statusCounts: Record<ClientFunnelStatus, number> = {} as any;
 
       for (const company of companies) {
-        const subscription = await Subscription.findOne({
-          companyId: company._id
-        });
+        let subscription = null;
+        try {
+          subscription = await Subscription.findOne({
+            companyId: company._id
+          });
+        } catch (error) {
+          // Ignorar erro - subscription pode não existir
+        }
 
-        const payments = await Payment.find({
-          companyId: company._id,
-          status: 'paid'
-        });
+        let payments: any[] = [];
+        try {
+          payments = await Payment.find({
+            companyId: company._id,
+            status: 'paid'
+          });
+        } catch (error) {
+          // Ignorar erro - payments pode não existir
+        }
 
         const status = await this.determineFunnelStatus(company, subscription, payments);
         statusCounts[status] = (statusCounts[status] || 0) + 1;
@@ -375,10 +507,16 @@ export class FunnelAnalyticsService {
       const Payment = this.getPayment();
       const Company = this.getCompany();
 
-      const expiredTrials = await Subscription.find({
-        status: 'cancelled',
-        trialEnd: { $gte: startDate, $lte: endDate }
-      });
+      let expiredTrials: any[] = [];
+      try {
+        expiredTrials = await Subscription.find({
+          status: 'cancelled',
+          trialEnd: { $gte: startDate, $lte: endDate }
+        });
+      } catch (error) {
+        console.warn('⚠️ Erro ao buscar trials abandonados (coleção Subscription pode não existir):', error);
+        return { total: 0, clients: [] };
+      }
 
       const abandoned: any[] = [];
 
@@ -470,10 +608,21 @@ export class FunnelAnalyticsService {
 
         registrations.push(regCount);
 
-        const convCount = await Payment.countDocuments({
-          status: 'paid',
-          createdAt: { $gte: periodStart, $lte: periodEnd }
-        });
+        // 🔴 CORRIGIDO: Contar empresas com plano como conversões
+        let convCount = 0;
+        try {
+          convCount = await Payment.countDocuments({
+            status: 'paid',
+            createdAt: { $gte: periodStart, $lte: periodEnd }
+          });
+        } catch (error) {
+          console.warn('⚠️ Erro ao buscar payments:', error);
+          // Fallback: contar empresas criadas no período com plano
+          convCount = await Company.countDocuments({
+            createdAt: { $gte: periodStart, $lte: periodEnd },
+            plan: { $in: ['basic', 'pro', 'enterprise'] }
+          });
+        }
 
         conversions.push(convCount);
         conversionRates.push(regCount > 0 ? (convCount / regCount) * 100 : 0);
@@ -503,6 +652,7 @@ export class FunnelAnalyticsService {
 
   /**
    * Determina o status de uma empresa no funil
+   * 🔴 CORRIGIDO: Considera o campo 'plan' da Company
    */
   private async determineFunnelStatus(
     company: any,
@@ -511,7 +661,12 @@ export class FunnelAnalyticsService {
   ): Promise<ClientFunnelStatus> {
     const Payment = this.getPayment();
 
+    // 🔴 CORRIGIDO: Se não tem subscription, verificar o campo 'plan' da Company
     if (!subscription) {
+      // Se a empresa tem plano definido e está ativa, considerar como 'active'
+      if (company.plan && company.status === 'active') {
+        return 'active';
+      }
       return 'registered';
     }
 
@@ -546,10 +701,15 @@ export class FunnelAnalyticsService {
         return 'past_due';
 
       case 'cancelled':
-        const hasPayment = await Payment.exists({
-          companyId: company._id,
-          status: 'paid'
-        });
+        let hasPayment = false;
+        try {
+          hasPayment = await Payment.exists({
+            companyId: company._id,
+            status: 'paid'
+          });
+        } catch (error) {
+          console.warn('⚠️ Erro ao verificar payment:', error);
+        }
         if (hasPayment) {
           return 'cancelled';
         }
@@ -590,40 +750,51 @@ export class FunnelAnalyticsService {
    */
   private async getConvertedToPaid(startDate: Date, endDate: Date): Promise<number> {
     const Payment = this.getPayment();
-    const result = await Payment.aggregate([
-      {
-        $match: {
-          status: 'paid',
-          createdAt: { $gte: startDate, $lte: endDate }
+    try {
+      const result = await Payment.aggregate([
+        {
+          $match: {
+            status: 'paid',
+            createdAt: { $gte: startDate, $lte: endDate }
+          }
+        },
+        {
+          $group: {
+            _id: '$companyId',
+            firstPayment: { $min: '$createdAt' },
+            count: { $sum: 1 }
+          }
+        },
+        {
+          $match: {
+            count: { $gte: 1 }
+          }
+        },
+        {
+          $count: 'total'
         }
-      },
-      {
-        $group: {
-          _id: '$companyId',
-          firstPayment: { $min: '$createdAt' },
-          count: { $sum: 1 }
-        }
-      },
-      {
-        $match: {
-          count: { $gte: 1 }
-        }
-      },
-      {
-        $count: 'total'
-      }
-    ]);
+      ]);
 
-    return result.length > 0 ? result[0].total : 0;
+      return result.length > 0 ? result[0].total : 0;
+    } catch (error) {
+      console.warn('⚠️ Erro ao buscar convertedToPaid:', error);
+      // Fallback: contar empresas com plano
+      const Company = this.getCompany();
+      return Company.countDocuments({
+        plan: { $in: ['basic', 'pro', 'enterprise'] }
+      });
+    }
   }
 
   /**
    * Obtém assinaturas ativas
+   * 🔴 CORRIGIDO: Conta empresas com plano ativo
    */
   private async getActiveSubscriptions(): Promise<number> {
-    const Subscription = this.getSubscription();
-    return Subscription.countDocuments({
-      status: { $in: ['active', 'trialing'] }
+    const Company = this.getCompany();
+    return Company.countDocuments({
+      status: 'active',
+      plan: { $in: ['basic', 'pro', 'enterprise'] }
     });
   }
 
@@ -632,10 +803,15 @@ export class FunnelAnalyticsService {
    */
   private async getChurned(startDate: Date, endDate: Date): Promise<number> {
     const Subscription = this.getSubscription();
-    return Subscription.countDocuments({
-      status: 'cancelled',
-      updatedAt: { $gte: startDate, $lte: endDate }
-    });
+    try {
+      return Subscription.countDocuments({
+        status: 'cancelled',
+        updatedAt: { $gte: startDate, $lte: endDate }
+      });
+    } catch (error) {
+      console.warn('⚠️ Erro ao buscar churns:', error);
+      return 0;
+    }
   }
 
   /**
@@ -643,10 +819,15 @@ export class FunnelAnalyticsService {
    */
   private async getTrialExpired(startDate: Date, endDate: Date): Promise<number> {
     const Subscription = this.getSubscription();
-    return Subscription.countDocuments({
-      status: 'expired',
-      updatedAt: { $gte: startDate, $lte: endDate }
-    });
+    try {
+      return Subscription.countDocuments({
+        status: 'expired',
+        updatedAt: { $gte: startDate, $lte: endDate }
+      });
+    } catch (error) {
+      console.warn('⚠️ Erro ao buscar trials expirados:', error);
+      return 0;
+    }
   }
 
   /**
@@ -656,23 +837,46 @@ export class FunnelAnalyticsService {
     if (convertedToPaid === 0) return 0;
 
     const Payment = this.getPayment();
-    const result = await Payment.aggregate([
-      {
-        $match: {
-          status: 'paid'
+    try {
+      const result = await Payment.aggregate([
+        {
+          $match: {
+            status: 'paid'
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            total: { $sum: '$amount' },
+            count: { $sum: 1 }
+          }
         }
-      },
-      {
-        $group: {
-          _id: null,
-          total: { $sum: '$amount' },
-          count: { $sum: 1 }
-        }
-      }
-    ]);
+      ]);
 
-    if (result.length === 0) return 0;
-    return result[0].total / result[0].count;
+      if (result.length === 0) return 0;
+      return result[0].total / result[0].count;
+    } catch (error) {
+      console.warn('⚠️ Erro ao calcular ticket médio:', error);
+      // Fallback: usar preços dos planos
+      const Company = this.getCompany();
+      const plans = await Company.aggregate([
+        { $match: { plan: { $in: ['basic', 'pro', 'enterprise'] } } },
+        { $group: { _id: '$plan', count: { $sum: 1 } } }
+      ]);
+      const planPrices: Record<string, number> = {
+        'basic': 1497,
+        'pro': 3297,
+        'enterprise': 5997
+      };
+      let totalValue = 0;
+      let totalCount = 0;
+      for (const plan of plans) {
+        const price = planPrices[plan._id] || 0;
+        totalValue += price * plan.count;
+        totalCount += plan.count;
+      }
+      return totalCount > 0 ? totalValue / totalCount : 0;
+    }
   }
 }
 

@@ -50,3 +50,16 @@ export function getRoleColor(role: string): string {
   };
   return colors[role] || 'bg-gray-100 text-gray-800';
 }
+
+/**
+ * 🔴 NOVO: Formata um valor para moeda brasileira (R$)
+ * Exemplo: 1497 -> R$ 1.497,00
+ */
+export function formatCurrency(value: number): string {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value);
+}

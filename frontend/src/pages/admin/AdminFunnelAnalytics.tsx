@@ -20,7 +20,12 @@ import {
   Users,
   DollarSign,
   UserX,
-  Calendar
+  Calendar,
+  // 🔴 NOVOS ÍCONES
+  UserPlus,
+  Clock,
+  CheckCircle,
+  AlertTriangle,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card.js';
 import { AdminBreadcrumbs } from '../../components/admin/AdminBreadcrumbs.js';
@@ -30,6 +35,11 @@ import {
   PeriodSelector,
   ExportButton
 } from '../admin/components/analytics/index.js';
+// 🔴 NOVO: Import dos componentes de gráficos
+import { RevenueChart } from './components/analytics/RevenueChart.js';
+import { ConversionFunnel } from './components/analytics/ConversionFunnel.js';
+import { PlanBreakdown } from './components/analytics/PlanBreakdown.js';
+import { ChurnAnalysis } from './components/analytics/ChurnAnalysis.js';
 import { analyticsService } from '../../services/analytics.service.js';
 import { 
   AnalyticsPeriod, 
@@ -101,7 +111,7 @@ const QuickStat: React.FC<QuickStatProps> = ({ label, value, icon, color, subtit
 };
 
 // ============================================
-// COMPONENTES DE GRÁFICOS (PLACEHOLDER)
+// COMPONENTES DE GRÁFICOS (PLACEHOLDER - MANTIDOS)
 // ============================================
 
 const RevenueChartPlaceholder: React.FC = () => (
@@ -207,6 +217,14 @@ export const AdminFunnelAnalytics: React.FC = () => {
     activeClients: summary.funnel.activeSubscriptions,
     churnRate: summary.churn.churnRate
   } : undefined;
+
+  // Extrair steps do funil para o gráfico
+  const funnelSteps = summary?.funnel ? [
+    { step: 'registrations' as const, label: 'Cadastros', count: summary.funnel.totalRegistrations, percentage: 100, color: '#3B82F6' },
+    { step: 'trials' as const, label: 'Em Trial', count: summary.funnel.activeTrials, percentage: summary.funnel.totalRegistrations > 0 ? (summary.funnel.activeTrials / summary.funnel.totalRegistrations) * 100 : 0, color: '#F59E0B' },
+    { step: 'conversions' as const, label: 'Conversões', count: summary.funnel.convertedToPaid, percentage: summary.funnel.totalRegistrations > 0 ? (summary.funnel.convertedToPaid / summary.funnel.totalRegistrations) * 100 : 0, color: '#10B981' },
+    { step: 'active' as const, label: 'Ativos', count: summary.funnel.activeSubscriptions, percentage: summary.funnel.convertedToPaid > 0 ? (summary.funnel.activeSubscriptions / summary.funnel.convertedToPaid) * 100 : 0, color: '#059669' }
+  ] : [];
 
   // 🔴 CORRIGIDO: Verificação de acesso - Admin tem acesso total
   if (!isAdmin && !isLoading) {
@@ -334,8 +352,9 @@ export const AdminFunnelAnalytics: React.FC = () => {
                   icon={<DollarSign className="h-5 w-5" />}
                   color="purple"
                 />
+                {/* 🔴 CORRIGIDO: "Churn Rate" → "Clientes que saíram" */}
                 <QuickStat
-                  label="Churn Rate"
+                  label="Clientes que saíram"
                   value={`${summary.churn.churnRate.toFixed(1)}%`}
                   icon={<UserX className="h-5 w-5" />}
                   color={summary.churn.churnRate > 10 ? 'red' : 'yellow'}
@@ -343,14 +362,17 @@ export const AdminFunnelAnalytics: React.FC = () => {
                 />
               </section>
 
-              {/* Charts Row 1 */}
+              {/* 🔴 CORRIGIDO: Charts Row 1 - COM GRÁFICOS REAIS */}
               <section className="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
                 <Card>
                   <CardHeader>
                     <CardTitle>Receita Mensal</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <RevenueChartPlaceholder />
+                    <RevenueChart 
+                      data={summary.revenue.revenueByPeriod || []}
+                      isLoading={isLoading}
+                    />
                   </CardContent>
                 </Card>
                 <Card>
@@ -358,60 +380,128 @@ export const AdminFunnelAnalytics: React.FC = () => {
                     <CardTitle>Funil de Conversão</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <ConversionFunnelPlaceholder />
+                    <ConversionFunnel 
+                      steps={funnelSteps}
+                      isLoading={isLoading}
+                    />
                   </CardContent>
                 </Card>
               </section>
 
-              {/* Charts Row 2 */}
+              {/* 🔴 CORRIGIDO: Charts Row 2 - COM GRÁFICOS REAIS */}
               <section className="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
                 <Card>
                   <CardHeader>
                     <CardTitle>Distribuição por Plano</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <PlanBreakdownPlaceholder />
+                    <PlanBreakdown 
+                      data={summary.planDistribution || []}
+                      revenueByPlan={summary.revenue.revenueByPlan || []}
+                      isLoading={isLoading}
+                    />
                   </CardContent>
                 </Card>
                 <Card>
                   <CardHeader>
-                    <CardTitle>Análise de Churn</CardTitle>
+                    <CardTitle>Análise de Cancelamentos</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <ChurnAnalysisPlaceholder />
+                    <ChurnAnalysis 
+                      churnMetrics={summary.churn}
+                      isLoading={isLoading}
+                    />
                   </CardContent>
                 </Card>
               </section>
 
-              {/* Status Distribution */}
+              {/* 🔴 MELHORADO: Status Distribution com Cards Visuais */}
               <section className="mb-6">
                 <Card>
                   <CardHeader>
                     <CardTitle>Distribuição de Status dos Clientes</CardTitle>
+                    <p className="text-sm text-gray-500">
+                      Total de {summary.statusDistribution.reduce((acc, s) => acc + s.count, 0)} clientes
+                    </p>
                   </CardHeader>
                   <CardContent>
-                    <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-8">
-                      {summary.statusDistribution.map((status) => (
-                        <div
-                          key={status.status}
-                          className="rounded-lg border p-3 text-center"
-                          style={{ borderColor: status.color + '40' }}
-                        >
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
+                      {summary.statusDistribution.map((status) => {
+                        // 🔴 NOVO: Ícones por status
+                        const getStatusIcon = (statusName: string) => {
+                          switch (statusName) {
+                            case 'active':
+                              return <Users className="h-5 w-5" />;
+                            case 'registered':
+                              return <UserPlus className="h-5 w-5" />;
+                            case 'trialing':
+                              return <Clock className="h-5 w-5" />;
+                            case 'trial_expired':
+                              return <AlertCircle className="h-5 w-5" />;
+                            case 'converted':
+                              return <CheckCircle className="h-5 w-5" />;
+                            case 'past_due':
+                              return <AlertTriangle className="h-5 w-5" />;
+                            case 'cancelled':
+                              return <UserX className="h-5 w-5" />;
+                            case 'churned':
+                              return <UserX className="h-5 w-5" />;
+                            default:
+                              return <Users className="h-5 w-5" />;
+                          }
+                        };
+
+                        // 🔴 NOVO: Cor de fundo por status
+                        const getStatusBgColor = (statusName: string) => {
+                          switch (statusName) {
+                            case 'active':
+                              return 'bg-emerald-50 border-emerald-200';
+                            case 'registered':
+                              return 'bg-blue-50 border-blue-200';
+                            case 'trialing':
+                              return 'bg-yellow-50 border-yellow-200';
+                            case 'trial_expired':
+                              return 'bg-orange-50 border-orange-200';
+                            case 'converted':
+                              return 'bg-green-50 border-green-200';
+                            case 'past_due':
+                              return 'bg-red-50 border-red-200';
+                            case 'cancelled':
+                              return 'bg-gray-50 border-gray-200';
+                            case 'churned':
+                              return 'bg-red-50 border-red-200';
+                            default:
+                              return 'bg-gray-50 border-gray-200';
+                          }
+                        };
+
+                        return (
                           <div
-                            className="mx-auto h-3 w-3 rounded-full"
-                            style={{ backgroundColor: status.color }}
-                          />
-                          <p className="mt-1 text-sm font-medium text-gray-900">
-                            {status.count}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {status.label}
-                          </p>
-                          <p className="text-xs text-gray-400">
-                            {status.percentage.toFixed(1)}%
-                          </p>
-                        </div>
-                      ))}
+                            key={status.status}
+                            className={`rounded-lg border p-4 text-center transition-all hover:scale-105 hover:shadow-md ${getStatusBgColor(status.status)}`}
+                          >
+                            <div className="flex flex-col items-center gap-2">
+                              <div
+                                className="flex h-10 w-10 items-center justify-center rounded-full text-white"
+                                style={{ backgroundColor: status.color }}
+                              >
+                                {getStatusIcon(status.status)}
+                              </div>
+                              <div>
+                                <p className="text-2xl font-bold text-gray-900">
+                                  {status.count}
+                                </p>
+                                <p className="text-xs font-medium text-gray-600">
+                                  {status.label}
+                                </p>
+                                <p className="text-xs text-gray-400">
+                                  {status.percentage.toFixed(1)}%
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </CardContent>
                 </Card>

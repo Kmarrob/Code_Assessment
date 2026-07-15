@@ -113,6 +113,7 @@ export const MetricsCards: React.FC<MetricsCardsProps> = ({
   // Card de Receita Total
   if (revenue) {
     cards.push({
+      // 🔴 CORRIGIDO: Mantido "Receita Total"
       title: 'Receita Total',
       value: new Intl.NumberFormat('pt-BR', {
         style: 'currency',
@@ -130,9 +131,9 @@ export const MetricsCards: React.FC<MetricsCardsProps> = ({
       } : undefined
     });
 
-    // Card de ARPU
+    // 🔴 CORRIGIDO: Card de ARPU - "ARPU Médio" → "Faturamento Médio por Cliente"
     cards.push({
-      title: 'ARPU Médio',
+      title: 'Faturamento Médio por Cliente',
       value: new Intl.NumberFormat('pt-BR', {
         style: 'currency',
         currency: 'BRL'
@@ -143,10 +144,10 @@ export const MetricsCards: React.FC<MetricsCardsProps> = ({
     });
   }
 
-  // Card de Conversão
+  // 🔴 CORRIGIDO: Card de Conversão - "Taxa de Conversão" → "Clientes que viraram pagantes"
   if (funnel) {
     cards.push({
-      title: 'Taxa de Conversão',
+      title: 'Clientes que viraram pagantes',
       value: `${funnel.conversionRate.toFixed(1)}%`,
       subtitle: `${funnel.convertedToPaid} conversões de ${funnel.totalRegistrations} cadastros`,
       icon: <Users className="h-5 w-5" />,
@@ -154,17 +155,17 @@ export const MetricsCards: React.FC<MetricsCardsProps> = ({
     });
   }
 
-  // Card de Churn
+  // 🔴 CORRIGIDO: Card de Churn - "Taxa de Churn" → "Clientes que saíram"
   if (churn) {
     cards.push({
-      title: 'Taxa de Churn',
+      title: 'Clientes que saíram',
       value: `${churn.churnRate.toFixed(1)}%`,
       subtitle: `${churn.totalChurned} clientes desistiram`,
       icon: <UserX className="h-5 w-5" />,
       color: churn.churnRate > 10 ? 'red' : 'yellow'
     });
 
-    // Card de Retenção
+    // 🔴 CORRIGIDO: Card de Retenção - Mantido "Clientes Ativos"
     cards.push({
       title: 'Clientes Ativos',
       value: churn.totalActive,
