@@ -112,11 +112,12 @@ export class RevenueAnalyticsService {
 
       let totalRevenue = 0;
       for (const company of companies) {
-        // 🔴 CORRIGIDO: Verificação segura com fallback
-        const planName = company.plan || '';
-        const planKey = planName.toLowerCase();
-        const price = planPrices[planKey] || 0;
-        totalRevenue += price;
+        // 🔴 CORRIGIDO: Verificação explícita de undefined
+        if (company.plan && typeof company.plan === 'string') {
+          const planKey = company.plan.toLowerCase();
+          const price = planPrices[planKey] || 0;
+          totalRevenue += price;
+        }
       }
 
       console.log('📊 Receita calculada a partir dos planos:', { totalRevenue, companiesCount: companies.length });
@@ -197,11 +198,12 @@ export class RevenueAnalyticsService {
 
       let totalMRR = 0;
       for (const company of companies) {
-        // 🔴 CORRIGIDO: Verificação segura com fallback
-        const planName = company.plan || '';
-        const planKey = planName.toLowerCase();
-        const price = planPrices[planKey] || 0;
-        totalMRR += price;
+        // 🔴 CORRIGIDO: Verificação explícita de undefined
+        if (company.plan && typeof company.plan === 'string') {
+          const planKey = company.plan.toLowerCase();
+          const price = planPrices[planKey] || 0;
+          totalMRR += price;
+        }
       }
 
       console.log('📊 MRR calculado a partir dos planos:', { totalMRR, companiesCount: companies.length });
@@ -312,17 +314,18 @@ export class RevenueAnalyticsService {
       const monthlyRevenue: Record<string, { total: number; date: Date }> = {};
       
       for (const company of companies) {
-        const createdAt = new Date(company.createdAt);
-        const monthKey = `${createdAt.getFullYear()}-${String(createdAt.getMonth() + 1).padStart(2, '0')}`;
-        // 🔴 CORRIGIDO: Verificação segura com fallback
-        const planName = company.plan || '';
-        const planKey = planName.toLowerCase();
-        const price = planPrices[planKey] || 0;
-        
-        if (!monthlyRevenue[monthKey]) {
-          monthlyRevenue[monthKey] = { total: 0, date: new Date(createdAt.getFullYear(), createdAt.getMonth(), 1) };
+        // 🔴 CORRIGIDO: Verificação explícita de undefined
+        if (company.plan && typeof company.plan === 'string' && company.createdAt) {
+          const createdAt = new Date(company.createdAt);
+          const monthKey = `${createdAt.getFullYear()}-${String(createdAt.getMonth() + 1).padStart(2, '0')}`;
+          const planKey = company.plan.toLowerCase();
+          const price = planPrices[planKey] || 0;
+          
+          if (!monthlyRevenue[monthKey]) {
+            monthlyRevenue[monthKey] = { total: 0, date: new Date(createdAt.getFullYear(), createdAt.getMonth(), 1) };
+          }
+          monthlyRevenue[monthKey].total += price;
         }
-        monthlyRevenue[monthKey].total += price;
       }
 
       const monthNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -408,17 +411,17 @@ export class RevenueAnalyticsService {
       const planData: Record<string, { total: number; count: number }> = {};
       
       for (const company of companies) {
-        // 🔴 CORRIGIDO: Verificação segura com fallback
-        const planName = company.plan || '';
-        const planKey = planName.toLowerCase() || 'unknown';
-        const price = planPrices[planKey] || 0;
-        
-        // 🔴 CORRIGIDO: Inicializar o objeto se não existir
-        if (!planData[planKey]) {
-          planData[planKey] = { total: 0, count: 0 };
+        // 🔴 CORRIGIDO: Verificação explícita de undefined
+        if (company.plan && typeof company.plan === 'string') {
+          const planKey = company.plan.toLowerCase();
+          const price = planPrices[planKey] || 0;
+          
+          if (!planData[planKey]) {
+            planData[planKey] = { total: 0, count: 0 };
+          }
+          planData[planKey].total += price;
+          planData[planKey].count += 1;
         }
-        planData[planKey].total += price;
-        planData[planKey].count += 1;
       }
 
       const totalRevenue = Object.values(planData).reduce((sum, item) => sum + item.total, 0);
