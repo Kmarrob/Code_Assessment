@@ -1,4 +1,3 @@
-// backend/src/server.ts
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -15,23 +14,20 @@ import userRoutes from './routes/user.routes.js';
 import consultantRoutes from './routes/consultant.routes.js';
 import reviewRoutes from './routes/review.routes.js';
 import notificationRoutes from './routes/notification.routes.js';
-import documentRoutes from './routes/document.routes.js'; // 🔴 NOVO
-import reportRoutes from './routes/report.routes.js'; // 🔴 NOVO (v17)
-import recommendationRoutes from './routes/recommendation.routes.js'; // 🔴 NOVO (v19)
-import planRoutes from './routes/plan.routes.js'; // 🔴 NOVO (v26) - Rotas de planos
-import subscriptionRoutes from './routes/subscription.routes.js'; // 🔴 NOVO (v26) - Rotas de assinaturas
-import paymentRoutes from './routes/payment.routes.js'; // 🔴 NOVO (v26) - Rotas de pagamentos
+import documentRoutes from './routes/document.routes.js';
+import reportRoutes from './routes/report.routes.js';
+import recommendationRoutes from './routes/recommendation.routes.js';
+import planRoutes from './routes/plan.routes.js';
+import subscriptionRoutes from './routes/subscription.routes.js';
+import paymentRoutes from './routes/payment.routes.js';
 import './services/EmailService.js';
 import { noCache } from './middleware/cache.js';
 import { SitemapController } from './controllers/SitemapController.js';
 import { adminMetricsHandler } from './middleware/adminPerformance.js';
 import { authenticate, authorize } from './middleware/auth.js';
 import { UserRole } from './types/index.js';
-// 🔴 NOVO: Import do AdminController para a rota pública de branding
 import { AdminController } from './controllers/AdminController.js';
 import brandingRoutes from './routes/branding.routes.js';
-
-// 🔴 NOVO: Import das rotas de analytics
 import analyticsRoutes from './routes/analytics.routes.js';
 
 const app = express();
@@ -84,18 +80,14 @@ app.use(helmet({
 // ============================================
 // CONFIGURAÇÃO CORS CORRIGIDA - PERMITE REQUISIÇÕES SEM ORIGIN
 // ============================================
-// Processar CORS_ORIGIN como array de origens permitidas
 const corsOrigins = config.CORS_ORIGIN.split(',').map(origin => origin.trim());
 
 app.use(cors({
   origin: function (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
-    // Permitir requisições sem origin (health checks, ferramentas, etc.)
-    // Render faz health checks sem header Origin
     if (!origin) {
       return callback(null, true);
     }
     
-    // Verificar se a origem está na lista de permitidas
     if (corsOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
@@ -114,35 +106,34 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(httpLogger);
 
 // ============================================
-// CORREÇÃO: Rate Limit com isenção para admin
+// RATE LIMIT
 // ============================================
-// Public rate limiter para rotas públicas (menos restritivo)
 app.use(publicRateLimiter);
+
+// ============================================
+// 🔴 CORRIGIDO: ROTA PÚBLICA DE BRANDING (sem autenticação)
+// DEVE VIR ANTES do brandingRoutes para não ser interceptada
+// ============================================
+app.get('/api/branding/:companyId', noCache, AdminController.getPublicBranding);
 
 // ============================================
 // ROTAS DA API
 // ============================================
 app.use('/api/auth', authRoutes);
-// CORREÇÃO: Rotas admin com adminRateLimiter (admin tem acesso ilimitado)
 app.use('/api/admin', adminRateLimiter, adminRoutes);
 app.use('/api/rep', repRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/consultant', consultantRoutes);
 app.use('/api/review', reviewRoutes);
 app.use('/api/notifications', notificationRoutes);
-app.use('/api/documents', documentRoutes); // 🔴 NOVO - Rotas de documentos
-app.use('/api/reports', reportRoutes); // 🔴 NOVO (v17) - Rotas de relatórios
-app.use('/api/recommendations', recommendationRoutes); // 🔴 NOVO (v19) - Rotas de recomendações
-app.use('/api/plans', planRoutes); // 🔴 NOVO (v26) - Rotas de planos
-app.use('/api/subscriptions', subscriptionRoutes); // 🔴 NOVO (v26) - Rotas de assinaturas
-app.use('/api/payments', paymentRoutes); // 🔴 NOVO (v26) - Rotas de pagamentos
+app.use('/api/documents', documentRoutes);
+app.use('/api/reports', reportRoutes);
+app.use('/api/recommendations', recommendationRoutes);
+app.use('/api/plans', planRoutes);
+app.use('/api/subscriptions', subscriptionRoutes);
+app.use('/api/payments', paymentRoutes);
 app.use('/api/branding', brandingRoutes);
-app.use('/api/admin/analytics', analyticsRoutes); // 🔴 NOVO - Rotas de analytics
-
-// ============================================
-// ROTA PÚBLICA DE BRANDING (sem autenticação)
-// ============================================
-app.get('/api/branding/:companyId', noCache, AdminController.getPublicBranding);
+app.use('/api/admin/analytics', analyticsRoutes);
 
 app.get('/health', noCache, (_req, res) => {
   res.json({
@@ -217,11 +208,11 @@ async function startServer() {
       logger.info(`📄 Document Routes: http://localhost:${PORT}/api/documents`);
       logger.info(`📊 Report Routes: http://localhost:${PORT}/api/reports`);
       logger.info(`📋 Recommendation Routes: http://localhost:${PORT}/api/recommendations`);
-      logger.info(`📋 Plan Routes: http://localhost:${PORT}/api/plans`); // 🔴 NOVO (v26)
-      logger.info(`📋 Subscription Routes: http://localhost:${PORT}/api/subscriptions`); // 🔴 NOVO (v26)
-      logger.info(`📋 Payment Routes: http://localhost:${PORT}/api/payments`); // 🔴 NOVO (v26)
-      logger.info(`🏷️ Branding Routes: http://localhost:${PORT}/api/branding/:companyId`);
-      logger.info(`📊 Analytics Routes: http://localhost:${PORT}/api/admin/analytics`); // 🔴 NOVO
+      logger.info(`📋 Plan Routes: http://localhost:${PORT}/api/plans`);
+      logger.info(`📋 Subscription Routes: http://localhost:${PORT}/api/subscriptions`);
+      logger.info(`📋 Payment Routes: http://localhost:${PORT}/api/payments`);
+      logger.info(`🏷️ Branding Routes: http://localhost:${PORT}/api/branding`);
+      logger.info(`📊 Analytics Routes: http://localhost:${PORT}/api/admin/analytics`);
     });
 
   } catch (error) {
