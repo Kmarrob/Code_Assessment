@@ -127,6 +127,7 @@ export class RevenueAnalyticsService {
 
   private async getPreviousPeriodRevenue(currentStart: Date, currentEnd: Date): Promise<number> {
     try {
+      // 🔴 CORRIGIDO TS2362: Usando explicitamente .getTime() em operações aritméticas de Date
       const duration = currentEnd.getTime() - currentStart.getTime();
       const previousStart = new Date(currentStart.getTime() - duration);
       const previousEnd = new Date(currentStart.getTime());
@@ -517,8 +518,12 @@ export class RevenueAnalyticsService {
     const [mrr, arpu, growth] = await Promise.all([
       this.getMRR(),
       this.getARPU(startDate, endDate),
-      this.getRevenueGrowth(startDate, endDate,
-        new Date(startDate.getTime() - (endDate.getTime() - startDate.getTime())), startDate)
+      this.getRevenueGrowth(
+        startDate, 
+        endDate,
+        new Date(startDate.getTime() - (endDate.getTime() - startDate.getTime())), 
+        startDate
+      )
     ]);
 
     const Subscription = this.getSubscription();
@@ -532,7 +537,7 @@ export class RevenueAnalyticsService {
       console.warn('⚠️ Erro ao buscar churn para saúde financeira:', error);
     }
 
-    const churned = churnResult.length > 0 && churnResult[0] ? churnResult[0].churned : 0;
+    const churned = churnResult.length > 0 && churnResult[0] ? (churnResult[0].churned || 0) : 0;
     const totalActive = await this.getCompany().countDocuments({
       status: 'active',
       plan: { $in: ['basic', 'pro', 'enterprise'] }
@@ -542,11 +547,14 @@ export class RevenueAnalyticsService {
     let status: 'healthy' | 'warning' | 'critical' = 'healthy';
     let message = 'Saúde financeira excelente.';
 
+    // 🔴 CORRIGIDO TS2532: Garantindo fallback seguro para growth.growthPercent
+    const growthPercent = growth?.growthPercent ?? 0;
+
     if (churnRate > 10) { status = 'warning'; message = 'Taxa de churn elevada. Considere ações de retenção.'; }
-    if (churnRate > 20 || growth.growthPercent < -10) { status = 'critical'; message = 'Saúde financeira crítica. Ações imediatas necessárias.'; }
+    if (churnRate > 20 || growthPercent < -10) { status = 'critical'; message = 'Saúde financeira crítica. Ações imediatas necessárias.'; }
     if (mrr < 1000) { status = 'warning'; message = 'MRR baixo. Foco em aquisição de clientes.'; }
 
-    return { status, metrics: { mrr, churnRate, arpu, revenueGrowth: growth.growthPercent }, message };
+    return { status, metrics: { mrr, churnRate, arpu, revenueGrowth: growthPercent }, message };
   }
 }
 
