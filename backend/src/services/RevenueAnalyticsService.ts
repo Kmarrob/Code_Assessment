@@ -128,7 +128,7 @@ export class RevenueAnalyticsService {
 
   private async getPreviousPeriodRevenue(currentStart: Date, currentEnd: Date): Promise<number> {
     try {
-      // 🔴 CORRIGIDO TS2362: Converter explicitamente para Number e usar getTime()
+      // 🔴 CORRIGIDO: Converter explicitamente para Number e usar getTime()
       const currentStartMs = Number(new Date(currentStart).getTime());
       const currentEndMs = Number(new Date(currentEnd).getTime());
 
@@ -147,13 +147,17 @@ export class RevenueAnalyticsService {
       const total = hasResult ? result[0].total : 0;
       
       if (!hasResult || total === 0) {
-        return this.calculateRevenueFromPlans() * 0.8;
+        // 🔴 CORRIGIDO TS2362: Usar await para obter o número antes de multiplicar
+        const revenue = await this.calculateRevenueFromPlans();
+        return revenue * 0.8;
       }
       
       return total;
     } catch (error) {
       console.error('❌ Erro ao obter receita do período anterior:', error);
-      return this.calculateRevenueFromPlans() * 0.8;
+      // 🔴 CORRIGIDO TS2362: Usar await para obter o número antes de multiplicar
+      const revenue = await this.calculateRevenueFromPlans();
+      return revenue * 0.8;
     }
   }
 
