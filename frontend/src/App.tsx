@@ -70,6 +70,9 @@ import { BillingPage } from './pages/BillingPage.js';
 // ============================================
 import { CheckoutPage } from './pages/CheckoutPage.js';
 
+// 🔴 NOVO: Import do Funil de Conversão
+import AdminFunnelAnalytics from './pages/admin/AdminFunnelAnalytics.js';
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -217,6 +220,13 @@ function App() {
                     <Route path="/admin/branding" element={
                       <Layout>
                         <AdminBranding />
+                      </Layout>
+                    } />
+                    
+                    {/* 🔴 NOVO: Rota para Funil de Conversão */}
+                    <Route path="/admin/analytics" element={
+                      <Layout>
+                        <AdminFunnelAnalytics />
                       </Layout>
                     } />
                     

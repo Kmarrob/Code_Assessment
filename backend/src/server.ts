@@ -31,6 +31,8 @@ import { UserRole } from './types/index.js';
 import { AdminController } from './controllers/AdminController.js';
 import brandingRoutes from './routes/branding.routes.js';
 
+// 🔴 NOVO: Import das rotas de analytics
+import analyticsRoutes from './routes/analytics.routes.js';
 
 const app = express();
 
@@ -135,7 +137,7 @@ app.use('/api/plans', planRoutes); // 🔴 NOVO (v26) - Rotas de planos
 app.use('/api/subscriptions', subscriptionRoutes); // 🔴 NOVO (v26) - Rotas de assinaturas
 app.use('/api/payments', paymentRoutes); // 🔴 NOVO (v26) - Rotas de pagamentos
 app.use('/api/branding', brandingRoutes);
-
+app.use('/api/admin/analytics', analyticsRoutes); // 🔴 NOVO - Rotas de analytics
 
 // ============================================
 // ROTA PÚBLICA DE BRANDING (sem autenticação)
@@ -219,6 +221,7 @@ async function startServer() {
       logger.info(`📋 Subscription Routes: http://localhost:${PORT}/api/subscriptions`); // 🔴 NOVO (v26)
       logger.info(`📋 Payment Routes: http://localhost:${PORT}/api/payments`); // 🔴 NOVO (v26)
       logger.info(`🏷️ Branding Routes: http://localhost:${PORT}/api/branding/:companyId`);
+      logger.info(`📊 Analytics Routes: http://localhost:${PORT}/api/admin/analytics`); // 🔴 NOVO
     });
 
   } catch (error) {

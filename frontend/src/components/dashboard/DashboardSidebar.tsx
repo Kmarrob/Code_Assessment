@@ -10,7 +10,8 @@ import {
   Cpu,
   Layers,
   Building2,
-  ArrowLeft
+  ArrowLeft,
+  TrendingUp  // 🔴 NOVO - Funil de Conversão
 } from 'lucide-react';
 import { PublicBrandingData } from '../../services/branding.service.js';
 
@@ -111,6 +112,13 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
       icon: <Layers className="w-4 h-4" />,
       label: 'Domínios de SI',
       disabled: !hasValidCompany && user?.role === 'admin',
+    },
+    // 🔴 NOVO: Funil de Conversão - Admin apenas
+    {
+      to: user?.role === 'admin' ? '/admin/analytics' : '#',
+      icon: <TrendingUp className="w-4 h-4" />,
+      label: 'Funil de Conversão',
+      disabled: user?.role !== 'admin',
     },
   ];
 
