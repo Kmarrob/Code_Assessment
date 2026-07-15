@@ -179,6 +179,42 @@ export const subscriptionService = {
   },
 
   /**
+   * 🔴 NOVO: Atualizar assinatura com base no plano da empresa
+   * Busca a assinatura ativa da empresa e atualiza para o novo plano
+   */
+  async updateSubscriptionByCompany(companyId: string, planName: string): Promise<Subscription | null> {
+    try {
+      // 1. Buscar a assinatura ativa da empresa
+      const { subscription } = await this.getActiveSubscription();
+      
+      if (!subscription) {
+        console.warn(`Nenhuma assinatura ativa encontrada para a empresa ${companyId}`);
+        return null;
+      }
+
+      // 2. Buscar o ID do plano pelo nome
+      const plansResponse = await api.get<ApiResponse<{ plans: Plan[] }>>('/plans/public');
+      const plans = plansResponse.data.data.plans || [];
+      const plan = plans.find(p => p.name === planName);
+
+      if (!plan) {
+        console.warn(`Plano ${planName} não encontrado`);
+        return null;
+      }
+
+      // 3. Atualizar a assinatura com o novo plano
+      const updatedSubscription = await this.updateSubscription(subscription._id, {
+        planId: plan._id,
+      });
+
+      return updatedSubscription;
+    } catch (error) {
+      console.error('Erro ao atualizar assinatura por empresa:', error);
+      return null;
+    }
+  },
+
+  /**
    * Verificar se a assinatura está ativa
    */
   isActive(subscription: Subscription | null): boolean {

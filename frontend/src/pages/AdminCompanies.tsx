@@ -11,6 +11,7 @@ import { Input } from '../components/ui/Input.js';
 import { AdminMetaTags } from '../components/admin/AdminMetaTags.js';
 import { AdminBreadcrumbs } from '../components/admin/AdminBreadcrumbs.js';
 import { companyService, Company } from '../services/company.service.js';
+import { subscriptionService } from '../services/subscription.service.js';
 import { CompanyFormModal } from '../components/admin/CompanyFormModal.js';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog.js';
 
@@ -99,11 +100,32 @@ export const AdminCompanies: React.FC = () => {
   const handleSaveCompany = async (data: Partial<Company>) => {
     setIsSubmitting(true);
     try {
+      let oldPlan: string | undefined;
+      let companyId: string | undefined;
+
+      // Se for edição, armazenar o plano antigo e o ID da empresa
+      if (editingCompany) {
+        oldPlan = editingCompany.plan;
+        companyId = editingCompany._id;
+      }
+
+      // Salvar a empresa
       if (editingCompany) {
         await companyService.updateCompany(editingCompany._id, data);
       } else {
         await companyService.createCompany(data as any);
       }
+
+      // 🔴 NOVO: Se o plano mudou, atualizar a assinatura
+      if (editingCompany && companyId && data.plan && oldPlan && data.plan !== oldPlan) {
+        try {
+          await subscriptionService.updateSubscriptionByCompany(companyId, data.plan);
+        } catch (subError) {
+          console.warn('Erro ao atualizar assinatura (não crítico):', subError);
+          // Não impede o fluxo principal
+        }
+      }
+
       setIsModalOpen(false);
       setEditingCompany(null);
       await loadCompanies(page);
