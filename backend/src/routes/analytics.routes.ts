@@ -21,7 +21,7 @@ import {
   ClientFunnelStatus
 } from '../types/analytics.types.js';
 
-// Importações estáticas dos serviços (Evita conflitos de ESM vs CommonJS / require)
+// Importações estáticas dos serviços
 import { revenueAnalyticsService } from '../services/RevenueAnalyticsService.js';
 import { funnelAnalyticsService } from '../services/FunnelAnalyticsService.js';
 import { churnAnalyticsService } from '../services/ChurnAnalyticsService.js';
@@ -70,8 +70,6 @@ function parsePeriod(
   const days = period === '30d' ? 30 : 90;
   startDate.setDate(startDate.getDate() - days);
   startDate.setHours(0, 0, 0, 0);
-  
-  // Usar a variável local endDate, não o parâmetro
   endDate.setHours(23, 59, 59, 999);
 
   return {
@@ -93,7 +91,7 @@ function parseStatus(status?: string): ClientFunnelStatus | undefined {
 }
 
 // ============================================
-// HELPERS PARA OS SERVIÇOS (Retornando instâncias estáticas seguras)
+// HELPERS PARA OS SERVIÇOS
 // ============================================
 
 function getRevenueService() {
@@ -114,29 +112,33 @@ function getChurnService() {
 
 /**
  * Obtém distribuição por plano usando mongoose.model
- * 🔴 CORRIGIDO: Garantir retorno em todos os caminhos
+ * 🔴 CORRIGIDO: Usando variável para garantir retorno
  */
 async function getPlanDistribution(): Promise<Array<{ planName: string; count: number; percentage: number }>> {
+  let result: Array<{ planName: string; count: number; percentage: number }> = [];
+  
   try {
     const Subscription = mongoose.model('Subscription');
-    const result = await Subscription.aggregate([
+    const aggregationResult = await Subscription.aggregate([
       { $match: { status: { $in: ['active', 'trialing'] } } },
       { $lookup: { from: 'plans', localField: 'planId', foreignField: '_id', as: 'plan' } },
       { $unwind: '$plan' },
       { $group: { _id: '$plan.name', count: { $sum: 1 } } }
     ]);
 
-    const total = result.reduce((sum: number, item: any) => sum + item.count, 0);
-    return result.map((item: any) => ({
+    const total = aggregationResult.reduce((sum: number, item: any) => sum + item.count, 0);
+    result = aggregationResult.map((item: any) => ({
       planName: item._id,
       count: item.count,
       percentage: total > 0 ? (item.count / total) * 100 : 0
     }));
   } catch (error) {
     console.error('❌ Erro ao calcular distribuição por plano:', error);
-    // 🔴 CORRIGIDO: Garantir que sempre retorna um array
-    return [];
+    result = [];
   }
+  
+  // 🔴 CORRIGIDO: Garantir que sempre retorna um valor
+  return result;
 }
 
 // ============================================
@@ -158,7 +160,6 @@ async function handleSummary(req: Request, res: Response, next: NextFunction) {
     const funnelService = getFunnelService();
     const churnService = getChurnService();
 
-    // Executa as consultas com instâncias garantidas
     const [revenue, funnel, churn, statusDistribution, recentClients] = await Promise.all([
       revenueService.getRevenueMetrics(start, end),
       funnelService.getFunnelMetrics(start, end),
@@ -168,7 +169,6 @@ async function handleSummary(req: Request, res: Response, next: NextFunction) {
       funnelService.getClientList(start, end, { limit: 10 })
     ]);
 
-    // Verifica se recentClients existe e tem clients
     const recentClientsData = (recentClients && typeof recentClients === 'object' && 'clients' in recentClients)
       ? recentClients.clients
       : [];
