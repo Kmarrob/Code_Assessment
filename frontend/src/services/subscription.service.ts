@@ -122,6 +122,17 @@ export const subscriptionService = {
   },
 
   /**
+   * 🔴 NOVO: Obter assinatura ativa de uma empresa específica (admin)
+   * GET /api/subscriptions/admin/:companyId
+   */
+  async getActiveSubscriptionByCompany(companyId: string): Promise<{ subscription: Subscription | null; status: SubscriptionStatusResult }> {
+    const response = await api.get<ApiResponse<{ subscription: Subscription | null; status: SubscriptionStatusResult }>>(
+      `/subscriptions/admin/${companyId}`
+    );
+    return response.data.data;
+  },
+
+  /**
    * Obter histórico de assinaturas da empresa
    * GET /api/subscriptions/history
    */
@@ -179,13 +190,13 @@ export const subscriptionService = {
   },
 
   /**
-   * 🔴 NOVO: Atualizar assinatura com base no plano da empresa
+   * 🔴 CORRIGIDO: Atualizar assinatura com base no plano da empresa
    * Busca a assinatura ativa da empresa e atualiza para o novo plano
    */
   async updateSubscriptionByCompany(companyId: string, planName: string): Promise<Subscription | null> {
     try {
-      // 1. Buscar a assinatura ativa da empresa
-      const { subscription } = await this.getActiveSubscription();
+      // 🔴 CORRIGIDO: Usar a nova rota admin
+      const { subscription } = await this.getActiveSubscriptionByCompany(companyId);
       
       if (!subscription) {
         console.warn(`Nenhuma assinatura ativa encontrada para a empresa ${companyId}`);

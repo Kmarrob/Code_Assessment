@@ -89,8 +89,13 @@ export declare class SubscriptionService {
         annualRevenue: number;
     }>;
     /**
-     * 🔴 NOVO: Obter assinatura por ID
+     * Obter assinatura por ID
      */
     static getSubscriptionById(subscriptionId: string): Promise<ISubscription>;
+    /**
+     * Buscar assinaturas que vão expirar em breve
+     * Para jobs de renovação automática
+     */
+    static getSubscriptionsExpiringSoon(days?: number): Promise<any[]>;
 }
 //# sourceMappingURL=SubscriptionService.d.ts.map

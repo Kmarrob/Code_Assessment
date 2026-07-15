@@ -42,6 +42,7 @@ export interface CreatePaymentData {
     cardBrand?: string;
     notes?: string;
     metadata?: Record<string, any>;
+    description?: string;
 }
 export interface UpdatePaymentData {
     status?: PaymentStatus;
@@ -125,8 +126,24 @@ export declare class PaymentService {
         overdue: number;
     }>;
     /**
-   * Gerar fatura para assinatura
-   */
+     * Gerar fatura para assinatura
+     */
     static generateInvoice(subscriptionId: string, userId: string): Promise<IPayment>;
+    /**
+     * Obter pagamento por ID do provedor
+     */
+    static getPaymentByProviderId(providerPaymentId: string): Promise<IPayment | null>;
+    /**
+     * Atualizar status do pagamento
+     */
+    static updatePaymentStatus(paymentId: string, data: UpdatePaymentData): Promise<IPayment>;
+    /**
+     * Obter pagamentos pendentes (para jobs)
+     */
+    static getPendingPayments(): Promise<IPayment[]>;
+    /**
+     * Obter pagamentos por assinatura
+     */
+    static getPaymentsBySubscription(subscriptionId: string): Promise<IPayment[]>;
 }
 //# sourceMappingURL=PaymentService.d.ts.map

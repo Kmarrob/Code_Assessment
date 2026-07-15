@@ -13,6 +13,7 @@ export declare class AuthService {
         company?: string;
         department?: string;
         role?: UserRole;
+        plan?: 'basic' | 'pro' | 'enterprise';
     }): Promise<IUser>;
     static login(email: string, password: string): Promise<{
         user: IUser;

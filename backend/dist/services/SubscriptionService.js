@@ -21,17 +21,14 @@ class SubscriptionService {
             return await circuitBreaker_js_1.databaseCircuitBreaker.execute(async () => {
                 return await (0, retry_js_1.retryDatabase)(async () => {
                     return await (0, timeout_js_1.withDbTimeout)(async () => {
-                        // Validar empresa
                         const company = await Company_js_1.Company.findById(data.companyId);
                         if (!company) {
                             throw new errorHandler_js_1.NotFoundError('Empresa', data.companyId);
                         }
-                        // Validar plano
                         const plan = await PlanService_js_1.PlanService.getPlanById(data.planId);
                         if (!plan) {
                             throw new errorHandler_js_1.NotFoundError('Plano', data.planId);
                         }
-                        // Verificar se já existe uma assinatura ativa
                         const existingSubscription = await Subscription_js_1.Subscription.findOne({
                             companyId: data.companyId,
                             status: { $in: ['active', 'trial', 'trialing'] },
@@ -39,12 +36,10 @@ class SubscriptionService {
                         if (existingSubscription) {
                             throw new errorHandler_js_1.AppError('Empresa já possui uma assinatura ativa', 400);
                         }
-                        // Buscar usuários ativos da empresa
                         const activeUsers = await User_js_1.User.countDocuments({
                             companyId: data.companyId,
                             isActive: true,
                         });
-                        // Calcular datas
                         const startDate = new Date();
                         const trialDays = plan.trialDays || 7;
                         const trialEndDate = new Date(startDate);
@@ -56,9 +51,7 @@ class SubscriptionService {
                         else {
                             endDate.setMonth(endDate.getMonth() + 1);
                         }
-                        // Calcular preço
                         const priceCalc = await PlanService_js_1.PlanService.calculateEffectivePrice(data.planId, activeUsers, data.billingCycle === 'annual');
-                        // Criar assinatura
                         const subscription = new Subscription_js_1.Subscription({
                             companyId: new mongoose_1.Types.ObjectId(data.companyId),
                             planId: new mongoose_1.Types.ObjectId(data.planId),
@@ -87,7 +80,6 @@ class SubscriptionService {
                             updatedBy: new mongoose_1.Types.ObjectId(data.userId),
                         });
                         await subscription.save();
-                        // Atualizar empresa com o plano
                         company.plan = plan.name;
                         await company.save();
                         logger_js_1.logger.info(`Assinatura criada para empresa ${company.name} - Plano ${plan.name}`);
@@ -115,10 +107,8 @@ class SubscriptionService {
                         if (!subscription) {
                             throw new errorHandler_js_1.NotFoundError('Assinatura', subscriptionId);
                         }
-                        // Atualizar status
                         subscription.status = 'active';
                         subscription.startDate = new Date();
-                        // Atualizar data de término baseado no ciclo
                         const endDate = new Date(subscription.startDate);
                         if (subscription.billingCycle === 'annual') {
                             endDate.setFullYear(endDate.getFullYear() + 1);
@@ -127,7 +117,6 @@ class SubscriptionService {
                             endDate.setMonth(endDate.getMonth() + 1);
                         }
                         subscription.endDate = endDate;
-                        // Atualizar empresa
                         const plan = await PlanService_js_1.PlanService.getPlanById(subscription.planId.toString());
                         if (plan) {
                             const company = await Company_js_1.Company.findById(subscription.companyId);
@@ -265,7 +254,6 @@ class SubscriptionService {
                         if (!subscription) {
                             throw new errorHandler_js_1.NotFoundError('Assinatura', subscriptionId);
                         }
-                        // Registrar mudança de plano
                         if (data.planId && data.planId !== subscription.planId.toString()) {
                             const oldPlan = await PlanService_js_1.PlanService.getPlanById(subscription.planId.toString());
                             const newPlan = await PlanService_js_1.PlanService.getPlanById(data.planId);
@@ -279,12 +267,10 @@ class SubscriptionService {
                                 });
                             }
                         }
-                        // Atualizar campos
                         if (data.status !== undefined)
                             subscription.status = data.status;
                         if (data.planId !== undefined) {
                             subscription.planId = new mongoose_1.Types.ObjectId(data.planId);
-                            // Atualizar features com o novo plano
                             const plan = await PlanService_js_1.PlanService.getPlanById(data.planId);
                             if (plan) {
                                 subscription.features = { ...plan.features };
@@ -344,7 +330,6 @@ class SubscriptionService {
                         subscription.updatedBy = new mongoose_1.Types.ObjectId(userId);
                         subscription.notes = reason || subscription.notes || 'Cancelamento solicitado';
                         await subscription.save();
-                        // Atualizar empresa
                         const company = await Company_js_1.Company.findById(subscription.companyId);
                         if (company) {
                             company.status = 'inactive';
@@ -386,7 +371,6 @@ class SubscriptionService {
                         subscription.updatedBy = new mongoose_1.Types.ObjectId(userId);
                         subscription.notes = reason;
                         await subscription.save();
-                        // Atualizar empresa
                         const company = await Company_js_1.Company.findById(subscription.companyId);
                         if (company) {
                             company.status = 'suspended';
@@ -426,7 +410,6 @@ class SubscriptionService {
                         subscription.status = 'active';
                         subscription.reactivatedAt = new Date();
                         subscription.updatedBy = new mongoose_1.Types.ObjectId(userId);
-                        // Estender data de término
                         const endDate = new Date();
                         if (subscription.billingCycle === 'annual') {
                             endDate.setFullYear(endDate.getFullYear() + 1);
@@ -436,7 +419,6 @@ class SubscriptionService {
                         }
                         subscription.endDate = endDate;
                         await subscription.save();
-                        // Atualizar empresa
                         const company = await Company_js_1.Company.findById(subscription.companyId);
                         if (company) {
                             company.status = 'active';
@@ -461,7 +443,6 @@ class SubscriptionService {
     static async processAutoRenewals() {
         try {
             const result = { renewed: 0, suspended: 0, errors: 0 };
-            // Buscar assinaturas que vão expirar em até 7 dias
             const expiringSoon = await Subscription_js_1.Subscription.find({
                 status: 'active',
                 autoRenew: true,
@@ -472,8 +453,6 @@ class SubscriptionService {
             });
             for (const subscription of expiringSoon) {
                 try {
-                    // TODO: Integrar com gateway de pagamento para cobrança
-                    // Por enquanto, apenas estender a data
                     const endDate = new Date(subscription.endDate);
                     if (subscription.billingCycle === 'annual') {
                         endDate.setFullYear(endDate.getFullYear() + 1);
@@ -491,7 +470,6 @@ class SubscriptionService {
                     result.errors++;
                 }
             }
-            // Buscar assinaturas expiradas
             const expired = await Subscription_js_1.Subscription.find({
                 status: 'active',
                 autoRenew: false,
@@ -571,7 +549,7 @@ class SubscriptionService {
         }
     }
     /**
-     * 🔴 NOVO: Obter assinatura por ID
+     * Obter assinatura por ID
      */
     static async getSubscriptionById(subscriptionId) {
         try {
@@ -595,6 +573,41 @@ class SubscriptionService {
                 throw error;
             logger_js_1.logger.error('Erro ao buscar assinatura por ID:', error);
             throw new errorHandler_js_1.AppError('Erro ao buscar assinatura. Tente novamente mais tarde.', 500);
+        }
+    }
+    /**
+     * Buscar assinaturas que vão expirar em breve
+     * Para jobs de renovação automática
+     */
+    static async getSubscriptionsExpiringSoon(days = 7) {
+        try {
+            return await circuitBreaker_js_1.databaseCircuitBreaker.execute(async () => {
+                return await (0, retry_js_1.retryDatabase)(async () => {
+                    return await (0, timeout_js_1.withDbTimeout)(async () => {
+                        const now = new Date();
+                        const future = new Date();
+                        future.setDate(future.getDate() + days);
+                        const subscriptions = await Subscription_js_1.Subscription.find({
+                            status: 'active',
+                            autoRenew: true,
+                            endDate: {
+                                $gte: now,
+                                $lte: future,
+                            },
+                        }).populate('planId');
+                        return subscriptions.map(sub => {
+                            const subObj = sub.toObject();
+                            const plan = sub.planId;
+                            subObj.planName = plan?.displayName || 'Plano';
+                            return subObj;
+                        });
+                    }, 'SubscriptionService.getSubscriptionsExpiringSoon');
+                }, 'SubscriptionService.getSubscriptionsExpiringSoon');
+            });
+        }
+        catch (error) {
+            logger_js_1.logger.error('Erro ao buscar assinaturas prestes a expirar:', error);
+            throw new errorHandler_js_1.AppError('Erro ao buscar assinaturas. Tente novamente mais tarde.', 500);
         }
     }
 }

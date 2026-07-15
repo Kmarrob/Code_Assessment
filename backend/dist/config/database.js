@@ -50,6 +50,14 @@ class Database {
             this.isConnected = true;
             this.reconnectAttempts = 0;
             logger_js_1.logger.info('📦 MongoDB connected successfully');
+            // =====================================================
+            // DIAGNÓSTICO (NÃO ALTERA O FUNCIONAMENTO DO SISTEMA)
+            // =====================================================
+            logger_js_1.logger.info(`📍 Mongo URI.......: ${env_js_1.config.MONGODB_URI}`);
+            logger_js_1.logger.info(`📍 DB configurado..: ${env_js_1.config.MONGODB_DB_NAME}`);
+            logger_js_1.logger.info(`📍 DB conectado....: ${mongoose_1.default.connection.name}`);
+            logger_js_1.logger.info(`📍 Collection Plan.: ${mongoose_1.default.connection.collection('plans').collectionName}`);
+            // =====================================================
             this.setupEventHandlers();
         }
         catch (error) {

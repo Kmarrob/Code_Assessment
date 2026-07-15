@@ -118,7 +118,6 @@ class PaymentService {
                         });
                         await payment.save();
                         logger_js_1.logger.info(`Pagamento confirmado: ${payment._id} - ${amountPaid} ${payment.currency}`);
-                        // 🔧 CORREÇÃO: Conversão segura contra undefined e tipagem do ObjectId no Mongoose
                         if (payment.subscriptionId) {
                             try {
                                 const subscriptionIdStr = String(payment.subscriptionId);
@@ -435,8 +434,8 @@ class PaymentService {
         }
     }
     /**
-   * Gerar fatura para assinatura
-   */
+     * Gerar fatura para assinatura
+     */
     static async generateInvoice(subscriptionId, userId) {
         try {
             return await circuitBreaker_js_1.databaseCircuitBreaker.execute(async () => {
@@ -450,7 +449,6 @@ class PaymentService {
                         if (!company) {
                             throw new errorHandler_js_1.NotFoundError('Empresa', String(subscription.companyId));
                         }
-                        // Converter ObjectId para string de forma segura
                         const planIdStr = String(subscription.planId);
                         const plan = await PlanService_js_1.PlanService.getPlanById(planIdStr);
                         const startDate = new Date();
@@ -482,7 +480,6 @@ class PaymentService {
                             });
                         }
                         const totalAmount = items.reduce((sum, item) => sum + item.totalPrice, 0);
-                        // 🔧 CORREÇÃO COMPLETA: Forçando a extração segura de strings em propriedades do schema
                         const subscriptionIdStr = String(subscription._id);
                         const companyIdStr = String(subscription.companyId);
                         const payment = await PaymentService.createPayment({
@@ -509,6 +506,127 @@ class PaymentService {
                 throw error;
             logger_js_1.logger.error('Erro ao gerar fatura:', error);
             throw new errorHandler_js_1.AppError('Erro ao gerar fatura. Tente novamente mais tarde.', 500);
+        }
+    }
+    // ============================================
+    // 🔴 NOVOS MÉTODOS PARA FASE 5 - GATEWAY DE PAGAMENTO
+    // ============================================
+    /**
+     * Obter pagamento por ID do provedor
+     */
+    static async getPaymentByProviderId(providerPaymentId) {
+        try {
+            return await circuitBreaker_js_1.databaseCircuitBreaker.execute(async () => {
+                return await (0, retry_js_1.retryDatabase)(async () => {
+                    return await (0, timeout_js_1.withDbTimeout)(async () => {
+                        return Payment_js_1.Payment.findOne({ providerPaymentId });
+                    }, 'PaymentService.getPaymentByProviderId');
+                }, 'PaymentService.getPaymentByProviderId');
+            });
+        }
+        catch (error) {
+            logger_js_1.logger.error('Erro ao buscar pagamento por provider ID:', error);
+            throw new errorHandler_js_1.AppError('Erro ao buscar pagamento. Tente novamente mais tarde.', 500);
+        }
+    }
+    /**
+     * Atualizar status do pagamento
+     */
+    static async updatePaymentStatus(paymentId, data) {
+        try {
+            return await circuitBreaker_js_1.databaseCircuitBreaker.execute(async () => {
+                return await (0, retry_js_1.retryDatabase)(async () => {
+                    return await (0, timeout_js_1.withDbTimeout)(async () => {
+                        if (!mongoose_1.Types.ObjectId.isValid(paymentId)) {
+                            throw new errorHandler_js_1.AppError('ID do pagamento inválido', 400);
+                        }
+                        const payment = await Payment_js_1.Payment.findById(paymentId);
+                        if (!payment) {
+                            throw new errorHandler_js_1.NotFoundError('Pagamento', paymentId);
+                        }
+                        if (data.status) {
+                            payment.status = data.status;
+                            payment.statusHistory.push({
+                                status: data.status,
+                                changedAt: new Date(),
+                            });
+                        }
+                        if (data.amountPaid !== undefined)
+                            payment.amountPaid = data.amountPaid;
+                        if (data.paidAt)
+                            payment.paidAt = new Date(data.paidAt);
+                        if (data.processedAt)
+                            payment.processedAt = new Date(data.processedAt);
+                        if (data.refundedAt)
+                            payment.refundedAt = new Date(data.refundedAt);
+                        if (data.providerPaymentId)
+                            payment.providerPaymentId = data.providerPaymentId;
+                        if (data.providerSubscriptionId)
+                            payment.providerSubscriptionId = data.providerSubscriptionId;
+                        if (data.webhookReceived !== undefined)
+                            payment.webhookReceived = data.webhookReceived;
+                        if (data.webhookProcessedAt)
+                            payment.webhookProcessedAt = new Date(data.webhookProcessedAt);
+                        if (data.webhookPayload)
+                            payment.webhookPayload = data.webhookPayload;
+                        if (data.notes)
+                            payment.notes = data.notes;
+                        await payment.save();
+                        logger_js_1.logger.info(`Status do pagamento ${paymentId} atualizado para ${payment.status}`);
+                        return payment;
+                    }, 'PaymentService.updatePaymentStatus');
+                }, 'PaymentService.updatePaymentStatus');
+            });
+        }
+        catch (error) {
+            if (error instanceof errorHandler_js_1.AppError)
+                throw error;
+            logger_js_1.logger.error('Erro ao atualizar status do pagamento:', error);
+            throw new errorHandler_js_1.AppError('Erro ao atualizar status do pagamento. Tente novamente mais tarde.', 500);
+        }
+    }
+    /**
+     * Obter pagamentos pendentes (para jobs)
+     */
+    static async getPendingPayments() {
+        try {
+            return await circuitBreaker_js_1.databaseCircuitBreaker.execute(async () => {
+                return await (0, retry_js_1.retryDatabase)(async () => {
+                    return await (0, timeout_js_1.withDbTimeout)(async () => {
+                        return Payment_js_1.Payment.find({
+                            status: { $in: ['pending', 'processing'] },
+                        }).sort({ dueDate: 1 });
+                    }, 'PaymentService.getPendingPayments');
+                }, 'PaymentService.getPendingPayments');
+            });
+        }
+        catch (error) {
+            logger_js_1.logger.error('Erro ao buscar pagamentos pendentes:', error);
+            throw new errorHandler_js_1.AppError('Erro ao buscar pagamentos pendentes. Tente novamente mais tarde.', 500);
+        }
+    }
+    /**
+     * Obter pagamentos por assinatura
+     */
+    static async getPaymentsBySubscription(subscriptionId) {
+        try {
+            return await circuitBreaker_js_1.databaseCircuitBreaker.execute(async () => {
+                return await (0, retry_js_1.retryDatabase)(async () => {
+                    return await (0, timeout_js_1.withDbTimeout)(async () => {
+                        if (!mongoose_1.Types.ObjectId.isValid(subscriptionId)) {
+                            throw new errorHandler_js_1.AppError('ID da assinatura inválido', 400);
+                        }
+                        return Payment_js_1.Payment.find({ subscriptionId: new mongoose_1.Types.ObjectId(subscriptionId) })
+                            .sort({ createdAt: -1 });
+                    }, 'PaymentService.getPaymentsBySubscription');
+                }, 'PaymentService.getPaymentsBySubscription');
+            });
+        }
+        catch (error) {
+            if (error instanceof errorHandler_js_1.AppError)
+                throw error;
+            logger_js_1.logger.error('Erro ao buscar pagamentos da assinatura:', error);
+            throw new errorHandler_js_1.AppError('Erro ao buscar pagamentos. Tente novamente mais tarde.', 500);
         }
     }
 }

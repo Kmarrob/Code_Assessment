@@ -297,6 +297,12 @@ function App() {
                         <ReportView />
                       </Layout>
                     } />
+                    {/* 🔴 NOVO: Rota para branding (Personalizar Identidade Visual) */}
+                    <Route path="/rep/branding" element={
+                      <Layout>
+                        <AdminBranding />
+                      </Layout>
+                    } />
                     
                     {/* Dashboard Rep - Visão da empresa do preposto */}
                     <Route path="/rep/dashboard" element={

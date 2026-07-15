@@ -4,6 +4,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuthService = void 0;
+// backend/src/services/AuthService.ts
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const User_js_1 = require("../models/User.js");
 const env_js_1 = require("../config/env.js");
@@ -28,13 +29,22 @@ class AuthService {
             if (existingUser) {
                 throw new errorHandler_js_1.AppError('Email já está em uso', 400);
             }
+            // Se um plano foi selecionado, o plano padrão será basic
+            const userPlan = userData.plan || 'basic';
             const user = new User_js_1.User({
                 ...userData,
                 role: userData.role || index_js_1.UserRole.USER,
                 isActive: true,
+                // O plano será associado à empresa ou ao usuário
+                // Por enquanto, armazenamos como metadado
+                metadata: {
+                    selectedPlan: userPlan,
+                },
             });
             await user.save();
-            logger_js_1.logger.info(`Novo usuário registrado: ${user.email} (${user.role})`);
+            // TODO: Criar assinatura para o usuário com o plano selecionado
+            // Isso será implementado na Fase 5 (integração com pagamento)
+            logger_js_1.logger.info(`Novo usuário registrado: ${user.email} (${user.role}) - Plano: ${userPlan}`);
             return user;
         }
         catch (error) {
@@ -79,7 +89,7 @@ class AuthService {
                 password: '',
                 role: user.role,
                 company: user.company,
-                companyId: user.companyId, // ✅ ADICIONADO
+                companyId: user.companyId,
                 department: user.department,
                 isActive: user.isActive,
                 createdAt: user.createdAt,

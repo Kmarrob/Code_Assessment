@@ -33,11 +33,10 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.seedPlans = exports.Plan = void 0;
-// backend/src/models/Plan.ts
+exports.Plan = void 0;
 const mongoose_1 = __importStar(require("mongoose"));
 /**
- * Schema do Plano
+ * Schema das funcionalidades do plano
  */
 const planFeaturesSchema = new mongoose_1.Schema({
     maxUsers: {
@@ -112,13 +111,17 @@ const planFeaturesSchema = new mongoose_1.Schema({
         type: Boolean,
         default: false,
     },
-}, { _id: false });
+}, {
+    _id: false,
+});
+/**
+ * Schema do Plano
+ */
 const planSchema = new mongoose_1.Schema({
     name: {
         type: String,
         enum: ['basic', 'pro', 'enterprise', 'trial'],
         required: true,
-        unique: true,
     },
     displayName: {
         type: String,
@@ -134,20 +137,17 @@ const planSchema = new mongoose_1.Schema({
         type: Number,
         required: true,
         min: 0,
-        comment: 'Preço em centavos (ex: 149700 = R$ 1.497,00)',
     },
     priceAnnual: {
         type: Number,
         required: true,
         min: 0,
-        comment: 'Preço em centavos',
     },
     pricePerUser: {
         type: Number,
         required: true,
         min: 0,
         default: 0,
-        comment: 'Preço por usuário adicional',
     },
     features: {
         type: planFeaturesSchema,
@@ -196,26 +196,39 @@ const planSchema = new mongoose_1.Schema({
 }, {
     timestamps: true,
 });
-// Índices
+/**
+ * Índices
+ */
 planSchema.index({ name: 1 }, { unique: true });
 planSchema.index({ isActive: 1, isPublic: 1 });
 planSchema.index({ sortOrder: 1 });
-// ============================================
-// MÉTODOS ESTÁTICOS
-// ============================================
+/**
+ * Métodos estáticos
+ */
 planSchema.statics.getDefaultPlans = async function () {
-    const plans = await this.find({ isActive: true }).sort({ sortOrder: 1 });
-    return plans;
+    return this.find({
+        isActive: true,
+    }).sort({
+        sortOrder: 1,
+    });
 };
 planSchema.statics.getPlanByName = async function (name) {
-    return this.findOne({ name, isActive: true });
+    return this.findOne({
+        name,
+        isActive: true,
+    });
 };
 planSchema.statics.getPublicPlans = async function () {
-    return this.find({ isActive: true, isPublic: true }).sort({ sortOrder: 1 });
+    return this.find({
+        isActive: true,
+        isPublic: true,
+    }).sort({
+        sortOrder: 1,
+    });
 };
-// ============================================
-// MÉTODOS DE INSTÂNCIA
-// ============================================
+/**
+ * Métodos de instância
+ */
 planSchema.methods.getEffectivePrice = function (isAnnual = false, userCount = 0) {
     const basePrice = isAnnual ? this.priceAnnual : this.priceMonthly;
     const extraUsers = Math.max(0, userCount - this.features.maxUsers);
@@ -223,156 +236,21 @@ planSchema.methods.getEffectivePrice = function (isAnnual = false, userCount = 0
     return basePrice + extraPrice;
 };
 planSchema.methods.getDisplayPrice = function (isAnnual = false) {
-    const price = isAnnual ? this.priceAnnual : this.priceMonthly;
-    const formatted = (price / 100).toLocaleString('pt-BR', {
+    const price = isAnnual
+        ? this.priceAnnual
+        : this.priceMonthly;
+    return (price / 100).toLocaleString('pt-BR', {
         style: 'currency',
         currency: 'BRL',
     });
-    return formatted;
 };
 planSchema.methods.canAccessFeature = function (feature) {
     return this.features[feature];
 };
+/**
+ * Exportação
+ */
+console.log('🔥 CRIANDO MODEL Plan...');
 exports.Plan = mongoose_1.default.model('Plan', planSchema);
-// ============================================
-// SEED INICIAL DOS PLANOS
-// ============================================
-const seedPlans = async () => {
-    const existingPlans = await exports.Plan.countDocuments();
-    if (existingPlans > 0) {
-        console.log('📋 Planos já existentes, pulando seed');
-        return;
-    }
-    console.log('🌱 Iniciando seed de planos...');
-    const plans = [
-        {
-            name: 'basic',
-            displayName: 'Básico',
-            description: 'Perfeito para pequenas empresas que estão começando sua jornada de maturidade em segurança da informação.',
-            priceMonthly: 149700, // R$ 1.497,00
-            priceAnnual: 1497000, // R$ 14.970,00
-            pricePerUser: 29700, // R$ 297,00
-            features: {
-                maxUsers: 5,
-                maxControls: 93,
-                canViewReport: true,
-                canPrintReport: false,
-                canDownloadReport: false,
-                canViewRoadmap: false,
-                canViewComparative: false,
-                canExportData: false,
-                hasConsultingHours: false,
-                consultingHours: 0,
-                consultingHoursUsed: 0,
-                supportPriority: 'low',
-                supportHours: 'business',
-                canCustomizeBranding: false,
-                canAddCustomControls: false,
-                canIntegrateAPI: false,
-                canIntegrateSSO: false,
-            },
-            sortOrder: 1,
-            trialDays: 7,
-            badge: 'Para começar',
-        },
-        {
-            name: 'pro',
-            displayName: 'Profissional',
-            description: 'Ideal para empresas que buscam um assessment completo com suporte especializado.',
-            priceMonthly: 329700, // R$ 3.297,00
-            priceAnnual: 3297000, // R$ 32.970,00
-            pricePerUser: 29700, // R$ 297,00
-            features: {
-                maxUsers: 10,
-                maxControls: 93,
-                canViewReport: true,
-                canPrintReport: false,
-                canDownloadReport: false,
-                canViewRoadmap: false,
-                canViewComparative: false,
-                canExportData: true,
-                hasConsultingHours: true,
-                consultingHours: 4,
-                consultingHoursUsed: 0,
-                supportPriority: 'high',
-                supportHours: 'extended',
-                canCustomizeBranding: true,
-                canAddCustomControls: false,
-                canIntegrateAPI: false,
-                canIntegrateSSO: false,
-            },
-            sortOrder: 2,
-            trialDays: 7,
-            badge: 'Mais popular',
-        },
-        {
-            name: 'enterprise',
-            displayName: 'Enterprise',
-            description: 'Solução completa para grandes organizações com necessidades avançadas de conformidade e segurança.',
-            priceMonthly: 599700, // R$ 5.997,00
-            priceAnnual: 5997000, // R$ 59.970,00
-            pricePerUser: 29700, // R$ 297,00
-            features: {
-                maxUsers: 999, // Ilimitado (na prática)
-                maxControls: 93,
-                canViewReport: true,
-                canPrintReport: true,
-                canDownloadReport: true,
-                canViewRoadmap: true,
-                canViewComparative: true,
-                canExportData: true,
-                hasConsultingHours: true,
-                consultingHours: 12,
-                consultingHoursUsed: 0,
-                supportPriority: 'critical',
-                supportHours: '24x7',
-                canCustomizeBranding: true,
-                canAddCustomControls: true,
-                canIntegrateAPI: true,
-                canIntegrateSSO: true,
-            },
-            sortOrder: 3,
-            trialDays: 7,
-            badge: 'Completo',
-        },
-        {
-            name: 'trial',
-            displayName: 'Teste Gratuito',
-            description: 'Avalie o sistema gratuitamente por 7 dias com todas as funcionalidades do plano Enterprise.',
-            priceMonthly: 0,
-            priceAnnual: 0,
-            pricePerUser: 0,
-            features: {
-                maxUsers: 10,
-                maxControls: 93,
-                canViewReport: true,
-                canPrintReport: true,
-                canDownloadReport: true,
-                canViewRoadmap: true,
-                canViewComparative: true,
-                canExportData: true,
-                hasConsultingHours: false,
-                consultingHours: 0,
-                consultingHoursUsed: 0,
-                supportPriority: 'low',
-                supportHours: 'business',
-                canCustomizeBranding: true,
-                canAddCustomControls: false,
-                canIntegrateAPI: false,
-                canIntegrateSSO: false,
-            },
-            sortOrder: 0,
-            trialDays: 7,
-            isPublic: false,
-            badge: 'Gratuito por 7 dias',
-        },
-    ];
-    for (const planData of plans) {
-        const plan = new exports.Plan(planData);
-        await plan.save();
-        console.log(`✅ Plano criado: ${plan.displayName} (${plan.name})`);
-    }
-    console.log('✅ Seed de planos concluído!');
-};
-exports.seedPlans = seedPlans;
+console.log('✅ MODEL Plan criado:', exports.Plan);
 //# sourceMappingURL=Plan.js.map

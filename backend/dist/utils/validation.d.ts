@@ -9,6 +9,7 @@ export declare const registerSchema: z.ZodObject<{
     company: z.ZodOptional<z.ZodString>;
     department: z.ZodOptional<z.ZodString>;
     role: z.ZodOptional<z.ZodEnum<["admin", "rep", "consultant", "user"]>>;
+    plan: z.ZodOptional<z.ZodEnum<["basic", "pro", "enterprise"]>>;
 }, "strip", z.ZodTypeAny, {
     password: string;
     name: string;
@@ -16,6 +17,7 @@ export declare const registerSchema: z.ZodObject<{
     role?: "admin" | "rep" | "consultant" | "user" | undefined;
     company?: string | undefined;
     department?: string | undefined;
+    plan?: "basic" | "pro" | "enterprise" | undefined;
 }, {
     password: string;
     name: string;
@@ -23,6 +25,7 @@ export declare const registerSchema: z.ZodObject<{
     role?: "admin" | "rep" | "consultant" | "user" | undefined;
     company?: string | undefined;
     department?: string | undefined;
+    plan?: "basic" | "pro" | "enterprise" | undefined;
 }>;
 export declare const loginSchema: z.ZodObject<{
     email: z.ZodString;

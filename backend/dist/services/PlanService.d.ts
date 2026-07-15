@@ -1,4 +1,4 @@
-import { IPlan } from '../models/Plan.js';
+import { IPlan } from '../types/plan.types.js';
 export interface CreatePlanData {
     name: 'basic' | 'pro' | 'enterprise' | 'trial';
     displayName: string;
@@ -69,8 +69,8 @@ export declare class PlanService {
         totalPages: number;
     }>;
     /**
-     * Obter planos públicos (para página de planos)
-     */
+   * Obter planos públicos (para página de planos)
+   */
     static getPublicPlans(): Promise<IPlan[]>;
     /**
      * Obter plano por ID

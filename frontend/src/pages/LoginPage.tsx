@@ -35,25 +35,75 @@ const loginSchema = z.object({
 type LoginFormData = z.infer<typeof loginSchema>;
 
 export const LoginPage: React.FC = () => {
+	console.log('[LoginPage] RENDER', {
+  timestamp: new Date().toISOString(),
+});
   const { login } = useAuth();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [branding, setBranding] = useState<PublicBrandingData | null>(null);
+  const [brandingError, setBrandingError] = useState(false);
+  const [isLoadingBranding, setIsLoadingBranding] = useState(false);
 
-  // Buscar branding ao carregar
+  // Buscar branding ao carregar - executado apenas UMA vez
   useEffect(() => {
+	  console.log('[LoginPage] MOUNT useEffect');
+	  console.log('[LoginPage] loadBranding() iniciado');
+    let isMounted = true;
+
     const loadBranding = async () => {
+      // Evita múltiplas chamadas simultâneas
+      if (isLoadingBranding || !isMounted) return;
+      
+      setIsLoadingBranding(true);
       try {
-        // TODO: Buscar o companyId da empresa principal
-        const companyId = '67f8a1b2c3d4e5f6g7h8i9j0';
+        // 🔴 CORRIGIDO: Tentar buscar o companyId do localStorage ou usar fallback
+        const savedCompanyId = localStorage.getItem('companyId');
+		console.log('[LoginPage] Branding carregado com sucesso', data);
+        // Usar ID da ISH TECNOLOGIA como fallback (empresa válida)
+        const companyId = savedCompanyId || '6a34ab8ddbbbbe4b4240fdc2';
+        console.log('[LoginPage] Chamando brandingService.getPublicBranding()', {
+  companyId,
+});
         const data = await brandingService.getPublicBranding(companyId);
-        setBranding(data);
+        if (isMounted) {
+          setBranding(data);
+          setBrandingError(false);
+        }
       } catch (error) {
-        console.error('Erro ao carregar branding no login:', error);
+        if (isMounted) {
+         // console.error('Erro ao carregar branding no login:', error);
+		 console.error('[LoginPage] Erro ao carregar branding', error);
+          setBrandingError(true);
+          // Fallback: usar valores padrão
+          setBranding({
+            companyId: 'default',
+            companyName: 'MRS Consultoria',
+            logo: null,
+            favicon: null,
+            colors: MRS_COLORS,
+            settings: {
+              showLogoInHeader: true,
+              showLogoInReport: true,
+              useCustomColors: false,
+            },
+          });
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoadingBranding(false);
+        }
       }
     };
+
     loadBranding();
-  }, []);
+
+    // Cleanup para prevenir memory leaks
+    return () => {
+		console.log('[LoginPage] UNMOUNT');
+      isMounted = false;
+    };
+  }, []); // 🔴 DEPENDÊNCIAS VAZIAS - executa apenas uma vez
 
   const {
     register,
@@ -69,6 +119,11 @@ export const LoginPage: React.FC = () => {
       const user = await login(data.email, data.password);
       
       if (user) {
+        // Salvar companyId para uso futuro
+        if (user.companyId) {
+          localStorage.setItem('companyId', user.companyId);
+        }
+        
         const role = user.role;
         if (role === 'admin') {
           navigate('/admin');

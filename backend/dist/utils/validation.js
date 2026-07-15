@@ -37,6 +37,7 @@ exports.registerSchema = zod_1.z.object({
     company: zod_1.z.string().max(100).optional(),
     department: zod_1.z.string().max(100).optional(),
     role: zod_1.z.enum(['admin', 'rep', 'consultant', 'user']).optional(),
+    plan: zod_1.z.enum(['basic', 'pro', 'enterprise']).optional(),
 });
 exports.loginSchema = zod_1.z.object({
     email: exports.emailSchema,

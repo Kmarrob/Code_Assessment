@@ -7,7 +7,8 @@ import {
   CheckCircle, Clock, AlertCircle, LogOut,
   Search, ChevronLeft, ChevronRight, Plus, Loader2,
   LayoutDashboard, MessageSquare, Edit, Trash2, 
-  X, RefreshCw, AlertTriangle, ChevronDown, FileText
+  X, RefreshCw, AlertTriangle, ChevronDown, FileText,
+  Palette
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card.js';
 import { Button } from '../components/ui/Button.js';
@@ -15,6 +16,7 @@ import { Input } from '../components/ui/Input.js';
 import { EmptyState } from '../components/ui/EmptyState.js';
 import { repService, RepUser, RepStats } from '../services/rep.service.js';
 import { RevokeControlModal } from '../components/rep/RevokeControlModal.js';
+import { FeatureGuard } from '../components/common/FeatureGuard.js';
 
 export const RepDashboard: React.FC = () => {
   const { user, logout } = useAuth();
@@ -212,6 +214,11 @@ export const RepDashboard: React.FC = () => {
     navigate('/rep/report');
   };
 
+  // 🔴 NOVO: Navegar para página de branding (Personalizar Identidade Visual)
+  const handleManageBranding = () => {
+    navigate('/rep/branding');
+  };
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setPage(1);
@@ -372,7 +379,7 @@ export const RepDashboard: React.FC = () => {
         </div>
 
         {/* Cards de Navegação Rápida */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
           <div
             onClick={handleNavigateToDashboard}
             className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
@@ -454,6 +461,25 @@ export const RepDashboard: React.FC = () => {
             </div>
             <ChevronRight className="w-4 h-4 text-gray-400 mt-2" />
           </div>
+
+          {/* 🔴 NOVO: Card "Personalizar Identidade Visual" (apenas Enterprise) */}
+          <FeatureGuard feature="canCustomizeBranding">
+            <div
+              onClick={handleManageBranding}
+              className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Personalizar</p>
+                  <p className="text-lg font-bold text-gray-900">Identidade Visual</p>
+                </div>
+                <div className="p-3 bg-pink-100 rounded-full">
+                  <Palette className="w-6 h-6 text-pink-600" />
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-gray-400 mt-2" />
+            </div>
+          </FeatureGuard>
         </div>
 
         {/* Users Table */}

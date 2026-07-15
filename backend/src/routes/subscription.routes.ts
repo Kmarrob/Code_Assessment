@@ -62,6 +62,14 @@ router.post(
 // ROTAS ADMIN
 // ============================================
 
+// 🔴 NOVO: Obter assinatura ativa de uma empresa específica (admin)
+router.get(
+  '/admin/:companyId',
+  authorize(UserRole.ADMIN),
+  adminRateLimiter,
+  SubscriptionController.getActiveSubscriptionByCompany
+);
+
 // Atualizar assinatura (admin)
 router.put(
   '/:id',

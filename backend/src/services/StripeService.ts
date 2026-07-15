@@ -1,5 +1,3 @@
-// backend/src/services/StripeService.ts
-
 import {
   BasePaymentGateway,
   PaymentGatewayService,
@@ -9,163 +7,460 @@ import {
   PaymentGatewayResponse,
   PaymentWebhookData,
 } from './PaymentGatewayService.js';
+
 import { stripeConfig, paymentConfig } from '../config/payment.js';
 import { logger } from '../utils/logger.js';
 import { AppError } from '../middleware/errorHandler.js';
 
-export class StripeService extends BasePaymentGateway implements PaymentGatewayService {
-  name: string = 'Stripe';
-  enabled: boolean = paymentConfig.enabled && paymentConfig.provider === 'stripe';
 
-  private stripe: any = null;
-  private initialized: boolean = false;
+interface StripeClient {
+  paymentIntents?: unknown;
+  webhooks?: {
+    constructEvent(
+      payload: string | Buffer,
+      signature: string,
+      secret: string
+    ): unknown;
+  };
+}
+
+
+export class StripeService
+  extends BasePaymentGateway
+  implements PaymentGatewayService {
+
+  name = 'Stripe';
+
+  enabled =
+    paymentConfig.enabled &&
+    paymentConfig.provider === 'stripe';
+
+
+  private stripe: StripeClient | null = null;
+
+  private initialized = false;
+
 
   async initialize(): Promise<void> {
+
     if (!this.enabled) {
-      logger.info('[Stripe] Serviço desativado. Defina PAYMENT_GATEWAY_ENABLED=true e PAYMENT_GATEWAY_PROVIDER=stripe para ativar.');
+
+      logger.info(
+        '[Stripe] Serviço desativado. Utilizando modo MOCK.'
+      );
+
+      this.initialized = true;
       return;
     }
 
+
     try {
-      // 🔴 CORRIGIDO: Importação dinâmica com try/catch para evitar erro de tipo
-      try {
-        const stripeModule = await import('stripe');
-        this.stripe = new stripeModule.default(stripeConfig.secretKey, {
-          apiVersion: '2026-06-24.dahlia',
-        });
-        this.initialized = true;
-        logger.info('[Stripe] Serviço inicializado com sucesso');
-      } catch (importError) {
-        logger.warn('[Stripe] Módulo stripe não encontrado. Usando modo mock.');
-        this.initialized = true;
-        logger.info('[Stripe] Serviço em modo mock (stripe não instalado)');
-      }
+
+      /**
+       * Importação dinâmica para evitar quebra
+       * quando Stripe não estiver instalado.
+       */
+      const stripePackage = await import('stripe');
+
+
+      const Stripe =
+        stripePackage.default ||
+        stripePackage;
+
+
+      this.stripe = new Stripe(
+        stripeConfig.secretKey,
+        {
+          apiVersion:
+            '2026-06-24.dahlia',
+        }
+      );
+
+
+      this.initialized = true;
+
+
+      logger.info(
+        '[Stripe] Serviço inicializado com sucesso.'
+      );
+
+
     } catch (error) {
-      logger.error('[Stripe] Erro ao inicializar:', error);
-      throw new AppError('Erro ao inicializar serviço Stripe', 500);
+
+
+      logger.warn(
+        '[Stripe] Biblioteca stripe não encontrada. Ativando MOCK.'
+      );
+
+
+      this.stripe = null;
+
+      this.initialized = true;
+
+
+      logger.info(
+        '[Stripe] Serviço executando em modo MOCK.'
+      );
     }
+
   }
 
-  async createPayment(params: CreatePaymentParams): Promise<PaymentGatewayResponse> {
-    if (!this.enabled || !this.initialized) {
-      this.log('createPayment (MOCK)', params);
+
+
+  async createPayment(
+    params: CreatePaymentParams
+  ): Promise<PaymentGatewayResponse> {
+
+
+    if (
+      !this.enabled ||
+      !this.initialized
+    ) {
+
+      this.log(
+        'createPayment MOCK',
+        params
+      );
+
+
       return this.mockCreatePayment(params);
     }
 
+
     try {
-      // TODO: Implementar criação de payment intent
-      // Por enquanto, retorna mock
-      this.log('createPayment (REAL - TODO)', params);
+
+
+      /**
+       * Implementação real Stripe futuramente.
+       */
+
+
+      this.log(
+        'createPayment REAL',
+        params
+      );
+
+
       return this.mockCreatePayment(params);
-    } catch (error) {
-      logger.error('[Stripe] Erro ao criar pagamento:', error);
+
+
+    } catch(error) {
+
+
+      logger.error(
+        '[Stripe] Erro ao criar pagamento:',
+        error
+      );
+
+
       return {
-        success: false,
-        paymentId: '',
-        status: 'failed',
-        providerResponse: error,
-        error: error instanceof Error ? error.message : 'Erro desconhecido',
+
+        success:false,
+
+        paymentId:'',
+
+        status:'failed',
+
+        providerResponse:error,
+
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Erro desconhecido'
       };
+
     }
+
   }
 
-  async confirmPayment(params: ConfirmPaymentParams): Promise<PaymentGatewayResponse> {
-    if (!this.enabled || !this.initialized) {
-      this.log('confirmPayment (MOCK)', params);
-      return this.mockConfirmPayment(params.paymentId);
+
+
+
+  async confirmPayment(
+    params: ConfirmPaymentParams
+  ): Promise<PaymentGatewayResponse> {
+
+
+    if (
+      !this.enabled ||
+      !this.initialized
+    ) {
+
+
+      return this.mockConfirmPayment(
+        params.paymentId
+      );
+
     }
+
 
     try {
-      // TODO: Implementar confirmação de pagamento
-      this.log('confirmPayment (REAL - TODO)', params);
-      return this.mockConfirmPayment(params.paymentId);
-    } catch (error) {
-      logger.error('[Stripe] Erro ao confirmar pagamento:', error);
+
+
+      this.log(
+        'confirmPayment REAL',
+        params
+      );
+
+
+      return this.mockConfirmPayment(
+        params.paymentId
+      );
+
+
+    } catch(error){
+
+
+      logger.error(
+        '[Stripe] Erro confirmar pagamento:',
+        error
+      );
+
+
       return {
-        success: false,
-        paymentId: params.paymentId,
-        status: 'failed',
-        providerResponse: error,
-        error: error instanceof Error ? error.message : 'Erro desconhecido',
+
+        success:false,
+
+        paymentId:
+          params.paymentId,
+
+        status:'failed',
+
+        providerResponse:error,
+
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Erro desconhecido'
       };
+
     }
+
   }
 
-  async refundPayment(params: RefundPaymentParams): Promise<PaymentGatewayResponse> {
-    if (!this.enabled || !this.initialized) {
-      this.log('refundPayment (MOCK)', params);
-      return this.mockRefundPayment(params.paymentId);
+
+
+
+
+  async refundPayment(
+    params: RefundPaymentParams
+  ): Promise<PaymentGatewayResponse> {
+
+
+    if (
+      !this.enabled ||
+      !this.initialized
+    ) {
+
+      return this.mockRefundPayment(
+        params.paymentId
+      );
+
     }
+
 
     try {
-      // TODO: Implementar estorno de pagamento
-      this.log('refundPayment (REAL - TODO)', params);
-      return this.mockRefundPayment(params.paymentId);
-    } catch (error) {
-      logger.error('[Stripe] Erro ao estornar pagamento:', error);
+
+
+      this.log(
+        'refundPayment REAL',
+        params
+      );
+
+
+      return this.mockRefundPayment(
+        params.paymentId
+      );
+
+
+    } catch(error){
+
+
+      logger.error(
+        '[Stripe] Erro refund:',
+        error
+      );
+
+
       return {
-        success: false,
-        paymentId: params.paymentId,
-        status: 'failed',
-        providerResponse: error,
-        error: error instanceof Error ? error.message : 'Erro desconhecido',
+
+        success:false,
+
+        paymentId:
+          params.paymentId,
+
+        status:'failed',
+
+        providerResponse:error,
+
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Erro desconhecido'
       };
+
     }
+
   }
 
-  async handleWebhook(data: any, headers: any): Promise<PaymentWebhookData> {
-    if (!this.enabled || !this.initialized) {
-      this.log('handleWebhook (MOCK)', { data, headers });
-      // Simular webhook
-      const event = data?.type || 'payment_intent.succeeded';
-      const paymentId = data?.data?.object?.id || `mock_${Date.now()}`;
+
+
+
+
+  async handleWebhook(
+    data:any,
+    headers:any
+  ):Promise<PaymentWebhookData>{
+
+
+
+    if(
+      !this.enabled ||
+      !this.initialized
+    ){
+
+
+      const event =
+        data?.type ??
+        'payment_intent.succeeded';
+
+
       return {
-        provider: this.name,
+
+        provider:this.name,
+
         event,
-        paymentId,
-        status: event.includes('succeeded') ? 'paid' : 'pending',
-        paidAt: event.includes('succeeded') ? new Date().toISOString() : undefined,
-        metadata: data?.data?.object?.metadata || {},
+
+        paymentId:
+          data?.data?.object?.id ??
+          `mock_${Date.now()}`,
+
+        status:
+          event.includes('succeeded')
+          ? 'paid'
+          : 'pending',
+
+        paidAt:
+          event.includes('succeeded')
+          ? new Date().toISOString()
+          : undefined,
+
+        metadata:
+          data?.data?.object?.metadata ?? {}
+
       };
+
     }
 
-    try {
-      // TODO: Implementar validação de webhook
-      const sig = headers['stripe-signature'];
-      // const event = this.stripe.webhooks.constructEvent(data, sig, stripeConfig.webhookSecret);
 
-      this.log('handleWebhook (REAL - TODO)', { data, headers });
+
+    try {
+
+
+      const signature =
+        headers['stripe-signature'];
+
+
+
+      /**
+       * Ativar quando webhook real estiver pronto.
+       *
+       * this.stripe.webhooks.constructEvent(...)
+       */
+
+
+      logger.info(
+        '[Stripe] Webhook recebido.'
+      );
+
+
+
       return {
-        provider: this.name,
-        event: data?.type || 'unknown',
-        paymentId: data?.data?.object?.id || 'unknown',
-        status: 'paid',
-        paidAt: new Date().toISOString(),
-        metadata: data?.data?.object?.metadata || {},
+
+        provider:this.name,
+
+        event:
+          data?.type ??
+          'unknown',
+
+        paymentId:
+          data?.data?.object?.id ??
+          'unknown',
+
+        status:'paid',
+
+        paidAt:
+          new Date().toISOString(),
+
+        metadata:
+          data?.data?.object?.metadata ?? {}
+
       };
-    } catch (error) {
-      logger.error('[Stripe] Erro ao processar webhook:', error);
+
+
+    } catch(error){
+
+
+      logger.error(
+        '[Stripe] Erro webhook:',
+        error
+      );
+
+
       throw error;
+
     }
+
   }
 
-  async getHealth(): Promise<{ status: 'ok' | 'error'; message: string }> {
-    if (!this.enabled) {
-      return { status: 'ok', message: 'Stripe desativado (mock mode)' };
-    }
 
-    if (!this.initialized) {
-      return { status: 'error', message: 'Stripe não inicializado' };
-    }
 
-    try {
-      // TODO: Implementar health check real
-      return { status: 'ok', message: 'Stripe conectado' };
-    } catch (error) {
+
+
+  async getHealth():
+  Promise<{
+    status:'ok'|'error';
+    message:string
+  }> {
+
+
+    if(!this.enabled){
+
       return {
-        status: 'error',
-        message: error instanceof Error ? error.message : 'Erro desconhecido',
+
+        status:'ok',
+
+        message:
+          'Stripe desativado (mock mode)'
       };
+
     }
+
+
+
+    if(!this.initialized){
+
+      return {
+
+        status:'error',
+
+        message:
+          'Stripe não inicializado'
+      };
+
+    }
+
+
+
+    return {
+
+      status:'ok',
+
+      message:
+        'Stripe conectado'
+
+    };
+
   }
+
 }

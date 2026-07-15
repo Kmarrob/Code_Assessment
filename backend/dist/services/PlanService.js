@@ -3,50 +3,50 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.PlanService = void 0;
 // backend/src/services/PlanService.ts
 const mongoose_1 = require("mongoose");
-const Plan_js_1 = require("../models/Plan.js");
-const logger_js_1 = require("../utils/logger.js");
-const errorHandler_js_1 = require("../middleware/errorHandler.js");
-const retry_js_1 = require("../utils/retry.js");
-const circuitBreaker_js_1 = require("../utils/circuitBreaker.js");
-const timeout_js_1 = require("../middleware/timeout.js");
+const Plan_1 = require("../models/Plan");
+const logger_1 = require("../utils/logger");
+const errorHandler_1 = require("../middleware/errorHandler");
+const retry_1 = require("../utils/retry");
+const circuitBreaker_1 = require("../utils/circuitBreaker");
+const timeout_1 = require("../middleware/timeout");
 class PlanService {
     /**
      * Criar um novo plano
      */
     static async createPlan(data, userId) {
         try {
-            return await circuitBreaker_js_1.databaseCircuitBreaker.execute(async () => {
-                return await (0, retry_js_1.retryDatabase)(async () => {
-                    return await (0, timeout_js_1.withDbTimeout)(async () => {
+            return await circuitBreaker_1.databaseCircuitBreaker.execute(async () => {
+                return await (0, retry_1.retryDatabase)(async () => {
+                    return await (0, timeout_1.withDbTimeout)(async () => {
                         // Verificar se já existe um plano com este nome
-                        const existingPlan = await Plan_js_1.Plan.findOne({ name: data.name });
+                        const existingPlan = await Plan_1.Plan.findOne({ name: data.name });
                         if (existingPlan) {
-                            throw new errorHandler_js_1.AppError(`Plano ${data.name} já existe`, 400);
+                            throw new errorHandler_1.AppError(`Plano ${data.name} já existe`, 400);
                         }
                         // Validar features
                         if (data.features.maxUsers < 1) {
-                            throw new errorHandler_js_1.AppError('Número máximo de usuários deve ser maior que 0', 400);
+                            throw new errorHandler_1.AppError('Número máximo de usuários deve ser maior que 0', 400);
                         }
                         if (data.features.maxControls < 1) {
-                            throw new errorHandler_js_1.AppError('Número máximo de controles deve ser maior que 0', 400);
+                            throw new errorHandler_1.AppError('Número máximo de controles deve ser maior que 0', 400);
                         }
-                        const plan = new Plan_js_1.Plan({
+                        const plan = new Plan_1.Plan({
                             ...data,
                             createdBy: new mongoose_1.Types.ObjectId(userId),
                             updatedBy: new mongoose_1.Types.ObjectId(userId),
                         });
                         await plan.save();
-                        logger_js_1.logger.info(`Plano criado: ${plan.displayName} (${plan.name}) por ${userId}`);
+                        logger_1.logger.info(`Plano criado: ${plan.displayName} (${plan.name}) por ${userId}`);
                         return plan;
                     }, 'PlanService.createPlan');
                 }, 'PlanService.createPlan');
             });
         }
         catch (error) {
-            if (error instanceof errorHandler_js_1.AppError)
+            if (error instanceof errorHandler_1.AppError)
                 throw error;
-            logger_js_1.logger.error('Erro ao criar plano:', error);
-            throw new errorHandler_js_1.AppError('Erro ao criar plano. Tente novamente mais tarde.', 500);
+            logger_1.logger.error('Erro ao criar plano:', error);
+            throw new errorHandler_1.AppError('Erro ao criar plano. Tente novamente mais tarde.', 500);
         }
     }
     /**
@@ -54,9 +54,9 @@ class PlanService {
      */
     static async listPlans(filters = {}, pagination = {}) {
         try {
-            return await circuitBreaker_js_1.databaseCircuitBreaker.execute(async () => {
-                return await (0, retry_js_1.retryDatabase)(async () => {
-                    return await (0, timeout_js_1.withDbTimeout)(async () => {
+            return await circuitBreaker_1.databaseCircuitBreaker.execute(async () => {
+                return await (0, retry_1.retryDatabase)(async () => {
+                    return await (0, timeout_1.withDbTimeout)(async () => {
                         const { page = 1, limit = 20 } = pagination;
                         const { isActive, isPublic } = filters;
                         const match = {};
@@ -66,12 +66,12 @@ class PlanService {
                             match.isPublic = isPublic;
                         const skip = (page - 1) * limit;
                         const [plans, total] = await Promise.all([
-                            Plan_js_1.Plan.find(match)
+                            Plan_1.Plan.find(match)
                                 .sort({ sortOrder: 1 })
                                 .skip(skip)
                                 .limit(limit)
                                 .lean(),
-                            Plan_js_1.Plan.countDocuments(match),
+                            Plan_1.Plan.countDocuments(match),
                         ]);
                         const totalPages = Math.ceil(total / limit);
                         return {
@@ -84,32 +84,62 @@ class PlanService {
             });
         }
         catch (error) {
-            logger_js_1.logger.error('Erro ao listar planos:', error);
-            throw new errorHandler_js_1.AppError('Erro ao listar planos. Tente novamente mais tarde.', 500);
+            logger_1.logger.error('Erro ao listar planos:', error);
+            throw new errorHandler_1.AppError('Erro ao listar planos. Tente novamente mais tarde.', 500);
         }
     }
     /**
-     * Obter planos públicos (para página de planos)
-     */
+   * Obter planos públicos (para página de planos)
+   */
     static async getPublicPlans() {
         try {
-            return await circuitBreaker_js_1.databaseCircuitBreaker.execute(async () => {
-                return await (0, retry_js_1.retryDatabase)(async () => {
-                    return await (0, timeout_js_1.withDbTimeout)(async () => {
-                        const plans = await Plan_js_1.Plan.find({
+            return await circuitBreaker_1.databaseCircuitBreaker.execute(async () => {
+                return await (0, retry_1.retryDatabase)(async () => {
+                    return await (0, timeout_1.withDbTimeout)(async () => {
+                        // ==========================================================
+                        // LOGS DE DIAGNÓSTICO (REMOVER APÓS IDENTIFICAR O PROBLEMA)
+                        // ==========================================================
+                        console.log('\n===================================================');
+                        console.log('DIAGNÓSTICO - PlanService.getPublicPlans()');
+                        console.log('===================================================');
+                        console.log('Mongo URI:', process.env.MONGODB_URI);
+                        const total = await Plan_1.Plan.countDocuments({});
+                        console.log('Total de planos:', total);
+                        const ativos = await Plan_1.Plan.countDocuments({
+                            isActive: true,
+                        });
+                        console.log('Planos ativos:', ativos);
+                        const publicos = await Plan_1.Plan.countDocuments({
+                            isPublic: true,
+                        });
+                        console.log('Planos públicos:', publicos);
+                        const ativosPublicos = await Plan_1.Plan.countDocuments({
+                            isActive: true,
+                            isPublic: true,
+                        });
+                        console.log('Planos ativos e públicos:', ativosPublicos);
+                        const todos = await Plan_1.Plan.find().lean();
+                        console.log('\nTodos os documentos encontrados:\n');
+                        console.log(JSON.stringify(todos, null, 2));
+                        console.log('===================================================\n');
+                        // ==========================================================
+                        // CONSULTA ORIGINAL
+                        // ==========================================================
+                        const plans = await Plan_1.Plan.find({
                             isActive: true,
                             isPublic: true,
                         })
                             .sort({ sortOrder: 1 })
                             .lean();
+                        console.log(`Retornando ${plans.length} plano(s) para a API /api/plans/public`);
                         return plans;
                     }, 'PlanService.getPublicPlans');
                 }, 'PlanService.getPublicPlans');
             });
         }
         catch (error) {
-            logger_js_1.logger.error('Erro ao buscar planos públicos:', error);
-            throw new errorHandler_js_1.AppError('Erro ao buscar planos públicos. Tente novamente mais tarde.', 500);
+            logger_1.logger.error('Erro ao buscar planos públicos:', error);
+            throw new errorHandler_1.AppError('Erro ao buscar planos públicos. Tente novamente mais tarde.', 500);
         }
     }
     /**
@@ -117,15 +147,15 @@ class PlanService {
      */
     static async getPlanById(planId) {
         try {
-            return await circuitBreaker_js_1.databaseCircuitBreaker.execute(async () => {
-                return await (0, retry_js_1.retryDatabase)(async () => {
-                    return await (0, timeout_js_1.withDbTimeout)(async () => {
+            return await circuitBreaker_1.databaseCircuitBreaker.execute(async () => {
+                return await (0, retry_1.retryDatabase)(async () => {
+                    return await (0, timeout_1.withDbTimeout)(async () => {
                         if (!mongoose_1.Types.ObjectId.isValid(planId)) {
-                            throw new errorHandler_js_1.AppError('ID do plano inválido', 400);
+                            throw new errorHandler_1.AppError('ID do plano inválido', 400);
                         }
-                        const plan = await Plan_js_1.Plan.findById(planId);
+                        const plan = await Plan_1.Plan.findById(planId);
                         if (!plan) {
-                            throw new errorHandler_js_1.NotFoundError('Plano', planId);
+                            throw new errorHandler_1.NotFoundError('Plano', planId);
                         }
                         return plan;
                     }, 'PlanService.getPlanById');
@@ -133,10 +163,10 @@ class PlanService {
             });
         }
         catch (error) {
-            if (error instanceof errorHandler_js_1.AppError)
+            if (error instanceof errorHandler_1.AppError)
                 throw error;
-            logger_js_1.logger.error('Erro ao buscar plano:', error);
-            throw new errorHandler_js_1.AppError('Erro ao buscar plano. Tente novamente mais tarde.', 500);
+            logger_1.logger.error('Erro ao buscar plano:', error);
+            throw new errorHandler_1.AppError('Erro ao buscar plano. Tente novamente mais tarde.', 500);
         }
     }
     /**
@@ -144,17 +174,17 @@ class PlanService {
      */
     static async getPlanByName(name) {
         try {
-            return await circuitBreaker_js_1.databaseCircuitBreaker.execute(async () => {
-                return await (0, retry_js_1.retryDatabase)(async () => {
-                    return await (0, timeout_js_1.withDbTimeout)(async () => {
-                        return Plan_js_1.Plan.findOne({ name, isActive: true });
+            return await circuitBreaker_1.databaseCircuitBreaker.execute(async () => {
+                return await (0, retry_1.retryDatabase)(async () => {
+                    return await (0, timeout_1.withDbTimeout)(async () => {
+                        return Plan_1.Plan.findOne({ name, isActive: true });
                     }, 'PlanService.getPlanByName');
                 }, 'PlanService.getPlanByName');
             });
         }
         catch (error) {
-            logger_js_1.logger.error('Erro ao buscar plano por nome:', error);
-            throw new errorHandler_js_1.AppError('Erro ao buscar plano. Tente novamente mais tarde.', 500);
+            logger_1.logger.error('Erro ao buscar plano por nome:', error);
+            throw new errorHandler_1.AppError('Erro ao buscar plano. Tente novamente mais tarde.', 500);
         }
     }
     /**
@@ -162,15 +192,15 @@ class PlanService {
      */
     static async updatePlan(planId, data, userId) {
         try {
-            return await circuitBreaker_js_1.databaseCircuitBreaker.execute(async () => {
-                return await (0, retry_js_1.retryDatabase)(async () => {
-                    return await (0, timeout_js_1.withDbTimeout)(async () => {
+            return await circuitBreaker_1.databaseCircuitBreaker.execute(async () => {
+                return await (0, retry_1.retryDatabase)(async () => {
+                    return await (0, timeout_1.withDbTimeout)(async () => {
                         if (!mongoose_1.Types.ObjectId.isValid(planId)) {
-                            throw new errorHandler_js_1.AppError('ID do plano inválido', 400);
+                            throw new errorHandler_1.AppError('ID do plano inválido', 400);
                         }
-                        const plan = await Plan_js_1.Plan.findById(planId);
+                        const plan = await Plan_1.Plan.findById(planId);
                         if (!plan) {
-                            throw new errorHandler_js_1.NotFoundError('Plano', planId);
+                            throw new errorHandler_1.NotFoundError('Plano', planId);
                         }
                         // Atualizar campos
                         if (data.displayName !== undefined)
@@ -236,17 +266,17 @@ class PlanService {
                         }
                         plan.updatedBy = new mongoose_1.Types.ObjectId(userId);
                         await plan.save();
-                        logger_js_1.logger.info(`Plano atualizado: ${plan.displayName} (${plan.name}) por ${userId}`);
+                        logger_1.logger.info(`Plano atualizado: ${plan.displayName} (${plan.name}) por ${userId}`);
                         return plan;
                     }, 'PlanService.updatePlan');
                 }, 'PlanService.updatePlan');
             });
         }
         catch (error) {
-            if (error instanceof errorHandler_js_1.AppError)
+            if (error instanceof errorHandler_1.AppError)
                 throw error;
-            logger_js_1.logger.error('Erro ao atualizar plano:', error);
-            throw new errorHandler_js_1.AppError('Erro ao atualizar plano. Tente novamente mais tarde.', 500);
+            logger_1.logger.error('Erro ao atualizar plano:', error);
+            throw new errorHandler_1.AppError('Erro ao atualizar plano. Tente novamente mais tarde.', 500);
         }
     }
     /**
@@ -254,34 +284,34 @@ class PlanService {
      */
     static async deletePlan(planId, userId) {
         try {
-            return await circuitBreaker_js_1.databaseCircuitBreaker.execute(async () => {
-                return await (0, retry_js_1.retryDatabase)(async () => {
-                    return await (0, timeout_js_1.withDbTimeout)(async () => {
+            return await circuitBreaker_1.databaseCircuitBreaker.execute(async () => {
+                return await (0, retry_1.retryDatabase)(async () => {
+                    return await (0, timeout_1.withDbTimeout)(async () => {
                         if (!mongoose_1.Types.ObjectId.isValid(planId)) {
-                            throw new errorHandler_js_1.AppError('ID do plano inválido', 400);
+                            throw new errorHandler_1.AppError('ID do plano inválido', 400);
                         }
-                        const plan = await Plan_js_1.Plan.findById(planId);
+                        const plan = await Plan_1.Plan.findById(planId);
                         if (!plan) {
-                            throw new errorHandler_js_1.NotFoundError('Plano', planId);
+                            throw new errorHandler_1.NotFoundError('Plano', planId);
                         }
                         // Verificar se é um plano padrão (não pode deletar)
                         const defaultPlans = ['basic', 'pro', 'enterprise', 'trial'];
                         if (defaultPlans.includes(plan.name)) {
-                            throw new errorHandler_js_1.AppError(`Plano ${plan.name} é um plano padrão e não pode ser deletado`, 400);
+                            throw new errorHandler_1.AppError(`Plano ${plan.name} é um plano padrão e não pode ser deletado`, 400);
                         }
                         plan.isActive = false;
                         plan.updatedBy = new mongoose_1.Types.ObjectId(userId);
                         await plan.save();
-                        logger_js_1.logger.info(`Plano desativado: ${plan.displayName} (${plan.name}) por ${userId}`);
+                        logger_1.logger.info(`Plano desativado: ${plan.displayName} (${plan.name}) por ${userId}`);
                     }, 'PlanService.deletePlan');
                 }, 'PlanService.deletePlan');
             });
         }
         catch (error) {
-            if (error instanceof errorHandler_js_1.AppError)
+            if (error instanceof errorHandler_1.AppError)
                 throw error;
-            logger_js_1.logger.error('Erro ao deletar plano:', error);
-            throw new errorHandler_js_1.AppError('Erro ao deletar plano. Tente novamente mais tarde.', 500);
+            logger_1.logger.error('Erro ao deletar plano:', error);
+            throw new errorHandler_1.AppError('Erro ao deletar plano. Tente novamente mais tarde.', 500);
         }
     }
     /**
@@ -289,17 +319,17 @@ class PlanService {
      */
     static async getDefaultPlan() {
         try {
-            return await circuitBreaker_js_1.databaseCircuitBreaker.execute(async () => {
-                return await (0, retry_js_1.retryDatabase)(async () => {
-                    return await (0, timeout_js_1.withDbTimeout)(async () => {
-                        return Plan_js_1.Plan.findOne({ name: 'basic', isActive: true });
+            return await circuitBreaker_1.databaseCircuitBreaker.execute(async () => {
+                return await (0, retry_1.retryDatabase)(async () => {
+                    return await (0, timeout_1.withDbTimeout)(async () => {
+                        return Plan_1.Plan.findOne({ name: 'basic', isActive: true });
                     }, 'PlanService.getDefaultPlan');
                 }, 'PlanService.getDefaultPlan');
             });
         }
         catch (error) {
-            logger_js_1.logger.error('Erro ao buscar plano padrão:', error);
-            throw new errorHandler_js_1.AppError('Erro ao buscar plano padrão. Tente novamente mais tarde.', 500);
+            logger_1.logger.error('Erro ao buscar plano padrão:', error);
+            throw new errorHandler_1.AppError('Erro ao buscar plano padrão. Tente novamente mais tarde.', 500);
         }
     }
     /**
@@ -320,10 +350,10 @@ class PlanService {
             };
         }
         catch (error) {
-            if (error instanceof errorHandler_js_1.AppError)
+            if (error instanceof errorHandler_1.AppError)
                 throw error;
-            logger_js_1.logger.error('Erro ao calcular preço efetivo:', error);
-            throw new errorHandler_js_1.AppError('Erro ao calcular preço. Tente novamente mais tarde.', 500);
+            logger_1.logger.error('Erro ao calcular preço efetivo:', error);
+            throw new errorHandler_1.AppError('Erro ao calcular preço. Tente novamente mais tarde.', 500);
         }
     }
     /**
@@ -335,9 +365,9 @@ class PlanService {
             return plan.features[feature];
         }
         catch (error) {
-            if (error instanceof errorHandler_js_1.AppError)
+            if (error instanceof errorHandler_1.AppError)
                 throw error;
-            logger_js_1.logger.error('Erro ao verificar feature:', error);
+            logger_1.logger.error('Erro ao verificar feature:', error);
             return false;
         }
     }
@@ -346,17 +376,17 @@ class PlanService {
      */
     static async getActivePlans() {
         try {
-            return await circuitBreaker_js_1.databaseCircuitBreaker.execute(async () => {
-                return await (0, retry_js_1.retryDatabase)(async () => {
-                    return await (0, timeout_js_1.withDbTimeout)(async () => {
-                        return Plan_js_1.Plan.find({ isActive: true }).sort({ sortOrder: 1 });
+            return await circuitBreaker_1.databaseCircuitBreaker.execute(async () => {
+                return await (0, retry_1.retryDatabase)(async () => {
+                    return await (0, timeout_1.withDbTimeout)(async () => {
+                        return Plan_1.Plan.find({ isActive: true }).sort({ sortOrder: 1 });
                     }, 'PlanService.getActivePlans');
                 }, 'PlanService.getActivePlans');
             });
         }
         catch (error) {
-            logger_js_1.logger.error('Erro ao buscar planos ativos:', error);
-            throw new errorHandler_js_1.AppError('Erro ao buscar planos ativos. Tente novamente mais tarde.', 500);
+            logger_1.logger.error('Erro ao buscar planos ativos:', error);
+            throw new errorHandler_1.AppError('Erro ao buscar planos ativos. Tente novamente mais tarde.', 500);
         }
     }
 }

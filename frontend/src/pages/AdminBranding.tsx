@@ -72,6 +72,9 @@ export const AdminBranding: React.FC = () => {
   const faviconInputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  // 🔴 NOVO: Ref para controlar se o carregamento inicial já foi feito
+  const hasLoadedRef = useRef(false);
+
   // Cores da logo MRS
   const defaultColors = {
     primary: '#122A40',
@@ -85,6 +88,10 @@ export const AdminBranding: React.FC = () => {
   // 🔴 NOVO: CARREGAR EMPRESAS (APENAS ADMIN)
   // ============================================
   useEffect(() => {
+    // 🔴 CORRIGIDO: Evita múltiplas execuções do useEffect
+    if (hasLoadedRef.current) return;
+    hasLoadedRef.current = true;
+
     if (user?.role === 'admin') {
       loadCompanies();
     } else {
@@ -121,14 +128,15 @@ export const AdminBranding: React.FC = () => {
   }, []);
 
   // ============================================
-  // 🔴 NOVO: FUNÇÃO PARA CARREGAR EMPRESAS
+  // 🔴 NOVO: FUNÇÃO PARA CARREGAR EMPRESAS (CORRIGIDA)
   // ============================================
   const loadCompanies = async () => {
     setIsLoadingCompanies(true);
     setError(null);
     try {
       const response = await companyService.listCompanies({ limit: 100 });
-      const companiesList = response.companies || [];
+      // 🔴 CORRIGIDO: Usar response.items (o array) em vez de response.companies
+      const companiesList = response.items || [];
       setCompanies(companiesList);
       
       if (companiesList.length > 0) {

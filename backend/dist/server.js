@@ -23,6 +23,7 @@ const notification_routes_js_1 = __importDefault(require("./routes/notification.
 const document_routes_js_1 = __importDefault(require("./routes/document.routes.js")); // 🔴 NOVO
 const report_routes_js_1 = __importDefault(require("./routes/report.routes.js")); // 🔴 NOVO (v17)
 const recommendation_routes_js_1 = __importDefault(require("./routes/recommendation.routes.js")); // 🔴 NOVO (v19)
+const plan_routes_js_1 = __importDefault(require("./routes/plan.routes.js")); // 🔴 NOVO (v26) - Rotas de planos
 require("./services/EmailService.js");
 const cache_js_1 = require("./middleware/cache.js");
 const SitemapController_js_1 = require("./controllers/SitemapController.js");
@@ -123,6 +124,7 @@ app.use('/api/notifications', notification_routes_js_1.default);
 app.use('/api/documents', document_routes_js_1.default); // 🔴 NOVO - Rotas de documentos
 app.use('/api/reports', report_routes_js_1.default); // 🔴 NOVO (v17) - Rotas de relatórios
 app.use('/api/recommendations', recommendation_routes_js_1.default); // 🔴 NOVO (v19) - Rotas de recomendações
+app.use('/api/plans', plan_routes_js_1.default); // 🔴 NOVO (v26) - Rotas de planos
 // ============================================
 // ROTA PÚBLICA DE BRANDING (sem autenticação)
 // ============================================
@@ -194,6 +196,7 @@ async function startServer() {
             logger_js_1.logger.info(`📄 Document Routes: http://localhost:${PORT}/api/documents`);
             logger_js_1.logger.info(`📊 Report Routes: http://localhost:${PORT}/api/reports`);
             logger_js_1.logger.info(`📋 Recommendation Routes: http://localhost:${PORT}/api/recommendations`);
+            logger_js_1.logger.info(`📋 Plan Routes: http://localhost:${PORT}/api/plans`); // 🔴 NOVO (v26)
             logger_js_1.logger.info(`🏷️ Branding Routes: http://localhost:${PORT}/api/branding/:companyId`);
         });
     }

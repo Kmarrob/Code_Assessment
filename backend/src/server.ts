@@ -29,6 +29,8 @@ import { authenticate, authorize } from './middleware/auth.js';
 import { UserRole } from './types/index.js';
 // 🔴 NOVO: Import do AdminController para a rota pública de branding
 import { AdminController } from './controllers/AdminController.js';
+import brandingRoutes from './routes/branding.routes.js';
+
 
 const app = express();
 
@@ -132,6 +134,8 @@ app.use('/api/recommendations', recommendationRoutes); // 🔴 NOVO (v19) - Rota
 app.use('/api/plans', planRoutes); // 🔴 NOVO (v26) - Rotas de planos
 app.use('/api/subscriptions', subscriptionRoutes); // 🔴 NOVO (v26) - Rotas de assinaturas
 app.use('/api/payments', paymentRoutes); // 🔴 NOVO (v26) - Rotas de pagamentos
+app.use('/api/branding', brandingRoutes);
+
 
 // ============================================
 // ROTA PÚBLICA DE BRANDING (sem autenticação)

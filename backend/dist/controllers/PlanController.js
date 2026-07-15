@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PlanController = void 0;
-const PlanService_js_1 = require("../services/PlanService.js");
+const PlanService_1 = require("../services/PlanService");
 const index_js_1 = require("../types/index.js");
 const errorHandler_js_1 = require("../middleware/errorHandler.js");
 const errorLogger_js_1 = require("../utils/errorLogger.js");
@@ -17,7 +17,7 @@ class PlanController {
                 throw new errorHandler_js_1.AppError('Acesso restrito a administradores', 403);
             }
             const { page = 1, limit = 20, isActive, isPublic } = req.query;
-            const result = await PlanService_js_1.PlanService.listPlans({
+            const result = await PlanService_1.PlanService.listPlans({
                 isActive: isActive !== undefined ? isActive === 'true' : undefined,
                 isPublic: isPublic !== undefined ? isPublic === 'true' : undefined,
             }, {
@@ -56,7 +56,7 @@ class PlanController {
      */
     static async getPublicPlans(req, res, next) {
         try {
-            const plans = await PlanService_js_1.PlanService.getPublicPlans();
+            const plans = await PlanService_1.PlanService.getPublicPlans();
             res.json({
                 success: true,
                 data: { plans },
@@ -90,7 +90,7 @@ class PlanController {
             if (!id) {
                 throw new errorHandler_js_1.ValidationError({ id: ['ID do plano é obrigatório'] });
             }
-            const plan = await PlanService_js_1.PlanService.getPlanById(id);
+            const plan = await PlanService_1.PlanService.getPlanById(id);
             res.json({
                 success: true,
                 data: { plan },
@@ -141,7 +141,7 @@ class PlanController {
                 throw new errorHandler_js_1.ValidationError({ pricePerUser: ['Preço por usuário é obrigatório'] });
             if (!features)
                 throw new errorHandler_js_1.ValidationError({ features: ['Features são obrigatórias'] });
-            const plan = await PlanService_js_1.PlanService.createPlan({
+            const plan = await PlanService_1.PlanService.createPlan({
                 name,
                 displayName,
                 description,
@@ -197,7 +197,7 @@ class PlanController {
                 throw new errorHandler_js_1.ValidationError({ id: ['ID do plano é obrigatório'] });
             }
             const { displayName, description, priceMonthly, priceAnnual, pricePerUser, features, sortOrder, badge, isActive, isPublic, allowCustomPricing, customPriceMonthly, customPriceAnnual, trialDays } = req.body;
-            const plan = await PlanService_js_1.PlanService.updatePlan(id, {
+            const plan = await PlanService_1.PlanService.updatePlan(id, {
                 displayName,
                 description,
                 priceMonthly,
@@ -253,7 +253,7 @@ class PlanController {
             if (!id) {
                 throw new errorHandler_js_1.ValidationError({ id: ['ID do plano é obrigatório'] });
             }
-            await PlanService_js_1.PlanService.deletePlan(id, userId);
+            await PlanService_1.PlanService.deletePlan(id, userId);
             res.json({
                 success: true,
                 message: 'Plano desativado com sucesso',
@@ -290,7 +290,7 @@ class PlanController {
             if (isNaN(userCount) || userCount < 1) {
                 throw new errorHandler_js_1.ValidationError({ users: ['Número de usuários inválido'] });
             }
-            const result = await PlanService_js_1.PlanService.calculateEffectivePrice(id, userCount, isAnnual);
+            const result = await PlanService_1.PlanService.calculateEffectivePrice(id, userCount, isAnnual);
             res.json({
                 success: true,
                 data: result,

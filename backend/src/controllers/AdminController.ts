@@ -537,6 +537,7 @@ export class AdminController {
   /**
    * Obter branding da empresa
    * GET /api/admin/company/:companyId/branding
+   * Acesso: ADMIN ou REP (apenas da própria empresa)
    */
   static async getBranding(
     req: AuthenticatedRequest,
@@ -550,9 +551,23 @@ export class AdminController {
         throw new ValidationError({ companyId: ['ID da empresa é obrigatório'] });
       }
 
-      // Verificar se o usuário é ADMIN
-      if (req.user?.role !== UserRole.ADMIN) {
-        throw new AppError('Apenas administradores podem visualizar o branding', 403);
+      // 🔴 CORRIGIDO: Permitir REP da própria empresa
+      const user = req.user;
+      if (!user) {
+        throw new AppError('Usuário não autenticado', 401);
+      }
+
+      // ADMIN pode acessar qualquer empresa
+      if (user.role === UserRole.ADMIN) {
+        // OK
+      } else if (user.role === UserRole.REP) {
+        // REP só pode acessar a própria empresa
+        const userCompanyId = user.companyId?.toString();
+        if (userCompanyId !== companyId) {
+          throw new AppError('Você não tem permissão para acessar o branding desta empresa', 403);
+        }
+      } else {
+        throw new AppError('Apenas administradores e prepostos podem visualizar o branding', 403);
       }
 
       const branding = await AdminService.getBranding(companyId);

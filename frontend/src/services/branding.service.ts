@@ -67,7 +67,7 @@ export interface PublicBrandingData {
 
 export const brandingService = {
   /**
-   * Upload da logo da empresa
+   * Upload da logo da empresa (apenas ADMIN)
    * POST /api/admin/company/:companyId/branding/logo
    */
   async uploadLogo(companyId: string, file: File): Promise<BrandingData> {
@@ -87,7 +87,7 @@ export const brandingService = {
   },
 
   /**
-   * Upload do favicon da empresa
+   * Upload do favicon da empresa (apenas ADMIN)
    * POST /api/admin/company/:companyId/branding/favicon
    */
   async uploadFavicon(companyId: string, file: File): Promise<BrandingData> {
@@ -108,17 +108,18 @@ export const brandingService = {
 
   /**
    * Obter branding da empresa
-   * GET /api/admin/company/:companyId/branding
+   * GET /api/branding/company/:companyId/branding
+   * Acesso: ADMIN ou REP da própria empresa
    */
   async getBranding(companyId: string): Promise<BrandingData> {
     const response = await api.get<ApiResponse<BrandingData>>(
-      `/admin/company/${companyId}/branding`
+      `/branding/company/${companyId}/branding`
     );
     return response.data.data;
   },
 
   /**
-   * Remover logo da empresa
+   * Remover logo da empresa (apenas ADMIN)
    * DELETE /api/admin/company/:companyId/branding/logo
    */
   async removeLogo(companyId: string): Promise<{ logoRemoved: boolean }> {
@@ -129,7 +130,7 @@ export const brandingService = {
   },
 
   /**
-   * Remover favicon da empresa
+   * Remover favicon da empresa (apenas ADMIN)
    * DELETE /api/admin/company/:companyId/branding/favicon
    */
   async removeFavicon(companyId: string): Promise<{ faviconRemoved: boolean }> {
@@ -140,7 +141,7 @@ export const brandingService = {
   },
 
   /**
-   * Atualizar configurações de branding
+   * Atualizar configurações de branding (apenas ADMIN)
    * PUT /api/admin/company/:companyId/branding/settings
    */
   async updateSettings(
