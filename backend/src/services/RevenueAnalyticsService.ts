@@ -2,11 +2,9 @@
  * ============================================
  * REVENUE ANALYTICS SERVICE
  * ============================================
- * 
- * Serviço responsável por calcular métricas de receita
+ * * Serviço responsável por calcular métricas de receita
  * para o sistema de funil de conversão.
- * 
- * @module RevenueAnalyticsService
+ * * @module RevenueAnalyticsService
  * @since v30.0
  */
 
@@ -79,12 +77,12 @@ export class RevenueAnalyticsService {
         { $group: { _id: null, total: { $sum: '$amount' } } }
       ]);
       
-      if (result.length === 0 || result[0].total === 0) {
+      if (result.length === 0 || (result[0] && result[0].total === 0)) {
         console.log('📊 Nenhum pagamento encontrado, calculando receita baseada nos planos das empresas');
         return this.calculateRevenueFromPlans();
       }
       
-      return result.length > 0 ? result[0].total : 0;
+      return result.length > 0 && result[0] ? result[0].total : 0;
     } catch (error) {
       console.error('❌ Erro ao obter receita total:', error);
       return this.calculateRevenueFromPlans();
@@ -139,11 +137,11 @@ export class RevenueAnalyticsService {
         { $group: { _id: null, total: { $sum: '$amount' } } }
       ]);
       
-      if (result.length === 0 || result[0].total === 0) {
+      if (result.length === 0 || (result[0] && result[0].total === 0)) {
         return this.calculateRevenueFromPlans() * 0.8;
       }
       
-      return result.length > 0 ? result[0].total : 0;
+      return result.length > 0 && result[0] ? result[0].total : 0;
     } catch (error) {
       console.error('❌ Erro ao obter receita do período anterior:', error);
       return this.calculateRevenueFromPlans() * 0.8;
@@ -160,7 +158,7 @@ export class RevenueAnalyticsService {
         { $group: { _id: null, totalMRR: { $sum: '$plan.price' } } }
       ]);
 
-      let mrr = activeSubscriptions.length > 0 ? activeSubscriptions[0].totalMRR : 0;
+      let mrr = activeSubscriptions.length > 0 && activeSubscriptions[0] ? activeSubscriptions[0].totalMRR : 0;
       
       if (mrr === 0) {
         console.log('📊 Nenhuma assinatura encontrada, calculando MRR baseada nos planos das empresas');
@@ -245,7 +243,7 @@ export class RevenueAnalyticsService {
         { $group: { _id: null, averageDays: { $avg: '$lifetimeDays' } } }
       ]);
 
-      if (result.length === 0) return 12;
+      if (result.length === 0 || !result[0]) return 12;
       const avgDays = result[0].averageDays;
       const avgMonths = avgDays / 30.44;
       console.log('📊 Tempo médio de vida calculado:', { avgMonths, avgDays });
@@ -372,7 +370,7 @@ export class RevenueAnalyticsService {
         total: item.total,
         count: item.count,
         percentage: totalRevenue > 0 ? (item.total / totalRevenue) * 100 : 0,
-        color: PlanColors[item._id] || ChartColors[index % ChartColors.length]
+        color: PlanColors[item._id as keyof typeof PlanColors] || ChartColors[index % ChartColors.length]
       }));
     } catch (error) {
       console.error('❌ Erro ao obter receita por plano:', error);
@@ -422,13 +420,16 @@ export class RevenueAnalyticsService {
       const totalRevenue = Object.values(planData).reduce((sum, item) => sum + item.total, 0);
       const planKeys = Object.keys(planData);
 
-      return planKeys.map((key, index) => ({
-        planName: planNames[key] || key,
-        total: planData[key].total,
-        count: planData[key].count,
-        percentage: totalRevenue > 0 ? (planData[key].total / totalRevenue) * 100 : 0,
-        color: PlanColors[planNames[key]] || ChartColors[index % ChartColors.length]
-      }));
+      return planKeys.map((key, index) => {
+        const planNameResolved = planNames[key] || key;
+        return {
+          planName: planNameResolved,
+          total: planData[key].total,
+          count: planData[key].count,
+          percentage: totalRevenue > 0 ? (planData[key].total / totalRevenue) * 100 : 0,
+          color: PlanColors[planNameResolved as keyof typeof PlanColors] || ChartColors[index % ChartColors.length]
+        };
+      });
     } catch (error) {
       console.error('❌ Erro ao calcular receita por plano a partir das empresas:', error);
       return [];
@@ -531,7 +532,7 @@ export class RevenueAnalyticsService {
       console.warn('⚠️ Erro ao buscar churn para saúde financeira:', error);
     }
 
-    const churned = churnResult.length > 0 ? churnResult[0].churned : 0;
+    const churned = churnResult.length > 0 && churnResult[0] ? churnResult[0].churned : 0;
     const totalActive = await this.getCompany().countDocuments({
       status: 'active',
       plan: { $in: ['basic', 'pro', 'enterprise'] }
