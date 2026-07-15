@@ -19,6 +19,8 @@ import documentRoutes from './routes/document.routes.js'; // 🔴 NOVO
 import reportRoutes from './routes/report.routes.js'; // 🔴 NOVO (v17)
 import recommendationRoutes from './routes/recommendation.routes.js'; // 🔴 NOVO (v19)
 import planRoutes from './routes/plan.routes.js'; // 🔴 NOVO (v26) - Rotas de planos
+import subscriptionRoutes from './routes/subscription.routes.js'; // 🔴 NOVO (v26) - Rotas de assinaturas
+import paymentRoutes from './routes/payment.routes.js'; // 🔴 NOVO (v26) - Rotas de pagamentos
 import './services/EmailService.js';
 import { noCache } from './middleware/cache.js';
 import { SitemapController } from './controllers/SitemapController.js';
@@ -128,6 +130,8 @@ app.use('/api/documents', documentRoutes); // 🔴 NOVO - Rotas de documentos
 app.use('/api/reports', reportRoutes); // 🔴 NOVO (v17) - Rotas de relatórios
 app.use('/api/recommendations', recommendationRoutes); // 🔴 NOVO (v19) - Rotas de recomendações
 app.use('/api/plans', planRoutes); // 🔴 NOVO (v26) - Rotas de planos
+app.use('/api/subscriptions', subscriptionRoutes); // 🔴 NOVO (v26) - Rotas de assinaturas
+app.use('/api/payments', paymentRoutes); // 🔴 NOVO (v26) - Rotas de pagamentos
 
 // ============================================
 // ROTA PÚBLICA DE BRANDING (sem autenticação)
@@ -208,6 +212,8 @@ async function startServer() {
       logger.info(`📊 Report Routes: http://localhost:${PORT}/api/reports`);
       logger.info(`📋 Recommendation Routes: http://localhost:${PORT}/api/recommendations`);
       logger.info(`📋 Plan Routes: http://localhost:${PORT}/api/plans`); // 🔴 NOVO (v26)
+      logger.info(`📋 Subscription Routes: http://localhost:${PORT}/api/subscriptions`); // 🔴 NOVO (v26)
+      logger.info(`📋 Payment Routes: http://localhost:${PORT}/api/payments`); // 🔴 NOVO (v26)
       logger.info(`🏷️ Branding Routes: http://localhost:${PORT}/api/branding/:companyId`);
     });
 

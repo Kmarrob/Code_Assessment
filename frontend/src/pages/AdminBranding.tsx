@@ -1,7 +1,8 @@
 // frontend/src/pages/AdminBranding.tsx
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext.js';
 import { brandingService, BrandingData } from '../services/branding.service.js';
+import { companyService } from '../services/company.service.js';
 import { FeatureGuard } from '../components/common/FeatureGuard.js';
 import {
   Upload,
@@ -25,9 +26,19 @@ import {
   X,
   Plus,
   Lock,
+  Building2,
+  Search,
+  ChevronDown,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card.js';
 import { Button } from '../components/ui/Button.js';
+
+// Interface para empresa
+interface Company {
+  _id: string;
+  name: string;
+  cnpj?: string;
+}
 
 export const AdminBranding: React.FC = () => {
   const { user } = useAuth();
@@ -47,8 +58,19 @@ export const AdminBranding: React.FC = () => {
   });
   const [companyId, setCompanyId] = useState<string>('');
 
+  // ============================================
+  // 🔴 NOVO: ESTADOS PARA O SELETOR DE EMPRESAS
+  // ============================================
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string>('');
+  const [selectedCompanyName, setSelectedCompanyName] = useState<string>('');
+  const [isLoadingCompanies, setIsLoadingCompanies] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const faviconInputRef = useRef<HTMLInputElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Cores da logo MRS
   const defaultColors = {
@@ -59,21 +81,81 @@ export const AdminBranding: React.FC = () => {
     text: '#122A40',
   };
 
+  // ============================================
+  // 🔴 NOVO: CARREGAR EMPRESAS (APENAS ADMIN)
+  // ============================================
   useEffect(() => {
-    loadBranding();
+    if (user?.role === 'admin') {
+      loadCompanies();
+    } else {
+      // Se não for admin, usar o companyId do usuário
+      const userCompanyId = user?.companyId;
+      if (userCompanyId) {
+        setSelectedCompanyId(userCompanyId);
+        setCompanyId(userCompanyId);
+        setIsLoadingCompanies(false);
+        loadBranding(userCompanyId);
+      }
+    }
+  }, [user]);
+
+  // ============================================
+  // 🔴 NOVO: CARREGAR BRANDING DA EMPRESA SELECIONADA
+  // ============================================
+  useEffect(() => {
+    if (selectedCompanyId && user?.role === 'admin') {
+      setCompanyId(selectedCompanyId);
+      loadBranding(selectedCompanyId);
+    }
+  }, [selectedCompanyId]);
+
+  // Fechar dropdown ao clicar fora
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const loadBranding = async () => {
+  // ============================================
+  // 🔴 NOVO: FUNÇÃO PARA CARREGAR EMPRESAS
+  // ============================================
+  const loadCompanies = async () => {
+    setIsLoadingCompanies(true);
+    setError(null);
+    try {
+      const response = await companyService.listCompanies({ limit: 100 });
+      const companiesList = response.companies || [];
+      setCompanies(companiesList);
+      
+      if (companiesList.length > 0) {
+        // Tentar encontrar a empresa do admin
+        const userCompany = companiesList.find(c => c._id === user?.companyId);
+        const defaultCompany = userCompany || companiesList[0];
+        setSelectedCompanyId(defaultCompany._id);
+        setSelectedCompanyName(defaultCompany.name);
+        setCompanyId(defaultCompany._id);
+      }
+    } catch (err: any) {
+      console.error('Erro ao carregar empresas:', err);
+      setError('Erro ao carregar lista de empresas');
+    } finally {
+      setIsLoadingCompanies(false);
+    }
+  };
+
+  // ============================================
+  // FUNÇÃO PRINCIPAL DE CARREGAR BRANDING
+  // ============================================
+  const loadBranding = async (companyIdToLoad: string) => {
+    if (!companyIdToLoad) return;
     setIsLoading(true);
     setError(null);
     try {
-      // Buscar a primeira empresa (ou usar a do usuário)
-      // Como é admin, vamos buscar o branding da empresa principal
-      // Por enquanto, usamos um ID fixo ou buscamos da lista
-      const companyId = '67f8a1b2c3d4e5f6g7h8i9j0'; // TODO: Buscar da empresa selecionada
-      setCompanyId(companyId);
-      
-      const data = await brandingService.getBranding(companyId);
+      const data = await brandingService.getBranding(companyIdToLoad);
       setBranding(data);
       
       if (data.branding?.settings) {
@@ -91,11 +173,42 @@ export const AdminBranding: React.FC = () => {
     }
   };
 
+  // ============================================
+  // 🔴 NOVO: HANDLER PARA SELECIONAR EMPRESA
+  // ============================================
+  const handleSelectCompany = (company: Company) => {
+    setSelectedCompanyId(company._id);
+    setSelectedCompanyName(company.name);
+    setIsDropdownOpen(false);
+    setSearchTerm('');
+    // Resetar previews
+    setSelectedFile(null);
+    setPreviewUrl(null);
+    setSelectedFavicon(null);
+    setFaviconPreviewUrl(null);
+    setError(null);
+    setSuccess(null);
+  };
+
+  // ============================================
+  // 🔴 NOVO: FILTRAR EMPRESAS POR BUSCA
+  // ============================================
+  const filteredCompanies = useMemo(() => {
+    if (!searchTerm.trim()) return companies;
+    const term = searchTerm.toLowerCase();
+    return companies.filter(c => 
+      c.name.toLowerCase().includes(term) || 
+      (c.cnpj && c.cnpj.includes(term))
+    );
+  }, [companies, searchTerm]);
+
+  // ============================================
+  // HANDLERS EXISTENTES (MANTIDOS)
+  // ============================================
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validações
     const allowedTypes = ['image/png', 'image/jpeg', 'image/svg+xml', 'image/webp'];
     if (!allowedTypes.includes(file.type)) {
       setError('Formato não suportado. Use PNG, JPG, SVG ou WEBP.');
@@ -116,7 +229,6 @@ export const AdminBranding: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validações
     const allowedTypes = ['image/png', 'image/jpeg', 'image/svg+xml', 'image/x-icon', 'image/webp'];
     if (!allowedTypes.includes(file.type)) {
       setError('Formato não suportado. Use PNG, JPG, SVG, ICO ou WEBP.');
@@ -152,8 +264,7 @@ export const AdminBranding: React.FC = () => {
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
-      // Recarregar branding
-      await loadBranding();
+      await loadBranding(companyId);
     } catch (err: any) {
       console.error('Erro ao fazer upload da logo:', err);
       setError(err.response?.data?.message || 'Erro ao fazer upload da logo');
@@ -181,7 +292,7 @@ export const AdminBranding: React.FC = () => {
       if (faviconInputRef.current) {
         faviconInputRef.current.value = '';
       }
-      await loadBranding();
+      await loadBranding(companyId);
     } catch (err: any) {
       console.error('Erro ao fazer upload do favicon:', err);
       setError(err.response?.data?.message || 'Erro ao fazer upload do favicon');
@@ -200,7 +311,7 @@ export const AdminBranding: React.FC = () => {
     try {
       await brandingService.removeLogo(companyId);
       setSuccess('Logo removida com sucesso!');
-      await loadBranding();
+      await loadBranding(companyId);
     } catch (err: any) {
       console.error('Erro ao remover logo:', err);
       setError(err.response?.data?.message || 'Erro ao remover logo');
@@ -219,7 +330,7 @@ export const AdminBranding: React.FC = () => {
     try {
       await brandingService.removeFavicon(companyId);
       setSuccess('Favicon removido com sucesso!');
-      await loadBranding();
+      await loadBranding(companyId);
     } catch (err: any) {
       console.error('Erro ao remover favicon:', err);
       setError(err.response?.data?.message || 'Erro ao remover favicon');
@@ -236,7 +347,7 @@ export const AdminBranding: React.FC = () => {
     try {
       await brandingService.updateSettings(companyId, settings);
       setSuccess('Configurações salvas com sucesso!');
-      await loadBranding();
+      await loadBranding(companyId);
     } catch (err: any) {
       console.error('Erro ao salvar configurações:', err);
       setError(err.response?.data?.message || 'Erro ao salvar configurações');
@@ -245,6 +356,35 @@ export const AdminBranding: React.FC = () => {
     }
   };
 
+  // ============================================
+  // RENDER
+  // ============================================
+  // Carregando empresas (admin)
+  if (user?.role === 'admin' && isLoadingCompanies) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto" />
+          <p className="mt-4 text-gray-500">Carregando empresas...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Nenhuma empresa (admin)
+  if (user?.role === 'admin' && companies.length === 0 && !isLoadingCompanies) {
+    return (
+      <div className="container mx-auto px-4 py-16">
+        <div className="text-center max-w-2xl mx-auto">
+          <Building2 className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-700 mb-3">Nenhuma empresa encontrada</h2>
+          <p className="text-gray-500">Cadastre uma empresa para gerenciar o branding.</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Carregando branding
   if (isLoading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
@@ -295,12 +435,87 @@ export const AdminBranding: React.FC = () => {
     >
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Branding da Empresa</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Branding</h1>
           <p className="text-gray-500 mt-2">
-            Gerencie a logo e favicon da MRS Consultoria no sistema
+            Gerencie a identidade visual das empresas
           </p>
         </div>
 
+        {/* ============================================
+            🔴 NOVO: SELETOR DE EMPRESAS (APENAS ADMIN)
+            ============================================ */}
+        {user?.role === 'admin' && (
+          <Card className="mb-6">
+            <CardContent className="p-4">
+              <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
+                <label className="text-sm font-medium text-gray-700 min-w-[100px]">
+                  Empresa:
+                </label>
+                <div className="relative w-full md:w-80" ref={dropdownRef}>
+                  <div
+                    className="flex items-center justify-between border border-gray-300 rounded-lg px-3 py-2 bg-white cursor-pointer hover:border-blue-400 transition-colors"
+                    onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Building2 className="h-4 w-4 text-gray-400" />
+                      <span className="text-sm text-gray-700">
+                        {selectedCompanyName || 'Selecione uma empresa'}
+                      </span>
+                    </div>
+                    <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+                  </div>
+
+                  {isDropdownOpen && (
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto">
+                      <div className="p-2 sticky top-0 bg-white border-b border-gray-100">
+                        <div className="relative">
+                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                          <input
+                            type="text"
+                            placeholder="Buscar empresa..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full pl-9 pr-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        </div>
+                      </div>
+                      {filteredCompanies.length === 0 ? (
+                        <div className="p-4 text-center text-gray-500 text-sm">Nenhuma empresa encontrada</div>
+                      ) : (
+                        filteredCompanies.map((company) => (
+                          <div
+                            key={company._id}
+                            className={`px-3 py-2 cursor-pointer hover:bg-blue-50 transition-colors flex items-center gap-2 ${
+                              company._id === selectedCompanyId ? 'bg-blue-50 border-l-4 border-blue-500' : ''
+                            }`}
+                            onClick={() => handleSelectCompany(company)}
+                          >
+                            <Building2 className="h-4 w-4 text-gray-400" />
+                            <div>
+                              <p className="text-sm font-medium text-gray-700">{company.name}</p>
+                              {company.cnpj && <p className="text-xs text-gray-400">CNPJ: {company.cnpj}</p>}
+                            </div>
+                            {company._id === selectedCompanyId && (
+                              <CheckCircle className="h-4 w-4 text-blue-500 ml-auto" />
+                            )}
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+                <span className="text-xs text-gray-400">
+                  {companies.length} {companies.length === 1 ? 'empresa' : 'empresas'} cadastradas
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* ============================================
+            ALERTAS (MANTIDOS)
+            ============================================ */}
         {error && (
           <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3 text-red-700">
             <AlertCircle className="h-5 w-5 flex-shrink-0" />
@@ -327,6 +542,9 @@ export const AdminBranding: React.FC = () => {
           </div>
         )}
 
+        {/* ============================================
+            CONTEÚDO EXISTENTE (TOTALMENTE MANTIDO)
+            ============================================ */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Logo */}
           <Card>

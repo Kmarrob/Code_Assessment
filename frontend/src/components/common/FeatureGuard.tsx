@@ -3,6 +3,7 @@
 import React, { ReactNode } from 'react';
 import { useFeatureAccess } from '../../hooks/useFeatureAccess.js';
 import { PlanFeature } from '../../services/plan.service.js';
+import { useAuth } from '../../contexts/AuthContext.js';
 import { Lock } from 'lucide-react';
 
 interface FeatureGuardProps {
@@ -18,7 +19,13 @@ export const FeatureGuard: React.FC<FeatureGuardProps> = ({
   fallback,
   showLock = true,
 }) => {
+  const { user } = useAuth();
   const { hasFeature, isLoading } = useFeatureAccess();
+
+  // ADMIN TEM ACESSO TOTAL
+  if (user?.role === 'admin') {
+    return <>{children}</>;
+  }
 
   if (isLoading) {
     return <div className="animate-pulse bg-gray-100 h-8 w-full rounded" />;
