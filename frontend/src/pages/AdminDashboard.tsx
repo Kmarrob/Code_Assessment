@@ -7,7 +7,8 @@ import {
   Users, Settings, Shield, 
   BarChart3, Database, Activity,
   LogOut, Building2, ClipboardList, UserCog, LayoutDashboard, FileText, Lightbulb,
-  Download, Palette
+  Download, Palette,
+  TrendingUp  // 🔴 NOVO - Funil de Conversão
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card.js';
 import { AdminBreadcrumbs } from '../components/admin/AdminBreadcrumbs.js';
@@ -63,6 +64,11 @@ export const AdminDashboard: React.FC = () => {
 
   const handleNavigateToBranding = useCallback(() => {
     navigate('/admin/branding');
+  }, [navigate]);
+
+  // 🔴 NOVO - Handler para Funil de Conversão
+  const handleNavigateToAnalytics = useCallback(() => {
+    navigate('/admin/analytics');
   }, [navigate]);
 
   const handleLogout = useCallback(async () => {
@@ -354,6 +360,24 @@ export const AdminDashboard: React.FC = () => {
                 </CardContent>
               </Card>
             </FeatureGuard>
+
+            {/* 🔴 NOVO: Funil de Conversão */}
+            <Card 
+              className="hover:shadow-lg transition-shadow cursor-pointer"
+              onClick={handleNavigateToAnalytics}
+            >
+              <CardContent className="p-6">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-violet-100 rounded-lg">
+                    <TrendingUp className="h-6 w-6 text-violet-600" aria-hidden="true" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-gray-900">Funil de Conversão</h3>
+                    <p className="text-sm text-gray-500">Análise de receita e retenção</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </section>
 
           {/* Componentes temporariamente removidos para teste */}
