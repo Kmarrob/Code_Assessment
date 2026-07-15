@@ -112,8 +112,9 @@ export class RevenueAnalyticsService {
 
       let totalRevenue = 0;
       for (const company of companies) {
-        // 🔴 CORRIGIDO: company.plan pode ser undefined
-        const planKey = company.plan?.toLowerCase() || '';
+        // 🔴 CORRIGIDO: Verificação segura com fallback
+        const planName = company.plan || '';
+        const planKey = planName.toLowerCase();
         const price = planPrices[planKey] || 0;
         totalRevenue += price;
       }
@@ -196,8 +197,9 @@ export class RevenueAnalyticsService {
 
       let totalMRR = 0;
       for (const company of companies) {
-        // 🔴 CORRIGIDO: company.plan pode ser undefined
-        const planKey = company.plan?.toLowerCase() || '';
+        // 🔴 CORRIGIDO: Verificação segura com fallback
+        const planName = company.plan || '';
+        const planKey = planName.toLowerCase();
         const price = planPrices[planKey] || 0;
         totalMRR += price;
       }
@@ -312,8 +314,9 @@ export class RevenueAnalyticsService {
       for (const company of companies) {
         const createdAt = new Date(company.createdAt);
         const monthKey = `${createdAt.getFullYear()}-${String(createdAt.getMonth() + 1).padStart(2, '0')}`;
-        // 🔴 CORRIGIDO: company.plan pode ser undefined
-        const planKey = company.plan?.toLowerCase() || '';
+        // 🔴 CORRIGIDO: Verificação segura com fallback
+        const planName = company.plan || '';
+        const planKey = planName.toLowerCase();
         const price = planPrices[planKey] || 0;
         
         if (!monthlyRevenue[monthKey]) {
@@ -405,10 +408,12 @@ export class RevenueAnalyticsService {
       const planData: Record<string, { total: number; count: number }> = {};
       
       for (const company of companies) {
-        // 🔴 CORRIGIDO: company.plan pode ser undefined
-        const planKey = company.plan?.toLowerCase() || 'unknown';
+        // 🔴 CORRIGIDO: Verificação segura com fallback
+        const planName = company.plan || '';
+        const planKey = planName.toLowerCase() || 'unknown';
         const price = planPrices[planKey] || 0;
         
+        // 🔴 CORRIGIDO: Inicializar o objeto se não existir
         if (!planData[planKey]) {
           planData[planKey] = { total: 0, count: 0 };
         }
