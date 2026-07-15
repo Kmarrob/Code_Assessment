@@ -1,3 +1,4 @@
+// 🔴 [FORCE COMMIT] v31 - Correção do loop infinito - 15/07/2026
 // frontend/src/pages/AdminBranding.tsx
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext.js';

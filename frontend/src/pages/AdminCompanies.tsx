@@ -1,3 +1,4 @@
+// 🔴 [FORCE COMMIT] v31 - Correção do loop infinito - 15/07/2026
 // frontend/src/pages/AdminCompanies.tsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
