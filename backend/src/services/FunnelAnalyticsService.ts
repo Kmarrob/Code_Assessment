@@ -701,12 +701,14 @@ export class FunnelAnalyticsService {
         return 'past_due';
 
       case 'cancelled':
+        // 🔴 CORRIGIDO: Payment.exists retorna objeto ou null, não boolean
         let hasPayment = false;
         try {
-          hasPayment = await Payment.exists({
+          const paymentExists = await Payment.exists({
             companyId: company._id,
             status: 'paid'
           });
+          hasPayment = !!paymentExists; // Converte para boolean
         } catch (error) {
           console.warn('⚠️ Erro ao verificar payment:', error);
         }

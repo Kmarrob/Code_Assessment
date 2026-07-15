@@ -112,7 +112,9 @@ export class RevenueAnalyticsService {
 
       let totalRevenue = 0;
       for (const company of companies) {
-        const price = planPrices[company.plan?.toLowerCase()] || 0;
+        // 🔴 CORRIGIDO: company.plan pode ser undefined
+        const planKey = company.plan?.toLowerCase() || '';
+        const price = planPrices[planKey] || 0;
         totalRevenue += price;
       }
 
@@ -194,7 +196,9 @@ export class RevenueAnalyticsService {
 
       let totalMRR = 0;
       for (const company of companies) {
-        const price = planPrices[company.plan?.toLowerCase()] || 0;
+        // 🔴 CORRIGIDO: company.plan pode ser undefined
+        const planKey = company.plan?.toLowerCase() || '';
+        const price = planPrices[planKey] || 0;
         totalMRR += price;
       }
 
@@ -308,7 +312,9 @@ export class RevenueAnalyticsService {
       for (const company of companies) {
         const createdAt = new Date(company.createdAt);
         const monthKey = `${createdAt.getFullYear()}-${String(createdAt.getMonth() + 1).padStart(2, '0')}`;
-        const price = planPrices[company.plan?.toLowerCase()] || 0;
+        // 🔴 CORRIGIDO: company.plan pode ser undefined
+        const planKey = company.plan?.toLowerCase() || '';
+        const price = planPrices[planKey] || 0;
         
         if (!monthlyRevenue[monthKey]) {
           monthlyRevenue[monthKey] = { total: 0, date: new Date(createdAt.getFullYear(), createdAt.getMonth(), 1) };
@@ -322,7 +328,10 @@ export class RevenueAnalyticsService {
       return Object.entries(monthlyRevenue)
         .sort((a, b) => a[0].localeCompare(b[0]))
         .map(([key, value]) => {
-          const [year, month] = key.split('-').map(Number);
+          // 🔴 CORRIGIDO: Desestruturação segura com verificação
+          const parts = key.split('-').map(Number);
+          const year = parts[0] || 2026;
+          const month = parts[1] || 1;
           const date = new Date(year, month - 1, 1);
           return {
             period: `${monthNames[month - 1]} ${year}`,
@@ -396,6 +405,7 @@ export class RevenueAnalyticsService {
       const planData: Record<string, { total: number; count: number }> = {};
       
       for (const company of companies) {
+        // 🔴 CORRIGIDO: company.plan pode ser undefined
         const planKey = company.plan?.toLowerCase() || 'unknown';
         const price = planPrices[planKey] || 0;
         
