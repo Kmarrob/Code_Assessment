@@ -112,7 +112,6 @@ function getChurnService() {
 
 /**
  * Obtém distribuição por plano usando mongoose.model
- * 🔴 CORRIGIDO: Usando variável para garantir retorno
  */
 async function getPlanDistribution(): Promise<Array<{ planName: string; count: number; percentage: number }>> {
   let result: Array<{ planName: string; count: number; percentage: number }> = [];
@@ -137,7 +136,6 @@ async function getPlanDistribution(): Promise<Array<{ planName: string; count: n
     result = [];
   }
   
-  // 🔴 CORRIGIDO: Garantir que sempre retorna um valor
   return result;
 }
 
@@ -145,7 +143,7 @@ async function getPlanDistribution(): Promise<Array<{ planName: string; count: n
 // HANDLER: GET /summary
 // ============================================
 
-async function handleSummary(req: Request, res: Response, next: NextFunction) {
+async function handleSummary(req: Request, res: Response, next: NextFunction): Promise<Response | void> {
   try {
     const { period, startDate, endDate } = periodSchema.parse(req.query);
     const { startDate: start, endDate: end, label } = parsePeriod(
@@ -160,7 +158,15 @@ async function handleSummary(req: Request, res: Response, next: NextFunction) {
     const funnelService = getFunnelService();
     const churnService = getChurnService();
 
-    const [revenue, funnel, churn, statusDistribution, recentClients] = await Promise.all([
+    // 🔴 CORRIGIDO: 6 Promises, 6 variáveis
+    const [
+      revenue,
+      funnel,
+      churn,
+      statusDistribution,
+      planDistribution,
+      recentClients
+    ] = await Promise.all([
       revenueService.getRevenueMetrics(start, end),
       funnelService.getFunnelMetrics(start, end),
       churnService.getChurnMetrics(start, end),
@@ -173,13 +179,14 @@ async function handleSummary(req: Request, res: Response, next: NextFunction) {
       ? recentClients.clients
       : [];
 
-    res.json({
+    // 🔴 CORRIGIDO: Adicionado RETURN no sucesso
+    return res.json({
       success: true,
       data: {
         revenue,
         funnel,
         churn,
-        planDistribution: await getPlanDistribution(),
+        planDistribution,
         statusDistribution,
         recentClients: recentClientsData,
         period: { startDate: start, endDate: end, label, type: period },
@@ -206,7 +213,7 @@ async function handleSummary(req: Request, res: Response, next: NextFunction) {
 // HANDLER: GET /revenue
 // ============================================
 
-async function handleRevenue(req: Request, res: Response, next: NextFunction) {
+async function handleRevenue(req: Request, res: Response, next: NextFunction): Promise<Response | void> {
   try {
     const { period, startDate, endDate } = periodSchema.parse(req.query);
     const { startDate: start, endDate: end } = parsePeriod(
@@ -218,11 +225,12 @@ async function handleRevenue(req: Request, res: Response, next: NextFunction) {
     const revenueService = getRevenueService();
     const revenue = await revenueService.getRevenueMetrics(start, end);
 
-    res.json({ success: true, data: revenue, statusCode: 200 });
+    return res.json({ success: true, data: revenue, statusCode: 200 });
   } catch (error: any) {
     const safeError = error?.message || error || 'Erro desconhecido no manipulador revenue';
     console.error('❌ Erro ao buscar métricas de receita:', safeError);
     next(error);
+    return;
   }
 }
 
@@ -230,7 +238,7 @@ async function handleRevenue(req: Request, res: Response, next: NextFunction) {
 // HANDLER: GET /funnel
 // ============================================
 
-async function handleFunnel(req: Request, res: Response, next: NextFunction) {
+async function handleFunnel(req: Request, res: Response, next: NextFunction): Promise<Response | void> {
   try {
     const { period, startDate, endDate } = periodSchema.parse(req.query);
     const { startDate: start, endDate: end } = parsePeriod(
@@ -242,11 +250,12 @@ async function handleFunnel(req: Request, res: Response, next: NextFunction) {
     const funnelService = getFunnelService();
     const funnel = await funnelService.getFunnelDetails(start, end);
 
-    res.json({ success: true, data: funnel, statusCode: 200 });
+    return res.json({ success: true, data: funnel, statusCode: 200 });
   } catch (error: any) {
     const safeError = error?.message || error || 'Erro desconhecido no manipulador funnel';
     console.error('❌ Erro ao buscar métricas do funil:', safeError);
     next(error);
+    return;
   }
 }
 
@@ -254,7 +263,7 @@ async function handleFunnel(req: Request, res: Response, next: NextFunction) {
 // HANDLER: GET /churn
 // ============================================
 
-async function handleChurn(req: Request, res: Response, next: NextFunction) {
+async function handleChurn(req: Request, res: Response, next: NextFunction): Promise<Response | void> {
   try {
     const { period, startDate, endDate } = periodSchema.parse(req.query);
     const { startDate: start, endDate: end } = parsePeriod(
@@ -266,11 +275,12 @@ async function handleChurn(req: Request, res: Response, next: NextFunction) {
     const churnService = getChurnService();
     const churn = await churnService.getChurnMetrics(start, end);
 
-    res.json({ success: true, data: churn, statusCode: 200 });
+    return res.json({ success: true, data: churn, statusCode: 200 });
   } catch (error: any) {
     const safeError = error?.message || error || 'Erro desconhecido no manipulador churn';
     console.error('❌ Erro ao buscar métricas de churn:', safeError);
     next(error);
+    return;
   }
 }
 
@@ -278,14 +288,15 @@ async function handleChurn(req: Request, res: Response, next: NextFunction) {
 // HANDLER: GET /plans
 // ============================================
 
-async function handlePlans(req: Request, res: Response, next: NextFunction) {
+async function handlePlans(req: Request, res: Response, next: NextFunction): Promise<Response | void> {
   try {
     const distribution = await getPlanDistribution();
-    res.json({ success: true, data: distribution, statusCode: 200 });
+    return res.json({ success: true, data: distribution, statusCode: 200 });
   } catch (error: any) {
     const safeError = error?.message || error || 'Erro desconhecido no manipulador plans';
     console.error('❌ Erro ao buscar distribuição por plano:', safeError);
     next(error);
+    return;
   }
 }
 
@@ -293,7 +304,7 @@ async function handlePlans(req: Request, res: Response, next: NextFunction) {
 // HANDLER: GET /clients
 // ============================================
 
-async function handleClients(req: Request, res: Response, next: NextFunction) {
+async function handleClients(req: Request, res: Response, next: NextFunction): Promise<Response | void> {
   try {
     const { period, startDate, endDate, plan, status, search, limit, offset } =
       clientListSchema.parse(req.query);
@@ -313,11 +324,12 @@ async function handleClients(req: Request, res: Response, next: NextFunction) {
       offset
     });
 
-    res.json({ success: true, data: result, statusCode: 200 });
+    return res.json({ success: true, data: result, statusCode: 200 });
   } catch (error: any) {
     const safeError = error?.message || error || 'Erro desconhecido no manipulador clients';
     console.error('❌ Erro ao buscar lista de clientes:', safeError);
     next(error);
+    return;
   }
 }
 
@@ -325,7 +337,7 @@ async function handleClients(req: Request, res: Response, next: NextFunction) {
 // HANDLER: GET /retention
 // ============================================
 
-async function handleRetention(req: Request, res: Response, next: NextFunction) {
+async function handleRetention(req: Request, res: Response, next: NextFunction): Promise<Response | void> {
   try {
     const { period, startDate, endDate } = periodSchema.parse(req.query);
     const maxMonths = req.query.maxMonths ? parseInt(req.query.maxMonths as string) : 12;
@@ -339,11 +351,12 @@ async function handleRetention(req: Request, res: Response, next: NextFunction) 
     const churnService = getChurnService();
     const retention = await churnService.getRetentionCurve(start, end, Math.min(maxMonths, 24));
 
-    res.json({ success: true, data: retention, statusCode: 200 });
+    return res.json({ success: true, data: retention, statusCode: 200 });
   } catch (error: any) {
     const safeError = error?.message || error || 'Erro desconhecido no manipulador retention';
     console.error('❌ Erro ao buscar curva de retenção:', safeError);
     next(error);
+    return;
   }
 }
 
@@ -351,15 +364,16 @@ async function handleRetention(req: Request, res: Response, next: NextFunction) 
 // HANDLER: GET /prediction
 // ============================================
 
-async function handlePrediction(req: Request, res: Response, next: NextFunction) {
+async function handlePrediction(req: Request, res: Response, next: NextFunction): Promise<Response | void> {
   try {
     const churnService = getChurnService();
     const prediction = await churnService.getChurnPrediction();
-    res.json({ success: true, data: prediction, statusCode: 200 });
+    return res.json({ success: true, data: prediction, statusCode: 200 });
   } catch (error: any) {
     const safeError = error?.message || error || 'Erro desconhecido no manipulador prediction';
     console.error('❌ Erro ao buscar predição de churn:', safeError);
     next(error);
+    return;
   }
 }
 
@@ -367,7 +381,7 @@ async function handlePrediction(req: Request, res: Response, next: NextFunction)
 // HANDLER: GET /strategies
 // ============================================
 
-async function handleStrategies(req: Request, res: Response, next: NextFunction) {
+async function handleStrategies(req: Request, res: Response, next: NextFunction): Promise<Response | void> {
   try {
     const { period, startDate, endDate } = periodSchema.parse(req.query);
     const { startDate: start, endDate: end } = parsePeriod(
@@ -379,11 +393,12 @@ async function handleStrategies(req: Request, res: Response, next: NextFunction)
     const churnService = getChurnService();
     const strategies = await churnService.getRetentionStrategies(start, end);
 
-    res.json({ success: true, data: strategies, statusCode: 200 });
+    return res.json({ success: true, data: strategies, statusCode: 200 });
   } catch (error: any) {
     const safeError = error?.message || error || 'Erro desconhecido no manipulador strategies';
     console.error('❌ Erro ao buscar estratégias de retenção:', safeError);
     next(error);
+    return;
   }
 }
 
@@ -391,7 +406,7 @@ async function handleStrategies(req: Request, res: Response, next: NextFunction)
 // HANDLER: GET /abandoned
 // ============================================
 
-async function handleAbandoned(req: Request, res: Response, next: NextFunction) {
+async function handleAbandoned(req: Request, res: Response, next: NextFunction): Promise<Response | void> {
   try {
     const { period, startDate, endDate } = periodSchema.parse(req.query);
     const { startDate: start, endDate: end } = parsePeriod(
@@ -403,11 +418,12 @@ async function handleAbandoned(req: Request, res: Response, next: NextFunction) 
     const funnelService = getFunnelService();
     const abandoned = await funnelService.getAbandonedTrials(start, end);
 
-    res.json({ success: true, data: abandoned, statusCode: 200 });
+    return res.json({ success: true, data: abandoned, statusCode: 200 });
   } catch (error: any) {
     const safeError = error?.message || error || 'Erro desconhecido no manipulador abandoned';
     console.error('❌ Erro ao buscar trials abandonados:', safeError);
     next(error);
+    return;
   }
 }
 
@@ -415,7 +431,7 @@ async function handleAbandoned(req: Request, res: Response, next: NextFunction) 
 // HANDLER: GET /trend
 // ============================================
 
-async function handleTrend(req: Request, res: Response, next: NextFunction) {
+async function handleTrend(req: Request, res: Response, next: NextFunction): Promise<Response | void> {
   try {
     const { period, startDate, endDate } = periodSchema.parse(req.query);
     const interval = (req.query.interval as 'daily' | 'weekly' | 'monthly') || 'weekly';
@@ -429,11 +445,12 @@ async function handleTrend(req: Request, res: Response, next: NextFunction) {
     const funnelService = getFunnelService();
     const trend = await funnelService.getConversionTrend(start, end, interval);
 
-    res.json({ success: true, data: trend, statusCode: 200 });
+    return res.json({ success: true, data: trend, statusCode: 200 });
   } catch (error: any) {
     const safeError = error?.message || error || 'Erro desconhecido no manipulador trend';
     console.error('❌ Erro ao buscar tendência de conversão:', safeError);
     next(error);
+    return;
   }
 }
 
