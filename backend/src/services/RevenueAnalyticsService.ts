@@ -2,9 +2,11 @@
  * ============================================
  * REVENUE ANALYTICS SERVICE
  * ============================================
- * * Serviço responsável por calcular métricas de receita
+ * 
+ * Serviço responsável por calcular métricas de receita
  * para o sistema de funil de conversão.
- * * @module RevenueAnalyticsService
+ * 
+ * @module RevenueAnalyticsService
  * @since v30.0
  */
 
@@ -77,21 +79,21 @@ export class RevenueAnalyticsService {
         { $group: { _id: null, total: { $sum: '$amount' } } }
       ]);
       
-      if (result.length === 0 || (result[0] && result[0].total === 0)) {
+      const hasResult = result && result.length > 0 && result[0] !== null && result[0] !== undefined;
+      const total = hasResult ? result[0].total : 0;
+      
+      if (!hasResult || total === 0) {
         console.log('📊 Nenhum pagamento encontrado, calculando receita baseada nos planos das empresas');
         return this.calculateRevenueFromPlans();
       }
       
-      return result.length > 0 && result[0] ? result[0].total : 0;
+      return total;
     } catch (error) {
       console.error('❌ Erro ao obter receita total:', error);
       return this.calculateRevenueFromPlans();
     }
   }
 
-  /**
-   * 🔴 NOVO: Calcula receita baseada nos planos das empresas
-   */
   private async calculateRevenueFromPlans(): Promise<number> {
     try {
       const Company = this.getCompany();
@@ -108,7 +110,6 @@ export class RevenueAnalyticsService {
 
       let totalRevenue = 0;
       for (const company of companies) {
-        // 🔴 CORRIGIDO: Type guard com verificação de string
         const plan = company.plan;
         if (plan && typeof plan === 'string') {
           const planKey = plan.toLowerCase();
@@ -127,11 +128,12 @@ export class RevenueAnalyticsService {
 
   private async getPreviousPeriodRevenue(currentStart: Date, currentEnd: Date): Promise<number> {
     try {
-      // 🔴 CORRIGIDO TS2362: Garante o valor primitivo numérico com getTime() para a operação aritmética
-      const currentEndMs = currentEnd instanceof Date ? currentEnd.getTime() : new Date(currentEnd).getTime();
-      const currentStartMs = currentStart instanceof Date ? currentStart.getTime() : new Date(currentStart).getTime();
-      
+      // 🔴 CORRIGIDO TS2362: Converter explicitamente para Number e usar getTime()
+      const currentStartMs = Number(new Date(currentStart).getTime());
+      const currentEndMs = Number(new Date(currentEnd).getTime());
+
       const duration = currentEndMs - currentStartMs;
+
       const previousStart = new Date(currentStartMs - duration);
       const previousEnd = new Date(currentStartMs);
 
@@ -141,11 +143,14 @@ export class RevenueAnalyticsService {
         { $group: { _id: null, total: { $sum: '$amount' } } }
       ]);
       
-      if (result.length === 0 || (result[0] && result[0].total === 0)) {
+      const hasResult = result && result.length > 0 && result[0] !== null && result[0] !== undefined;
+      const total = hasResult ? result[0].total : 0;
+      
+      if (!hasResult || total === 0) {
         return this.calculateRevenueFromPlans() * 0.8;
       }
       
-      return result.length > 0 && result[0] ? result[0].total : 0;
+      return total;
     } catch (error) {
       console.error('❌ Erro ao obter receita do período anterior:', error);
       return this.calculateRevenueFromPlans() * 0.8;
@@ -162,7 +167,8 @@ export class RevenueAnalyticsService {
         { $group: { _id: null, totalMRR: { $sum: '$plan.price' } } }
       ]);
 
-      let mrr = activeSubscriptions.length > 0 && activeSubscriptions[0] ? activeSubscriptions[0].totalMRR : 0;
+      const hasResult = activeSubscriptions && activeSubscriptions.length > 0 && activeSubscriptions[0] !== null && activeSubscriptions[0] !== undefined;
+      let mrr = hasResult ? activeSubscriptions[0].totalMRR : 0;
       
       if (mrr === 0) {
         console.log('📊 Nenhuma assinatura encontrada, calculando MRR baseada nos planos das empresas');
@@ -177,9 +183,6 @@ export class RevenueAnalyticsService {
     }
   }
 
-  /**
-   * 🔴 NOVO: Calcula MRR baseada nos planos das empresas
-   */
   private async calculateMRRFromPlans(): Promise<number> {
     try {
       const Company = this.getCompany();
@@ -196,7 +199,6 @@ export class RevenueAnalyticsService {
 
       let totalMRR = 0;
       for (const company of companies) {
-        // 🔴 CORRIGIDO: Type guard com verificação de string
         const plan = company.plan;
         if (plan && typeof plan === 'string') {
           const planKey = plan.toLowerCase();
@@ -247,8 +249,10 @@ export class RevenueAnalyticsService {
         { $group: { _id: null, averageDays: { $avg: '$lifetimeDays' } } }
       ]);
 
-      if (result.length === 0 || !result[0]) return 12;
-      const avgDays = result[0].averageDays;
+      const hasResult = result && result.length > 0 && result[0] !== null && result[0] !== undefined;
+      if (!hasResult) return 12;
+      
+      const avgDays = result[0].averageDays || 0;
       const avgMonths = avgDays / 30.44;
       console.log('📊 Tempo médio de vida calculado:', { avgMonths, avgDays });
       return Math.max(avgMonths, 1);
@@ -276,7 +280,7 @@ export class RevenueAnalyticsService {
       const monthNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
         'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 
-      if (result.length === 0) {
+      if (!result || result.length === 0) {
         console.log('📊 Nenhum pagamento encontrado, gerando receita por período baseada nos planos');
         return this.generateRevenueByPeriodFromPlans(startDate, endDate);
       }
@@ -291,9 +295,6 @@ export class RevenueAnalyticsService {
     }
   }
 
-  /**
-   * 🔴 NOVO: Gera receita por período baseada nos planos das empresas
-   */
   private async generateRevenueByPeriodFromPlans(startDate: Date, endDate: Date): Promise<RevenueByPeriod[]> {
     try {
       const Company = this.getCompany();
@@ -311,7 +312,6 @@ export class RevenueAnalyticsService {
       const monthlyRevenue: Record<string, { total: number; date: Date }> = {};
       
       for (const company of companies) {
-        // 🔴 CORRIGIDO: Type guard com verificação de string e createdAt
         const plan = company.plan;
         const createdAt = company.createdAt;
         if (plan && typeof plan === 'string' && createdAt) {
@@ -361,7 +361,7 @@ export class RevenueAnalyticsService {
         { $group: { _id: '$plan.name', total: { $sum: '$amount' }, count: { $sum: 1 } } }
       ]);
 
-      if (result.length === 0) {
+      if (!result || result.length === 0) {
         console.log('📊 Nenhum pagamento encontrado, calculando receita por plano baseada nas empresas');
         return this.calculateRevenueByPlanFromCompanies();
       }
@@ -382,9 +382,6 @@ export class RevenueAnalyticsService {
     }
   }
 
-  /**
-   * 🔴 NOVO: Calcula receita por plano baseada nas empresas
-   */
   private async calculateRevenueByPlanFromCompanies(): Promise<RevenueByPlan[]> {
     try {
       const Company = this.getCompany();
@@ -407,7 +404,6 @@ export class RevenueAnalyticsService {
       const planData: Record<string, { total: number; count: number }> = {};
       
       for (const company of companies) {
-        // 🔴 CORRIGIDO: Type guard com verificação de string
         const plan = company.plan;
         if (plan && typeof plan === 'string') {
           const planKey = plan.toLowerCase();
@@ -424,13 +420,28 @@ export class RevenueAnalyticsService {
       const totalRevenue = Object.values(planData).reduce((sum, item) => sum + item.total, 0);
       const planKeys = Object.keys(planData);
 
+      // 🔴 CORRIGIDO TS2532: Verificação explícita com fallback
       return planKeys.map((key, index) => {
+        const data = planData[key];
+        
+        // Fallback seguro caso data seja undefined
+        if (!data) {
+          const planNameFallback = planNames[key] || key;
+          return {
+            planName: planNameFallback,
+            total: 0,
+            count: 0,
+            percentage: 0,
+            color: PlanColors[planNameFallback as keyof typeof PlanColors] || ChartColors[index % ChartColors.length]
+          };
+        }
+
         const planNameResolved = planNames[key] || key;
         return {
           planName: planNameResolved,
-          total: planData[key].total,
-          count: planData[key].count,
-          percentage: totalRevenue > 0 ? (planData[key].total / totalRevenue) * 100 : 0,
+          total: data.total,
+          count: data.count,
+          percentage: totalRevenue > 0 ? (data.total / totalRevenue) * 100 : 0,
           color: PlanColors[planNameResolved as keyof typeof PlanColors] || ChartColors[index % ChartColors.length]
         };
       });
@@ -465,7 +476,7 @@ export class RevenueAnalyticsService {
         { $sort: { '_id.year': 1, '_id.month': 1 } }
       ]);
 
-      if (result.length === 0) {
+      if (!result || result.length === 0) {
         console.log('📊 Nenhum pagamento encontrado, gerando receita customizada baseada nos planos');
         return this.generateRevenueByPeriodFromPlans(startDate, endDate);
       }
@@ -518,15 +529,15 @@ export class RevenueAnalyticsService {
     metrics: { mrr: number; churnRate: number; arpu: number; revenueGrowth: number };
     message: string;
   }> {
-    // 🔴 CORRIGIDO TS2362 / TS2532: Garante tipos explícitos para datas no cálculo do getTime()
-    const startMs = startDate instanceof Date ? startDate.getTime() : new Date(startDate).getTime();
-    const endMs = endDate instanceof Date ? endDate.getTime() : new Date(endDate).getTime();
-    const previousStart = new Date(startMs - (endMs - startMs));
-
     const [mrr, arpu, growth] = await Promise.all([
       this.getMRR(),
       this.getARPU(startDate, endDate),
-      this.getRevenueGrowth(startDate, endDate, previousStart, startDate)
+      this.getRevenueGrowth(
+        startDate, 
+        endDate,
+        new Date(startDate.getTime() - (endDate.getTime() - startDate.getTime())), 
+        startDate
+      )
     ]);
 
     const Subscription = this.getSubscription();
@@ -540,24 +551,34 @@ export class RevenueAnalyticsService {
       console.warn('⚠️ Erro ao buscar churn para saúde financeira:', error);
     }
 
-    const churned = churnResult.length > 0 && churnResult[0] ? (churnResult[0].churned || 0) : 0;
+    const hasChurnResult = churnResult && churnResult.length > 0 && churnResult[0] !== null && churnResult[0] !== undefined;
+    const churned = hasChurnResult ? (churnResult[0].churned || 0) : 0;
+    
     const totalActive = await this.getCompany().countDocuments({
       status: 'active',
       plan: { $in: ['basic', 'pro', 'enterprise'] }
     });
     const churnRate = totalActive > 0 ? (churned / totalActive) * 100 : 0;
 
+    const growthPercent = growth?.growthPercent ?? 0;
+
     let status: 'healthy' | 'warning' | 'critical' = 'healthy';
     let message = 'Saúde financeira excelente.';
-
-    // 🔴 CORRIGIDO TS2532: Tratamento nulo seguro/fallback para o objeto de crescimento (growth)
-    const growthPercent = growth && typeof growth.growthPercent === 'number' ? growth.growthPercent : 0;
 
     if (churnRate > 10) { status = 'warning'; message = 'Taxa de churn elevada. Considere ações de retenção.'; }
     if (churnRate > 20 || growthPercent < -10) { status = 'critical'; message = 'Saúde financeira crítica. Ações imediatas necessárias.'; }
     if (mrr < 1000) { status = 'warning'; message = 'MRR baixo. Foco em aquisição de clientes.'; }
 
-    return { status, metrics: { mrr, churnRate, arpu, revenueGrowth: growthPercent }, message };
+    return { 
+      status, 
+      metrics: { 
+        mrr, 
+        churnRate, 
+        arpu, 
+        revenueGrowth: growthPercent 
+      }, 
+      message 
+    };
   }
 }
 
