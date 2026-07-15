@@ -54,8 +54,8 @@ function parsePeriod(
   endDateStr?: string
 ): { startDate: Date; endDate: Date; label: string } {
   const now = new Date();
-  const endDate = new Date(now);
   let startDate = new Date(now);
+  let endDate = new Date(now);
 
   if (period === 'custom' && startDateStr && endDateStr) {
     startDate = new Date(startDateStr);
@@ -71,13 +71,12 @@ function parsePeriod(
   startDate.setDate(startDate.getDate() - days);
   startDate.setHours(0, 0, 0, 0);
   
-  // 🔴 CORRIGIDO: Usar uma variável separada para o end
-  const end = new Date(endDate);
-  end.setHours(23, 59, 59, 999);
+  // 🔴 CORRIGIDO: Usar a variável local endDate, não o parâmetro
+  endDate.setHours(23, 59, 59, 999);
 
   return {
     startDate,
-    endDate: end,
+    endDate,
     label: `Últimos ${days} dias`
   };
 }
@@ -115,9 +114,9 @@ function getChurnService() {
 
 /**
  * Obtém distribuição por plano usando mongoose.model
- * 🔴 CORRIGIDO: Retorna array vazio em caso de erro
+ * 🔴 CORRIGIDO: Garantir retorno em todos os caminhos
  */
-async function getPlanDistribution() {
+async function getPlanDistribution(): Promise<Array<{ planName: string; count: number; percentage: number }>> {
   try {
     const Subscription = mongoose.model('Subscription');
     const result = await Subscription.aggregate([
@@ -168,7 +167,7 @@ async function handleSummary(req: Request, res: Response, next: NextFunction) {
       funnelService.getClientList(start, end, { limit: 10 })
     ]);
 
-    // 🔴 CORRIGIDO: Verifica se recentClients existe e tem clients
+    // Verifica se recentClients existe e tem clients
     const recentClientsData = (recentClients && typeof recentClients === 'object' && 'clients' in recentClients)
       ? recentClients.clients
       : [];
