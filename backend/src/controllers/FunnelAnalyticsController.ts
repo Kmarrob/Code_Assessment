@@ -1,417 +1,532 @@
 /**
  * ============================================
- * FUNNEL ANALYTICS SERVICE
+ * FUNNEL ANALYTICS CONTROLLER
  * ============================================
- * * Serviço responsável por calcular métricas de funil
- * de conversão para o sistema de analytics.
- * * @module FunnelAnalyticsService
+ * 
+ * Controlador responsável por expor os endpoints
+ * do sistema de funil de conversão para o frontend.
+ * 
+ * @module FunnelAnalyticsController
  * @since v30.0
  */
 
-import mongoose from 'mongoose';
+import { Request, Response, NextFunction } from 'express';
+import { z } from 'zod';
+import { revenueAnalyticsService } from '../services/RevenueAnalyticsService';
+import { funnelAnalyticsService } from '../services/FunnelAnalyticsService';
+import { churnAnalyticsService } from '../services/ChurnAnalyticsService';
 import {
-  FunnelMetrics,
-  FunnelDetails,
-  FunnelStep,
-  ClientListItem,
-  StatusDistribution,
+  AnalyticsPeriod,
   ClientFunnelStatus,
-  FunnelStatusLabels,
-  FunnelStatusColors,
-  PlanColors,
-  ChartColors
+  AnalyticsQueryParams
 } from '../types/analytics.types';
+import logger from '../utils/logger';
 
-export class FunnelAnalyticsService {
-  private getCompany() {
-    return mongoose.model('Company');
+// ============================================
+// SCHEMAS DE VALIDAÇÃO
+// ============================================
+
+const periodSchema = z.object({
+  period: z.enum(['30d', '90d', 'custom']).default('30d'),
+  startDate: z.string().datetime().optional(),
+  endDate: z.string().datetime().optional()
+});
+
+const clientListSchema = periodSchema.extend({
+  plan: z.string().optional(),
+  status: z.string().optional(),
+  search: z.string().optional(),
+  limit: z.coerce.number().min(1).max(100).default(20),
+  offset: z.coerce.number().min(0).default(0)
+});
+
+// ============================================
+// UTILITÁRIOS
+// ============================================
+
+/**
+ * Converte período para datas
+ */
+function parsePeriod(
+  period: AnalyticsPeriod,
+  startDateStr?: string,
+  endDateStr?: string
+): { startDate: Date; endDate: Date; label: string } {
+  const now = new Date();
+  const endDate = new Date(now);
+  let startDate = new Date(now);
+
+  if (period === 'custom' && startDateStr && endDateStr) {
+    startDate = new Date(startDateStr);
+    endDate = new Date(endDateStr);
+    return {
+      startDate,
+      endDate,
+      label: `${startDate.toLocaleDateString('pt-BR')} - ${endDate.toLocaleDateString('pt-BR')}`
+    };
   }
 
-  private getSubscription() {
-    return mongoose.model('Subscription');
-  }
+  const days = period === '30d' ? 30 : 90;
+  startDate.setDate(startDate.getDate() - days);
+  startDate.setHours(0, 0, 0, 0);
+  endDate.setHours(23, 59, 59, 999);
 
-  private getPayment() {
-    return mongoose.model('Payment');
-  }
+  return {
+    startDate,
+    endDate,
+    label: `Últimos ${days} dias`
+  };
+}
 
-  private getUser() {
-    return mongoose.model('User');
-  }
+/**
+ * Converte status string para enum
+ */
+function parseStatus(status?: string): ClientFunnelStatus | undefined {
+  if (!status) return undefined;
+  const validStatuses: ClientFunnelStatus[] = [
+    'registered', 'trialing', 'trial_expired', 'converted',
+    'active', 'past_due', 'cancelled', 'churned'
+  ];
+  return validStatuses.includes(status as ClientFunnelStatus)
+    ? (status as ClientFunnelStatus)
+    : undefined;
+}
 
-  private getPlan() {
-    return mongoose.model('Plan');
-  }
+// ============================================
+// CONTROLLER
+// ============================================
 
-  async getFunnelMetrics(startDate: Date, endDate: Date): Promise<FunnelMetrics> {
+export class FunnelAnalyticsController {
+  /**
+   * GET /api/admin/analytics/summary
+   * Resumo completo do dashboard de analytics
+   */
+  async getSummary(req: Request, res: Response, next: NextFunction) {
     try {
-      console.log('📊 Calculando métricas do funil', { startDate, endDate });
+      const { period, startDate, endDate } = periodSchema.parse(req.query);
 
-      const Company = this.getCompany();
-      const Subscription = this.getSubscription();
-      const Payment = this.getPayment();
+      const { startDate: start, endDate: end, label } = parsePeriod(
+        period,
+        startDate as string,
+        endDate as string
+      );
 
-      const totalRegistrations = await Company.countDocuments();
-      const activeTrials = await Subscription.countDocuments({
-        status: { $in: ['trial', 'trialing'] },
-        trialEnd: { $gt: new Date() }
+      console.log('📊 Buscando resumo de analytics', { period, label });
+
+      // Buscar métricas em paralelo
+      const [revenue, funnel, churn, statusDistribution, recentClients] =
+        await Promise.all([
+          revenueAnalyticsService.getRevenueMetrics(start, end),
+          funnelAnalyticsService.getFunnelMetrics(start, end),
+          churnAnalyticsService.getChurnMetrics(start, end),
+          funnelAnalyticsService.getStatusDistribution(start, end),
+          this.getPlanDistribution(),
+          funnelAnalyticsService.getClientList(start, end, { limit: 10 })
+        ]);
+
+      return res.json({
+        success: true,
+        data: {
+          revenue,
+          funnel,
+          churn,
+          planDistribution: await this.getPlanDistribution(),
+          statusDistribution,
+          recentClients: recentClients?.clients || [],
+          period: {
+            startDate: start,
+            endDate: end,
+            label,
+            type: period
+          },
+          generatedAt: new Date()
+        },
+        statusCode: 200
       });
-      const convertedToPaid = await this.getConvertedToPaid(startDate, endDate);
-      const activeSubscriptions = await Subscription.countDocuments({
-        status: { $in: ['active', 'trialing'] }
+    } catch (error) {
+      console.error('❌ Erro ao buscar resumo de analytics:', error);
+      return res.status(500).json({
+        success: false,
+        message: error?.message || 'Erro ao buscar resumo de analytics',
+        code: 'UNKNOWN_ERROR',
+        statusCode: 500,
+        timestamp: new Date().toISOString(),
+        path: '/api/admin/analytics/summary'
       });
-      const churned = await Subscription.countDocuments({
-        status: 'cancelled',
-        updatedAt: { $gte: startDate, $lte: endDate }
-      });
-      const trialExpired = await Subscription.countDocuments({
-        status: 'expired',
-        updatedAt: { $gte: startDate, $lte: endDate }
-      });
-
-      const conversionRate = totalRegistrations > 0 ? (convertedToPaid / totalRegistrations) * 100 : 0;
-      const abandonmentRate = totalRegistrations > 0 ? (trialExpired / totalRegistrations) * 100 : 0;
-      const averageTicket = await this.getAverageTicket(convertedToPaid);
-
-      const metrics: FunnelMetrics = {
-        totalRegistrations,
-        activeTrials,
-        convertedToPaid,
-        activeSubscriptions,
-        churned,
-        conversionRate,
-        abandonmentRate,
-        trialExpired,
-        averageTicket
-      };
-
-      console.log('✅ Métricas do funil calculadas', metrics);
-      return metrics;
-    } catch (error: any) {
-      const safeError = error?.message || error || 'Erro desconhecido no funil';
-      console.error('❌ Erro ao calcular métricas do funil:', safeError);
-      throw error;
     }
   }
 
-  async getFunnelDetails(startDate: Date, endDate: Date): Promise<FunnelDetails> {
+  /**
+   * GET /api/admin/analytics/revenue
+   * Métricas de receita
+   */
+  async getRevenue(req: Request, res: Response, next: NextFunction) {
     try {
-      const metrics = await this.getFunnelMetrics(startDate, endDate);
-      const steps: FunnelStep[] = [
-        { step: 'registrations', label: 'Cadastros', count: metrics.totalRegistrations, percentage: 100, color: '#3B82F6' },
+      const { period, startDate, endDate } = periodSchema.parse(req.query);
+
+      const { startDate: start, endDate: end } = parsePeriod(
+        period,
+        startDate as string,
+        endDate as string
+      );
+
+      const revenue = await revenueAnalyticsService.getRevenueMetrics(start, end);
+
+      return res.json({
+        success: true,
+        data: revenue,
+        statusCode: 200
+      });
+    } catch (error) {
+      console.error('❌ Erro ao buscar métricas de receita:', error);
+      return res.status(500).json({
+        success: false,
+        message: error?.message || 'Erro ao buscar métricas de receita',
+        code: 'UNKNOWN_ERROR',
+        statusCode: 500
+      });
+    }
+  }
+
+  /**
+   * GET /api/admin/analytics/funnel
+   * Métricas do funil de conversão
+   */
+  async getFunnel(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { period, startDate, endDate } = periodSchema.parse(req.query);
+
+      const { startDate: start, endDate: end } = parsePeriod(
+        period,
+        startDate as string,
+        endDate as string
+      );
+
+      const funnel = await funnelAnalyticsService.getFunnelDetails(start, end);
+
+      return res.json({
+        success: true,
+        data: funnel,
+        statusCode: 200
+      });
+    } catch (error) {
+      console.error('❌ Erro ao buscar métricas do funil:', error);
+      return res.status(500).json({
+        success: false,
+        message: error?.message || 'Erro ao buscar métricas do funil',
+        code: 'UNKNOWN_ERROR',
+        statusCode: 500
+      });
+    }
+  }
+
+  /**
+   * GET /api/admin/analytics/churn
+   * Métricas de churn
+   */
+  async getChurn(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { period, startDate, endDate } = periodSchema.parse(req.query);
+
+      const { startDate: start, endDate: end } = parsePeriod(
+        period,
+        startDate as string,
+        endDate as string
+      );
+
+      const churn = await churnAnalyticsService.getChurnMetrics(start, end);
+
+      return res.json({
+        success: true,
+        data: churn,
+        statusCode: 200
+      });
+    } catch (error) {
+      console.error('❌ Erro ao buscar métricas de churn:', error);
+      return res.status(500).json({
+        success: false,
+        message: error?.message || 'Erro ao buscar métricas de churn',
+        code: 'UNKNOWN_ERROR',
+        statusCode: 500
+      });
+    }
+  }
+
+  /**
+   * GET /api/admin/analytics/plans
+   * Distribuição por plano
+   */
+  async getPlans(req: Request, res: Response, next: NextFunction) {
+    try {
+      const distribution = await this.getPlanDistribution();
+
+      return res.json({
+        success: true,
+        data: distribution,
+        statusCode: 200
+      });
+    } catch (error) {
+      console.error('❌ Erro ao buscar distribuição por plano:', error);
+      return res.status(500).json({
+        success: false,
+        message: error?.message || 'Erro ao buscar distribuição por plano',
+        code: 'UNKNOWN_ERROR',
+        statusCode: 500
+      });
+    }
+  }
+
+  /**
+   * GET /api/admin/analytics/clients
+   * Lista de clientes com status
+   */
+  async getClients(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { period, startDate, endDate, plan, status, search, limit, offset } =
+        clientListSchema.parse(req.query);
+
+      const { startDate: start, endDate: end } = parsePeriod(
+        period,
+        startDate as string,
+        endDate as string
+      );
+
+      const result = await funnelAnalyticsService.getClientList(start, end, {
+        plan: plan as string,
+        status: parseStatus(status as string),
+        search: search as string,
+        limit,
+        offset
+      });
+
+      return res.json({
+        success: true,
+        data: result,
+        statusCode: 200
+      });
+    } catch (error) {
+      console.error('❌ Erro ao buscar lista de clientes:', error);
+      return res.status(500).json({
+        success: false,
+        message: error?.message || 'Erro ao buscar lista de clientes',
+        code: 'UNKNOWN_ERROR',
+        statusCode: 500
+      });
+    }
+  }
+
+  /**
+   * GET /api/admin/analytics/retention
+   * Curva de retenção
+   */
+  async getRetention(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { period, startDate, endDate } = periodSchema.parse(req.query);
+      const maxMonths = req.query.maxMonths ? parseInt(req.query.maxMonths as string) : 12;
+
+      const { startDate: start, endDate: end } = parsePeriod(
+        period,
+        startDate as string,
+        endDate as string
+      );
+
+      const retention = await churnAnalyticsService.getRetentionCurve(
+        start,
+        end,
+        Math.min(maxMonths, 24)
+      );
+
+      return res.json({
+        success: true,
+        data: retention,
+        statusCode: 200
+      });
+    } catch (error) {
+      console.error('❌ Erro ao buscar curva de retenção:', error);
+      return res.status(500).json({
+        success: false,
+        message: error?.message || 'Erro ao buscar curva de retenção',
+        code: 'UNKNOWN_ERROR',
+        statusCode: 500
+      });
+    }
+  }
+
+  /**
+   * GET /api/admin/analytics/prediction
+   * Predição de churn
+   */
+  async getPrediction(req: Request, res: Response, next: NextFunction) {
+    try {
+      const prediction = await churnAnalyticsService.getChurnPrediction();
+
+      return res.json({
+        success: true,
+        data: prediction,
+        statusCode: 200
+      });
+    } catch (error) {
+      console.error('❌ Erro ao buscar predição de churn:', error);
+      return res.status(500).json({
+        success: false,
+        message: error?.message || 'Erro ao buscar predição de churn',
+        code: 'UNKNOWN_ERROR',
+        statusCode: 500
+      });
+    }
+  }
+
+  /**
+   * GET /api/admin/analytics/strategies
+   * Estratégias de retenção
+   */
+  async getStrategies(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { period, startDate, endDate } = periodSchema.parse(req.query);
+
+      const { startDate: start, endDate: end } = parsePeriod(
+        period,
+        startDate as string,
+        endDate as string
+      );
+
+      const strategies = await churnAnalyticsService.getRetentionStrategies(start, end);
+
+      return res.json({
+        success: true,
+        data: strategies,
+        statusCode: 200
+      });
+    } catch (error) {
+      console.error('❌ Erro ao buscar estratégias de retenção:', error);
+      return res.status(500).json({
+        success: false,
+        message: error?.message || 'Erro ao buscar estratégias de retenção',
+        code: 'UNKNOWN_ERROR',
+        statusCode: 500
+      });
+    }
+  }
+
+  /**
+   * GET /api/admin/analytics/abandoned
+   * Trials abandonados
+   */
+  async getAbandonedTrials(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { period, startDate, endDate } = periodSchema.parse(req.query);
+
+      const { startDate: start, endDate: end } = parsePeriod(
+        period,
+        startDate as string,
+        endDate as string
+      );
+
+      const abandoned = await funnelAnalyticsService.getAbandonedTrials(start, end);
+
+      return res.json({
+        success: true,
+        data: abandoned,
+        statusCode: 200
+      });
+    } catch (error) {
+      console.error('❌ Erro ao buscar trials abandonados:', error);
+      return res.status(500).json({
+        success: false,
+        message: error?.message || 'Erro ao buscar trials abandonados',
+        code: 'UNKNOWN_ERROR',
+        statusCode: 500
+      });
+    }
+  }
+
+  /**
+   * GET /api/admin/analytics/trend
+   * Tendência de conversão
+   */
+  async getTrend(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { period, startDate, endDate } = periodSchema.parse(req.query);
+      const interval = (req.query.interval as 'daily' | 'weekly' | 'monthly') || 'weekly';
+
+      const { startDate: start, endDate: end } = parsePeriod(
+        period,
+        startDate as string,
+        endDate as string
+      );
+
+      const trend = await funnelAnalyticsService.getConversionTrend(start, end, interval);
+
+      return res.json({
+        success: true,
+        data: trend,
+        statusCode: 200
+      });
+    } catch (error) {
+      console.error('❌ Erro ao buscar tendência de conversão:', error);
+      return res.status(500).json({
+        success: false,
+        message: error?.message || 'Erro ao buscar tendência de conversão',
+        code: 'UNKNOWN_ERROR',
+        statusCode: 500
+      });
+    }
+  }
+
+  // ============================================
+  // MÉTODOS PRIVADOS
+  // ============================================
+
+  /**
+   * Obtém distribuição por plano
+   * 🔴 CORRIGIDO: Usando mongoose.model em vez de import dinâmico
+   */
+  private async getPlanDistribution() {
+    try {
+      const Subscription = require('../models/Subscription').default;
+      const Plan = require('../models/Plan').default;
+
+      const result = await Subscription.aggregate([
         {
-          step: 'trials',
-          label: 'Em Trial',
-          count: metrics.activeTrials,
-          percentage: metrics.totalRegistrations > 0 ? (metrics.activeTrials / metrics.totalRegistrations) * 100 : 0,
-          color: '#F59E0B'
+          $match: {
+            status: { $in: ['active', 'trialing'] }
+          }
         },
         {
-          step: 'conversions',
-          label: 'Conversões',
-          count: metrics.convertedToPaid,
-          percentage: metrics.totalRegistrations > 0 ? (metrics.convertedToPaid / metrics.totalRegistrations) * 100 : 0,
-          color: '#10B981'
+          $lookup: {
+            from: 'plans',
+            localField: 'planId',
+            foreignField: '_id',
+            as: 'plan'
+          }
         },
         {
-          step: 'active',
-          label: 'Ativos',
-          count: metrics.activeSubscriptions,
-          percentage: metrics.convertedToPaid > 0 ? (metrics.activeSubscriptions / metrics.convertedToPaid) * 100 : 0,
-          color: '#059669'
-        }
-      ];
-
-      for (let i = 1; i < steps.length; i++) {
-        const prevStep = steps[i - 1];
-        if (prevStep.count > 0) {
-          steps[i].percentage = (steps[i].count / prevStep.count) * 100;
-        }
-      }
-
-      console.log('📊 Detalhes do funil calculados', { steps });
-      return { steps, metrics };
-    } catch (error: any) {
-      const safeError = error?.message || error || 'Erro desconhecido nos detalhes';
-      console.error('❌ Erro ao calcular detalhes do funil:', safeError);
-      throw error;
-    }
-  }
-
-  async getClientList(startDate: Date, endDate: Date, filters?: any): Promise<any> {
-    try {
-      const Company = this.getCompany();
-      const Subscription = this.getSubscription();
-      const Payment = this.getPayment();
-      const User = this.getUser();
-      const Plan = this.getPlan();
-
-      const limit = filters?.limit || 20;
-      const offset = filters?.offset || 0;
-
-      const companies = await Company.find({}).skip(offset).limit(limit).sort({ createdAt: -1 });
-      const total = await Company.countDocuments({});
-
-      const clients: ClientListItem[] = [];
-
-      for (const company of companies) {
-        const subscription = await Subscription.findOne({
-          companyId: company._id,
-          status: { $in: ['trial', 'active', 'trialing', 'past_due', 'cancelled'] }
-        });
-
-        const payments = await Payment.find({ companyId: company._id, status: 'paid' });
-        const totalPaid = payments.reduce((sum: number, p: any) => sum + (p?.amount || 0), 0);
-        const users = await User.find({ companyId: company._id });
-        const userCount = users.length;
-        const funnelStatus = await this.determineFunnelStatus(company, subscription, payments);
-
-        if (filters?.status && filters.status !== funnelStatus) continue;
-        if (filters?.plan && subscription?.planId?.name !== filters.plan) continue;
-
-        const lastLogin = users.length > 0
-          ? users.reduce((latest: any, u: any) => {
-            if (!latest) return u?.lastLogin;
-            return u?.lastLogin && u.lastLogin > latest ? u.lastLogin : latest;
-          }, null)
-          : undefined;
-
-        let nextBilling: Date | undefined;
-        if (subscription && subscription.status === 'active') {
-          const nextMonth = new Date();
-          nextMonth.setMonth(nextMonth.getMonth() + 1);
-          nextBilling = nextMonth;
-        }
-
-        let planName = 'Nenhum';
-        let monthlyValue = 0;
-        if (subscription && subscription.planId) {
-          const plan = await Plan.findById(subscription.planId);
-          if (plan) { planName = plan.name; monthlyValue = plan.price || 0; }
-        }
-
-        clients.push({
-          id: company._id.toString(),
-          name: company.name,
-          document: company.cnpj || undefined,
-          planName,
-          funnelStatus,
-          subscriptionStatus: subscription?.status || 'none',
-          joinedAt: company.createdAt,
-          lastLogin: lastLogin || undefined,
-          monthlyValue,
-          totalPaid,
-          nextBilling,
-          userCount
-        });
-      }
-
-      let filteredClients = clients;
-      if (filters?.search) {
-        const search = filters.search.toLowerCase();
-        filteredClients = clients.filter(c => c.name.toLowerCase().includes(search) || c.id.includes(search));
-      }
-
-      console.log('📊 Lista de clientes gerada', { total: filteredClients.length });
-      return { clients: filteredClients, total, page: Math.floor(offset / limit) + 1, limit };
-    } catch (error: any) {
-      const safeError = error?.message || error || 'Erro desconhecido na listagem';
-      console.error('❌ Erro ao obter lista de clientes:', safeError);
-      throw error;
-    }
-  }
-
-  async getStatusDistribution(startDate: Date, endDate: Date): Promise<StatusDistribution[]> {
-    try {
-      const Company = this.getCompany();
-      const Subscription = this.getSubscription();
-      const Payment = this.getPayment();
-
-      const distribution: StatusDistribution[] = [];
-      const statuses: ClientFunnelStatus[] = [
-        'registered', 'trialing', 'trial_expired', 'converted',
-        'active', 'past_due', 'cancelled', 'churned'
-      ];
-
-      const companies = await Company.find({});
-      const total = companies.length;
-      const statusCounts: Record<ClientFunnelStatus, number> = {} as any;
-
-      for (const company of companies) {
-        const subscription = await Subscription.findOne({ companyId: company._id });
-        const payments = await Payment.find({ companyId: company._id, status: 'paid' });
-        const status = await this.determineFunnelStatus(company, subscription, payments);
-        statusCounts[status] = (statusCounts[status] || 0) + 1;
-      }
-
-      for (const status of statuses) {
-        const count = statusCounts[status] || 0;
-        distribution.push({
-          status,
-          label: FunnelStatusLabels[status],
-          count,
-          percentage: total > 0 ? (count / total) * 100 : 0,
-          color: FunnelStatusColors[status]
-        });
-      }
-
-      distribution.sort((a, b) => b.count - a.count);
-      console.log('📊 Distribuição de status calculada', { distribution });
-      return distribution;
-    } catch (error: any) {
-      const safeError = error?.message || error || 'Erro desconhecido na distribuição';
-      console.error('❌ Erro ao calcular distribuição de status:', safeError);
-      throw error;
-    }
-  }
-
-  async getAbandonedTrials(startDate: Date, endDate: Date): Promise<any> {
-    try {
-      const Subscription = this.getSubscription();
-      const Payment = this.getPayment();
-      const Company = this.getCompany();
-
-      const expiredTrials = await Subscription.find({
-        status: 'cancelled',
-        trialEnd: { $gte: startDate, $lte: endDate }
-      });
-
-      const abandoned: any[] = [];
-      for (const sub of expiredTrials) {
-        const payment = await Payment.findOne({ subscriptionId: sub._id, status: 'paid' });
-        if (!payment) {
-          const company = await Company.findById(sub.companyId);
-          if (company) {
-            const daysActive = Math.floor((new Date().getTime() - sub.startDate.getTime()) / (1000 * 60 * 60 * 24));
-            abandoned.push({
-              companyId: company._id.toString(),
-              companyName: company.name,
-              trialStart: sub.startDate,
-              trialEnd: sub.trialEnd || sub.startDate,
-              daysActive
-            });
+          $unwind: '$plan'
+        },
+        {
+          $group: {
+            _id: '$plan.name',
+            count: { $sum: 1 }
           }
         }
-      }
+      ]);
 
-      console.log('📊 Trials abandonados encontrados', { total: abandoned.length });
-      return { total: abandoned.length, clients: abandoned };
-    } catch (error: any) {
-      const safeError = error?.message || error || 'Erro desconhecido nos trials abandonados';
-      console.error('❌ Erro ao buscar trials abandonados:', safeError);
-      throw error;
+      const total = result.reduce((sum: number, item: any) => sum + item.count, 0);
+
+      return result.map((item: any) => ({
+        planName: item._id,
+        count: item.count,
+        percentage: total > 0 ? (item.count / total) * 100 : 0
+      }));
+    } catch (error) {
+      console.error('❌ Erro ao calcular distribuição por plano:', error);
+      return [];
     }
-  }
-
-  async getConversionTrend(startDate: Date, endDate: Date, interval: string = 'weekly'): Promise<any> {
-    try {
-      const Company = this.getCompany();
-      const Payment = this.getPayment();
-
-      const periods: string[] = [];
-      const registrations: number[] = [];
-      const conversions: number[] = [];
-      const conversionRates: number[] = [];
-
-      const current = new Date(startDate);
-      while (current <= endDate) {
-        let periodLabel = '';
-        let periodStart = new Date(current);
-        let periodEnd = new Date(current);
-
-        switch (interval) {
-          case 'daily':
-            periodLabel = current.toLocaleDateString('pt-BR');
-            periodEnd.setHours(23, 59, 59, 999);
-            break;
-          case 'weekly':
-            periodLabel = `Semana ${current.toISOString().split('-')[1]}-${current.getFullYear()}`;
-            periodEnd.setDate(current.getDate() + 6);
-            periodEnd.setHours(23, 59, 59, 999);
-            break;
-          default:
-            periodLabel = current.toLocaleString('pt-BR', { month: 'long', year: 'numeric' });
-            periodEnd.setMonth(current.getMonth() + 1);
-            periodEnd.setDate(0);
-            periodEnd.setHours(23, 59, 59, 999);
-        }
-
-        periods.push(periodLabel);
-        const regCount = await Company.countDocuments({ createdAt: { $gte: periodStart, $lte: periodEnd } });
-        registrations.push(regCount);
-        const convCount = await Payment.countDocuments({ status: 'paid', createdAt: { $gte: periodStart, $lte: periodEnd } });
-        conversions.push(convCount);
-        conversionRates.push(regCount > 0 ? (convCount / regCount) * 100 : 0);
-
-        switch (interval) {
-          case 'daily': current.setDate(current.getDate() + 1); break;
-          case 'weekly': current.setDate(current.getDate() + 7); break;
-          default: current.setMonth(current.getMonth() + 1);
-        }
-      }
-
-      return { periods, registrations, conversions, conversionRates };
-    } catch (error: any) {
-      const safeError = error?.message || error || 'Erro desconhecido na tendência';
-      console.error('❌ Erro ao calcular tendência de conversão:', safeError);
-      throw error;
-    }
-  }
-
-  private async determineFunnelStatus(company: any, subscription: any | null, payments: any[]): Promise<ClientFunnelStatus> {
-    const Payment = this.getPayment();
-
-    if (!subscription) return 'registered';
-
-    if (payments && payments.length > 0) {
-      const lastPayment = payments[payments.length - 1];
-      if (lastPayment && lastPayment.status === 'paid') {
-        if (subscription.status === 'active' || subscription.status === 'trialing') return 'active';
-        if (subscription.status === 'cancelled') return 'cancelled';
-        if (subscription.status === 'past_due') return 'past_due';
-        return 'converted';
-      }
-    }
-
-    switch (subscription.status) {
-      case 'trial':
-      case 'trialing':
-        if (subscription.trialEnd && new Date() > subscription.trialEnd) return 'trial_expired';
-        return 'trialing';
-      case 'active': return 'active';
-      case 'past_due': return 'past_due';
-      case 'cancelled':
-        const hasPayment = await Payment.exists({ companyId: company._id, status: 'paid' });
-        if (hasPayment) return 'cancelled';
-        if (subscription.trialEnd && subscription.trialEnd < new Date()) return 'trial_expired';
-        return 'registered';
-      case 'expired': return 'trial_expired';
-      default: return 'registered';
-    }
-  }
-
-  private async getConvertedToPaid(startDate: Date, endDate: Date): Promise<number> {
-    const Payment = this.getPayment();
-    const result = await Payment.aggregate([
-      { $match: { status: 'paid', createdAt: { $gte: startDate, $lte: endDate } } },
-      { $group: { _id: '$companyId', firstPayment: { $min: '$createdAt' }, count: { $sum: 1 } } },
-      { $match: { count: { $gte: 1 } } },
-      { $count: 'total' }
-    ]);
-    return result.length > 0 ? result[0].total : 0;
-  }
-
-  private async getAverageTicket(convertedToPaid: number): Promise<number> {
-    if (convertedToPaid === 0) return 0;
-    const Payment = this.getPayment();
-    const result = await Payment.aggregate([
-      { $match: { status: 'paid' } },
-      { $group: { _id: null, total: { $sum: '$amount' }, count: { $sum: 1 } } }
-    ]);
-    if (result.length === 0) return 0;
-    return result[0].total / result[0].count;
   }
 }
 
-export const funnelAnalyticsService = new FunnelAnalyticsService();
-export default funnelAnalyticsService;
+/**
+ * Instância única do controller (singleton)
+ */
+export const funnelAnalyticsController = new FunnelAnalyticsController();
+export default funnelAnalyticsController;
