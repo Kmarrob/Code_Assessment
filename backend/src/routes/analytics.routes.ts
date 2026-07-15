@@ -71,7 +71,7 @@ function parsePeriod(
   startDate.setDate(startDate.getDate() - days);
   startDate.setHours(0, 0, 0, 0);
   
-  // 🔴 CORRIGIDO: Usar a variável local endDate, não o parâmetro
+  // Usar a variável local endDate, não o parâmetro
   endDate.setHours(23, 59, 59, 999);
 
   return {
@@ -134,6 +134,7 @@ async function getPlanDistribution(): Promise<Array<{ planName: string; count: n
     }));
   } catch (error) {
     console.error('❌ Erro ao calcular distribuição por plano:', error);
+    // 🔴 CORRIGIDO: Garantir que sempre retorna um array
     return [];
   }
 }
