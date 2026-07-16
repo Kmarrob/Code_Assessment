@@ -1,12 +1,13 @@
 // backend/src/services/AuthService.ts
 import jwt from 'jsonwebtoken';
 import { User } from '../models/User.js';
-import { Company } from '../models/Company.js'; // 🔴 ADICIONADO
+import { Company } from '../models/Company.js';
 import { config } from '../config/env.js';
 import { logger } from '../utils/logger.js';
 import { IJWTPayload, UserRole, IUser } from '../types/index.js';
 import { AppError, AuthenticationError } from '../middleware/errorHandler.js';
 import { TokenService } from './TokenService.js';
+import { CompanyService } from './CompanyService.js';
 
 export interface AuthTokens {
   accessToken: string;
@@ -55,7 +56,7 @@ export class AuthService {
       // Se um plano foi selecionado, o plano padrão será basic
       const userPlan = userData.plan || 'basic';
 
-      // 🔴 CORRIGIDO: Criar empresa se o nome foi fornecido
+      // Criar empresa se o nome foi fornecido
       let companyId = null;
       if (userData.company) {
         const planConfig = {
@@ -73,6 +74,15 @@ export class AuthService {
         const company = await Company.create(companyData);
         companyId = company._id;
         logger.info(`🏢 Empresa criada: ${userData.company} (ID: ${companyId}) - Plano: ${userPlan}`);
+
+        // 🔴 ATRIBUIR OS 93 CONTROLES AUTOMATICAMENTE
+        try {
+          const result = await CompanyService.assignAllControls(companyId.toString());
+          logger.info(`📋 ${result.assigned} controles atribuídos à empresa ${userData.company}`);
+        } catch (assignError) {
+          logger.error(`❌ Erro ao atribuir controles à empresa ${userData.company}:`, assignError);
+          // Não interrompe o fluxo de registro
+        }
       }
 
       const user = new User({
