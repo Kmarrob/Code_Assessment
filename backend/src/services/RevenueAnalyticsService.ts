@@ -694,7 +694,7 @@ export class RevenueAnalyticsService {
   }
 
   // ============================================
-  // 🔴 NOVO: FASE 7 - PREVISÃO DE RECEITA
+  // 🔴 NOVO: FASE 7 - PREVISÃO DE RECEITA (CORRIGIDO)
   // ============================================
 
   /**
@@ -756,9 +756,9 @@ export class RevenueAnalyticsService {
 
       // Definir cenários
       const scenarios = {
-        optimistic: avgGrowth + stdDev * 1.5,  // Cenário otimista: média + 1.5 desvio
-        realistic: avgGrowth,                  // Cenário realista: média
-        pessimistic: Math.max(avgGrowth - stdDev * 1.5, -10) // Cenário pessimista: média - 1.5 desvio (limitado a -10%)
+        optimistic: avgGrowth + stdDev * 1.5,
+        realistic: avgGrowth,
+        pessimistic: Math.max(avgGrowth - stdDev * 1.5, -10)
       };
 
       // Obter MRR atual
@@ -772,7 +772,12 @@ export class RevenueAnalyticsService {
         ? new Date(historicalData[historicalData.length - 1].date) 
         : new Date();
 
-      const forecast: any = {
+      // 🔴 CORRIGIDO: Inicializar forecast com tipagem correta
+      const forecast: {
+        optimistic: { period: string; revenue: number }[];
+        realistic: { period: string; revenue: number }[];
+        pessimistic: { period: string; revenue: number }[];
+      } = {
         optimistic: [],
         realistic: [],
         pessimistic: []
@@ -784,16 +789,21 @@ export class RevenueAnalyticsService {
         pessimistic: currentMRR
       };
 
+      // 🔴 CORRIGIDO: Usar tipo seguro para as chaves
+      const scenarioKeys = ['optimistic', 'realistic', 'pessimistic'] as const;
+
       for (let i = 1; i <= monthsToForecast; i++) {
         const date = new Date(lastDate);
         date.setMonth(date.getMonth() + i);
         const period = `${monthNames[date.getMonth()]} ${date.getFullYear()}`;
 
         // Calcular previsão para cada cenário
-        for (const [scenario, rate] of Object.entries(scenarios)) {
+        for (const scenario of scenarioKeys) {
+          const rate = scenarios[scenario];
           const multiplier = Math.pow(1 + rate / 100, i);
           const projectedRevenue = currentMRR * multiplier;
           
+          // 🔴 CORRIGIDO: Acesso seguro ao array forecast[scenario]
           forecast[scenario].push({
             period,
             revenue: Math.round(projectedRevenue * 100) / 100
@@ -801,7 +811,7 @@ export class RevenueAnalyticsService {
 
           // Atualizar MRR projetado para o último mês
           if (i === monthsToForecast) {
-            projectedMRR[scenario as keyof typeof projectedMRR] = Math.round(projectedRevenue * 100) / 100;
+            projectedMRR[scenario] = Math.round(projectedRevenue * 100) / 100;
           }
         }
       }
