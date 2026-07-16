@@ -501,3 +501,101 @@ export const ChartColors = [
   '#F472B6', // pink
   '#6366F1', // indigo
 ];
+
+// ============================================
+// 🔴 NOVO: FASE 7 - COMPARAÇÃO DE PERÍODOS
+// ============================================
+
+/**
+ * Métricas de comparação entre períodos
+ */
+export interface PeriodComparison {
+  /** Métricas do período atual */
+  current: PeriodMetrics;
+  /** Métricas do período anterior */
+  previous: PeriodMetrics;
+  /** Mudanças entre os períodos */
+  changes: PeriodChanges;
+  /** Tendência geral: up, down, stable */
+  trend: 'up' | 'down' | 'stable';
+}
+
+/**
+ * Métricas de um período específico para comparação
+ */
+export interface PeriodMetrics {
+  totalRevenue: number;
+  mrr: number;
+  arpu: number;
+  activeClients: number;
+}
+
+/**
+ * Mudanças entre períodos
+ */
+export interface PeriodChanges {
+  totalRevenue: ChangeMetric;
+  mrr: ChangeMetric;
+  arpu: ChangeMetric;
+  activeClients: ChangeMetric;
+}
+
+/**
+ * Métrica de mudança
+ */
+export interface ChangeMetric {
+  /** Mudança absoluta */
+  amount: number;
+  /** Mudança percentual */
+  percent: number;
+}
+
+// ============================================
+// 🔴 NOVO: FASE 7 - PREVISÃO DE RECEITA
+// ============================================
+
+/**
+ * Previsão de receita
+ */
+export interface RevenueForecast {
+  /** Dados históricos */
+  historical: ForecastDataPoint[];
+  /** Previsões por cenário */
+  forecast: {
+    optimistic: ForecastDataPoint[];
+    realistic: ForecastDataPoint[];
+    pessimistic: ForecastDataPoint[];
+  };
+  /** Resumo da previsão */
+  summary: ForecastSummary;
+}
+
+/**
+ * Ponto de dados da previsão
+ */
+export interface ForecastDataPoint {
+  /** Período (ex: "Julho 2026") */
+  period: string;
+  /** Valor previsto */
+  revenue: number;
+}
+
+/**
+ * Resumo da previsão de receita
+ */
+export interface ForecastSummary {
+  /** MRR atual */
+  currentMRR: number;
+  /** MRR projetado por cenário */
+  projectedMRR: {
+    optimistic: number;
+    realistic: number;
+    pessimistic: number;
+  };
+  /** Taxa de crescimento por cenário (%) */
+  growthRate: {
+    optimistic: number;
+    realistic: number;
+    pessimistic: number;
+  };
+}

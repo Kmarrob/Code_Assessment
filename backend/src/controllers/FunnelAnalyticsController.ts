@@ -39,6 +39,28 @@ const clientListSchema = periodSchema.extend({
 });
 
 // ============================================
+// 🔴 NOVO: SCHEMA PARA COMPARAÇÃO DE PERÍODOS
+// ============================================
+
+const comparisonSchema = z.object({
+  period: z.enum(['30d', '90d', 'custom']).default('30d'),
+  startDate: z.string().datetime().optional(),
+  endDate: z.string().datetime().optional(),
+  compareWith: z.enum(['previous', 'same_period_last_year']).default('previous')
+});
+
+// ============================================
+// 🔴 NOVO: SCHEMA PARA PREVISÃO
+// ============================================
+
+const forecastSchema = z.object({
+  period: z.enum(['30d', '90d', 'custom']).default('90d'),
+  startDate: z.string().datetime().optional(),
+  endDate: z.string().datetime().optional(),
+  monthsToForecast: z.coerce.number().min(1).max(24).default(12)
+});
+
+// ============================================
 // UTILITÁRIOS
 // ============================================
 
@@ -88,6 +110,16 @@ function parseStatus(status?: string): ClientFunnelStatus | undefined {
   return validStatuses.includes(status as ClientFunnelStatus)
     ? (status as ClientFunnelStatus)
     : undefined;
+}
+
+/**
+ * 🔴 NOVO: Calcula período anterior para comparação
+ */
+function getPreviousPeriod(startDate: Date, endDate: Date): { startDate: Date; endDate: Date } {
+  const duration = endDate.getTime() - startDate.getTime();
+  const previousStart = new Date(startDate.getTime() - duration);
+  const previousEnd = new Date(startDate.getTime());
+  return { startDate: previousStart, endDate: previousEnd };
 }
 
 // ============================================
@@ -469,6 +501,116 @@ export class FunnelAnalyticsController {
       res.status(500).json({
         success: false,
         message: error?.message || 'Erro ao buscar tendência de conversão',
+        code: 'UNKNOWN_ERROR',
+        statusCode: 500
+      });
+    }
+  }
+
+  // ============================================
+  // 🔴 NOVO: FASE 7 - COMPARAÇÃO DE PERÍODOS
+  // ============================================
+
+  /**
+   * GET /api/admin/analytics/comparison
+   * Comparação de métricas entre períodos
+   */
+  async getComparison(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { period, startDate, endDate, compareWith } = comparisonSchema.parse(req.query);
+
+      const { startDate: start, endDate: end } = parsePeriod(
+        period,
+        startDate as string,
+        endDate as string
+      );
+
+      console.log('📊 Buscando comparação entre períodos', { period, compareWith });
+
+      // Calcular período anterior
+      const previous = getPreviousPeriod(start, end);
+
+      // Buscar comparação
+      const comparison = await revenueAnalyticsService.getPeriodComparison(
+        start,
+        end,
+        previous.startDate,
+        previous.endDate
+      );
+
+      res.json({
+        success: true,
+        data: {
+          ...comparison,
+          currentPeriod: {
+            start: start,
+            end: end,
+            label: parsePeriod(period, startDate as string, endDate as string).label
+          },
+          previousPeriod: {
+            start: previous.startDate,
+            end: previous.endDate,
+            label: `Período anterior`
+          }
+        },
+        statusCode: 200
+      });
+    } catch (error: any) {
+      console.error('❌ Erro ao buscar comparação entre períodos:', error);
+      res.status(500).json({
+        success: false,
+        message: error?.message || 'Erro ao buscar comparação entre períodos',
+        code: 'UNKNOWN_ERROR',
+        statusCode: 500
+      });
+    }
+  }
+
+  // ============================================
+  // 🔴 NOVO: FASE 7 - PREVISÃO DE RECEITA
+  // ============================================
+
+  /**
+   * GET /api/admin/analytics/forecast
+   * Previsão de receita para os próximos meses
+   */
+  async getForecast(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { period, startDate, endDate, monthsToForecast } = forecastSchema.parse(req.query);
+
+      const { startDate: start, endDate: end } = parsePeriod(
+        period,
+        startDate as string,
+        endDate as string
+      );
+
+      console.log('📊 Gerando previsão de receita', { period, monthsToForecast });
+
+      // Gerar previsão
+      const forecast = await revenueAnalyticsService.getRevenueForecast(
+        start,
+        end,
+        monthsToForecast
+      );
+
+      res.json({
+        success: true,
+        data: {
+          ...forecast,
+          period: {
+            start,
+            end,
+            label: parsePeriod(period, startDate as string, endDate as string).label
+          },
+          monthsToForecast
+        },
+        statusCode: 200
+      });
+    } catch (error: any) {
+      console.error('❌ Erro ao gerar previsão de receita:', error);
+      res.status(500).json({
+        success: false,
+        message: error?.message || 'Erro ao gerar previsão de receita',
         code: 'UNKNOWN_ERROR',
         statusCode: 500
       });

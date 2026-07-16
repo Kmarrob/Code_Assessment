@@ -19,15 +19,35 @@ import {
   UserX,
   Clock,
   Percent,
-  Calendar
+  Calendar,
+  // 🔴 NOVO: Ícones para tendência
+  ArrowUp,
+  ArrowDown,
+  Minus
 } from 'lucide-react';
 import { RevenueMetrics, FunnelMetrics, ChurnMetrics } from '../../../../types/analytics';
+
+// 🔴 NOVO: Interface para dados de tendência
+export interface TrendData {
+  value: number;
+  isPositive: boolean;
+  label?: string;
+}
 
 interface MetricsCardsProps {
   revenue?: RevenueMetrics;
   funnel?: FunnelMetrics;
   churn?: ChurnMetrics;
   isLoading?: boolean;
+  // 🔴 NOVO: Dados de comparação para tendências
+  comparison?: {
+    revenueChange?: TrendData;
+    conversionChange?: TrendData;
+    churnChange?: TrendData;
+    activeClientsChange?: TrendData;
+    mrrChange?: TrendData;
+    arpuChange?: TrendData;
+  };
 }
 
 interface MetricCardProps {
@@ -40,6 +60,12 @@ interface MetricCardProps {
     value: number;
     isPositive: boolean;
   };
+  // 🔴 NOVO: Badge de comparação
+  comparisonBadge?: {
+    label: string;
+    value: number;
+    isPositive: boolean;
+  };
 }
 
 const MetricCard: React.FC<MetricCardProps> = ({
@@ -48,7 +74,8 @@ const MetricCard: React.FC<MetricCardProps> = ({
   subtitle,
   icon,
   color,
-  trend
+  trend,
+  comparisonBadge
 }) => {
   const colorClasses = {
     blue: 'bg-blue-50 text-blue-600 border-blue-200',
@@ -62,6 +89,24 @@ const MetricCard: React.FC<MetricCardProps> = ({
   };
 
   const colorClass = colorClasses[color as keyof typeof colorClasses] || colorClasses.blue;
+
+  // 🔴 NOVO: Renderizar badge de comparação
+  const renderComparisonBadge = () => {
+    if (!comparisonBadge) return null;
+
+    const { label, value, isPositive } = comparisonBadge;
+    const Icon = isPositive ? ArrowUp : value < 0 ? ArrowDown : Minus;
+    const color = isPositive ? 'text-green-600' : value < 0 ? 'text-red-600' : 'text-yellow-600';
+    const bgColor = isPositive ? 'bg-green-100' : value < 0 ? 'bg-red-100' : 'bg-yellow-100';
+
+    return (
+      <div className={`mt-2 inline-flex items-center gap-1 rounded-full ${bgColor} px-2 py-0.5 text-xs font-medium ${color}`}>
+        <Icon className="h-3 w-3" />
+        <span>{isPositive ? '+' : ''}{value.toFixed(1)}%</span>
+        <span className="text-gray-500">{label}</span>
+      </div>
+    );
+  };
 
   return (
     <div className={`rounded-lg border p-4 ${colorClass} transition-all hover:shadow-md`}>
@@ -80,6 +125,8 @@ const MetricCard: React.FC<MetricCardProps> = ({
               <span className="text-xs opacity-70">vs período anterior</span>
             </div>
           )}
+          {/* 🔴 NOVO: Badge de comparação */}
+          {renderComparisonBadge()}
         </div>
         <div className="rounded-full bg-white p-2 shadow-sm">
           {icon}
@@ -93,7 +140,8 @@ export const MetricsCards: React.FC<MetricsCardsProps> = ({
   revenue,
   funnel,
   churn,
-  isLoading = false
+  isLoading = false,
+  comparison
 }) => {
   if (isLoading) {
     return (
@@ -113,7 +161,6 @@ export const MetricsCards: React.FC<MetricsCardsProps> = ({
   // Card de Receita Total
   if (revenue) {
     cards.push({
-      // 🔴 CORRIGIDO: Mantido "Receita Total"
       title: 'Receita Total',
       value: new Intl.NumberFormat('pt-BR', {
         style: 'currency',
@@ -128,10 +175,33 @@ export const MetricsCards: React.FC<MetricsCardsProps> = ({
       trend: revenue.growthPercent !== 0 ? {
         value: revenue.growthPercent,
         isPositive: revenue.growthPercent >= 0
+      } : undefined,
+      // 🔴 NOVO: Badge de comparação de receita
+      comparisonBadge: comparison?.revenueChange ? {
+        label: 'vs período anterior',
+        value: comparison.revenueChange.value,
+        isPositive: comparison.revenueChange.isPositive
       } : undefined
     });
 
-    // 🔴 CORRIGIDO: Card de ARPU - "ARPU Médio" → "Faturamento Médio por Cliente"
+    // Card de MRR
+    cards.push({
+      title: 'MRR (Receita Recorrente)',
+      value: new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: 'BRL'
+      }).format(revenue.mrr),
+      subtitle: `${revenue.revenueByPlan?.length || 0} planos ativos`,
+      icon: <TrendingUp className="h-5 w-5" />,
+      color: 'indigo',
+      comparisonBadge: comparison?.mrrChange ? {
+        label: 'vs período anterior',
+        value: comparison.mrrChange.value,
+        isPositive: comparison.mrrChange.isPositive
+      } : undefined
+    });
+
+    // Card de ARPU
     cards.push({
       title: 'Faturamento Médio por Cliente',
       value: new Intl.NumberFormat('pt-BR', {
@@ -140,38 +210,79 @@ export const MetricsCards: React.FC<MetricsCardsProps> = ({
       }).format(revenue.arpu),
       subtitle: `${revenue.revenueByPlan?.length || 0} planos ativos`,
       icon: <TrendingUp className="h-5 w-5" />,
-      color: 'blue'
+      color: 'blue',
+      comparisonBadge: comparison?.arpuChange ? {
+        label: 'vs período anterior',
+        value: comparison.arpuChange.value,
+        isPositive: comparison.arpuChange.isPositive
+      } : undefined
     });
   }
 
-  // 🔴 CORRIGIDO: Card de Conversão - "Taxa de Conversão" → "Clientes que viraram pagantes"
+  // Card de Conversão
   if (funnel) {
     cards.push({
       title: 'Clientes que viraram pagantes',
       value: `${funnel.conversionRate.toFixed(1)}%`,
       subtitle: `${funnel.convertedToPaid} conversões de ${funnel.totalRegistrations} cadastros`,
       icon: <Users className="h-5 w-5" />,
-      color: 'purple'
+      color: 'purple',
+      comparisonBadge: comparison?.conversionChange ? {
+        label: 'vs período anterior',
+        value: comparison.conversionChange.value,
+        isPositive: comparison.conversionChange.isPositive
+      } : undefined
     });
   }
 
-  // 🔴 CORRIGIDO: Card de Churn - "Taxa de Churn" → "Clientes que saíram"
+  // Card de Churn
   if (churn) {
     cards.push({
       title: 'Clientes que saíram',
       value: `${churn.churnRate.toFixed(1)}%`,
       subtitle: `${churn.totalChurned} clientes desistiram`,
       icon: <UserX className="h-5 w-5" />,
-      color: churn.churnRate > 10 ? 'red' : 'yellow'
+      color: churn.churnRate > 10 ? 'red' : 'yellow',
+      comparisonBadge: comparison?.churnChange ? {
+        label: 'vs período anterior',
+        value: comparison.churnChange.value,
+        // Para churn, valor negativo é bom (menos clientes saindo)
+        isPositive: comparison.churnChange.value < 0
+      } : undefined
     });
 
-    // 🔴 CORRIGIDO: Card de Retenção - Mantido "Clientes Ativos"
+    // Card de Clientes Ativos
     cards.push({
       title: 'Clientes Ativos',
       value: churn.totalActive,
       subtitle: `${churn.totalClients} total de clientes`,
       icon: <UserCheck className="h-5 w-5" />,
-      color: churn.retentionRate > 80 ? 'emerald' : 'yellow'
+      color: churn.retentionRate > 80 ? 'emerald' : 'yellow',
+      comparisonBadge: comparison?.activeClientsChange ? {
+        label: 'vs período anterior',
+        value: comparison.activeClientsChange.value,
+        isPositive: comparison.activeClientsChange.isPositive
+      } : undefined
+    });
+  }
+
+  // 🔴 NOVO: Card de Previsão de Receita (se houver dados)
+  if (revenue && revenue.mrr > 0) {
+    const projectedMRR = revenue.mrr * 1.1; // Exemplo: 10% de crescimento projetado
+    cards.push({
+      title: 'Receita Projetada (12 meses)',
+      value: new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: 'BRL',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+      }).format(projectedMRR * 12),
+      subtitle: `MRR atual: ${new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: 'BRL'
+      }).format(revenue.mrr)}`,
+      icon: <Clock className="h-5 w-5" />,
+      color: 'purple'
     });
   }
 

@@ -45,7 +45,11 @@ import {
   AnalyticsPeriod, 
   AnalyticsSummary,
   FunnelStatusLabels,
-  FunnelStatusColors
+  FunnelStatusColors,
+  // 🔴 NOVO: Tipos para Fase 7
+  PeriodComparison,
+  RevenueForecast,
+  AdvancedFilters
 } from '../../types/analytics';
 import { useAuth } from '../../contexts/AuthContext.js';
 import { UserRole } from '../../types/index.js';
@@ -170,6 +174,19 @@ export const AdminFunnelAnalytics: React.FC = () => {
   const [customEnd, setCustomEnd] = useState<Date | undefined>();
   const [refreshing, setRefreshing] = useState(false);
 
+  // 🔴 NOVO: Estado para filtros avançados
+  const [advancedFilters, setAdvancedFilters] = useState<AdvancedFilters>({
+    plan: 'all',
+    status: 'all',
+    daysSinceJoin: 'all'
+  });
+
+  // 🔴 NOVO: Estado para dados de comparação e previsão
+  const [comparisonData, setComparisonData] = useState<PeriodComparison | null>(null);
+  const [forecastData, setForecastData] = useState<RevenueForecast | null>(null);
+  const [isLoadingComparison, setIsLoadingComparison] = useState(false);
+  const [isLoadingForecast, setIsLoadingForecast] = useState(false);
+
   // Query para buscar dados
   const { 
     data: summary,
@@ -177,7 +194,7 @@ export const AdminFunnelAnalytics: React.FC = () => {
     error,
     refetch
   } = useQuery({
-    queryKey: ['analytics-summary', period, customStart, customEnd],
+    queryKey: ['analytics-summary', period, customStart, customEnd, advancedFilters],
     queryFn: async () => {
       const params = {
         period,
@@ -188,9 +205,58 @@ export const AdminFunnelAnalytics: React.FC = () => {
     },
     staleTime: 5 * 60 * 1000, // 5 minutos
     retry: 2,
-    // Só executa a query se o usuário for admin
     enabled: isAdmin
   });
+
+  // 🔴 NOVO: Buscar dados de comparação
+  useEffect(() => {
+    if (!isAdmin || !summary) return;
+
+    const fetchComparison = async () => {
+      setIsLoadingComparison(true);
+      try {
+        const params = {
+          period,
+          startDate: customStart?.toISOString(),
+          endDate: customEnd?.toISOString(),
+          compareWith: 'previous' as const
+        };
+        const data = await analyticsService.getComparison(params);
+        setComparisonData(data);
+      } catch (error) {
+        console.error('❌ Erro ao buscar comparação:', error);
+      } finally {
+        setIsLoadingComparison(false);
+      }
+    };
+
+    fetchComparison();
+  }, [isAdmin, summary, period, customStart, customEnd]);
+
+  // 🔴 NOVO: Buscar dados de previsão
+  useEffect(() => {
+    if (!isAdmin || !summary) return;
+
+    const fetchForecast = async () => {
+      setIsLoadingForecast(true);
+      try {
+        const params = {
+          period,
+          startDate: customStart?.toISOString(),
+          endDate: customEnd?.toISOString(),
+          monthsToForecast: 12
+        };
+        const data = await analyticsService.getForecast(params);
+        setForecastData(data);
+      } catch (error) {
+        console.error('❌ Erro ao buscar previsão:', error);
+      } finally {
+        setIsLoadingForecast(false);
+      }
+    };
+
+    fetchForecast();
+  }, [isAdmin, summary, period, customStart, customEnd]);
 
   // Handler para mudança de período
   const handlePeriodChange = useCallback((
@@ -201,6 +267,11 @@ export const AdminFunnelAnalytics: React.FC = () => {
     setPeriod(newPeriod);
     setCustomStart(startDate);
     setCustomEnd(endDate);
+  }, []);
+
+  // 🔴 NOVO: Handler para filtros avançados
+  const handleAdvancedFilter = useCallback((filters: AdvancedFilters) => {
+    setAdvancedFilters(filters);
   }, []);
 
   // Handler para refresh manual
@@ -216,6 +287,34 @@ export const AdminFunnelAnalytics: React.FC = () => {
     conversionRate: summary.funnel.conversionRate,
     activeClients: summary.funnel.activeSubscriptions,
     churnRate: summary.churn.churnRate
+  } : undefined;
+
+  // 🔴 NOVO: Preparar dados de comparação para os cards
+  const comparisonForCards = comparisonData ? {
+    revenueChange: {
+      value: comparisonData.changes.totalRevenue.percent,
+      isPositive: comparisonData.changes.totalRevenue.percent >= 0
+    },
+    conversionChange: {
+      value: comparisonData.changes.activeClients.percent,
+      isPositive: comparisonData.changes.activeClients.percent >= 0
+    },
+    churnChange: {
+      value: comparisonData.changes.activeClients.percent,
+      isPositive: comparisonData.changes.activeClients.percent < 0
+    },
+    activeClientsChange: {
+      value: comparisonData.changes.activeClients.percent,
+      isPositive: comparisonData.changes.activeClients.percent >= 0
+    },
+    mrrChange: {
+      value: comparisonData.changes.mrr.percent,
+      isPositive: comparisonData.changes.mrr.percent >= 0
+    },
+    arpuChange: {
+      value: comparisonData.changes.arpu.percent,
+      isPositive: comparisonData.changes.arpu.percent >= 0
+    }
   } : undefined;
 
   // Extrair steps do funil para o gráfico
@@ -278,9 +377,13 @@ export const AdminFunnelAnalytics: React.FC = () => {
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-3">
+              {/* 🔴 ATUALIZADO: PeriodSelector com filtros avançados */}
               <PeriodSelector
                 value={period}
                 onChange={handlePeriodChange}
+                onAdvancedFilter={handleAdvancedFilter}
+                advancedFilters={advancedFilters}
+                showAdvancedFilters={true}
               />
               <ExportButton
                 period={period}
@@ -317,12 +420,13 @@ export const AdminFunnelAnalytics: React.FC = () => {
             </div>
           ) : summary ? (
             <>
-              {/* Metrics Cards */}
+              {/* 🔴 ATUALIZADO: Metrics Cards com dados de comparação */}
               <section className="mb-6">
                 <MetricsCards
                   revenue={summary.revenue}
                   funnel={summary.funnel}
                   churn={summary.churn}
+                  comparison={comparisonForCards}
                 />
               </section>
 
@@ -352,7 +456,6 @@ export const AdminFunnelAnalytics: React.FC = () => {
                   icon={<DollarSign className="h-5 w-5" />}
                   color="purple"
                 />
-                {/* 🔴 CORRIGIDO: "Churn Rate" → "Clientes que saíram" */}
                 <QuickStat
                   label="Clientes que saíram"
                   value={`${summary.churn.churnRate.toFixed(1)}%`}
@@ -362,7 +465,7 @@ export const AdminFunnelAnalytics: React.FC = () => {
                 />
               </section>
 
-              {/* 🔴 CORRIGIDO: Charts Row 1 - COM GRÁFICOS REAIS */}
+              {/* Charts Row 1 */}
               <section className="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
                 <Card>
                   <CardHeader>
@@ -388,7 +491,7 @@ export const AdminFunnelAnalytics: React.FC = () => {
                 </Card>
               </section>
 
-              {/* 🔴 CORRIGIDO: Charts Row 2 - COM GRÁFICOS REAIS */}
+              {/* Charts Row 2 */}
               <section className="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
                 <Card>
                   <CardHeader>
@@ -415,7 +518,73 @@ export const AdminFunnelAnalytics: React.FC = () => {
                 </Card>
               </section>
 
-              {/* 🔴 MELHORADO: Status Distribution com Cards Visuais */}
+              {/* 🔴 NOVO: Seção de Previsão de Receita */}
+              {forecastData && (
+                <section className="mb-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Previsão de Receita</CardTitle>
+                      <p className="text-sm text-gray-500">
+                        Projeção para os próximos 12 meses baseada no histórico
+                      </p>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                        <div className="rounded-lg border border-green-200 bg-green-50 p-4 text-center">
+                          <p className="text-xs font-medium text-green-700">Otimista</p>
+                          <p className="text-2xl font-bold text-green-700">
+                            {new Intl.NumberFormat('pt-BR', {
+                              style: 'currency',
+                              currency: 'BRL',
+                              minimumFractionDigits: 0,
+                              maximumFractionDigits: 0
+                            }).format(forecastData.summary.projectedMRR.optimistic)}
+                          </p>
+                          <p className="text-xs text-green-600">
+                            Crescimento: {forecastData.summary.growthRate.optimistic.toFixed(1)}%
+                          </p>
+                        </div>
+                        <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-center">
+                          <p className="text-xs font-medium text-blue-700">Realista</p>
+                          <p className="text-2xl font-bold text-blue-700">
+                            {new Intl.NumberFormat('pt-BR', {
+                              style: 'currency',
+                              currency: 'BRL',
+                              minimumFractionDigits: 0,
+                              maximumFractionDigits: 0
+                            }).format(forecastData.summary.projectedMRR.realistic)}
+                          </p>
+                          <p className="text-xs text-blue-600">
+                            Crescimento: {forecastData.summary.growthRate.realistic.toFixed(1)}%
+                          </p>
+                        </div>
+                        <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4 text-center">
+                          <p className="text-xs font-medium text-yellow-700">Pessimista</p>
+                          <p className="text-2xl font-bold text-yellow-700">
+                            {new Intl.NumberFormat('pt-BR', {
+                              style: 'currency',
+                              currency: 'BRL',
+                              minimumFractionDigits: 0,
+                              maximumFractionDigits: 0
+                            }).format(forecastData.summary.projectedMRR.pessimistic)}
+                          </p>
+                          <p className="text-xs text-yellow-600">
+                            Crescimento: {forecastData.summary.growthRate.pessimistic.toFixed(1)}%
+                          </p>
+                        </div>
+                      </div>
+                      <div className="mt-4 text-center text-xs text-gray-400">
+                        MRR atual: {new Intl.NumberFormat('pt-BR', {
+                          style: 'currency',
+                          currency: 'BRL'
+                        }).format(forecastData.summary.currentMRR)}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </section>
+              )}
+
+              {/* Status Distribution */}
               <section className="mb-6">
                 <Card>
                   <CardHeader>
@@ -427,7 +596,6 @@ export const AdminFunnelAnalytics: React.FC = () => {
                   <CardContent>
                     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
                       {summary.statusDistribution.map((status) => {
-                        // 🔴 NOVO: Ícones por status
                         const getStatusIcon = (statusName: string) => {
                           switch (statusName) {
                             case 'active':
@@ -451,7 +619,6 @@ export const AdminFunnelAnalytics: React.FC = () => {
                           }
                         };
 
-                        // 🔴 NOVO: Cor de fundo por status
                         const getStatusBgColor = (statusName: string) => {
                           switch (statusName) {
                             case 'active':

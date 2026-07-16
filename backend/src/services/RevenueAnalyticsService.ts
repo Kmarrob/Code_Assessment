@@ -584,6 +584,254 @@ export class RevenueAnalyticsService {
       message 
     };
   }
+
+  // ============================================
+  // 🔴 NOVO: FASE 7 - COMPARAÇÃO DE PERÍODOS
+  // ============================================
+
+  /**
+   * Compara métricas entre dois períodos
+   * @param currentStart - Data início do período atual
+   * @param currentEnd - Data fim do período atual
+   * @param previousStart - Data início do período anterior
+   * @param previousEnd - Data fim do período anterior
+   * @returns Objeto com comparação de métricas
+   */
+  async getPeriodComparison(
+    currentStart: Date,
+    currentEnd: Date,
+    previousStart: Date,
+    previousEnd: Date
+  ): Promise<{
+    current: {
+      totalRevenue: number;
+      mrr: number;
+      arpu: number;
+      activeClients: number;
+    };
+    previous: {
+      totalRevenue: number;
+      mrr: number;
+      arpu: number;
+      activeClients: number;
+    };
+    changes: {
+      totalRevenue: { amount: number; percent: number };
+      mrr: { amount: number; percent: number };
+      arpu: { amount: number; percent: number };
+      activeClients: { amount: number; percent: number };
+    };
+    trend: 'up' | 'down' | 'stable';
+  }> {
+    try {
+      console.log('📊 Calculando comparação entre períodos', {
+        currentStart,
+        currentEnd,
+        previousStart,
+        previousEnd
+      });
+
+      // Buscar métricas dos dois períodos
+      const [currentMetrics, previousMetrics] = await Promise.all([
+        this.getRevenueMetrics(currentStart, currentEnd),
+        this.getRevenueMetrics(previousStart, previousEnd)
+      ]);
+
+      // Buscar número de clientes ativos
+      const Company = this.getCompany();
+      const [currentActive, previousActive] = await Promise.all([
+        Company.countDocuments({
+          status: 'active',
+          plan: { $in: ['basic', 'pro', 'enterprise'] }
+        }),
+        Company.countDocuments({
+          status: 'active',
+          plan: { $in: ['basic', 'pro', 'enterprise'] },
+          createdAt: { $lte: previousEnd }
+        })
+      ]);
+
+      const current = {
+        totalRevenue: currentMetrics.totalRevenue,
+        mrr: currentMetrics.mrr,
+        arpu: currentMetrics.arpu,
+        activeClients: currentActive
+      };
+
+      const previous = {
+        totalRevenue: previousMetrics.totalRevenue,
+        mrr: previousMetrics.mrr,
+        arpu: previousMetrics.arpu,
+        activeClients: previousActive
+      };
+
+      // Calcular mudanças
+      const calculateChange = (currentVal: number, previousVal: number) => ({
+        amount: currentVal - previousVal,
+        percent: previousVal > 0 ? ((currentVal - previousVal) / previousVal) * 100 : 0
+      });
+
+      const changes = {
+        totalRevenue: calculateChange(current.totalRevenue, previous.totalRevenue),
+        mrr: calculateChange(current.mrr, previous.mrr),
+        arpu: calculateChange(current.arpu, previous.arpu),
+        activeClients: calculateChange(current.activeClients, previous.activeClients)
+      };
+
+      // Determinar tendência geral
+      const avgChange = (changes.totalRevenue.percent + changes.mrr.percent + changes.activeClients.percent) / 3;
+      let trend: 'up' | 'down' | 'stable' = 'stable';
+      if (avgChange > 5) trend = 'up';
+      else if (avgChange < -5) trend = 'down';
+
+      console.log('✅ Comparação entre períodos calculada', { current, previous, changes, trend });
+
+      return { current, previous, changes, trend };
+    } catch (error) {
+      console.error('❌ Erro ao calcular comparação entre períodos:', error);
+      throw error;
+    }
+  }
+
+  // ============================================
+  // 🔴 NOVO: FASE 7 - PREVISÃO DE RECEITA
+  // ============================================
+
+  /**
+   * Gera previsão de receita para os próximos meses
+   * @param startDate - Data de início do histórico
+   * @param endDate - Data de fim do histórico
+   * @param monthsToForecast - Número de meses para previsão (padrão: 12)
+   * @returns Objeto com previsões otimista, realista e pessimista
+   */
+  async getRevenueForecast(
+    startDate: Date,
+    endDate: Date,
+    monthsToForecast: number = 12
+  ): Promise<{
+    historical: { period: string; revenue: number }[];
+    forecast: {
+      optimistic: { period: string; revenue: number }[];
+      realistic: { period: string; revenue: number }[];
+      pessimistic: { period: string; revenue: number }[];
+    };
+    summary: {
+      currentMRR: number;
+      projectedMRR: {
+        optimistic: number;
+        realistic: number;
+        pessimistic: number;
+      };
+      growthRate: {
+        optimistic: number;
+        realistic: number;
+        pessimistic: number;
+      };
+    };
+  }> {
+    try {
+      console.log('📊 Gerando previsão de receita', { startDate, endDate, monthsToForecast });
+
+      // Buscar dados históricos de receita por período
+      const historicalData = await this.getRevenueByPeriod(startDate, endDate);
+
+      // Calcular taxa de crescimento histórica
+      let growthRates: number[] = [];
+      for (let i = 1; i < historicalData.length; i++) {
+        const prev = historicalData[i - 1].total;
+        const curr = historicalData[i].total;
+        if (prev > 0) {
+          growthRates.push(((curr - prev) / prev) * 100);
+        }
+      }
+
+      // Calcular média e desvio padrão das taxas de crescimento
+      const avgGrowth = growthRates.length > 0 
+        ? growthRates.reduce((a, b) => a + b, 0) / growthRates.length 
+        : 5; // Fallback: 5% de crescimento
+
+      const stdDev = growthRates.length > 1
+        ? Math.sqrt(growthRates.reduce((a, b) => a + Math.pow(b - avgGrowth, 2), 0) / growthRates.length)
+        : 3; // Fallback: desvio de 3%
+
+      // Definir cenários
+      const scenarios = {
+        optimistic: avgGrowth + stdDev * 1.5,  // Cenário otimista: média + 1.5 desvio
+        realistic: avgGrowth,                  // Cenário realista: média
+        pessimistic: Math.max(avgGrowth - stdDev * 1.5, -10) // Cenário pessimista: média - 1.5 desvio (limitado a -10%)
+      };
+
+      // Obter MRR atual
+      const currentMRR = await this.getMRR();
+
+      // Gerar previsões
+      const monthNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+        'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+
+      const lastDate = historicalData.length > 0 
+        ? new Date(historicalData[historicalData.length - 1].date) 
+        : new Date();
+
+      const forecast: any = {
+        optimistic: [],
+        realistic: [],
+        pessimistic: []
+      };
+
+      const projectedMRR = {
+        optimistic: currentMRR,
+        realistic: currentMRR,
+        pessimistic: currentMRR
+      };
+
+      for (let i = 1; i <= monthsToForecast; i++) {
+        const date = new Date(lastDate);
+        date.setMonth(date.getMonth() + i);
+        const period = `${monthNames[date.getMonth()]} ${date.getFullYear()}`;
+
+        // Calcular previsão para cada cenário
+        for (const [scenario, rate] of Object.entries(scenarios)) {
+          const multiplier = Math.pow(1 + rate / 100, i);
+          const projectedRevenue = currentMRR * multiplier;
+          
+          forecast[scenario].push({
+            period,
+            revenue: Math.round(projectedRevenue * 100) / 100
+          });
+
+          // Atualizar MRR projetado para o último mês
+          if (i === monthsToForecast) {
+            projectedMRR[scenario as keyof typeof projectedMRR] = Math.round(projectedRevenue * 100) / 100;
+          }
+        }
+      }
+
+      // Calcular taxas de crescimento projetadas
+      const growthRate = {
+        optimistic: scenarios.optimistic,
+        realistic: scenarios.realistic,
+        pessimistic: scenarios.pessimistic
+      };
+
+      console.log('✅ Previsão de receita gerada', { currentMRR, projectedMRR, growthRate });
+
+      return {
+        historical: historicalData.map(item => ({
+          period: item.period,
+          revenue: item.total
+        })),
+        forecast,
+        summary: {
+          currentMRR,
+          projectedMRR,
+          growthRate
+        }
+      };
+    } catch (error) {
+      console.error('❌ Erro ao gerar previsão de receita:', error);
+      throw error;
+    }
+  }
 }
 
 export const revenueAnalyticsService = new RevenueAnalyticsService();

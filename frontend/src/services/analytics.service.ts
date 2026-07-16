@@ -24,7 +24,10 @@ import {
   ConversionTrend,
   AnalyticsPeriod,
   ClientFunnelStatus,
-  AnalyticsApiResponse
+  AnalyticsApiResponse,
+  // 🔴 NOVO: Tipos para Fase 7
+  PeriodComparison,
+  RevenueForecast
 } from '../types/analytics';
 
 // ============================================
@@ -51,6 +54,18 @@ interface RetentionParams extends PeriodParams {
 
 interface TrendParams extends PeriodParams {
   interval?: 'daily' | 'weekly' | 'monthly';
+}
+
+// ============================================
+// 🔴 NOVO: INTERFACES PARA FASE 7
+// ============================================
+
+interface ComparisonParams extends PeriodParams {
+  compareWith?: 'previous' | 'same_period_last_year';
+}
+
+interface ForecastParams extends PeriodParams {
+  monthsToForecast?: number;
 }
 
 // ============================================
@@ -266,6 +281,50 @@ class AnalyticsService {
       return response.data;
     } catch (error) {
       console.error('Erro ao exportar dados:', error);
+      throw error;
+    }
+  }
+
+  // ============================================
+  // 🔴 NOVO: FASE 7 - COMPARAÇÃO DE PERÍODOS
+  // ============================================
+
+  /**
+   * Obtém comparação de métricas entre períodos
+   * @param params - Parâmetros da comparação
+   * @returns Dados de comparação entre períodos
+   */
+  async getComparison(params: ComparisonParams): Promise<PeriodComparison> {
+    try {
+      const response = await api.get<AnalyticsApiResponse<PeriodComparison>>(
+        `${this.baseUrl}/comparison`,
+        { params }
+      );
+      return response.data.data!;
+    } catch (error) {
+      console.error('Erro ao buscar comparação entre períodos:', error);
+      throw error;
+    }
+  }
+
+  // ============================================
+  // 🔴 NOVO: FASE 7 - PREVISÃO DE RECEITA
+  // ============================================
+
+  /**
+   * Obtém previsão de receita para os próximos meses
+   * @param params - Parâmetros da previsão
+   * @returns Dados de previsão de receita
+   */
+  async getForecast(params: ForecastParams): Promise<RevenueForecast> {
+    try {
+      const response = await api.get<AnalyticsApiResponse<RevenueForecast>>(
+        `${this.baseUrl}/forecast`,
+        { params }
+      );
+      return response.data.data!;
+    } catch (error) {
+      console.error('Erro ao buscar previsão de receita:', error);
       throw error;
     }
   }
