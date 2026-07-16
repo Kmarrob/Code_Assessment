@@ -20,6 +20,7 @@ import {
   AnalyticsPeriod,
   ClientFunnelStatus
 } from '../types/analytics.types.js';
+import { funnelAnalyticsController } from '../controllers/FunnelAnalyticsController.js';
 
 // Importações estáticas dos serviços
 import { revenueAnalyticsService } from '../services/RevenueAnalyticsService.js';
@@ -455,6 +456,81 @@ async function handleTrend(req: Request, res: Response, next: NextFunction): Pro
 }
 
 // ============================================
+// 🔴 NOVO: FASE 7 - HANDLER: GET /comparison
+// ============================================
+
+/**
+ * GET /api/admin/analytics/comparison
+ * Comparação de métricas entre períodos
+ */
+async function handleComparison(req: Request, res: Response, next: NextFunction): Promise<Response | void> {
+  try {
+    return funnelAnalyticsController.getComparison(req, res, next);
+  } catch (error: any) {
+    const safeError = error?.message || error || 'Erro desconhecido no manipulador comparison';
+    console.error('❌ Erro ao buscar comparação entre períodos:', safeError);
+    return res.status(500).json({
+      success: false,
+      message: safeError,
+      code: "UNKNOWN_ERROR",
+      statusCode: 500,
+      timestamp: new Date().toISOString(),
+      path: "/api/admin/analytics/comparison"
+    });
+  }
+}
+
+// ============================================
+// 🔴 NOVO: FASE 7 - HANDLER: GET /forecast
+// ============================================
+
+/**
+ * GET /api/admin/analytics/forecast
+ * Previsão de receita para os próximos meses
+ */
+async function handleForecast(req: Request, res: Response, next: NextFunction): Promise<Response | void> {
+  try {
+    return funnelAnalyticsController.getForecast(req, res, next);
+  } catch (error: any) {
+    const safeError = error?.message || error || 'Erro desconhecido no manipulador forecast';
+    console.error('❌ Erro ao gerar previsão de receita:', safeError);
+    return res.status(500).json({
+      success: false,
+      message: safeError,
+      code: "UNKNOWN_ERROR",
+      statusCode: 500,
+      timestamp: new Date().toISOString(),
+      path: "/api/admin/analytics/forecast"
+    });
+  }
+}
+
+// ============================================
+// 🔴 NOVO: FASE 8 - HANDLER: GET /clients/:clientId
+// ============================================
+
+/**
+ * GET /api/admin/analytics/clients/:clientId
+ * Detalhamento completo de um cliente específico
+ */
+async function handleClientDetails(req: Request, res: Response, next: NextFunction): Promise<Response | void> {
+  try {
+    return funnelAnalyticsController.getClientDetails(req, res, next);
+  } catch (error: any) {
+    const safeError = error?.message || error || 'Erro desconhecido no manipulador clientDetails';
+    console.error('❌ Erro ao buscar detalhes do cliente:', safeError);
+    return res.status(500).json({
+      success: false,
+      message: safeError,
+      code: "UNKNOWN_ERROR",
+      statusCode: 500,
+      timestamp: new Date().toISOString(),
+      path: "/api/admin/analytics/clients"
+    });
+  }
+}
+
+// ============================================
 // ROTAS
 // ============================================
 
@@ -482,5 +558,12 @@ router.get('/strategies', handleStrategies);
 // ENDPOINTS DE ANÁLISE
 router.get('/abandoned', handleAbandoned);
 router.get('/trend', handleTrend);
+
+// 🔴 NOVO: FASE 7 - COMPARAÇÃO E PREVISÃO
+router.get('/comparison', handleComparison);
+router.get('/forecast', handleForecast);
+
+// 🔴 NOVO: FASE 8 - DETALHES DO CLIENTE
+router.get('/clients/:clientId', handleClientDetails);
 
 export default router;

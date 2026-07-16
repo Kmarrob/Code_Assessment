@@ -69,6 +69,34 @@ interface ForecastParams extends PeriodParams {
 }
 
 // ============================================
+// 🔴 NOVO: INTERFACES PARA FASE 8 - CLIENT DETAILS
+// ============================================
+
+export interface ClientDetailsResponse {
+  client: ClientListItem;
+  payments: {
+    id: string;
+    amount: number;
+    status: string;
+    method: string;
+    createdAt: Date;
+    description?: string;
+  }[];
+  planHistory: {
+    planName: string;
+    startDate: Date;
+    endDate?: Date;
+  }[];
+  engagement: {
+    lastLogin?: Date;
+    userCount: number;
+    totalPaid: number;
+    subscriptionDays: number;
+    subscriptionMonths: number;
+  };
+}
+
+// ============================================
 // SERVIÇO
 // ============================================
 
@@ -325,6 +353,27 @@ class AnalyticsService {
       return response.data.data!;
     } catch (error) {
       console.error('Erro ao buscar previsão de receita:', error);
+      throw error;
+    }
+  }
+
+  // ============================================
+  // 🔴 NOVO: FASE 8 - DETALHAMENTO POR CLIENTE
+  // ============================================
+
+  /**
+   * Obtém detalhes completos de um cliente específico
+   * @param clientId - ID do cliente (empresa)
+   * @returns Dados detalhados do cliente
+   */
+  async getClientDetails(clientId: string): Promise<ClientDetailsResponse> {
+    try {
+      const response = await api.get<AnalyticsApiResponse<ClientDetailsResponse>>(
+        `${this.baseUrl}/clients/${clientId}`
+      );
+      return response.data.data!;
+    } catch (error) {
+      console.error('Erro ao buscar detalhes do cliente:', error);
       throw error;
     }
   }

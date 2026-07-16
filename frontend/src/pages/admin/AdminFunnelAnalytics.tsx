@@ -12,6 +12,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { 
   TrendingUp, 
   RefreshCw, 
@@ -26,6 +27,8 @@ import {
   Clock,
   CheckCircle,
   AlertTriangle,
+  // 🔴 NOVO: Ícone para ação de detalhe
+  Eye,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card.js';
 import { AdminBreadcrumbs } from '../../components/admin/AdminBreadcrumbs.js';
@@ -53,6 +56,7 @@ import {
 } from '../../types/analytics';
 import { useAuth } from '../../contexts/AuthContext.js';
 import { UserRole } from '../../types/index.js';
+import { Button } from '../../components/ui/Button.js';
 
 // ============================================
 // COMPONENTES DE CARREGAMENTO
@@ -164,6 +168,7 @@ const ChurnAnalysisPlaceholder: React.FC = () => (
 
 export const AdminFunnelAnalytics: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   
   // Verifica se o usuário é admin (acesso total)
   const isAdmin = user?.role === UserRole.ADMIN;
@@ -324,6 +329,11 @@ export const AdminFunnelAnalytics: React.FC = () => {
     { step: 'conversions' as const, label: 'Conversões', count: summary.funnel.convertedToPaid, percentage: summary.funnel.totalRegistrations > 0 ? (summary.funnel.convertedToPaid / summary.funnel.totalRegistrations) * 100 : 0, color: '#10B981' },
     { step: 'active' as const, label: 'Ativos', count: summary.funnel.activeSubscriptions, percentage: summary.funnel.convertedToPaid > 0 ? (summary.funnel.activeSubscriptions / summary.funnel.convertedToPaid) * 100 : 0, color: '#059669' }
   ] : [];
+
+  // 🔴 NOVO: Handler para navegar para detalhes do cliente
+  const handleClientClick = useCallback((clientId: string, clientName: string) => {
+    navigate(`/admin/analytics/clients/${clientId}`);
+  }, [navigate]);
 
   // 🔴 CORRIGIDO: Verificação de acesso - Admin tem acesso total
   if (!isAdmin && !isLoading) {
@@ -674,12 +684,15 @@ export const AdminFunnelAnalytics: React.FC = () => {
                 </Card>
               </section>
 
-              {/* Recent Clients */}
+              {/* 🔴 ATUALIZADO: Recent Clients com Drill-down */}
               {summary.recentClients.length > 0 && (
                 <section>
                   <Card>
                     <CardHeader>
                       <CardTitle>Últimos Clientes</CardTitle>
+                      <p className="text-sm text-gray-500">
+                        Clique no nome da empresa para ver detalhes
+                      </p>
                     </CardHeader>
                     <CardContent>
                       <div className="overflow-x-auto">
@@ -692,13 +705,21 @@ export const AdminFunnelAnalytics: React.FC = () => {
                               <th className="pb-2 font-medium text-gray-500">Entrada</th>
                               <th className="pb-2 font-medium text-gray-500">Valor</th>
                               <th className="pb-2 font-medium text-gray-500">Usuários</th>
+                              <th className="pb-2 font-medium text-gray-500 text-center">Ações</th>
                             </tr>
                           </thead>
                           <tbody>
                             {summary.recentClients.map((client) => (
-                              <tr key={client.id} className="border-b border-gray-100 last:border-0">
-                                <td className="py-2 font-medium text-gray-900">
-                                  {client.name}
+                              <tr key={client.id} className="border-b border-gray-100 last:border-0 hover:bg-gray-50 transition-colors">
+                                <td className="py-2">
+                                  {/* 🔴 NOVO: Nome clicável com ícone */}
+                                  <button
+                                    onClick={() => handleClientClick(client.id, client.name)}
+                                    className="font-medium text-blue-600 hover:text-blue-800 hover:underline cursor-pointer transition-colors flex items-center gap-1"
+                                  >
+                                    {client.name}
+                                    <Eye className="h-3 w-3 opacity-50" />
+                                  </button>
                                 </td>
                                 <td className="py-2 text-gray-600">{client.planName}</td>
                                 <td className="py-2">
@@ -722,6 +743,18 @@ export const AdminFunnelAnalytics: React.FC = () => {
                                   }).format(client.monthlyValue)}
                                 </td>
                                 <td className="py-2 text-gray-600">{client.userCount}</td>
+                                <td className="py-2 text-center">
+                                  {/* 🔴 NOVO: Botão de detalhes */}
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleClientClick(client.id, client.name)}
+                                    className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                                  >
+                                    <Eye className="h-4 w-4 mr-1" />
+                                    Detalhes
+                                  </Button>
+                                </td>
                               </tr>
                             ))}
                           </tbody>

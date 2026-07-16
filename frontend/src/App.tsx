@@ -73,6 +73,9 @@ import { CheckoutPage } from './pages/CheckoutPage.js';
 // 🔴 NOVO: Import do Funil de Conversão
 import AdminFunnelAnalytics from './pages/admin/AdminFunnelAnalytics.js';
 
+// 🔴 NOVO: FASE 8 - Import da página de detalhes do cliente
+import AdminClientDetails from './pages/admin/AdminClientDetails.js';
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -227,6 +230,13 @@ function App() {
                     <Route path="/admin/analytics" element={
                       <Layout>
                         <AdminFunnelAnalytics />
+                      </Layout>
+                    } />
+
+                    {/* 🔴 NOVO: FASE 8 - Rota para detalhes do cliente no Funil de Conversão */}
+                    <Route path="/admin/analytics/clients/:clientId" element={
+                      <Layout>
+                        <AdminClientDetails />
                       </Layout>
                     } />
                     
