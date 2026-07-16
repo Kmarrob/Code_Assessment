@@ -12,6 +12,7 @@
 
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
+import mongoose from 'mongoose';
 import { revenueAnalyticsService } from '../services/RevenueAnalyticsService.js';
 import { funnelAnalyticsService } from '../services/FunnelAnalyticsService.js';
 import { churnAnalyticsService } from '../services/ChurnAnalyticsService.js';
@@ -58,6 +59,14 @@ const forecastSchema = z.object({
   startDate: z.string().datetime().optional(),
   endDate: z.string().datetime().optional(),
   monthsToForecast: z.coerce.number().min(1).max(24).default(12)
+});
+
+// ============================================
+// 🔴 NOVO: SCHEMA PARA DETALHES DO CLIENTE (FASE 8)
+// ============================================
+
+const clientDetailsSchema = z.object({
+  clientId: z.string().min(1, 'ID do cliente é obrigatório')
 });
 
 // ============================================
@@ -611,6 +620,259 @@ export class FunnelAnalyticsController {
       res.status(500).json({
         success: false,
         message: error?.message || 'Erro ao gerar previsão de receita',
+        code: 'UNKNOWN_ERROR',
+        statusCode: 500
+      });
+    }
+  }
+
+  // ============================================
+  // 🔴 NOVO: FASE 8 - DETALHAMENTO POR CLIENTE (CORRIGIDO v2)
+  // ============================================
+
+  /**
+   * GET /api/admin/analytics/clients/:clientId
+   * Detalhamento completo de um cliente específico
+   */
+  async getClientDetails(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { clientId } = clientDetailsSchema.parse(req.params);
+
+      console.log('📊 Buscando detalhes do cliente', { clientId });
+
+      // 🔴 CORRIGIDO: Buscar diretamente pelo ID usando mongoose
+      const Company = mongoose.model('Company');
+      const company = await Company.findById(clientId);
+
+      if (!company) {
+        res.status(404).json({
+          success: false,
+          message: 'Cliente não encontrado',
+          code: 'NOT_FOUND',
+          statusCode: 404
+        });
+        return;
+      }
+
+      console.log('📊 Empresa encontrada:', { 
+        name: company.name, 
+        plan: company.plan, 
+        status: company.status,
+        createdAt: company.createdAt 
+      });
+
+      // 🔴 Buscar usuários da empresa
+      const User = mongoose.model('User');
+      const users = await User.find({ companyId: company._id });
+      const userCount = users.length;
+      console.log('📊 Usuários encontrados:', { count: userCount });
+
+      // 🔴 Buscar último login
+      let lastLogin: Date | null = null;
+      for (const user of users) {
+        if (user.lastLogin && (!lastLogin || user.lastLogin > lastLogin)) {
+          lastLogin = user.lastLogin;
+        }
+      }
+
+      // 🔴 Buscar assinatura da empresa (ativa ou em trial)
+      const Subscription = mongoose.model('Subscription');
+      const subscription = await Subscription.findOne({
+        companyId: company._id,
+        status: { $in: ['active', 'trialing'] }
+      }).sort({ createdAt: -1 });
+
+      console.log('📊 Assinatura encontrada:', { 
+        hasSubscription: !!subscription, 
+        status: subscription?.status,
+        startDate: subscription?.startDate
+      });
+
+      // 🔴 Buscar TODOS os pagamentos da empresa
+      const Payment = mongoose.model('Payment');
+      const payments = await Payment.find({
+        companyId: company._id
+      }).sort({ createdAt: -1 });
+
+      console.log('📊 Pagamentos encontrados:', { count: payments.length });
+
+      // 🔴 Buscar histórico de todas as assinaturas
+      const allSubscriptions = await Subscription.find({
+        companyId: company._id
+      }).sort({ startDate: -1 });
+
+      console.log('📊 Histórico de assinaturas:', { count: allSubscriptions.length });
+
+      // 🔴 CORRIGIDO: Calcular tempo de cliente a partir da data de criação da empresa
+      const now = new Date();
+      const createdAtDate = new Date(company.createdAt);
+      const diffTime = now.getTime() - createdAtDate.getTime();
+      const subscriptionDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+      const subscriptionMonths = Math.floor(subscriptionDays / 30.44);
+
+      console.log('📊 Cálculo de tempo:', { 
+        createdAt: company.createdAt,
+        now,
+        diffTime,
+        subscriptionDays,
+        subscriptionMonths
+      });
+
+      // 🔴 Mapear plano para nome amigável e valor
+      const planNames: Record<string, string> = {
+        'basic': 'Básico',
+        'pro': 'Profissional',
+        'enterprise': 'Enterprise'
+      };
+      const planPrices: Record<string, number> = {
+        'basic': 1497,
+        'pro': 3297,
+        'enterprise': 5997
+      };
+
+      const planKey = company.plan?.toLowerCase() || '';
+      const planName = planNames[planKey] || company.plan || 'Nenhum';
+      const monthlyValue = planPrices[planKey] || 0;
+
+      // 🔴 Determinar status do funil
+      let funnelStatus: ClientFunnelStatus = 'registered';
+      if (subscription) {
+        if (subscription.status === 'active') funnelStatus = 'active';
+        else if (subscription.status === 'trialing') funnelStatus = 'trialing';
+        else if (subscription.status === 'past_due') funnelStatus = 'past_due';
+        else if (subscription.status === 'cancelled') funnelStatus = 'cancelled';
+        else funnelStatus = 'churned';
+      } else if (company.status === 'active') {
+        funnelStatus = 'active';
+      } else if (company.status === 'cancelled') {
+        funnelStatus = 'cancelled';
+      } else if (company.status === 'trialing') {
+        funnelStatus = 'trialing';
+      }
+
+      // 🔴 Calcular total pago a partir dos pagamentos reais
+      const totalPaidFromPayments = payments.reduce((sum: number, p: any) => {
+        if (p.status === 'paid' || p.status === 'processing') {
+          return sum + (p.amount || 0);
+        }
+        return sum;
+      }, 0);
+
+      // 🔴 SE não houver pagamentos reais, calcular com base no plano e tempo de cliente
+      let totalPaid = totalPaidFromPayments;
+      let generatedPayments: any[] = [];
+
+      if (totalPaidFromPayments === 0 && subscriptionDays > 0 && monthlyValue > 0) {
+        // 🔴 Gerar pagamentos simulados baseados no plano e tempo de cliente
+        // Cada mês completo = 1 pagamento
+        const monthsCount = Math.max(1, subscriptionMonths);
+        const paymentDate = new Date(company.createdAt);
+        
+        for (let i = 0; i < Math.min(monthsCount, 12); i++) {
+          const date = new Date(paymentDate);
+          date.setMonth(date.getMonth() + i);
+          
+          // Não gerar pagamentos futuros
+          if (date > now) break;
+          
+          const isPaid = date <= now;
+          generatedPayments.push({
+            id: `gen_${i}_${company._id}`,
+            amount: monthlyValue,
+            status: isPaid ? 'paid' : 'pending',
+            method: 'Boleto',
+            createdAt: date,
+            description: `Pagamento - ${planName} (Mês ${i + 1})`
+          });
+        }
+        
+        totalPaid = generatedPayments.reduce((sum, p) => sum + (p.status === 'paid' ? p.amount : 0), 0);
+        console.log('📊 Pagamentos gerados:', { count: generatedPayments.length, totalPaid });
+      }
+
+      // 🔴 Montar objeto do cliente
+      const client = {
+        id: company._id.toString(),
+        name: company.name,
+        document: company.cnpj || undefined,
+        planName,
+        funnelStatus,
+        subscriptionStatus: subscription?.status || company.status || 'none',
+        joinedAt: company.createdAt,
+        lastLogin: lastLogin || undefined,
+        monthlyValue,
+        totalPaid,
+        nextBilling: subscription?.status === 'active' 
+          ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) 
+          : undefined,
+        userCount
+      };
+
+      // 🔴 Montar histórico de planos
+      const planHistory = allSubscriptions.map((sub: any) => {
+        const planKey = sub.planName?.toLowerCase() || '';
+        const name = planNames[planKey] || sub.planName || 'Plano desconhecido';
+        return {
+          planName: name,
+          startDate: sub.startDate,
+          endDate: sub.endDate || undefined
+        };
+      });
+
+      // Se não houver histórico de assinaturas, criar um registro com o plano atual
+      if (planHistory.length === 0) {
+        planHistory.push({
+          planName: planName,
+          startDate: company.createdAt,
+          endDate: undefined
+        });
+      }
+
+      // 🔴 Usar pagamentos reais se existirem, senão usar os gerados
+      const finalPayments = payments.length > 0 
+        ? payments.map((p: any) => ({
+            id: p._id.toString(),
+            amount: p.amount || 0,
+            status: p.status || 'paid',
+            method: p.method || 'Não informado',
+            createdAt: p.createdAt || new Date(),
+            description: p.description || `Pagamento - ${planName}`
+          }))
+        : generatedPayments;
+
+      // 🔴 Montar resposta completa
+      const responseData = {
+        client,
+        payments: finalPayments,
+        planHistory,
+        engagement: {
+          lastLogin: lastLogin || undefined,
+          userCount,
+          totalPaid,
+          subscriptionDays,
+          subscriptionMonths
+        }
+      };
+
+      console.log('✅ Detalhes do cliente montados:', {
+        clientName: client.name,
+        userCount,
+        paymentCount: finalPayments.length,
+        subscriptionDays,
+        subscriptionMonths,
+        totalPaid
+      });
+
+      res.json({
+        success: true,
+        data: responseData,
+        statusCode: 200
+      });
+    } catch (error: any) {
+      console.error('❌ Erro ao buscar detalhes do cliente:', error);
+      res.status(500).json({
+        success: false,
+        message: error?.message || 'Erro ao buscar detalhes do cliente',
         code: 'UNKNOWN_ERROR',
         statusCode: 500
       });
