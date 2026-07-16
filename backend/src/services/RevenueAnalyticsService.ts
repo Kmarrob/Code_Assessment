@@ -128,7 +128,6 @@ export class RevenueAnalyticsService {
 
   private async getPreviousPeriodRevenue(currentStart: Date, currentEnd: Date): Promise<number> {
     try {
-      // 🔴 CORRIGIDO: Converter explicitamente para Number e usar getTime()
       const currentStartMs = Number(new Date(currentStart).getTime());
       const currentEndMs = Number(new Date(currentEnd).getTime());
 
@@ -147,7 +146,6 @@ export class RevenueAnalyticsService {
       const total = hasResult ? result[0].total : 0;
       
       if (!hasResult || total === 0) {
-        // 🔴 CORRIGIDO TS2362: Usar await para obter o número antes de multiplicar
         const revenue = await this.calculateRevenueFromPlans();
         return revenue * 0.8;
       }
@@ -155,7 +153,6 @@ export class RevenueAnalyticsService {
       return total;
     } catch (error) {
       console.error('❌ Erro ao obter receita do período anterior:', error);
-      // 🔴 CORRIGIDO TS2362: Usar await para obter o número antes de multiplicar
       const revenue = await this.calculateRevenueFromPlans();
       return revenue * 0.8;
     }
@@ -424,11 +421,9 @@ export class RevenueAnalyticsService {
       const totalRevenue = Object.values(planData).reduce((sum, item) => sum + item.total, 0);
       const planKeys = Object.keys(planData);
 
-      // 🔴 CORRIGIDO TS2532: Verificação explícita com fallback
       return planKeys.map((key, index) => {
         const data = planData[key];
         
-        // Fallback seguro caso data seja undefined
         if (!data) {
           const planNameFallback = planNames[key] || key;
           return {
@@ -589,14 +584,6 @@ export class RevenueAnalyticsService {
   // 🔴 NOVO: FASE 7 - COMPARAÇÃO DE PERÍODOS
   // ============================================
 
-  /**
-   * Compara métricas entre dois períodos
-   * @param currentStart - Data início do período atual
-   * @param currentEnd - Data fim do período atual
-   * @param previousStart - Data início do período anterior
-   * @param previousEnd - Data fim do período anterior
-   * @returns Objeto com comparação de métricas
-   */
   async getPeriodComparison(
     currentStart: Date,
     currentEnd: Date,
@@ -631,13 +618,11 @@ export class RevenueAnalyticsService {
         previousEnd
       });
 
-      // Buscar métricas dos dois períodos
       const [currentMetrics, previousMetrics] = await Promise.all([
         this.getRevenueMetrics(currentStart, currentEnd),
         this.getRevenueMetrics(previousStart, previousEnd)
       ]);
 
-      // Buscar número de clientes ativos
       const Company = this.getCompany();
       const [currentActive, previousActive] = await Promise.all([
         Company.countDocuments({
@@ -665,7 +650,6 @@ export class RevenueAnalyticsService {
         activeClients: previousActive
       };
 
-      // Calcular mudanças
       const calculateChange = (currentVal: number, previousVal: number) => ({
         amount: currentVal - previousVal,
         percent: previousVal > 0 ? ((currentVal - previousVal) / previousVal) * 100 : 0
@@ -678,7 +662,6 @@ export class RevenueAnalyticsService {
         activeClients: calculateChange(current.activeClients, previous.activeClients)
       };
 
-      // Determinar tendência geral
       const avgChange = (changes.totalRevenue.percent + changes.mrr.percent + changes.activeClients.percent) / 3;
       let trend: 'up' | 'down' | 'stable' = 'stable';
       if (avgChange > 5) trend = 'up';
@@ -697,13 +680,6 @@ export class RevenueAnalyticsService {
   // 🔴 NOVO: FASE 7 - PREVISÃO DE RECEITA (CORRIGIDO)
   // ============================================
 
-  /**
-   * Gera previsão de receita para os próximos meses
-   * @param startDate - Data de início do histórico
-   * @param endDate - Data de fim do histórico
-   * @param monthsToForecast - Número de meses para previsão (padrão: 12)
-   * @returns Objeto com previsões otimista, realista e pessimista
-   */
   async getRevenueForecast(
     startDate: Date,
     endDate: Date,
@@ -732,47 +708,49 @@ export class RevenueAnalyticsService {
     try {
       console.log('📊 Gerando previsão de receita', { startDate, endDate, monthsToForecast });
 
-      // Buscar dados históricos de receita por período
       const historicalData = await this.getRevenueByPeriod(startDate, endDate);
 
-      // Calcular taxa de crescimento histórica
+      // 🔴 CORRIGIDO: Verificação de segurança com noUncheckedIndexedAccess
       let growthRates: number[] = [];
       for (let i = 1; i < historicalData.length; i++) {
-        const prev = historicalData[i - 1].total;
-        const curr = historicalData[i].total;
+        const previous = historicalData[i - 1];
+        const current = historicalData[i];
+
+        if (!previous || !current) {
+          continue;
+        }
+
+        const prev = previous.total;
+        const curr = current.total;
+
         if (prev > 0) {
           growthRates.push(((curr - prev) / prev) * 100);
         }
       }
 
-      // Calcular média e desvio padrão das taxas de crescimento
       const avgGrowth = growthRates.length > 0 
         ? growthRates.reduce((a, b) => a + b, 0) / growthRates.length 
-        : 5; // Fallback: 5% de crescimento
+        : 5;
 
       const stdDev = growthRates.length > 1
         ? Math.sqrt(growthRates.reduce((a, b) => a + Math.pow(b - avgGrowth, 2), 0) / growthRates.length)
-        : 3; // Fallback: desvio de 3%
+        : 3;
 
-      // Definir cenários
       const scenarios = {
         optimistic: avgGrowth + stdDev * 1.5,
         realistic: avgGrowth,
         pessimistic: Math.max(avgGrowth - stdDev * 1.5, -10)
       };
 
-      // Obter MRR atual
       const currentMRR = await this.getMRR();
 
-      // Gerar previsões
       const monthNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
         'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 
-      const lastDate = historicalData.length > 0 
-        ? new Date(historicalData[historicalData.length - 1].date) 
-        : new Date();
+      // 🔴 CORRIGIDO: Uso seguro de at(-1) para acessar o último elemento
+      const lastItem = historicalData.at(-1);
+      const lastDate = lastItem ? new Date(lastItem.date) : new Date();
 
-      // 🔴 CORRIGIDO: Inicializar forecast com tipagem correta
       const forecast: {
         optimistic: { period: string; revenue: number }[];
         realistic: { period: string; revenue: number }[];
@@ -789,7 +767,6 @@ export class RevenueAnalyticsService {
         pessimistic: currentMRR
       };
 
-      // 🔴 CORRIGIDO: Usar tipo seguro para as chaves
       const scenarioKeys = ['optimistic', 'realistic', 'pessimistic'] as const;
 
       for (let i = 1; i <= monthsToForecast; i++) {
@@ -797,26 +774,22 @@ export class RevenueAnalyticsService {
         date.setMonth(date.getMonth() + i);
         const period = `${monthNames[date.getMonth()]} ${date.getFullYear()}`;
 
-        // Calcular previsão para cada cenário
         for (const scenario of scenarioKeys) {
           const rate = scenarios[scenario];
           const multiplier = Math.pow(1 + rate / 100, i);
           const projectedRevenue = currentMRR * multiplier;
           
-          // 🔴 CORRIGIDO: Acesso seguro ao array forecast[scenario]
           forecast[scenario].push({
             period,
             revenue: Math.round(projectedRevenue * 100) / 100
           });
 
-          // Atualizar MRR projetado para o último mês
           if (i === monthsToForecast) {
             projectedMRR[scenario] = Math.round(projectedRevenue * 100) / 100;
           }
         }
       }
 
-      // Calcular taxas de crescimento projetadas
       const growthRate = {
         optimistic: scenarios.optimistic,
         realistic: scenarios.realistic,
