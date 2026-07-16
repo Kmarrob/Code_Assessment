@@ -13,8 +13,9 @@ export interface PasswordPolicyConfig {
   preventPersonalInfo: boolean;
 }
 
+// 🔴 CORRIGIDO: minLength de 12 para 8
 export const defaultPasswordPolicy: PasswordPolicyConfig = {
-  minLength: 12,
+  minLength: 8,
   requireUppercase: true,
   requireLowercase: true,
   requireNumbers: true,

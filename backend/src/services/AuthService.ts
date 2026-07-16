@@ -1,6 +1,7 @@
 // backend/src/services/AuthService.ts
 import jwt from 'jsonwebtoken';
 import { User } from '../models/User.js';
+import { Company } from '../models/Company.js'; // 🔴 ADICIONADO
 import { config } from '../config/env.js';
 import { logger } from '../utils/logger.js';
 import { IJWTPayload, UserRole, IUser } from '../types/index.js';
@@ -54,12 +55,35 @@ export class AuthService {
       // Se um plano foi selecionado, o plano padrão será basic
       const userPlan = userData.plan || 'basic';
 
+      // 🔴 CORRIGIDO: Criar empresa se o nome foi fornecido
+      let companyId = null;
+      if (userData.company) {
+        const planConfig = {
+          maxUsers: userPlan === 'enterprise' ? 10 : userPlan === 'pro' ? 4 : 3,
+        };
+
+        const companyData = {
+          name: userData.company,
+          plan: userPlan,
+          status: 'active',
+          maxUsers: planConfig.maxUsers,
+          maxControls: 93,
+        };
+
+        const company = await Company.create(companyData);
+        companyId = company._id;
+        logger.info(`🏢 Empresa criada: ${userData.company} (ID: ${companyId}) - Plano: ${userPlan}`);
+      }
+
       const user = new User({
-        ...userData,
+        name: userData.name,
+        email: userData.email,
+        password: userData.password,
+        company: userData.company,
+        department: userData.department,
         role: userData.role || UserRole.USER,
         isActive: true,
-        // O plano será associado à empresa ou ao usuário
-        // Por enquanto, armazenamos como metadado
+        companyId: companyId,
         metadata: {
           selectedPlan: userPlan,
         },
@@ -67,10 +91,7 @@ export class AuthService {
 
       await user.save();
 
-      // TODO: Criar assinatura para o usuário com o plano selecionado
-      // Isso será implementado na Fase 5 (integração com pagamento)
-
-      logger.info(`Novo usuário registrado: ${user.email} (${user.role}) - Plano: ${userPlan}`);
+      logger.info(`👤 Novo usuário registrado: ${user.email} (${user.role}) - Plano: ${userPlan}`);
       return user;
 
     } catch (error) {
@@ -84,7 +105,6 @@ export class AuthService {
     try {
       logger.info(`🔍 Tentando login para: ${email}`);
 
-      // 🔴 CORREÇÃO CRÍTICA: Adicionado '+password' para forçar a busca do campo que está com select: false
       const user = await User.findOne({ email })
         .select('+password _id name email role company companyId department isActive refreshToken passwordChangedAt')
         .exec();
@@ -99,10 +119,7 @@ export class AuthService {
         throw new AuthenticationError('Usuário inativo');
       }
 
-      logger.info(`🔍 Hash da senha no banco: ${user.password}`);
-
       const isPasswordValid = await user.comparePassword(password);
-      logger.info(`🔍 Resultado da comparação: ${isPasswordValid}`);
 
       if (!isPasswordValid) {
         logger.warn(`❌ Senha inválida para: ${email}`);
@@ -121,7 +138,6 @@ export class AuthService {
       user.refreshToken = tokens.refreshToken;
       await user.save();
 
-      // 🔴 CORREÇÃO: Adicionado companyId ao userResponse
       const userResponse: IUser = {
         _id: user._id,
         name: user.name,
