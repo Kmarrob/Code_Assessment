@@ -28,6 +28,8 @@ router.post('/:id/cancel', (0, auth_js_1.authorize)(index_js_1.UserRole.REP, ind
 // ============================================
 // ROTAS ADMIN
 // ============================================
+// 🔴 NOVO: Obter assinatura ativa de uma empresa específica (admin)
+router.get('/admin/:companyId', (0, auth_js_1.authorize)(index_js_1.UserRole.ADMIN), rateLimit_js_1.adminRateLimiter, SubscriptionController_js_1.SubscriptionController.getActiveSubscriptionByCompany);
 // Atualizar assinatura (admin)
 router.put('/:id', (0, auth_js_1.authorize)(index_js_1.UserRole.ADMIN), rateLimit_js_1.adminRateLimiter, SubscriptionController_js_1.SubscriptionController.updateSubscription);
 // Métricas de assinaturas (admin)

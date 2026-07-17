@@ -370,6 +370,43 @@ class SubscriptionController {
             next(error);
         }
     }
+    /**
+     * 🔴 NOVO: Obter assinatura ativa de uma empresa específica (admin)
+     * GET /api/subscriptions/admin/:companyId
+     * Acesso: ADMIN
+     */
+    static async getActiveSubscriptionByCompany(req, res, next) {
+        try {
+            const user = req.user;
+            if (user?.role !== index_js_1.UserRole.ADMIN) {
+                throw new errorHandler_js_1.AppError('Acesso restrito a administradores', 403);
+            }
+            const { companyId } = req.params;
+            if (!companyId) {
+                throw new errorHandler_js_1.ValidationError({ companyId: ['ID da empresa é obrigatório'] });
+            }
+            const subscription = await SubscriptionService_js_1.SubscriptionService.getActiveSubscription(companyId);
+            const status = await SubscriptionService_js_1.SubscriptionService.checkSubscriptionStatus(companyId);
+            res.json({
+                success: true,
+                data: { subscription, status },
+                statusCode: 200,
+                timestamp: new Date().toISOString(),
+            });
+        }
+        catch (error) {
+            errorLogger_js_1.ErrorLogger.logError(error, {
+                userId: req.userId,
+                email: req.user?.email,
+                ip: req.ip,
+                userAgent: req.headers['user-agent'],
+                path: req.path,
+                method: req.method,
+                params: req.params,
+            });
+            next(error);
+        }
+    }
 }
 exports.SubscriptionController = SubscriptionController;
 //# sourceMappingURL=SubscriptionController.js.map

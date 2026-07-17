@@ -21,6 +21,7 @@ export declare class AdminController {
     /**
      * Obter branding da empresa
      * GET /api/admin/company/:companyId/branding
+     * Acesso: ADMIN ou REP (apenas da própria empresa)
      */
     static getBranding(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void>;
     /**

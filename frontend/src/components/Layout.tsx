@@ -1,4 +1,3 @@
-// frontend/src/components/Layout.tsx
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext.js';
@@ -151,7 +150,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     <div className="min-h-screen bg-gray-50" style={{ backgroundColor: colors.background || '#F2F2F2' }}>
       {/* Navbar */}
       <header 
-        className="bg-white border-b border-gray-200 sticky top-0 z-40"
+        className="bg-white border-b border-gray-200 sticky top-0 z-40 print:hidden"
         style={{ 
           backgroundColor: colors.background || '#FFFFFF',
           borderBottomColor: colors.accent || '#30736C',

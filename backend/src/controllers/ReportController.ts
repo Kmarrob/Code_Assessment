@@ -1,4 +1,3 @@
-// backend/src/controllers/ReportController.ts
 import { Request, Response, NextFunction } from 'express';
 import { ReportService } from '../services/ReportService.js';
 import { ReportResultService } from '../services/ReportResultService.js';
@@ -9,6 +8,7 @@ import { User } from '../models/User.js';
 import { Response as ResponseModel } from '../models/Response.js';
 import { Assignment } from '../models/Assignment.js';
 import { Company } from '../models/Company.js';
+import { PDFService } from '../services/PDFService.js'; // NOVO IMPORT
 
 export class ReportController {
   /**
@@ -516,6 +516,89 @@ export class ReportController {
         timestamp: new Date().toISOString(),
       });
     } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * 🔴 NOVO: Gerar PDF do relatório
+   * GET /api/reports/:companyId/pdf
+   * Acesso: ADMIN ou REP (da empresa)
+   */
+  static async generatePDF(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const user = req.user;
+      
+      if (!user) {
+        throw new AppError('Usuário não autenticado', 401);
+      }
+
+      const { companyId } = req.params;
+      if (!companyId) {
+        throw new AppError('ID da empresa é obrigatório', 400);
+      }
+
+      // Verificar permissões
+      if (user.role !== UserRole.ADMIN && user.companyId?.toString() !== companyId) {
+        throw new AppError('Você não tem permissão para gerar o PDF deste relatório', 403);
+      }
+
+      // Buscar dados do relatório
+      const report = await ReportService.getOrCreateReport(companyId);
+      
+      let reportData = report;
+      if (report.clientTeam.length === 0) {
+        reportData = await ReportService.generateReportData(companyId);
+      }
+
+      await reportData.populate('companyId', 'name cnpj');
+
+      // Buscar dados complementares
+      const resultados = await ReportResultService.getResultadosData(companyId);
+      const matrixData = await ReportService.getPriorizationMatrix(companyId);
+      const roadmapData = await ReportService.getRoadmap(companyId);
+
+      // Buscar recomendações
+      const recomendacoes = await ReportService.getRecommendationsForReport(companyId);
+
+      // Buscar branding da empresa
+      const company = await Company.findById(companyId).select('branding');
+      const branding = company?.branding || null;
+
+      // Preparar dados para o PDF
+      const pdfData = {
+        report: reportData,
+        resultados: resultados,
+        matrix: matrixData,
+        roadmap: roadmapData,
+        recomendacoes: recomendacoes,
+        branding: branding,
+        user: {
+          name: user.name,
+          email: user.email,
+        },
+        companyName: reportData.companyId?.name || 'NOME DO CLIENTE',
+        generatedAt: new Date().toISOString(),
+      };
+
+      // Gerar PDF
+      const pdfBuffer = await PDFService.generateReportPDF(pdfData);
+
+      // Configurar headers para download
+      const companyName = reportData.companyId?.name || 'relatorio';
+      const fileName = `relatorio_${companyName}_${new Date().toISOString().split('T')[0]}.pdf`;
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+      res.setHeader('Content-Length', pdfBuffer.length);
+      
+      res.send(pdfBuffer);
+    } catch (error) {
+      logger.error('Erro ao gerar PDF:', error);
       next(error);
     }
   }

@@ -1,4 +1,3 @@
-// frontend/src/pages/ReportView.tsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext.js';
@@ -82,6 +81,7 @@ export const ReportView: React.FC = () => {
   const [branding, setBranding] = useState<PublicBrandingData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isPrintMode, setIsPrintMode] = useState(false);
@@ -269,6 +269,53 @@ export const ReportView: React.FC = () => {
     }, 500);
   };
 
+  const handleDownloadPDF = async () => {
+    setIsDownloading(true);
+    try {
+      const companyId = report?.companyId?._id || report?.companyId;
+      if (!companyId) {
+        console.error('ID da empresa não encontrado');
+        setIsDownloading(false);
+        return;
+      }
+
+      const token = localStorage.getItem('accessToken');
+      if (!token) {
+        console.error('Token não encontrado');
+        setIsDownloading(false);
+        return;
+      }
+
+      const response = await fetch(`/api/reports/${companyId}/pdf`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Erro ao gerar PDF');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `relatorio_${companyName}_${new Date().toISOString().split('T')[0]}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+
+      await new Promise(resolve => setTimeout(resolve, 100));
+    } catch (error) {
+      console.error('Erro ao baixar PDF:', error);
+      alert('Erro ao gerar o PDF. Tente novamente.');
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
@@ -317,184 +364,466 @@ export const ReportView: React.FC = () => {
         <style>{`
           @media print {
             @page {
-              size: A4;
-              margin: 20mm 15mm 20mm 15mm;
+              size: A4 portrait;
+              margin: 25mm 15mm 20mm 15mm;
             }
+
+            @page landscape-page {
+              size: A4 landscape;
+              margin: 20mm 12mm 20mm 12mm;
+            }
+
+            .landscape-table-page {
+              page: landscape-page;
+              page-break-before: always !important;
+              break-before: page !important;
+            }
+
+            * {
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
+
             html, body {
               background: #ffffff !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              font-family: Arial, Helvetica, sans-serif !important;
+              font-size: 11pt !important;
+              line-height: 1.5 !important;
+            }
+
+            header.bg-white.border-b.border-gray-200.sticky.top-0.z-40 {
+              display: none !important;
+            }
+
+            .no-print {
+              display: none !important;
+            }
+
+            .print\\:hidden {
+              display: none !important;
+            }
+
+            .custom-print-header {
+              position: running(header) !important;
+              display: block !important;
+              width: 100% !important;
+              height: 20mm !important;
+              max-height: 20mm !important;
+              overflow: hidden !important;
+              border-bottom: 1px solid #d1d5db !important;
+              padding-bottom: 3mm !important;
+              margin-bottom: 0 !important;
+              background-color: #f5f5f5 !important;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
+
+            .custom-print-header .header-left {
+              float: left !important;
+              display: flex !important;
+              align-items: center !important;
+              gap: 6px !important;
+            }
+
+            .custom-print-header .header-left .logo-text-blue {
+              color: #2563eb !important;
+              font-weight: bold !important;
+              font-size: 14pt !important;
+            }
+
+            .custom-print-header .header-left .logo-text-gray {
+              color: #475569 !important;
+              font-weight: bold !important;
+              font-size: 14pt !important;
+            }
+
+            .custom-print-header .header-right {
+              float: right !important;
+              text-align: right !important;
+              font-size: 9pt !important;
+              color: #64748b !important;
+              line-height: 1.4 !important;
+              padding-top: 2mm !important;
+            }
+
+            .custom-print-header .header-right strong {
               color: #1e293b !important;
-              width: 100%;
-              margin: 0 !important;
-              padding: 0 !important;
+              font-weight: 600 !important;
             }
-            body, p, li, td, th, span, div {
-              font-family: Arial, sans-serif !important;
-              font-size: 10.5pt !important;
+
+            .custom-print-footer {
+              position: running(footer) !important;
+              display: block !important;
+              width: 100% !important;
+              border-top: 1px solid #d1d5db !important;
+              padding-top: 3mm !important;
+              margin-top: 0 !important;
+              font-size: 9pt !important;
+              color: #64748b !important;
+              background-color: #f5f5f5 !important;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
             }
+
+            .custom-print-footer .footer-left {
+              float: left !important;
+            }
+
+            .custom-print-footer .footer-right {
+              float: right !important;
+              font-weight: 500 !important;
+              color: #1e293b !important;
+            }
+
+            @page {
+              @top-center {
+                content: element(header);
+                font-size: 9pt;
+                color: #475569;
+                vertical-align: bottom;
+                padding-bottom: 2mm;
+              }
+              @bottom-center {
+                content: element(footer);
+                font-size: 8pt;
+                color: #64748b;
+                vertical-align: top;
+                padding-top: 2mm;
+              }
+            }
+
             .print-container {
+              margin-top: 28mm !important;
+              margin-bottom: 18mm !important;
               padding: 0 !important;
-              margin: 0 !important;
               width: 100% !important;
               max-width: 100% !important;
             }
+
             .print-content {
               max-width: 100% !important;
               padding: 0 !important;
               margin: 0 !important;
-            }
-            h1 { font-size: 20pt !important; line-height: 1.3 !important; font-weight: bold !important; margin-bottom: 12pt !important; color: #0f172a !important; }
-            h2 { font-size: 14pt !important; font-weight: bold !important; margin-top: 14pt !important; margin-bottom: 8pt !important; color: #1e3a8a !important; page-break-after: avoid; break-after: avoid; }
-            h3 { font-size: 12pt !important; font-weight: bold !important; margin-top: 12pt !important; margin-bottom: 6pt !important; color: #0f172a !important; page-break-after: avoid; break-after: avoid; }
-            h4 { font-size: 10.5pt !important; font-weight: bold !important; margin-top: 10pt !important; margin-bottom: 4pt !important; color: #1e293b !important; page-break-after: avoid; break-after: avoid; }
-            
-            .grid-cols-1.md\\:grid-cols-2 {
-              display: grid !important;
-              grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-              gap: 12px !important;
-            }
-            .grid-cols-2.md\\:grid-cols-4 {
-              display: grid !important;
-              grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-              gap: 12px !important;
+              width: 100% !important;
             }
 
-            svg, svg.h-4, svg.h-3.5, svg.h-10 {
-              width: 18px !important;
-              height: 18px !important;
-              max-width: 18px !important;
-              max-height: 18px !important;
-              display: inline-block !important;
-              vertical-align: middle !important;
+            h1 {
+              font-size: 18pt !important;
+              font-weight: bold !important;
+              text-align: center !important;
+              color: #0f172a !important;
+              margin-bottom: 12pt !important;
+              border-bottom: none !important;
             }
-            
-            .w-28 svg {
-              width: 40px !important;
-              height: 40px !important;
-              max-width: 40px !important;
-              max-height: 40px !important;
+
+            h2 {
+              font-size: 14pt !important;
+              font-weight: bold !important;
+              color: #1e3a8a !important;
+              margin-top: 14pt !important;
+              margin-bottom: 8pt !important;
+              page-break-after: avoid !important;
+              break-after: avoid !important;
+              border-bottom: 1px solid #e2e8f0 !important;
+              padding-bottom: 4pt !important;
+            }
+
+            h3 {
+              font-size: 12pt !important;
+              font-weight: bold !important;
+              color: #0f172a !important;
+              margin-top: 12pt !important;
+              margin-bottom: 6pt !important;
+              page-break-after: avoid !important;
+              break-after: avoid !important;
+            }
+
+            h4 {
+              font-size: 11pt !important;
+              font-weight: bold !important;
+              color: #1e293b !important;
+              margin-top: 10pt !important;
+              margin-bottom: 4pt !important;
+              page-break-after: avoid !important;
+              break-after: avoid !important;
+            }
+
+            p {
+              text-align: justify !important;
+              margin: 4pt 0 !important;
+              line-height: 1.5 !important;
+              font-size: 11pt !important;
+            }
+
+            p.text-center {
+              text-align: center !important;
+            }
+
+            ul, ol {
+              padding-left: 1cm !important;
+              margin: 4pt 0 !important;
+              text-align: justify !important;
+              line-height: 1.5 !important;
+            }
+
+            li {
+              text-align: justify !important;
+              line-height: 1.5 !important;
+              font-size: 11pt !important;
+              margin-bottom: 2pt !important;
+            }
+
+            table {
+              width: 100% !important;
+              border-collapse: collapse !important;
+              margin: 6pt 0 !important;
+              font-size: 10pt !important;
+              page-break-inside: avoid !important;
+              break-inside: avoid !important;
+            }
+
+            th, td {
+              border: 1px solid #cbd5e1 !important;
+              padding: 4pt 6pt !important;
+              text-align: left !important;
+              vertical-align: middle !important;
+              font-size: 10pt !important;
+            }
+
+            th {
+              font-weight: bold !important;
+              background-color: #f1f5f9 !important;
+              text-align: center !important;
+            }
+
+            .landscape-table {
+              font-size: 8pt !important;
+            }
+
+            .landscape-table th,
+            .landscape-table td {
+              padding: 3pt 4pt !important;
+              font-size: 8pt !important;
+            }
+
+            .landscape-table th {
+              font-size: 7.5pt !important;
+            }
+
+            .cover-page {
+              min-height: auto !important;
+              height: 100% !important;
+              padding: 10mm 0 !important;
+              display: flex !important;
+              flex-direction: column !important;
+              justify-content: center !important;
+              align-items: center !important;
+            }
+
+            .cover-page h1 {
+              font-size: 20pt !important;
+              border-bottom: none !important;
+            }
+
+            .cover-page p {
+              text-align: center !important;
+            }
+
+            .cover-page .logo-container {
+              margin-bottom: 12pt !important;
             }
 
             .page-break {
               page-break-before: always !important;
-              break-before: always !important;
+              break-before: page !important;
               margin-top: 0 !important;
               padding-top: 0 !important;
             }
-            table, tr, img, .mb-6 {
+
+            .page-break-avoid {
               page-break-inside: avoid !important;
               break-inside: avoid !important;
             }
-            .py-6, .py-8 {
-              padding-top: 0.5rem !important;
-              padding-bottom: 0.5rem !important;
+
+            .print-section {
+              margin-bottom: 6pt !important;
+              padding-bottom: 4pt !important;
+              page-break-inside: avoid !important;
+              break-inside: avoid !important;
             }
-            .mb-8 { margin-bottom: 0.6rem !important; }
-            .mb-4, .mb-6 { margin-bottom: 0.4rem !important; }
-            
-            .recharts-responsive-container, .recharts-wrapper {
-              width: 100% !important;
-              max-width: 520px !important;
-              height: 320px !important;
-              margin: 0 auto !important;
-              display: block !important;
-              visibility: visible !important;
-              opacity: 1 !important;
-              -webkit-print-color-adjust: exact !important;
-              print-color-adjust: exact !important;
+
+            .print-card {
+              page-break-inside: avoid !important;
+              break-inside: avoid !important;
+              box-shadow: none !important;
+              border: 1px solid #e5e7eb !important;
             }
-            .recharts-responsive-container svg {
+
+            .bg-gray-50 { background-color: #f9fafb !important; }
+            .bg-gray-100 { background-color: #f3f4f6 !important; }
+            .bg-gray-200 { background-color: #e5e7eb !important; }
+            .bg-blue-50 { background-color: #eff6ff !important; border-color: #bfdbfe !important; }
+            .bg-red-50 { background-color: #fef2f2 !important; }
+            .bg-yellow-50 { background-color: #fffbeb !important; }
+            .bg-green-50 { background-color: #f0fdf4 !important; }
+            .bg-white { background-color: #ffffff !important; }
+
+            .status-nao-implementado { color: #dc2626 !important; font-weight: bold !important; }
+            .status-parcial { color: #d97706 !important; font-weight: bold !important; }
+            .status-implementado { color: #16a34a !important; font-weight: bold !important; }
+
+            .text-emerald-600, .text-emerald-700 { color: #059669 !important; }
+            .text-amber-600, .text-amber-700 { color: #d97706 !important; }
+            .text-red-600, .text-red-700 { color: #dc2626 !important; }
+
+            .py-6, .py-8 { padding-top: 4pt !important; padding-bottom: 4pt !important; }
+            .px-4 { padding-left: 0 !important; padding-right: 0 !important; }
+            .px-5 { padding-left: 2pt !important; padding-right: 2pt !important; }
+            .px-6 { padding-left: 4pt !important; padding-right: 4pt !important; }
+            .mb-8 { margin-bottom: 6pt !important; }
+            .mb-4, .mb-6 { margin-bottom: 4pt !important; }
+            .mt-3 { margin-top: 4pt !important; }
+            .mt-4 { margin-top: 6pt !important; }
+            .gap-2 { gap: 4pt !important; }
+            .gap-3 { gap: 6pt !important; }
+
+            .w-full {
               width: 100% !important;
-              height: 100% !important;
               max-width: 100% !important;
-              max-height: 100% !important;
             }
-            .recharts-polygon, .recharts-radar-polygon, .recharts-layer path {
-              fill-opacity: 0.2 !important;
-              -webkit-print-color-adjust: exact !important;
-              print-color-adjust: exact !important;
+
+            .overflow-x-auto {
+              overflow: visible !important;
+              max-width: 100% !important;
             }
-            .recharts-text, .recharts-label {
-              fill: #334155 !important;
-              font-size: 7.5pt !important;
+
+            .grid-cols-1.md\\:grid-cols-2 {
+              display: grid !important;
+              grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+              gap: 6pt !important;
+            }
+
+            .grid-cols-2.md\\:grid-cols-4 {
+              display: grid !important;
+              grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+              gap: 6pt !important;
+            }
+
+            .grid-cols-3.md\\:grid-cols-6 {
+              display: grid !important;
+              grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+              gap: 4pt !important;
+            }
+
+            svg,
+            svg.h-4,
+            svg.h-3\\.5,
+            svg.h-10 {
+              width: 14px !important;
+              height: 14px !important;
+              max-width: 14px !important;
+              max-height: 14px !important;
+              display: inline-block !important;
+              vertical-align: middle !important;
+            }
+
+            .w-28 svg {
+              width: 32px !important;
+              height: 32px !important;
+              max-width: 32px !important;
+              max-height: 32px !important;
+            }
+
+            .inline-flex.px-2.py-0\\.5.rounded-full {
+              padding: 1pt 4pt !important;
+              font-size: 8pt !important;
+            }
+
+            .bg-red-500 { background-color: #dc2626 !important; color: #ffffff !important; }
+            .bg-yellow-500 { background-color: #d97706 !important; color: #ffffff !important; }
+            .bg-green-500 { background-color: #16a34a !important; color: #ffffff !important; }
+            .bg-gray-300 { background-color: #9ca3af !important; color: #1f2937 !important; }
+
+            .text-white { color: #ffffff !important; }
+            .text-gray-700 { color: #374151 !important; }
+            .text-gray-600 { color: #4b5563 !important; }
+
+            a {
+              text-decoration: none !important;
+              color: #1e3a8a !important;
+            }
+
+            a[href^="#"] {
+              color: #2563eb !important;
               font-weight: 500 !important;
             }
-            
-            table {
+
+            .recharts-wrapper {
+              max-width: 480px !important;
+              margin: 0 auto !important;
+              display: block !important;
+            }
+
+            .recharts-surface {
               width: 100% !important;
-              border-collapse: collapse !important;
-              margin-top: 4pt !important;
-              margin-bottom: 8pt !important;
-            }
-            th, td {
-              border: 1px solid #cbd5e1 !important;
-              padding: 5pt 7pt !important;
-              text-align: left !important;
-            }
-            th {
-              font-weight: bold !important;
-              background-color: #f1f5f9 !important;
-              -webkit-print-color-adjust: exact !important;
-              print-color-adjust: exact !important;
-            }
-            
-            .status-nao-implementado {
-              color: #dc2626 !important;
-              font-weight: bold !important;
-            }
-            .status-parcial {
-              color: #d97706 !important;
-              font-weight: bold !important;
-            }
-            .status-implementado {
-              color: #16a34a !important;
-              font-weight: bold !important;
+              max-width: 480px !important;
             }
 
-            .no-print { display: none !important; }
-            a { text-decoration: none !important; color: #1e3a8a !important; }
-
-            .custom-print-header {
-              position: fixed !important;
-              top: -15mm !important;
-              left: 0 !important;
-              right: 0 !important;
-              height: 15mm !important;
-              border-bottom: 1px solid #e2e8f0 !important;
-              display: flex !important;
-              align-items: center !important;
-              justify-content: space-between !important;
-              padding-bottom: 4px !important;
-            }
-            .custom-print-header .logo-text-blue {
-              color: #2563eb !important;
-              font-weight: bold !important;
-              font-size: 11pt !important;
-            }
-            .custom-print-header .logo-text-gray {
-              color: #475569 !important;
-              font-weight: bold !important;
-              font-size: 11pt !important;
-            }
-            .custom-print-header .user-info {
-              font-size: 8.5pt !important;
-              color: #64748b !important;
-              text-align: right !important;
-              line-height: 1.3 !important;
+            .recharts-text {
+              fill: #334155 !important;
+              font-size: 7.5pt !important;
             }
 
-            .custom-print-footer {
-              position: fixed !important;
-              bottom: -15mm !important;
-              left: 0 !important;
-              right: 0 !important;
-              height: 12mm !important;
-              border-top: 1px solid #e2e8f0 !important;
-              display: flex !important;
-              align-items: center !important;
-              justify-content: space-between !important;
-              padding-top: 4px !important;
-              font-size: 8.5pt !important;
-              color: #64748b !important;
+            .recharts-tooltip-wrapper {
+              display: none !important;
+            }
+
+            .shadow-sm, .shadow-md, .shadow-lg {
+              box-shadow: none !important;
+            }
+
+            .border {
+              border: 1px solid #e5e7eb !important;
+            }
+
+            .border-b {
+              border-bottom: 1px solid #e5e7eb !important;
+            }
+
+            .border-gray-200 {
+              border-color: #e5e7eb !important;
+            }
+
+            .rounded-lg {
+              border-radius: 2pt !important;
+            }
+
+            .rounded-xl {
+              border-radius: 3pt !important;
+            }
+
+            .min-h-\\[75vh\\] { min-height: auto !important; }
+            .min-h-\\[60vh\\] { min-height: auto !important; }
+
+            .print-content > div:last-child {
+              margin-bottom: 0 !important;
+              padding-bottom: 0 !important;
+            }
+
+            .bg-blue-50 {
+              background-color: #eff6ff !important;
+              border-color: #bfdbfe !important;
+            }
+
+            .max-w-4xl {
+              max-width: 100% !important;
+            }
+
+            .mx-auto {
+              margin-left: 0 !important;
+              margin-right: 0 !important;
             }
           }
 
@@ -504,15 +833,14 @@ export const ReportView: React.FC = () => {
             }
           }
         `}</style>
-        
+
         <div className="custom-print-header">
-          <div>
+          <div className="header-left">
             {branding?.logo?.url ? (
               <img
                 src={branding.logo.url}
                 alt="MRS Consultoria"
-                className="h-28 w-auto object-contain"
-                style={{ maxHeight: '112px' }}
+                style={{ height: '28px', width: 'auto', maxHeight: '28px' }}
               />
             ) : (
               <>
@@ -521,18 +849,18 @@ export const ReportView: React.FC = () => {
               </>
             )}
           </div>
-          <div className="user-info">
-            Emitido por: {user?.name || 'Consultor Técnico'}<br />
+          <div className="header-right">
+            <strong>Emitido por:</strong> {user?.name || 'Consultor Técnico'}<br />
             {user?.email || ''}
           </div>
         </div>
 
         <div className="custom-print-footer">
-          <div>Sistema de Gestão de Conformidade e Segurança · MRS Consultoria</div>
-          <div>code_assessment</div>
+          <span className="footer-left">Sistema de Gestão de Conformidade e Segurança · MRS Consultoria</span>
+          <span className="footer-right">Página </span>
         </div>
 
-        <div className="bg-white p-8 max-w-4xl mx-auto print:p-0 print-container">
+        <div className="bg-white p-8 mx-auto print:p-0 print-container w-full">
           <div className="print-content">
             <div className="print:hidden mb-4 flex items-center justify-between no-print">
               <Button
@@ -548,16 +876,25 @@ export const ReportView: React.FC = () => {
                 variant="outline"
                 size="sm"
                 className="text-blue-600 border-blue-300 hover:bg-blue-50"
-                onClick={handlePrint}
+                onClick={handleDownloadPDF}
+                disabled={isDownloading}
               >
-                <Printer className="h-4 w-4 mr-2" />
-                Imprimir / PDF
+                {isDownloading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Gerando PDF...
+                  </>
+                ) : (
+                  <>
+                    <Printer className="h-4 w-4 mr-2" />
+                    Baixar PDF
+                  </>
+                )}
               </Button>
             </div>
 
-            {/* Capa */}
-            <div className="text-center py-12 min-h-[75vh] flex flex-col justify-center items-center">
-              <div className="mb-6">
+            <div className="cover-page text-center py-12 flex flex-col justify-center items-center">
+              <div className="logo-container mb-6">
                 {branding?.logo?.url ? (
                   <img
                     src={branding.logo.url}
@@ -582,19 +919,17 @@ export const ReportView: React.FC = () => {
               </p>
             </div>
 
-            {/* Quem Somos */}
-            <div className="py-6 border-b border-gray-200 page-break">
+            <div className="print-section py-6 border-b border-gray-200">
               <h2 className="text-xl font-bold text-gray-900 mb-3 text-center">Quem Somos</h2>
               <p className="text-gray-700 text-justify italic">
                 "O nosso negócio é segurança da informação, infraestrutura de TI, GRC e computação na nuvem"
               </p>
-              <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200 text-center text-gray-400 no-print">
+              <div className="mt-4 px-6 py-4 bg-gray-50 rounded-lg border border-gray-200 text-center text-gray-400 no-print w-full">
                 Clique para adicionar texto
               </div>
             </div>
 
-            {/* Apresentação */}
-            <div className="py-6 border-b border-gray-200">
+            <div className="print-section py-6 border-b border-gray-200">
               <h2 className="text-xl font-bold text-gray-900 mb-3 text-center">Apresentação</h2>
               <p className="text-gray-700 text-justify">
                 A MRS Consultoria, empresa especializada em soluções de segurança, e tecnologia da informação, 
@@ -614,8 +949,7 @@ export const ReportView: React.FC = () => {
               </p>
             </div>
 
-            {/* Índice */}
-            <div className="py-6 border-b border-gray-200">
+            <div className="print-section py-6 border-b border-gray-200">
               <h2 className="text-xl font-bold text-gray-900 mb-3 text-center">Índice</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 <div className="flex items-center justify-between py-1 border-b border-gray-100">
@@ -661,8 +995,7 @@ export const ReportView: React.FC = () => {
               </div>
             </div>
 
-            {/* Objetivo */}
-            <div className="py-6 border-b border-gray-200 page-break">
+            <div className="print-section py-6 border-b border-gray-200">
               <h2 className="text-xl font-bold text-gray-900 mb-3 text-center">1. Objetivo</h2>
               <p className="text-gray-700 text-justify">
                 Apresentar análises e resultados oriundos da avaliação de maturidade do ambiente da{' '}
@@ -687,8 +1020,7 @@ export const ReportView: React.FC = () => {
               </p>
             </div>
 
-            {/* Benefícios da ISO 27001 */}
-            <div className="py-6 border-b border-gray-200">
+            <div className="print-section py-6 border-b border-gray-200">
               <h2 className="text-xl font-bold text-gray-900 mb-3 text-center">2. Benefícios da ISO 27001</h2>
               <p className="text-gray-700 text-justify">
                 A ABNT NBR ISO 27001 é uma norma internacional de padrão e referência para a gestão de 
@@ -716,12 +1048,11 @@ export const ReportView: React.FC = () => {
               </p>
             </div>
 
-            {/* Equipe */}
-            <div className="py-6 border-b border-gray-200 page-break">
+            <div className="print-section py-6 border-b border-gray-200">
               <h2 className="text-xl font-bold text-gray-900 mb-3 text-center">3. Equipe</h2>
 
               <h3 className="text-lg font-semibold text-gray-800 mb-2 text-left">{companyName}</h3>
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto w-full">
                 <table className="w-full text-sm border-collapse">
                   <thead>
                     <tr className="bg-gray-50">
@@ -751,7 +1082,7 @@ export const ReportView: React.FC = () => {
               </div>
 
               <h3 className="text-lg font-semibold text-gray-800 mt-4 mb-2 text-left">MRS Consultoria</h3>
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto w-full">
                 <table className="w-full text-sm border-collapse">
                   <thead>
                     <tr className="bg-gray-50">
@@ -780,9 +1111,9 @@ export const ReportView: React.FC = () => {
                 </table>
               </div>
 
-              {report.consultantTeam.length === 0 && (
-                <div className="mt-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                  <p className="text-sm text-gray-700 text-justify">
+              {(!report.consultantTeam || report.consultantTeam.length === 0) && (
+                <div className="mt-3 px-6 py-4 bg-blue-50 border border-blue-200 rounded-lg w-full">
+                  <p className="text-sm text-gray-700 text-justify w-full">
                     <strong>Nota sobre o processo de avaliação:</strong> Para esta avaliação, <strong>não foram contratadas horas de consultoria</strong>. 
                     O processo de preenchimento e validação das respostas foi realizado integralmente pela organização, 
                     por meio da solução <strong>Code_Assessment</strong>. 
@@ -793,8 +1124,7 @@ export const ReportView: React.FC = () => {
               )}
             </div>
 
-            {/* 4. Metodologia de Avaliação */}
-            <div className="py-6 border-b border-gray-200">
+            <div className="print-section py-6 border-b border-gray-200">
               <h2 className="text-xl font-bold text-gray-900 mb-3 text-center">4. Metodologia de Avaliação</h2>
               
               <p className="text-gray-700 text-justify mb-4">
@@ -806,36 +1136,36 @@ export const ReportView: React.FC = () => {
               </p>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg px-5 py-3 w-full">
                   <div className="flex items-center gap-2 mb-1">
                     <Building2 className="h-4 w-4 text-blue-600" />
                     <span className="font-semibold text-blue-800">Controles Organizacionais</span>
                   </div>
-                  <p className="text-xs text-gray-600 text-justify">Referentes a forma com qual organização estrutura ações estratégicas, relacionadas à Gestão da Segurança da Informação, com abrangência institucional ou perante partes externas. Aqui também se incluem todos os controles que não se encaixam nas demais categorias.</p>
+                  <p className="text-xs text-gray-600 text-justify w-full">Referentes a forma com qual organização estrutura ações estratégicas, relacionadas à Gestão da Segurança da Informação, com abrangência institucional ou perante partes externas. Aqui também se incluem todos os controles que não se encaixam nas demais categorias.</p>
                 </div>
                 
-                <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                <div className="bg-green-50 border border-green-200 rounded-lg px-5 py-3 w-full">
                   <div className="flex items-center gap-2 mb-1">
                     <UsersIcon className="h-4 w-4 text-green-600" />
                     <span className="font-semibold text-green-800">Controles de Pessoas</span>
                   </div>
-                  <p className="text-xs text-gray-600 text-justify">Referentes a pessoas individuais, como a organização aborda aspectos de Segurança da Informação, aliada à segurança jurídica, durante o ciclo de vida do colaborador na empresa.</p>
+                  <p className="text-xs text-gray-600 text-justify w-full">Referentes a pessoas individuais, como a organização aborda aspectos de Segurança da Informação, aliada à segurança jurídica, durante o ciclo de vida do colaborador na empresa.</p>
                 </div>
                 
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg px-5 py-3 w-full">
                   <div className="flex items-center gap-2 mb-1">
                     <Server className="h-4 w-4 text-yellow-600" />
                     <span className="font-semibold text-yellow-800">Controles Físicos</span>
                   </div>
-                  <p className="text-xs text-gray-600 text-justify">Aspectos de segurança física, predial e ambiental da organização que impactam direta ou indiretamente na Segurança da Informação.</p>
+                  <p className="text-xs text-gray-600 text-justify w-full">Aspectos de segurança física, predial e ambiental da organização que impactam direta ou indiretamente na Segurança da Informação.</p>
                 </div>
                 
-                <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
+                <div className="bg-purple-50 border border-purple-200 rounded-lg px-5 py-3 w-full">
                   <div className="flex items-center gap-2 mb-1">
                     <Cpu className="h-4 w-4 text-purple-600" />
                     <span className="font-semibold text-purple-800">Controles Tecnológicos</span>
                   </div>
-                  <p className="text-xs text-gray-600 text-justify">Referentes diretamente a tecnologia, ações e mechanisms de Segurança da Informação aplicados a recursos computacionais, sistemas e redes, repositório de dados, etc.</p>
+                  <p className="text-xs text-gray-600 text-justify w-full">Referentes diretamente a tecnologia, ações e mechanisms de Segurança da Informação aplicados a recursos computacionais, sistemas e redes, repositório de dados, etc.</p>
                 </div>
               </div>
 
@@ -844,7 +1174,7 @@ export const ReportView: React.FC = () => {
                 A avaliação de maturidade é baseada nos níveis mostrados abaixo. Eles fornecem a descrição sobre as práticas que a empresa possui no que tange a existência de processos de Segurança da Informação.
               </p>
               
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto w-full">
                 <table className="w-full text-sm border-collapse">
                   <thead>
                     <tr className="bg-gray-100">
@@ -873,22 +1203,21 @@ export const ReportView: React.FC = () => {
                       <td className="py-2 px-3 border border-gray-300">
                         <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-500 text-white font-bold">PARCIAL</span>
                       </td>
-                      <td className="py-2 px-3 border border-gray-300 text-gray-600">JÃ ESTÃ EM APLICAÇÃO PARTES DOS CONTROLES NA INSTITUIÇÃO, MAS HÃ QUESTÕES QUE PRECISAM SER TRABALHADAS.</td>
+                      <td className="py-2 px-3 border border-gray-300 text-gray-600">JÁ ESTÁ EM APLICAÇÃO PARTES DOS CONTROLES NA INSTITUIÇÃO, MAS HÁ QUESTÕES QUE PRECISAM SER TRABALHADAS.</td>
                     </tr>
                     <tr className="bg-green-50">
                       <td className="py-2 px-3 border border-gray-300 text-center font-mono font-bold text-green-600">2</td>
                       <td className="py-2 px-3 border border-gray-300">
                         <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-green-500 text-white">IMPLEMENTADO</span>
                       </td>
-                      <td className="py-2 px-3 border border-gray-300 text-gray-600">OS PROCESSOS FORAM REFINADOS A UM NÍVEL DE BOAS PRÁTICAS, RESULTADO DE UM CONTÍNUO APRIMORAMENTO E MODELAGEM DA MATURIDADE EM SEGURANÇA DA INFORMAÇÃO.</td>
+                      <td className="py-2 px-3 border border-gray-300 text-gray-600">OS PROCESSOS FORAM REFINADOS A UM NÍVEL DE BOAS PRÁTICAS, RESULTADO DE UM CONTÍNUO APRIMORAMENTO E MODELAGEM DA MATURIDADE EM ORGANIZAÇÃO E EM PROCESSOS.</td>
                     </tr>
                   </tbody>
                 </table>
               </div>
             </div>
 
-            {/* 5. Atributos */}
-            <div className="py-6 border-b border-gray-200 page-break">
+            <div className="print-section py-6 border-b border-gray-200">
               <h2 className="text-xl font-bold text-gray-900 mb-3 text-center">5. Atributos</h2>
               
               <p className="text-gray-700 text-justify mb-4">
@@ -954,19 +1283,19 @@ export const ReportView: React.FC = () => {
                 As capacidades operacionais são atributos para visualizar controles da perspectiva do praticante sobre os recursos de segurança da informação. Os valores de atributos consistem em:
               </p>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-4">
-                <span className="px-2 py-1 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-700">Governança, Gestão de identidade e acesso</span>
-                <span className="px-2 py-1 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-700">Gestão de ameaças e vulnerabilidades</span>
-                <span className="px-2 py-1 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-700">Garantia de segurança da informação</span>
-                <span className="px-2 py-1 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-700">Gestão de eventos de segurança da informação</span>
-                <span className="px-2 py-1 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-700">Gestão de ativos</span>
-                <span className="px-2 py-1 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-700">Proteção da informação</span>
-                <span className="px-2 py-1 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-700">Legal e compliance</span>
-                <span className="px-2 py-1 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-700">Segurança física</span>
-                <span className="px-2 py-1 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-700">Configuração segura</span>
-                <span className="px-2 py-1 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-700">Segurança em recursos humanos</span>
-                <span className="px-2 py-1 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-700">Segurança de sistemas e redes</span>
-                <span className="px-2 py-1 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-700">Segurança de aplicações</span>
-                <span className="px-2 py-1 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-700">Segurança do relacionamento na cadeia de suprimentos</span>
+                <span className="px-4 py-1 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-700 w-full">Governança, Gestão de identidade e acesso</span>
+                <span className="px-4 py-1 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-700 w-full">Gestão de ameaças e vulnerabilidades</span>
+                <span className="px-4 py-1 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-700 w-full">Garantia de segurança da informação</span>
+                <span className="px-4 py-1 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-700 w-full">Gestão de eventos de segurança da informação</span>
+                <span className="px-4 py-1 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-700 w-full">Gestão de ativos</span>
+                <span className="px-4 py-1 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-700 w-full">Proteção da informação</span>
+                <span className="px-4 py-1 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-700 w-full">Legal e compliance</span>
+                <span className="px-4 py-1 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-700 w-full">Segurança física</span>
+                <span className="px-4 py-1 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-700 w-full">Configuração segura</span>
+                <span className="px-4 py-1 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-700 w-full">Segurança em recursos humanos</span>
+                <span className="px-4 py-1 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-700 w-full">Segurança de sistemas e redes</span>
+                <span className="px-4 py-1 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-700 w-full">Segurança de aplicações</span>
+                <span className="px-4 py-1 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-700 w-full">Segurança do relacionamento na cadeia de suprimentos</span>
               </div>
 
               <h3 className="text-lg font-semibold text-gray-800 mt-4 mb-2 text-left">5.5 Domínios de Segurança</h3>
@@ -974,39 +1303,38 @@ export const ReportView: React.FC = () => {
                 Os domínios de segurança são um atributo para visualizar controles na perspectiva de 4 domínios de SI:
               </p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-3">
+                <div className="bg-indigo-50 border border-indigo-200 rounded-lg px-5 py-3 w-full">
                   <div className="flex items-center gap-2 mb-1">
                     <Globe className="h-4 w-4 text-indigo-600" />
                     <span className="font-semibold text-indigo-800">Governança e Ecossistema</span>
                   </div>
-                  <p className="text-xs text-gray-600 text-justify">Inclui "Governança do System de Segurança da Informação e Gestão de Riscos" e "Gestão de segurança cibernética do ecossistema" (partes interessadas internas e externas).</p>
+                  <p className="text-xs text-gray-600 text-justify w-full">Inclui "Governança do System de Segurança da Informação e Gestão de Riscos" e "Gestão de segurança cibernética do ecossistema" (partes interessadas internas e externas).</p>
                 </div>
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg px-5 py-3 w-full">
                   <div className="flex items-center gap-2 mb-1">
                     <Shield className="h-4 w-4 text-blue-600" />
                     <span className="font-semibold text-blue-800">Proteção</span>
                   </div>
-                  <p className="text-xs text-gray-600 text-justify">Inclui "Arquitetura de Segurança de TI", "Administração de Segurança de TI", "Gestão de identidade e acesso", "Manutenção de Segurança de TI" e "Segurança física e ambiental".</p>
+                  <p className="text-xs text-gray-600 text-justify w-full">Inclui "Arquitetura de Segurança de TI", "Administração de Segurança de TI", "Gestão de identidade e acesso", "Manutenção de Segurança de TI" e "Segurança física e ambiental".</p>
                 </div>
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg px-5 py-3 w-full">
                   <div className="flex items-center gap-2 mb-1">
                     <AlertOctagon className="h-4 w-4 text-yellow-600" />
                     <span className="font-semibold text-yellow-800">Defesa</span>
                   </div>
-                  <p className="text-xs text-gray-600 text-justify">Inclui "Detectar" e "Gestão de Incidente de segurança computacional".</p>
+                  <p className="text-xs text-gray-600 text-justify w-full">Inclui "Detectar" e "Gestão de Incidente de segurança computacional".</p>
                 </div>
-                <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                <div className="bg-green-50 border border-green-200 rounded-lg px-5 py-3 w-full">
                   <div className="flex items-center gap-2 mb-1">
                     <RefreshIcon className="h-4 w-4 text-green-600" />
                     <span className="font-semibold text-green-800">Resiliência</span>
                   </div>
-                  <p className="text-xs text-gray-600 text-justify">Inclui "Operações de continuidade" e "Gestão de crises".</p>
+                  <p className="text-xs text-gray-600 text-justify w-full">Inclui "Operações de continuidade" e "Gestão de crises".</p>
                 </div>
               </div>
             </div>
 
-            {/* 6. Recomendações */}
-            <div className="py-6 border-b border-gray-200">
+            <div className="print-section py-6 border-b border-gray-200">
               <h2 className="text-xl font-bold text-gray-900 mb-3 text-center">6. Recomendações</h2>
               
               <p className="text-gray-700 text-justify mb-3">
@@ -1027,8 +1355,7 @@ export const ReportView: React.FC = () => {
               </ul>
             </div>
 
-            {/* 7. Resultados da Avaliação */}
-            <div className="py-6 border-b border-gray-200 page-break">
+            <div className="landscape-table-page print-section py-6 border-b border-gray-200">
               <h2 className="text-xl font-bold text-gray-900 mb-3 text-center">7. Resultados da Avaliação</h2>
 
               <h3 className="text-lg font-semibold text-gray-800 mt-4 mb-2 text-left">7.1 Categorização dos controles</h3>
@@ -1046,9 +1373,9 @@ export const ReportView: React.FC = () => {
                   ];
                   const color = colors[index % colors.length];
                   return (
-                    <div key={index} className={`${color.bg} border ${color.border} rounded-xl p-3 text-center`}>
+                    <div key={index} className={`${color.bg} border ${color.border} rounded-xl px-5 py-3 text-center w-full`}>
                       <div className={`text-2xl font-bold ${color.text}`}>{cat.pImpl}%</div>
-                      <p className={`text-xs font-medium ${color.text} mt-1`}>{cat.name}</p>
+                      <p className={`text-xs font-medium ${color.text} mt-1 w-full`}>{cat.name}</p>
                     </div>
                   );
                 })}
@@ -1058,13 +1385,13 @@ export const ReportView: React.FC = () => {
                 O quadro abaixo mostra o quantitativo de controles identificados em cada uma das 04 (quatro) categorizações da ISO 27001:2022, bem como a quantidade de controles que se encontram implementados, parcialmente implementados, não implementados e os que não se aplicam, mostrando uma visão geral das lacunas que foram encontradas na <strong>{companyName}</strong>.
               </p>
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm border-collapse">
+              <div className="overflow-x-auto w-full">
+                <table className="w-full text-sm border-collapse landscape-table">
                   <thead>
                     <tr className="bg-gray-100">
                       <th className="text-left py-2 px-3 font-semibold text-gray-700 border border-gray-300">Categorização</th>
                       <th className="text-center py-2 px-3 font-semibold text-gray-700 border border-gray-300">Total</th>
-                      <th className="text-center py-2 px-3 font-semibold text-gray-700 border border-gray-300">Não Aplicáveis</th>
+                      <th className="text-center py-2 px-3 font-semibold text-gray-700 border border-gray-300">N/A</th>
                       <th className="text-center py-2 px-3 font-semibold text-gray-700 border border-gray-300">Implementados</th>
                       <th className="text-center py-2 px-3 font-semibold text-gray-700 border border-gray-300">Parciais</th>
                       <th className="text-center py-2 px-3 font-semibold text-gray-700 border border-gray-300">Não Implementados</th>
@@ -1082,7 +1409,7 @@ export const ReportView: React.FC = () => {
                       </tr>
                     ))}
                     <tr className="bg-gray-200 font-bold">
-                      <td className="py-2 px-3 border border-gray-300 text-gray-900">Total  niveis</td>
+                      <td className="py-2 px-3 border border-gray-300 text-gray-900">Total</td>
                       <td className="py-2 px-3 border border-gray-300 text-center">{resultados?.categorizacao?.totals?.total || 0}</td>
                       <td className="py-2 px-3 border border-gray-300 text-center">{resultados?.categorizacao?.totals?.na || 0}</td>
                       <td className="py-2 px-3 border border-gray-300 text-center text-emerald-700">{resultados?.categorizacao?.totals?.implemented || 0}</td>
@@ -1093,7 +1420,7 @@ export const ReportView: React.FC = () => {
                 </table>
               </div>
 
-              <h3 className="text-lg font-semibold text-gray-800 mt-6 mb-2 text-left page-break">7.2 Capacidades Operacionais</h3>
+              <h3 className="text-lg font-semibold text-gray-800 mt-6 mb-2 text-left">7.2 Capacidades Operacionais</h3>
               <p className="text-gray-700 text-justify mb-3">
                 A capacidade operacional analisa os controles da perspectiva de seus recursos operacionais de segurança da informação e oferece suporte a uma visão prática dos controles pelo usuário.
               </p>
@@ -1104,24 +1431,25 @@ export const ReportView: React.FC = () => {
                   <p className="text-xs text-gray-500 mb-3 text-justify">
                     Comparação entre o nível implementado e o recomendado (100%) por capacidade
                   </p>
-                  <div className="bg-white border border-gray-200 rounded-lg p-3 flex justify-center items-center">
+                  <div className="bg-white border border-gray-200 rounded-lg px-5 py-3 flex justify-center items-center w-full">
                     <RadarChart
                       data={resultados.capacidades.radarData}
                       title="Radar de Capacidades Operacionais"
                       subtitle="Comparação entre o nível implementado e o recomendado (100%) por capacidade"
                       height={320}
                       colors={{ Implementado: '#10b981', Recomendado: '#94a3b8' }}
+                      isPrinting={true}
                     />
                   </div>
                 </div>
               )}
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm border-collapse">
+              <div className="overflow-x-auto w-full">
+                <table className="w-full text-sm border-collapse landscape-table">
                   <thead>
                     <tr className="bg-gray-100">
                       <th className="text-left py-2 px-3 font-semibold text-gray-700 border border-gray-300">Capacidades Operacionais</th>
-                      <th className="text-center py-2 px-3 font-semibold text-gray-700 border border-gray-300">Não se aplica</th>
+                      <th className="text-center py-2 px-3 font-semibold text-gray-700 border border-gray-300">N/A</th>
                       <th className="text-center py-2 px-3 font-semibold text-gray-700 border border-gray-300">Não Implementado</th>
                       <th className="text-center py-2 px-3 font-semibold text-gray-700 border border-gray-300">Parcial</th>
                       <th className="text-center py-2 px-3 font-semibold text-gray-700 border border-gray-300">Implementados</th>
@@ -1138,7 +1466,7 @@ export const ReportView: React.FC = () => {
                       </tr>
                     ))}
                     <tr className="bg-gray-200 font-bold">
-                      <td className="py-2 px-3 border border-gray-300 text-gray-900">Total de Controles</td>
+                      <td className="py-2 px-3 border border-gray-300 text-gray-900">Total</td>
                       <td className="py-2 px-3 border border-gray-300 text-center">0</td>
                       <td className="py-2 px-3 border border-gray-300 text-center text-red-700 status-nao-implementado">{resultados?.capacidades?.totals?.notImpl || 0}</td>
                       <td className="py-2 px-3 border border-gray-300 text-center text-amber-700 status-parcial">{resultados?.capacidades?.totals?.partial || 0}</td>
@@ -1148,15 +1476,14 @@ export const ReportView: React.FC = () => {
                 </table>
               </div>
 
-              <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                <p className="text-xs text-gray-700 text-justify">
-                  <strong>Legenda:</strong> O "Total de Controles" na linha de rodapé corresponde ao quantitativo total de <strong>capacidades operacionais</strong> aplicadas (ou não aplicáveis) para o total das 93 Categorias da ISO 27001:2022, considerando-se que um mesmo controle pode ter mais de uma capacidade operacional a ele atribuída.
+              <div className="mt-3 px-5 py-3 bg-blue-50 border border-blue-200 rounded-lg w-full">
+                <p className="text-xs text-gray-700 text-justify w-full">
+                  <strong>Legenda:</strong> O "Total" na linha de rodapé corresponde ao quantitativo total de <strong>capacidades operacionais</strong> aplicadas (ou não aplicáveis) para o total das 93 Categorias da ISO 27001:2022, considerando-se que um mesmo controle pode ter mais de uma capacidade operacional a ele atribuída.
                 </p>
               </div>
             </div>
 
-            {/* 8. Cenário atual e Recomendações */}
-            <div className="py-6 border-b border-gray-200 page-break">
+            <div className="print-section py-6 border-b border-gray-200">
               <h2 className="text-xl font-bold text-gray-900 mb-3 text-center">8. Cenário atual e Recomendações</h2>
 
               {recomendacoes.length === 0 ? (
@@ -1166,7 +1493,13 @@ export const ReportView: React.FC = () => {
               ) : (
                 <>
                   {['Controles organizacionais', 'Controles de pessoas', 'Controles físicos', 'Controles tecnológicos'].map(dominio => {
-                    const items = recomendacoes.filter(r => r.dominio === dominio);
+                    const items = recomendacoes.filter(r => {
+                      const statusLower = r.status?.toLowerCase() || '';
+                      const isNaoImpl = statusLower.includes('não') || statusLower.includes('nao');
+                      const isParcial = statusLower.includes('parcial');
+                      return r.dominio === dominio && (isNaoImpl || isParcial);
+                    });
+
                     if (items.length === 0) return null;
 
                     const dominioNumero = {
@@ -1188,7 +1521,7 @@ export const ReportView: React.FC = () => {
                           const statusClass = isNaoImpl ? 'status-nao-implementado' : isParcial ? 'status-parcial' : '';
 
                           return (
-                            <div key={idx} id={`recomendacao-${item.controlId}`} className="mb-4 p-4 bg-gray-50 border border-gray-200 rounded-lg scroll-mt-20">
+                            <div key={idx} id={`recomendacao-${item.controlId}`} className="mb-4 px-6 py-4 bg-gray-50 border border-gray-200 rounded-lg scroll-mt-20 w-full">
                               <h4 className="text-md font-bold text-gray-900 mb-1 text-left">
                                 {item.controlId} {item.titulo}
                               </h4>
@@ -1201,20 +1534,20 @@ export const ReportView: React.FC = () => {
 
                               <div className="mb-2">
                                 <p className="text-xs font-semibold text-gray-700 text-left">Cenário identificado</p>
-                                <p className="text-xs text-gray-600 text-justify mt-0.5">
+                                <p className="text-xs text-gray-600 text-justify mt-0.5 w-full">
                                   {item.cenarioIdentificado || 'Cenário não descrito para este controle.'}
                                 </p>
                               </div>
 
                               <div className="mb-2">
                                 <p className="text-xs font-semibold text-gray-700 text-left">Recomendações</p>
-                                <ul className="list-disc pl-5 mt-0.5 space-y-0.5">
+                                <ul className="list-disc pl-5 mt-0.5 space-y-0.5 w-full">
                                   {item.recomendacoes && item.recomendacoes.length > 0 ? (
                                     item.recomendacoes.map((rec: string, recIdx: number) => (
-                                      <li key={recIdx} className="text-xs text-gray-600 text-justify">{rec}</li>
+                                      <li key={recIdx} className="text-xs text-gray-600 text-justify w-full">{rec}</li>
                                     ))
                                   ) : (
-                                    <li className="text-xs text-gray-400">Recomendação não cadastrada para este controle.</li>
+                                    <li className="text-xs text-gray-400 w-full">Recomendação não cadastrada para este controle.</li>
                                   )}
                                 </ul>
                               </div>
@@ -1222,9 +1555,9 @@ export const ReportView: React.FC = () => {
                               {item.solucoesTecnicas && item.solucoesTecnicas.length > 0 && (
                                 <div>
                                   <p className="text-xs font-semibold text-gray-700 text-left">Soluções técnicas de apoio</p>
-                                  <ul className="list-disc pl-5 mt-0.5 space-y-0.5">
+                                  <ul className="list-disc pl-5 mt-0.5 space-y-0.5 w-full">
                                     {item.solucoesTecnicas.map((sol: string, solIdx: number) => (
-                                      <li key={solIdx} className="text-xs text-gray-600 text-justify">{sol}</li>
+                                      <li key={solIdx} className="text-xs text-gray-600 text-justify w-full">{sol}</li>
                                     ))}
                                   </ul>
                                 </div>
@@ -1236,8 +1569,8 @@ export const ReportView: React.FC = () => {
                     );
                   })}
 
-                  <div className="mt-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
-                    <p className="text-xs text-gray-700 text-justify">
+                  <div className="mt-3 px-5 py-3 bg-gray-50 border border-gray-200 rounded-lg w-full">
+                    <p className="text-xs text-gray-700 text-justify w-full">
                       <strong>Legenda:</strong> Os controles listados acima são aqueles que foram avaliados como <strong>Parcialmente implementados</strong> ou <strong>Não implementados</strong>.
                     </p>
                   </div>
@@ -1245,30 +1578,29 @@ export const ReportView: React.FC = () => {
               )}
             </div>
 
-            {/* 9. Matriz de Priorização */}
-            <div className="py-6 border-b border-gray-200 page-break">
+            <div className="landscape-table-page print-section py-6 border-b border-gray-200">
               <h2 className="text-xl font-bold text-gray-900 mb-3 text-center">9. Matriz de Priorização</h2>
               
               <p className="text-gray-700 text-justify mb-3 text-sm">
                 Eventual plano de ação para adequação, em razão do resultado deste assessment, deve considerar estratégias de SI e esforços. Para subsidiar as decisões inerentes, elaboramos a <strong>{companyName}</strong> - Matriz de Priorização 27001:2022, documento anexo que contém sugestão de priorização, analisando-se probabilidade e impacto de riscos se materializarem perante das vulnerabilidades identificadas no ambiente da organização.
               </p>
 
-              <div className="overflow-x-auto mt-4">
-                <table className="w-full text-sm border-collapse" style={{ fontSize: '8.5pt' }}>
+              <div className="overflow-x-auto mt-4 w-full">
+                <table className="w-full text-sm border-collapse landscape-table" style={{ fontSize: '7.5pt' }}>
                   <thead>
                     <tr className="bg-blue-50">
-                      <th className="text-left py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '8pt' }}>METODOLOGIA</th>
-                      <th className="text-center py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '8pt' }}>ID REF.</th>
-                      <th className="text-center py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '8pt' }}>ID Controle</th>
-                      <th className="text-left py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '8pt' }}>Controle</th>
-                      <th className="text-center py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '8pt' }}>Maturidade</th>
-                      <th className="text-left py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '8pt' }}>Cenário identificado</th>
-                      <th className="text-left py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '8pt' }}>Vulnerabilidades e Ameaças</th>
-                      <th className="text-left py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '8pt' }}>Soluções técnicas</th>
-                      <th className="text-center py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '8pt' }}>Probabilidade</th>
-                      <th className="text-center py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '8pt' }}>Impacto</th>
-                      <th className="text-center py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '8pt' }}>Classificação</th>
-                      <th className="text-center py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '8pt' }}>Priorização</th>
+                      <th className="text-left py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '7pt' }}>METODOLOGIA</th>
+                      <th className="text-center py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '7pt' }}>ID REF.</th>
+                      <th className="text-center py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '7pt' }}>ID Controle</th>
+                      <th className="text-left py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '7pt' }}>Controle</th>
+                      <th className="text-center py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '7pt' }}>Maturidade</th>
+                      <th className="text-left py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '7pt' }}>Cenário identificado</th>
+                      <th className="text-left py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '7pt' }}>Vulnerabilidades</th>
+                      <th className="text-left py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '7pt' }}>Soluções técnicas</th>
+                      <th className="text-center py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '7pt' }}>Prob.</th>
+                      <th className="text-center py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '7pt' }}>Impacto</th>
+                      <th className="text-center py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '7pt' }}>Classif.</th>
+                      <th className="text-center py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '7pt' }}>Priorização</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1294,29 +1626,29 @@ export const ReportView: React.FC = () => {
                         
                         return (
                           <tr key={index} className={priorityStyle.bg}>
-                            <td className="py-1 px-2 border border-gray-300 text-black" style={{ fontSize: '8pt' }}>ISO 27001</td>
-                            <td className="py-1 px-2 border border-gray-300 text-center text-black" style={{ fontSize: '8pt' }}>{item.refId || (index + 1)}</td>
-                            <td className="py-1 px-2 border border-gray-300 text-center text-black" style={{ fontSize: '8pt' }}>{item.controlId}</td>
-                            <td className="py-1 px-2 border border-gray-300 text-black" style={{ fontSize: '8pt' }}>{item.controlName}</td>
-                            <td className="py-1 px-2 border border-gray-300 text-center text-black" style={{ fontSize: '8pt' }}>{item.maturity}</td>
-                            <td className="py-1 px-2 border border-gray-300 text-black" style={{ fontSize: '7.5pt' }}>{item.scenario}</td>
-                            <td className="py-1 px-2 border border-gray-300 whitespace-pre-wrap text-black" style={{ fontSize: '7.5pt' }}>{item.vulnerabilities}</td>
-                            <td className="py-1 px-2 border border-gray-300 text-black" style={{ fontSize: '7.5pt' }}>
+                            <td className="py-1 px-2 border border-gray-300 text-black" style={{ fontSize: '7pt' }}>ISO 27001</td>
+                            <td className="py-1 px-2 border border-gray-300 text-center text-black" style={{ fontSize: '7pt' }}>{item.refId || (index + 1)}</td>
+                            <td className="py-1 px-2 border border-gray-300 text-center text-black" style={{ fontSize: '7pt' }}>{item.controlId}</td>
+                            <td className="py-1 px-2 border border-gray-300 text-black" style={{ fontSize: '7pt' }}>{item.controlName}</td>
+                            <td className="py-1 px-2 border border-gray-300 text-center text-black" style={{ fontSize: '7pt' }}>{item.maturity}</td>
+                            <td className="py-1 px-2 border border-gray-300 text-black" style={{ fontSize: '6.5pt' }}>{item.scenario}</td>
+                            <td className="py-1 px-2 border border-gray-300 whitespace-pre-wrap text-black" style={{ fontSize: '6.5pt' }}>{item.vulnerabilities}</td>
+                            <td className="py-1 px-2 border border-gray-300 text-black" style={{ fontSize: '6.5pt' }}>
                               {hasRecommendation ? (
                                 <a 
                                   href={`#recomendacao-${item.controlId}`}
                                   className="text-blue-600 underline hover:text-blue-800 font-medium"
                                 >
-                                  Ver soluções técnicas
+                                  Ver soluções
                                 </a>
                               ) : (
                                 <span className="text-gray-400">-</span>
                               )}
                             </td>
-                            <td className="py-1 px-2 border border-gray-300 text-center font-bold text-black" style={{ fontSize: '8pt' }}>{item.probability}</td>
-                            <td className="py-1 px-2 border border-gray-300 text-center font-bold text-black" style={{ fontSize: '8pt' }}>{item.impact}</td>
-                            <td className="py-1 px-2 border border-gray-300 text-center font-bold text-black" style={{ fontSize: '8pt' }}>{item.riskScore}</td>
-                            <td className="py-1 px-2 border border-gray-300 text-center text-xs font-bold text-black" style={{ fontSize: '7pt' }}>
+                            <td className="py-1 px-2 border border-gray-300 text-center font-bold text-black" style={{ fontSize: '7pt' }}>{item.probability}</td>
+                            <td className="py-1 px-2 border border-gray-300 text-center font-bold text-black" style={{ fontSize: '7pt' }}>{item.impact}</td>
+                            <td className="py-1 px-2 border border-gray-300 text-center font-bold text-black" style={{ fontSize: '7pt' }}>{item.riskScore}</td>
+                            <td className="py-1 px-2 border border-gray-300 text-center text-xs font-bold text-black" style={{ fontSize: '6.5pt' }}>
                               {item.priority}
                             </td>
                           </tr>
@@ -1327,10 +1659,9 @@ export const ReportView: React.FC = () => {
                 </table>
               </div>
 
-              {/* Legenda da Matriz de Priorização */}
-              <div className="mt-4 p-3 bg-gray-50 border border-gray-200 rounded-lg">
-                <p className="text-xs font-semibold text-gray-700 mb-1">Nível de Priorização</p>
-                <div className="grid grid-cols-3 md:grid-cols-6 gap-1">
+              <div className="mt-4 px-5 py-3 bg-gray-50 border border-gray-200 rounded-lg w-full">
+                <p className="text-xs font-semibold text-gray-700 mb-1 w-full">Nível de Priorização</p>
+                <div className="grid grid-cols-3 md:grid-cols-6 gap-1 w-full">
                   <div className="flex items-center gap-1">
                     <span className="w-3 h-3 bg-red-500 rounded"></span>
                     <span className="text-xs text-gray-600">Crítico (9)</span>
@@ -1359,8 +1690,7 @@ export const ReportView: React.FC = () => {
               </div>
             </div>
 
-            {/* 10. Roadmap de Implementação */}
-            <div className="py-6 border-b border-gray-200 page-break">
+            <div className="landscape-table-page print-section py-6 border-b border-gray-200">
               <h2 className="text-xl font-bold text-gray-900 mb-3 text-center">10. Roadmap de Implementação</h2>
 
               {!roadmapData ? (
@@ -1382,22 +1712,21 @@ export const ReportView: React.FC = () => {
                     Alto ({roadmapData.summary.byPriority.alto}) e Médio ({roadmapData.summary.byPriority.medio}).
                   </p>
 
-                  {/* 10.1 Medidas Processuais */}
                   <h3 className="text-lg font-semibold text-gray-800 mt-4 mb-2 text-left">
                     10.1 {roadmapData.sections.processuais.title}
                   </h3>
                   <p className="text-sm text-gray-600 mb-3 text-justify">
                     {roadmapData.sections.processuais.description}
                   </p>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm border-collapse" style={{ fontSize: '8.5pt' }}>
+                  <div className="overflow-x-auto w-full">
+                    <table className="w-full text-sm border-collapse landscape-table" style={{ fontSize: '7.5pt' }}>
                       <thead>
                         <tr className="bg-blue-50">
-                          <th className="text-left py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '8pt' }}>#</th>
-                          <th className="text-left py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '8pt' }}>Medida Processual</th>
-                          <th className="text-left py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '8pt' }}>Descrição</th>
-                          <th className="text-center py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '8pt' }}>Prioridade</th>
-                          <th className="text-center py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '8pt' }}>Controles</th>
+                          <th className="text-left py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '7pt' }}>#</th>
+                          <th className="text-left py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '7pt' }}>Medida Processual</th>
+                          <th className="text-left py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '7pt' }}>Descrição</th>
+                          <th className="text-center py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '7pt' }}>Prioridade</th>
+                          <th className="text-center py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '7pt' }}>Controles</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1413,11 +1742,11 @@ export const ReportView: React.FC = () => {
                             <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                               <td className="py-1 px-2 border border-gray-300 text-center text-black">{idx + 1}</td>
                               <td className="py-1 px-2 border border-gray-300 text-black">{item.name}</td>
-                              <td className="py-1 px-2 border border-gray-300 text-black" style={{ fontSize: '7.5pt' }}>{item.description || '-'}</td>
-                              <td className={`py-1 px-2 border border-gray-300 text-center ${priorityColors[item.priority] || 'text-gray-700'}`} style={{ fontSize: '7.5pt' }}>
+                              <td className="py-1 px-2 border border-gray-300 text-black" style={{ fontSize: '6.5pt' }}>{item.description || '-'}</td>
+                              <td className={`py-1 px-2 border border-gray-300 text-center ${priorityColors[item.priority] || 'text-gray-700'}`} style={{ fontSize: '6.5pt' }}>
                                 {item.priority}
                               </td>
-                              <td className="py-1 px-2 border border-gray-300 text-center text-black" style={{ fontSize: '7.5pt' }}>
+                              <td className="py-1 px-2 border border-gray-300 text-center text-black" style={{ fontSize: '6.5pt' }}>
                                 {item.relatedControls?.length ? item.relatedControls.join(', ') : '-'}
                               </td>
                             </tr>
@@ -1427,22 +1756,21 @@ export const ReportView: React.FC = () => {
                     </table>
                   </div>
 
-                  {/* 10.2 Políticas Recomendadas */}
                   <h3 className="text-lg font-semibold text-gray-800 mt-6 mb-2 text-left">
                     10.2 {roadmapData.sections.politicas.title}
                   </h3>
                   <p className="text-sm text-gray-600 mb-3 text-justify">
                     {roadmapData.sections.politicas.description}
                   </p>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm border-collapse" style={{ fontSize: '8.5pt' }}>
+                  <div className="overflow-x-auto w-full">
+                    <table className="w-full text-sm border-collapse landscape-table" style={{ fontSize: '7.5pt' }}>
                       <thead>
                         <tr className="bg-blue-50">
-                          <th className="text-left py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '8pt' }}>#</th>
-                          <th className="text-left py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '8pt' }}>Política</th>
-                          <th className="text-left py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '8pt' }}>Descrição</th>
-                          <th className="text-center py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '8pt' }}>Prioridade</th>
-                          <th className="text-center py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '8pt' }}>Controles</th>
+                          <th className="text-left py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '7pt' }}>#</th>
+                          <th className="text-left py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '7pt' }}>Política</th>
+                          <th className="text-left py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '7pt' }}>Descrição</th>
+                          <th className="text-center py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '7pt' }}>Prioridade</th>
+                          <th className="text-center py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '7pt' }}>Controles</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1458,11 +1786,11 @@ export const ReportView: React.FC = () => {
                             <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                               <td className="py-1 px-2 border border-gray-300 text-center text-black">{idx + 1}</td>
                               <td className="py-1 px-2 border border-gray-300 text-black">{item.name}</td>
-                              <td className="py-1 px-2 border border-gray-300 text-black" style={{ fontSize: '7.5pt' }}>{item.description || '-'}</td>
-                              <td className={`py-1 px-2 border border-gray-300 text-center ${priorityColors[item.priority] || 'text-gray-700'}`} style={{ fontSize: '7.5pt' }}>
+                              <td className="py-1 px-2 border border-gray-300 text-black" style={{ fontSize: '6.5pt' }}>{item.description || '-'}</td>
+                              <td className={`py-1 px-2 border border-gray-300 text-center ${priorityColors[item.priority] || 'text-gray-700'}`} style={{ fontSize: '6.5pt' }}>
                                 {item.priority}
                               </td>
-                              <td className="py-1 px-2 border border-gray-300 text-center text-black" style={{ fontSize: '7.5pt' }}>
+                              <td className="py-1 px-2 border border-gray-300 text-center text-black" style={{ fontSize: '6.5pt' }}>
                                 {item.relatedControls?.length ? item.relatedControls.join(', ') : '-'}
                               </td>
                             </tr>
@@ -1472,22 +1800,21 @@ export const ReportView: React.FC = () => {
                     </table>
                   </div>
 
-                  {/* 10.3 Soluções Técnicas */}
                   <h3 className="text-lg font-semibold text-gray-800 mt-6 mb-2 text-left">
                     10.3 {roadmapData.sections.tecnicas.title}
                   </h3>
                   <p className="text-sm text-gray-600 mb-3 text-justify">
                     {roadmapData.sections.tecnicas.description}
                   </p>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm border-collapse" style={{ fontSize: '8.5pt' }}>
+                  <div className="overflow-x-auto w-full">
+                    <table className="w-full text-sm border-collapse landscape-table" style={{ fontSize: '7.5pt' }}>
                       <thead>
                         <tr className="bg-blue-50">
-                          <th className="text-left py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '8pt' }}>#</th>
-                          <th className="text-left py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '8pt' }}>Solução Técnica</th>
-                          <th className="text-left py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '8pt' }}>Descrição</th>
-                          <th className="text-center py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '8pt' }}>Prioridade</th>
-                          <th className="text-center py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '8pt' }}>Controles</th>
+                          <th className="text-left py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '7pt' }}>#</th>
+                          <th className="text-left py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '7pt' }}>Solução Técnica</th>
+                          <th className="text-left py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '7pt' }}>Descrição</th>
+                          <th className="text-center py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '7pt' }}>Prioridade</th>
+                          <th className="text-center py-1 px-2 font-semibold text-blue-700 border border-blue-300" style={{ fontSize: '7pt' }}>Controles</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1503,11 +1830,11 @@ export const ReportView: React.FC = () => {
                             <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                               <td className="py-1 px-2 border border-gray-300 text-center text-black">{idx + 1}</td>
                               <td className="py-1 px-2 border border-gray-300 text-black">{item.name}</td>
-                              <td className="py-1 px-2 border border-gray-300 text-black" style={{ fontSize: '7.5pt' }}>{item.description || '-'}</td>
-                              <td className={`py-1 px-2 border border-gray-300 text-center ${priorityColors[item.priority] || 'text-gray-700'}`} style={{ fontSize: '7.5pt' }}>
+                              <td className="py-1 px-2 border border-gray-300 text-black" style={{ fontSize: '6.5pt' }}>{item.description || '-'}</td>
+                              <td className={`py-1 px-2 border border-gray-300 text-center ${priorityColors[item.priority] || 'text-gray-700'}`} style={{ fontSize: '6.5pt' }}>
                                 {item.priority}
                               </td>
-                              <td className="py-1 px-2 border border-gray-300 text-center text-black" style={{ fontSize: '7.5pt' }}>
+                              <td className="py-1 px-2 border border-gray-300 text-center text-black" style={{ fontSize: '6.5pt' }}>
                                 {item.relatedControls?.length ? item.relatedControls.join(', ') : '-'}
                               </td>
                             </tr>
@@ -1517,8 +1844,8 @@ export const ReportView: React.FC = () => {
                     </table>
                   </div>
 
-                  <div className="mt-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
-                    <p className="text-xs text-gray-700 text-justify">
+                  <div className="mt-3 px-5 py-3 bg-gray-50 border border-gray-200 rounded-lg w-full">
+                    <p className="text-xs text-gray-700 text-justify w-full">
                       <strong>Legenda:</strong> Os itens listados acima representam um conjunto de recomendações organizadas por nível de priorização, 
                       baseadas nos controles da ISO/IEC 27001:2022. A implementação deve seguir a ordem de criticidade para garantir a conformidade 
                       e a melhoria contínua da segurança da informação.
@@ -1528,7 +1855,6 @@ export const ReportView: React.FC = () => {
               )}
             </div>
 
-            {/* Botão para sair do modo de impressão */}
             <div className="text-center py-6 print:hidden no-print">
               <Button onClick={() => setIsPrintMode(false)}>
                 Voltar para visualização
@@ -1575,10 +1901,20 @@ export const ReportView: React.FC = () => {
                   variant="outline"
                   size="sm"
                   className="text-blue-600 border-blue-300 hover:bg-blue-50"
-                  onClick={handlePrint}
+                  onClick={handleDownloadPDF}
+                  disabled={isDownloading}
                 >
-                  <Printer className="h-4 w-4 mr-2" />
-                  Imprimir
+                  {isDownloading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Gerando PDF...
+                    </>
+                  ) : (
+                    <>
+                      <Printer className="h-4 w-4 mr-2" />
+                      Baixar PDF
+                    </>
+                  )}
                 </Button>
               </FeatureGuard>
             </div>

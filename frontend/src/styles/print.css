@@ -1,0 +1,515 @@
+/* ============================================
+   IMPRESSÃO - PADRÃO ABNT COMPLETO
+   ============================================ */
+
+@media print {
+  /* ===== 1. CONFIGURAÇÃO DE PÁGINA ABNT ===== */
+  @page {
+    size: A4 portrait;
+    margin: 30mm 20mm 20mm 30mm; /* Superior, Direita, Inferior, Esquerda */
+    @top-center {
+      content: element(header);
+      font-size: 10pt;
+      color: #475569;
+      vertical-align: bottom;
+      padding-bottom: 2mm;
+    }
+    @bottom-center {
+      content: element(footer);
+      font-size: 9pt;
+      color: #64748b;
+      vertical-align: top;
+      padding-top: 2mm;
+    }
+  }
+
+  /* ===== 2. PÁGINAS EM PAISAGEM ===== */
+  @page landscape-page {
+    size: A4 landscape;
+    margin: 20mm 15mm 20mm 15mm;
+    @top-center {
+      content: element(header);
+      font-size: 9pt;
+      color: #475569;
+      vertical-align: bottom;
+      padding-bottom: 2mm;
+    }
+    @bottom-center {
+      content: element(footer);
+      font-size: 8pt;
+      color: #64748b;
+      vertical-align: top;
+      padding-top: 2mm;
+    }
+  }
+
+  .landscape-table-page {
+    page: landscape-page;
+    page-break-before: always !important;
+    break-before: page !important;
+  }
+
+  /* ===== 3. REMOVER CABEÇALHO/RODAPÉ DO NAVEGADOR ===== */
+  @page :header {
+    display: none;
+  }
+  @page :footer {
+    display: none;
+  }
+
+  /* ===== 4. FORÇAR CORES E ESTILOS ===== */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
+  /* ===== 5. ELEMENTOS OCULTOS ===== */
+  .no-print {
+    display: none !important;
+  }
+
+  /* ===== 6. OCULTAR HEADER DO SISTEMA ===== */
+  header.bg-white.border-b.border-gray-200.sticky.top-0.z-40 {
+    display: none !important;
+  }
+
+  /* ===== 7. CABEÇALHO PERSONALIZADO (ABNT) ===== */
+  .custom-print-header {
+    position: running(header) !important;
+    display: block !important;
+    width: 100% !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+    padding-bottom: 3mm !important;
+    font-size: 10pt !important;
+    color: #475569 !important;
+    background-color: #f5f5f5 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .custom-print-header .logo-text-blue {
+    color: #2563eb !important;
+    font-weight: bold !important;
+    font-size: 12pt !important;
+  }
+
+  .custom-print-header .logo-text-gray {
+    color: #475569 !important;
+    font-weight: bold !important;
+    font-size: 12pt !important;
+  }
+
+  .custom-print-header .user-info {
+    font-size: 9pt !important;
+    color: #64748b !important;
+    text-align: right !important;
+    line-height: 1.3 !important;
+  }
+
+  .custom-print-header .user-info strong {
+    font-weight: 600 !important;
+    color: #1e293b !important;
+  }
+
+  /* ===== 8. RODAPÉ PERSONALIZADO (ABNT) ===== */
+  .custom-print-footer {
+    position: running(footer) !important;
+    display: block !important;
+    width: 100% !important;
+    border-top: 1px solid #e2e8f0 !important;
+    padding-top: 3mm !important;
+    font-size: 9pt !important;
+    color: #64748b !important;
+    background-color: #f5f5f5 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .custom-print-footer .footer-left {
+    float: left !important;
+    font-weight: 400 !important;
+  }
+
+  .custom-print-footer .footer-right {
+    float: right !important;
+    font-weight: 500 !important;
+  }
+
+  /* ===== 9. CORPO DO DOCUMENTO ===== */
+  html, body {
+    background: #ffffff !important;
+    color: #1e293b !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    font-family: Arial, Helvetica, sans-serif !important;
+    font-size: 12pt !important;
+    line-height: 1.5 !important;
+  }
+
+  .print-container {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .print-content {
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* ===== 10. PARÁGRAFOS (ABNT: recuo 1,25cm) ===== */
+  p {
+    text-align: justify !important;
+    text-indent: 1.25cm !important;
+    margin: 4pt 0 !important;
+    line-height: 1.5 !important;
+    font-size: 12pt !important;
+  }
+
+  p.no-indent {
+    text-indent: 0 !important;
+  }
+
+  /* ===== 11. TÍTULOS (SEM RECUO) ===== */
+  h1, h2, h3, h4, h5, h6 {
+    text-indent: 0 !important;
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+    margin-top: 12pt !important;
+    margin-bottom: 6pt !important;
+    line-height: 1.3 !important;
+  }
+
+  h1 {
+    font-size: 18pt !important;
+    font-weight: bold !important;
+    text-align: center !important;
+    color: #0f172a !important;
+  }
+
+  h2 {
+    font-size: 14pt !important;
+    font-weight: bold !important;
+    text-align: left !important;
+    color: #1e3a8a !important;
+    margin-top: 16pt !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+    padding-bottom: 4pt !important;
+  }
+
+  h3 {
+    font-size: 12pt !important;
+    font-weight: bold !important;
+    text-align: left !important;
+    color: #0f172a !important;
+    margin-top: 12pt !important;
+  }
+
+  h4 {
+    font-size: 12pt !important;
+    font-weight: bold !important;
+    text-align: left !important;
+    color: #1e293b !important;
+    margin-top: 10pt !important;
+  }
+
+  .text-center {
+    text-align: center !important;
+  }
+
+  .text-left {
+    text-align: left !important;
+  }
+
+  /* ===== 12. LISTAS ===== */
+  ul, ol {
+    padding-left: 1.25cm !important;
+    margin: 4pt 0 !important;
+    text-align: justify !important;
+    line-height: 1.5 !important;
+  }
+
+  li {
+    text-align: justify !important;
+    line-height: 1.5 !important;
+    font-size: 12pt !important;
+    margin-bottom: 2pt !important;
+  }
+
+  /* ===== 13. TABELAS ===== */
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    margin: 6pt 0 !important;
+    font-size: 10pt !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  th, td {
+    border: 1px solid #cbd5e1 !important;
+    padding: 5pt 6pt !important;
+    text-align: left !important;
+    vertical-align: middle !important;
+    font-size: 10pt !important;
+  }
+
+  th {
+    font-weight: bold !important;
+    background-color: #f1f5f9 !important;
+    text-align: center !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* ===== 14. TABELAS EM PAISAGEM ===== */
+  .landscape-table {
+    font-size: 8pt !important;
+  }
+
+  .landscape-table th,
+  .landscape-table td {
+    padding: 3pt 4pt !important;
+    font-size: 8pt !important;
+  }
+
+  .landscape-table th {
+    font-size: 7.5pt !important;
+  }
+
+  /* ===== 15. CAPA ===== */
+  .cover-page {
+    min-height: auto !important;
+    height: 100% !important;
+    padding: 15mm 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    align-items: center !important;
+  }
+
+  .cover-page h1 {
+    font-size: 20pt !important;
+    text-align: center !important;
+    border-bottom: none !important;
+  }
+
+  .cover-page p {
+    text-indent: 0 !important;
+    text-align: center !important;
+  }
+
+  .cover-page .logo-container {
+    margin-bottom: 12pt !important;
+  }
+
+  /* ===== 16. QUEBRAS DE PÁGINA ===== */
+  .page-break {
+    page-break-before: always !important;
+    break-before: page !important;
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+  }
+
+  .page-break-avoid {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  /* ===== 17. CARDS E SEÇÕES ===== */
+  .print-section {
+    margin-bottom: 6pt !important;
+    padding-bottom: 4pt !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .print-card {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    box-shadow: none !important;
+    border: 1px solid #e5e7eb !important;
+  }
+
+  /* ===== 18. CORES DE FUNDO ===== */
+  .bg-gray-50 { background-color: #f9fafb !important; }
+  .bg-gray-100 { background-color: #f3f4f6 !important; }
+  .bg-gray-200 { background-color: #e5e7eb !important; }
+  .bg-blue-50 { background-color: #eff6ff !important; border-color: #bfdbfe !important; }
+  .bg-red-50 { background-color: #fef2f2 !important; }
+  .bg-yellow-50 { background-color: #fffbeb !important; }
+  .bg-green-50 { background-color: #f0fdf4 !important; }
+  .bg-white { background-color: #ffffff !important; }
+
+  /* ===== 19. STATUS DE MATURIDADE ===== */
+  .status-nao-implementado { color: #dc2626 !important; font-weight: bold !important; }
+  .status-parcial { color: #d97706 !important; font-weight: bold !important; }
+  .status-implementado { color: #16a34a !important; font-weight: bold !important; }
+
+  /* ===== 20. ESPAÇAMENTOS ===== */
+  .py-6, .py-8 { padding-top: 4pt !important; padding-bottom: 4pt !important; }
+  .px-4 { padding-left: 0 !important; padding-right: 0 !important; }
+  .px-5 { padding-left: 2pt !important; padding-right: 2pt !important; }
+  .px-6 { padding-left: 4pt !important; padding-right: 4pt !important; }
+  .mb-8 { margin-bottom: 6pt !important; }
+  .mb-4, .mb-6 { margin-bottom: 4pt !important; }
+  .mt-3 { margin-top: 4pt !important; }
+  .mt-4 { margin-top: 6pt !important; }
+  .gap-2 { gap: 4pt !important; }
+  .gap-3 { gap: 6pt !important; }
+
+  /* ===== 21. WIDTH 100% PARA TODOS OS CONTAINERS ===== */
+  .w-full,
+  .w-\[100\%\] {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* ===== 22. OVERFLOW VISIBLE ===== */
+  .overflow-x-auto {
+    overflow: visible !important;
+    max-width: 100% !important;
+  }
+
+  /* ===== 23. GRIDS ===== */
+  .grid-cols-1.md\:grid-cols-2 {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 6pt !important;
+  }
+
+  .grid-cols-2.md\:grid-cols-4 {
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 6pt !important;
+  }
+
+  .grid-cols-3.md\:grid-cols-6 {
+    display: grid !important;
+    grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+    gap: 4pt !important;
+  }
+
+  /* ===== 24. ÍCONES ===== */
+  svg,
+  svg.h-4,
+  svg.h-3\.5,
+  svg.h-10 {
+    width: 14px !important;
+    height: 14px !important;
+    max-width: 14px !important;
+    max-height: 14px !important;
+    display: inline-block !important;
+    vertical-align: middle !important;
+  }
+
+  .w-28 svg {
+    width: 32px !important;
+    height: 32px !important;
+    max-width: 32px !important;
+    max-height: 32px !important;
+  }
+
+  /* ===== 25. BADGES E TAGS ===== */
+  .inline-flex.px-2.py-0\.5.rounded-full {
+    padding: 1pt 4pt !important;
+    font-size: 8pt !important;
+  }
+
+  .bg-red-500 { background-color: #dc2626 !important; color: #ffffff !important; }
+  .bg-yellow-500 { background-color: #d97706 !important; color: #ffffff !important; }
+  .bg-green-500 { background-color: #16a34a !important; color: #ffffff !important; }
+  .bg-gray-300 { background-color: #9ca3af !important; color: #1f2937 !important; }
+
+  .text-white { color: #ffffff !important; }
+  .text-gray-700 { color: #374151 !important; }
+  .text-gray-600 { color: #4b5563 !important; }
+
+  /* ===== 26. LINKS ===== */
+  a {
+    text-decoration: none !important;
+    color: #1e3a8a !important;
+  }
+
+  a[href^="#"] {
+    color: #2563eb !important;
+    font-weight: 500 !important;
+  }
+
+  /* ===== 27. GRÁFICOS ===== */
+  .recharts-wrapper {
+    max-width: 480px !important;
+    margin: 0 auto !important;
+    display: block !important;
+  }
+
+  .recharts-surface {
+    width: 100% !important;
+    max-width: 480px !important;
+  }
+
+  .recharts-text {
+    fill: #334155 !important;
+    font-size: 7.5pt !important;
+  }
+
+  .recharts-tooltip-wrapper {
+    display: none !important;
+  }
+
+  /* ===== 28. DISCLAIMER ===== */
+  .bg-blue-50 {
+    background-color: #eff6ff !important;
+    border-color: #bfdbfe !important;
+  }
+
+  /* ===== 29. TABELAS COM SCROLL ===== */
+  .overflow-x-auto {
+    overflow: visible !important;
+    max-width: 100% !important;
+  }
+
+  /* ===== 30. GARANTIR QUE NÃO HAJA PÁGINAS EM BRANCO ===== */
+  .print-content > div:last-child {
+    margin-bottom: 0 !important;
+    padding-bottom: 0 !important;
+  }
+
+  .min-h-\[75vh\] {
+    min-height: auto !important;
+  }
+
+  .min-h-\[60vh\] {
+    min-height: auto !important;
+  }
+
+  /* ===== 31. BORDAS ===== */
+  .border {
+    border: 1px solid #e5e7eb !important;
+  }
+
+  .border-b {
+    border-bottom: 1px solid #e5e7eb !important;
+  }
+
+  .border-gray-200 {
+    border-color: #e5e7eb !important;
+  }
+
+  /* ===== 32. SHADOW ===== */
+  .shadow-sm {
+    box-shadow: none !important;
+  }
+
+  /* ===== 33. ROUNDED ===== */
+  .rounded-lg {
+    border-radius: 2pt !important;
+  }
+
+  .rounded-xl {
+    border-radius: 3pt !important;
+  }
+}

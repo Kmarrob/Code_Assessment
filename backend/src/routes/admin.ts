@@ -15,6 +15,8 @@ import { sanitizeAdminInputs, sanitizeSensitiveFields } from '../middleware/sani
 import { adminPerformanceMiddleware } from '../middleware/adminPerformance.js';
 import { ControlController } from '../controllers/ControlController.js';
 import { UserRole } from '../types/index.js';
+// 🔴 NOVO: Import do multer
+import { uploadLogo, uploadFavicon, handleMulterError } from '../config/multer.js';
 
 const router = Router();
 
@@ -300,19 +302,23 @@ router.patch(
 // ROTAS DE BRANDING - LOGO E FAVICON
 // ============================================
 
-// Upload da logo
+// 🔴 CORRIGIDO: Upload da logo com multer
 router.post(
   '/company/:companyId/branding/logo',
   adminRateLimiter,
   noCache,
+  uploadLogo.single('logo'),
+  handleMulterError,
   AdminController.uploadLogo
 );
 
-// Upload do favicon
+// 🔴 CORRIGIDO: Upload do favicon com multer
 router.post(
   '/company/:companyId/branding/favicon',
   adminRateLimiter,
   noCache,
+  uploadFavicon.single('favicon'),
+  handleMulterError,
   AdminController.uploadFavicon
 );
 

@@ -43,5 +43,11 @@ export declare class SubscriptionController {
      * Acesso: ADMIN
      */
     static getMetrics(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void>;
+    /**
+     * 🔴 NOVO: Obter assinatura ativa de uma empresa específica (admin)
+     * GET /api/subscriptions/admin/:companyId
+     * Acesso: ADMIN
+     */
+    static getActiveSubscriptionByCompany(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void>;
 }
 //# sourceMappingURL=SubscriptionController.d.ts.map

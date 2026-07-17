@@ -1,4 +1,3 @@
-// backend/src/routes/report.routes.ts
 import { Router } from 'express';
 import { ReportController } from '../controllers/ReportController.js';
 import { authenticate, authorize } from '../middleware/auth.js';
@@ -102,6 +101,16 @@ router.put(
   authenticatedRateLimiter,
   sanitizeAdminInputs,
   ReportController.updateReport
+);
+
+// ============================================
+// 🔴 NOVA ROTA: Gerar PDF do relatório
+// ============================================
+router.get(
+  '/:companyId/pdf',
+  authorize(UserRole.REP, UserRole.ADMIN),
+  authenticatedRateLimiter,
+  ReportController.generatePDF
 );
 
 export default router;

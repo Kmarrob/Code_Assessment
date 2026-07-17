@@ -1,4 +1,3 @@
-// frontend/src/components/dashboard/RadarChart.tsx
 import React from 'react';
 import { 
   RadarChart as RechartsRadarChart, 
@@ -46,6 +45,9 @@ export const RadarChart: React.FC<RadarChartProps> = ({
   colors = {},
   isPrinting = false
 }) => {
+  // 🔴 CORREÇÃO: Garantir altura adequada na impressão
+  const chartHeight = isPrinting ? Math.min(height, 320) : height;
+
   const finalColors = {
     Implementado: colors.Implementado || DEFAULT_COLORS.Implementado,
     Recomendado: colors.Recomendado || DEFAULT_COLORS.Recomendado,
@@ -82,7 +84,7 @@ export const RadarChart: React.FC<RadarChartProps> = ({
   }));
 
   // 🔴 CORREÇÃO 1: Tooltip não aparece na impressão
-  // 🔴 CORREÇÃO 2: Largura do gráfico na impressão reduzida para 460px
+  // 🔴 CORREÇÃO 2: Largura do gráfico na impressão ajustada para 480px
   // 🔴 CORREÇÃO 3: Fontes menores na impressão
   // 🔴 CORREÇÃO 4: Padding do card reduzido na impressão
   // 🔴 CORREÇÃO 5: Margens reduzidas na impressão
@@ -164,21 +166,22 @@ export const RadarChart: React.FC<RadarChartProps> = ({
       </div>
 
       {!isPrinting ? (
-        <ResponsiveContainer width="100%" height={height}>
+        <ResponsiveContainer width="100%" height={chartHeight}>
           <RechartsRadarChart data={chartData} margin={{ top: 20, right: 40, bottom: 20, left: 40 }}>
             {radarContent}
           </RechartsRadarChart>
         </ResponsiveContainer>
       ) : (
-        // 🔴 CORREÇÃO: largura reduzida para 460px
-        <RechartsRadarChart 
-          width={460} 
-          height={height} 
-          data={chartData} 
-          margin={{ top: 10, right: 20, bottom: 10, left: 20 }}
-        >
-          {radarContent}
-        </RechartsRadarChart>
+        <div className="flex justify-center items-center">
+          <RechartsRadarChart 
+            width={480} 
+            height={chartHeight} 
+            data={chartData} 
+            margin={{ top: 10, right: 20, bottom: 10, left: 20 }}
+          >
+            {radarContent}
+          </RechartsRadarChart>
+        </div>
       )}
     </div>
   );
