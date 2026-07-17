@@ -26,23 +26,50 @@ export class PDFService {
     let browser = null;
 
     try {
-      // 🔴 CORREÇÃO: Importação dinâmica do Puppeteer (ESM)
-      const puppeteerModule = await import('puppeteer') as PuppeteerType;
-      const puppeteer = puppeteerModule.default || puppeteerModule;
+      // 🔴 CORREÇÃO: Detectar ambiente
+      const isProduction = process.env.NODE_ENV === 'production';
+      
+      let puppeteer;
+      let browserOptions;
+
+      if (isProduction) {
+        // 🔴 CORREÇÃO: Em produção, usar @sparticuz/chromium com puppeteer-core
+        const chromium = await import('@sparticuz/chromium');
+        const puppeteerCore = await import('puppeteer-core');
+        puppeteer = puppeteerCore.default || puppeteerCore;
+        
+        browserOptions = {
+          args: chromium.default.args,
+          defaultViewport: chromium.default.defaultViewport,
+          executablePath: await chromium.default.executablePath(),
+          headless: chromium.default.headless,
+          ignoreHTTPSErrors: true,
+        };
+        
+        logger.info('🔄 Usando Chromium do @sparticuz em produção');
+      } else {
+        // 🔴 CORREÇÃO: Em desenvolvimento, usar puppeteer normal
+        const puppeteerModule = await import('puppeteer') as PuppeteerType;
+        puppeteer = puppeteerModule.default || puppeteerModule;
+        
+        browserOptions = {
+          headless: true,
+          args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-accelerated-2d-canvas',
+            '--disable-gpu',
+            '--disable-web-security',
+            '--disable-features=IsolateOrigins,site-per-process'
+          ]
+        };
+        
+        logger.info('🔄 Usando Puppeteer local em desenvolvimento');
+      }
 
       // Inicializar o browser
-      browser = await puppeteer.launch({
-        headless: true,
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-accelerated-2d-canvas',
-          '--disable-gpu',
-          '--disable-web-security',
-          '--disable-features=IsolateOrigins,site-per-process'
-        ]
-      });
+      browser = await puppeteer.launch(browserOptions);
 
       const page = await browser.newPage();
 
