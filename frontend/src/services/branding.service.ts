@@ -1,4 +1,3 @@
-// frontend/src/services/branding.service.ts
 import api from './api.js';
 import { ApiResponse } from '../types/index.js';
 
@@ -65,17 +64,35 @@ export interface PublicBrandingData {
   settings: BrandingSettings;
 }
 
+// 🔴 CORREÇÃO: Função auxiliar para determinar se o usuário é ADMIN
+const isAdmin = (): boolean => {
+  try {
+    const userStr = localStorage.getItem('user');
+    if (!userStr) return false;
+    const user = JSON.parse(userStr);
+    return user?.role === 'admin';
+  } catch {
+    return false;
+  }
+};
+
 export const brandingService = {
   /**
-   * Upload da logo da empresa (apenas ADMIN)
-   * POST /api/admin/company/:companyId/branding/logo
+   * Upload da logo da empresa
+   * POST /api/admin/company/:companyId/branding/logo (ADMIN)
+   * POST /api/rep/company/:companyId/branding/logo (REP)
    */
   async uploadLogo(companyId: string, file: File): Promise<BrandingData> {
     const formData = new FormData();
     formData.append('logo', file);
 
+    // 🔴 CORREÇÃO: Escolher rota baseada no role
+    const route = isAdmin() 
+      ? `/admin/company/${companyId}/branding/logo`
+      : `/rep/company/${companyId}/branding/logo`;
+
     const response = await api.post<ApiResponse<BrandingData>>(
-      `/admin/company/${companyId}/branding/logo`,
+      route,
       formData,
       {
         headers: {
@@ -87,15 +104,21 @@ export const brandingService = {
   },
 
   /**
-   * Upload do favicon da empresa (apenas ADMIN)
-   * POST /api/admin/company/:companyId/branding/favicon
+   * Upload do favicon da empresa
+   * POST /api/admin/company/:companyId/branding/favicon (ADMIN)
+   * POST /api/rep/company/:companyId/branding/favicon (REP)
    */
   async uploadFavicon(companyId: string, file: File): Promise<BrandingData> {
     const formData = new FormData();
     formData.append('favicon', file);
 
+    // 🔴 CORREÇÃO: Escolher rota baseada no role
+    const route = isAdmin() 
+      ? `/admin/company/${companyId}/branding/favicon`
+      : `/rep/company/${companyId}/branding/favicon`;
+
     const response = await api.post<ApiResponse<BrandingData>>(
-      `/admin/company/${companyId}/branding/favicon`,
+      route,
       formData,
       {
         headers: {
@@ -119,30 +142,43 @@ export const brandingService = {
   },
 
   /**
-   * Remover logo da empresa (apenas ADMIN)
-   * DELETE /api/admin/company/:companyId/branding/logo
+   * Remover logo da empresa
+   * DELETE /api/admin/company/:companyId/branding/logo (ADMIN)
+   * DELETE /api/rep/company/:companyId/branding/logo (REP)
    */
   async removeLogo(companyId: string): Promise<{ logoRemoved: boolean }> {
+    // 🔴 CORREÇÃO: Escolher rota baseada no role
+    const route = isAdmin() 
+      ? `/admin/company/${companyId}/branding/logo`
+      : `/rep/company/${companyId}/branding/logo`;
+
     const response = await api.delete<ApiResponse<{ logoRemoved: boolean }>>(
-      `/admin/company/${companyId}/branding/logo`
+      route
     );
     return response.data.data;
   },
 
   /**
-   * Remover favicon da empresa (apenas ADMIN)
-   * DELETE /api/admin/company/:companyId/branding/favicon
+   * Remover favicon da empresa
+   * DELETE /api/admin/company/:companyId/branding/favicon (ADMIN)
+   * DELETE /api/rep/company/:companyId/branding/favicon (REP)
    */
   async removeFavicon(companyId: string): Promise<{ faviconRemoved: boolean }> {
+    // 🔴 CORREÇÃO: Escolher rota baseada no role
+    const route = isAdmin() 
+      ? `/admin/company/${companyId}/branding/favicon`
+      : `/rep/company/${companyId}/branding/favicon`;
+
     const response = await api.delete<ApiResponse<{ faviconRemoved: boolean }>>(
-      `/admin/company/${companyId}/branding/favicon`
+      route
     );
     return response.data.data;
   },
 
   /**
-   * Atualizar configurações de branding (apenas ADMIN)
-   * PUT /api/admin/company/:companyId/branding/settings
+   * Atualizar configurações de branding
+   * PUT /api/admin/company/:companyId/branding/settings (ADMIN)
+   * PUT /api/rep/company/:companyId/branding/settings (REP)
    */
   async updateSettings(
     companyId: string,
@@ -152,8 +188,13 @@ export const brandingService = {
       useCustomColors?: boolean;
     }
   ): Promise<{ settings: BrandingSettings }> {
+    // 🔴 CORREÇÃO: Escolher rota baseada no role
+    const route = isAdmin() 
+      ? `/admin/company/${companyId}/branding/settings`
+      : `/rep/company/${companyId}/branding/settings`;
+
     const response = await api.put<ApiResponse<{ settings: BrandingSettings }>>(
-      `/admin/company/${companyId}/branding/settings`,
+      route,
       settings
     );
     return response.data.data;

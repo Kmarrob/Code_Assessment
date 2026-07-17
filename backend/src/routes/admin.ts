@@ -1,4 +1,3 @@
-// backend/src/routes/admin.ts
 import { Router } from 'express';
 import { AdminController } from '../controllers/AdminController.js';
 import { CompanyController } from '../controllers/CompanyController.js';
@@ -352,6 +351,36 @@ router.put(
   adminRateLimiter,
   noCache,
   AdminController.updateBrandingSettings
+);
+
+// ============================================
+// 🔴 NOVO: ROTAS DE BRANDING PARA PREPOSTO (REP)
+// ============================================
+
+// 🔴 NOVO: Upload da logo para REP (rota separada com autorização mista)
+router.post(
+  '/rep/company/:companyId/branding/logo',
+  authenticatedRateLimiter,
+  noCache,
+  uploadLogo.single('logo'),
+  handleMulterError,
+  AdminController.uploadLogo
+);
+
+// 🔴 NOVO: Remover logo para REP
+router.delete(
+  '/rep/company/:companyId/branding/logo',
+  authenticatedRateLimiter,
+  noCache,
+  AdminController.removeLogo
+);
+
+// 🔴 NOVO: Obter branding para REP
+router.get(
+  '/rep/company/:companyId/branding',
+  authenticatedRateLimiter,
+  noCache,
+  AdminController.getBranding
 );
 
 export default router;
