@@ -1,7 +1,10 @@
+//backend/src/server.ts
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
+import path from 'path';
+import fs from 'fs';
 import { config } from './config/env.js';
 import { db } from './config/database.js';
 import { logger, httpLogger } from './utils/logger.js';
@@ -57,7 +60,8 @@ app.use(helmet({
         "https://api.code-assessment.com"
       ],
       fontSrc: ["'self'", "https:", "data:"],
-      imgSrc: ["'self'", "data:", "https:"],
+      // 🔴 CORREÇÃO: Adicionar blob: para permitir pré-visualização de imagens
+      imgSrc: ["'self'", "data:", "https:", "blob:"],
       scriptSrc: ["'self'", "'unsafe-inline'"],
       styleSrc: ["'self'", "https:", "'unsafe-inline'"],
     },
@@ -104,6 +108,21 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(httpLogger);
+
+// ============================================
+// 🔴 CORREÇÃO: Servir arquivos estáticos (uploads)
+// ============================================
+const uploadsPath = path.join(process.cwd(), 'uploads');
+
+// Criar diretório se não existir
+if (!fs.existsSync(uploadsPath)) {
+  fs.mkdirSync(uploadsPath, { recursive: true });
+  logger.info(`📁 Diretório de uploads criado: ${uploadsPath}`);
+}
+
+// Servir arquivos estáticos da pasta uploads
+app.use('/uploads', express.static(uploadsPath));
+logger.info(`📁 Servindo arquivos estáticos de: ${uploadsPath}`);
 
 // ============================================
 // RATE LIMIT
@@ -213,6 +232,7 @@ async function startServer() {
       logger.info(`📋 Payment Routes: http://localhost:${PORT}/api/payments`);
       logger.info(`🏷️ Branding Routes: http://localhost:${PORT}/api/branding`);
       logger.info(`📊 Analytics Routes: http://localhost:${PORT}/api/admin/analytics`);
+      logger.info(`📁 Uploads servidos em: http://localhost:${PORT}/uploads`);
     });
 
   } catch (error) {
