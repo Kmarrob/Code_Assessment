@@ -1,3 +1,4 @@
+//frontend/src/pages/ReportView.tsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext.js';
@@ -6,6 +7,7 @@ import { recommendationService } from '../services/recommendation.service.js';
 import { Report, ReportStats, RoadmapData } from '../types/report.js';
 import { brandingService, PublicBrandingData } from '../services/branding.service.js';
 import { FeatureGuard } from '../components/common/FeatureGuard.js';
+import api from '../services/api.js'; // 🔴 NOVO: Import do api
 import {
   FileText,
   Loader2,
@@ -270,7 +272,7 @@ export const ReportView: React.FC = () => {
   };
 
   // ============================================
-  // 🔧 CORREÇÃO v34.3 - handleDownloadPDF com a chave correta E async
+  // 🔧 CORREÇÃO v34.4 - handleDownloadPDF usando o api do axios
   // ============================================
   const handleDownloadPDF = async () => {
     setIsDownloading(true);
@@ -287,53 +289,15 @@ export const ReportView: React.FC = () => {
       const company = (report as any)?.companyId as any;
       const companyName = company?.name || 'relatorio';
 
-      // 🔴 CORREÇÃO: Usar a chave correta 'access_token' (com underscore)
-      // DEFINIDA EM STORAGE_KEYS.ACCESS_TOKEN = 'access_token'
-      let token = localStorage.getItem('access_token');
-      
-      // Fallback para outras chaves possíveis (por compatibilidade)
-      if (!token) {
-        token = localStorage.getItem('accessToken');
-      }
-      if (!token) {
-        token = localStorage.getItem('token');
-      }
-
-      if (!token) {
-        console.error('❌ Token não encontrado. Chaves disponíveis:', Object.keys(localStorage));
-        alert('⚠️ Você precisa estar logado para baixar o PDF. Faça login novamente.');
-        setIsDownloading(false);
-        return;
-      }
-
-      console.log('✅ Token encontrado, tamanho:', token.length);
-
-      // Usar URL completa para API
-      const apiUrl = import.meta.env.VITE_API_URL || '';
-      const url = `${apiUrl}/api/reports/${companyId}/pdf`;
-      
-      console.log('📄 Gerando PDF para empresa:', companyId);
-      console.log('📄 URL:', url);
-
-      const response = await fetch(url, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+      // 🔴 CORREÇÃO: Usar o api do axios em vez de fetch direto
+      // Isso garante que o interceptor de refresh token seja acionado
+      const response = await api.get(`/reports/${companyId}/pdf`, {
+        responseType: 'blob',
+        timeout: 120000, // 2 minutos para gerar o PDF
       });
 
-      if (!response.ok) {
-        let errorMessage = `Erro ${response.status}: `;
-        try {
-          const errorData = await response.json();
-          errorMessage += errorData.message || response.statusText;
-        } catch {
-          errorMessage += response.statusText || 'Erro desconhecido';
-        }
-        throw new Error(errorMessage);
-      }
-
-      const blob = await response.blob();
+      // O response.data é um Blob
+      const blob = response.data;
       
       if (blob.type !== 'application/pdf' && !blob.type.includes('pdf')) {
         console.warn('⚠️ O blob não é um PDF válido:', blob.type);
@@ -354,10 +318,17 @@ export const ReportView: React.FC = () => {
       window.URL.revokeObjectURL(downloadUrl);
 
       console.log('✅ PDF baixado com sucesso!');
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Erro ao baixar PDF:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Erro ao gerar o PDF. Tente novamente.';
-      alert(`❌ ${errorMessage}`);
+      
+      // 🔴 CORREÇÃO: Se for erro 401, redirecionar para login
+      if (error.response?.status === 401) {
+        alert('⚠️ Sua sessão expirou. Faça login novamente.');
+        window.location.href = '/login';
+      } else {
+        const errorMessage = error.message || 'Erro ao gerar o PDF. Tente novamente.';
+        alert(`❌ ${errorMessage}`);
+      }
     } finally {
       setIsDownloading(false);
     }
