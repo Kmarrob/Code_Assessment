@@ -233,6 +233,13 @@ export class PDFService {
       const baseUrl = process.env.BASE_URL || 'https://cisatool.com.br';
       finalLogoUrl = `${baseUrl}${finalLogoUrl.startsWith('/') ? '' : '/'}${finalLogoUrl}`;
     }
+
+    // 🔴 NOVA CORREÇÃO: Se estiver em produção, substituir o domínio para o Render
+    const isProduction = process.env.NODE_ENV === 'production';
+    if (isProduction && finalLogoUrl && finalLogoUrl.includes('cisatool.com.br')) {
+      finalLogoUrl = finalLogoUrl.replace('cisatool.com.br', 'code-assessment-898z.onrender.com');
+      logger.info(`🔄 URL da logo substituída para produção: ${finalLogoUrl}`);
+    }
     
     // 🔴 CORREÇÃO: Se não tiver URL, usar fallback (texto)
     const logoHtml = finalLogoUrl ? 
