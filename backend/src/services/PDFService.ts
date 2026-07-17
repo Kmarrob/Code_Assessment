@@ -33,15 +33,18 @@ export class PDFService {
       let browserOptions;
 
       if (isProduction) {
-        // 🔴 CORREÇÃO: Em produção, usar @sparticuz/chromium com puppeteer-core
+        // 🔴 CORREÇÃO: Usar @sparticuz/chromium em produção
         const chromium = await import('@sparticuz/chromium');
         const puppeteerCore = await import('puppeteer-core');
         puppeteer = puppeteerCore.default || puppeteerCore;
         
+        // 🔴 CORREÇÃO: API correta para a versão instalada
+        const chromiumInstance = chromium.default || chromium;
+        
         browserOptions = {
-          args: chromium.args || [],
-          defaultViewport: chromium.defaultViewport || { width: 1200, height: 800 },
-          executablePath: await chromium.executablePath() || '/usr/bin/chromium-browser',
+          args: chromiumInstance.args || [],
+          defaultViewport: chromiumInstance.defaultViewport || { width: 1200, height: 800 },
+          executablePath: await chromiumInstance.executablePath() || '/usr/bin/chromium-browser',
           headless: true,
         };
         
@@ -1182,19 +1185,20 @@ export class PDFService {
               </thead>
               <tbody>
                 ${roadmap.sections.processuais.items.map((item: any, idx: number) => {
-                  const priorityColors = {
+                  const priorityColors: Record<string, string> = {
                     'Crítico': 'text-red-600 font-bold',
                     'Muito Alto': 'text-orange-600 font-bold',
                     'Alto': 'text-yellow-600 font-bold',
                     'Médio': 'text-blue-600',
                     'Baixo': 'text-gray-500',
                   };
+                  const colorClass = priorityColors[item.priority] || 'text-gray-700';
                   return `
                     <tr>
                       <td style="text-align: center; font-size: 7pt;">${idx + 1}</td>
                       <td style="font-size: 7pt;">${item.name}</td>
                       <td style="font-size: 6.5pt;">${item.description || '-'}</td>
-                      <td style="text-align: center; font-size: 7pt; ${priorityColors[item.priority] || 'text-gray-700'}">${item.priority}</td>
+                      <td style="text-align: center; font-size: 7pt; ${colorClass}">${item.priority}</td>
                       <td style="text-align: center; font-size: 6.5pt;">${item.relatedControls?.length ? item.relatedControls.join(', ') : '-'}</td>
                     </tr>
                   `;
@@ -1218,19 +1222,20 @@ export class PDFService {
               </thead>
               <tbody>
                 ${roadmap.sections.politicas.items.map((item: any, idx: number) => {
-                  const priorityColors = {
+                  const priorityColors: Record<string, string> = {
                     'Crítico': 'text-red-600 font-bold',
                     'Muito Alto': 'text-orange-600 font-bold',
                     'Alto': 'text-yellow-600 font-bold',
                     'Médio': 'text-blue-600',
                     'Baixo': 'text-gray-500',
                   };
+                  const colorClass = priorityColors[item.priority] || 'text-gray-700';
                   return `
                     <tr>
                       <td style="text-align: center; font-size: 7pt;">${idx + 1}</td>
                       <td style="font-size: 7pt;">${item.name}</td>
                       <td style="font-size: 6.5pt;">${item.description || '-'}</td>
-                      <td style="text-align: center; font-size: 7pt; ${priorityColors[item.priority] || 'text-gray-700'}">${item.priority}</td>
+                      <td style="text-align: center; font-size: 7pt; ${colorClass}">${item.priority}</td>
                       <td style="text-align: center; font-size: 6.5pt;">${item.relatedControls?.length ? item.relatedControls.join(', ') : '-'}</td>
                     </tr>
                   `;
@@ -1254,19 +1259,20 @@ export class PDFService {
               </thead>
               <tbody>
                 ${roadmap.sections.tecnicas.items.map((item: any, idx: number) => {
-                  const priorityColors = {
+                  const priorityColors: Record<string, string> = {
                     'Crítico': 'text-red-600 font-bold',
                     'Muito Alto': 'text-orange-600 font-bold',
                     'Alto': 'text-yellow-600 font-bold',
                     'Médio': 'text-blue-600',
                     'Baixo': 'text-gray-500',
                   };
+                  const colorClass = priorityColors[item.priority] || 'text-gray-700';
                   return `
                     <tr>
                       <td style="text-align: center; font-size: 7pt;">${idx + 1}</td>
                       <td style="font-size: 7pt;">${item.name}</td>
                       <td style="font-size: 6.5pt;">${item.description || '-'}</td>
-                      <td style="text-align: center; font-size: 7pt; ${priorityColors[item.priority] || 'text-gray-700'}">${item.priority}</td>
+                      <td style="text-align: center; font-size: 7pt; ${colorClass}">${item.priority}</td>
                       <td style="text-align: center; font-size: 6.5pt;">${item.relatedControls?.length ? item.relatedControls.join(', ') : '-'}</td>
                     </tr>
                   `;
