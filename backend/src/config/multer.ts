@@ -53,7 +53,14 @@ const storage = multer.diskStorage({
     // Gerar nome único para o arquivo
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
     const ext = path.extname(file.originalname);
-    const name = path.basename(file.originalname, ext);
+    
+    // 🔴 CORREÇÃO: Sanitizar nome do arquivo (remover acentos e caracteres especiais)
+    const name = path.basename(file.originalname, ext)
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '') // Remove acentos
+      .replace(/[^a-zA-Z0-9._-]/g, '_') // Substitui caracteres especiais por _
+      .replace(/_+/g, '_'); // Remove underscores duplicados
+    
     const filename = `${name}-${uniqueSuffix}${ext}`;
     cb(null, filename);
   }
