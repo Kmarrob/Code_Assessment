@@ -33,42 +33,41 @@ export class PDFService {
       let browserOptions;
 
       if (isProduction) {
-        // 🔴 CORREÇÃO: Usar @sparticuz/chromium em produção
-        const chromium = await import('@sparticuz/chromium');
-        const puppeteerCore = await import('puppeteer-core');
-        puppeteer = puppeteerCore.default || puppeteerCore;
-        
-        // 🔴 CORREÇÃO: API correta para a versão instalada
-        const chromiumInstance = chromium.default || chromium;
-        
-        browserOptions = {
-          args: chromiumInstance.args || [],
-          defaultViewport: chromiumInstance.defaultViewport || { width: 1200, height: 800 },
-          executablePath: await chromiumInstance.executablePath() || '/usr/bin/chromium-browser',
-          headless: true,
-        };
-        
-        logger.info('🔄 Usando Chromium do @sparticuz em produção');
-      } else {
-        // 🔴 CORREÇÃO: Em desenvolvimento, usar puppeteer normal
-        const puppeteerModule = await import('puppeteer') as PuppeteerType;
-        puppeteer = puppeteerModule.default || puppeteerModule;
-        
-        browserOptions = {
-          headless: true,
-          args: [
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage',
-            '--disable-accelerated-2d-canvas',
-            '--disable-gpu',
-            '--disable-web-security',
-            '--disable-features=IsolateOrigins,site-per-process'
-          ]
-        };
-        
-        logger.info('🔄 Usando Puppeteer local em desenvolvimento');
-      }
+  // 🔴 CORREÇÃO: Usar @sparticuz/chromium versão 149.0.0
+  const chromium = await import('@sparticuz/chromium');
+  const puppeteerCore = await import('puppeteer-core');
+  puppeteer = puppeteerCore.default || puppeteerCore;
+  
+  // 🔴 CORREÇÃO: API correta para a versão 149.0.0
+  const executablePath = await chromium.executablePath();
+  
+  browserOptions = {
+    args: chromium.args || [],
+    executablePath: executablePath,
+    headless: true,
+  };
+  
+  logger.info(`🔄 Usando Chromium do @sparticuz v149.0.0 em produção`);
+} else {
+  // 🔴 CORREÇÃO: Em desenvolvimento, usar puppeteer normal
+  const puppeteerModule = await import('puppeteer') as PuppeteerType;
+  puppeteer = puppeteerModule.default || puppeteerModule;
+  
+  browserOptions = {
+    headless: true,
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-accelerated-2d-canvas',
+      '--disable-gpu',
+      '--disable-web-security',
+      '--disable-features=IsolateOrigins,site-per-process'
+    ]
+  };
+  
+  logger.info('🔄 Usando Puppeteer local em desenvolvimento');
+}
 
       // Inicializar o browser
       browser = await puppeteer.launch(browserOptions);
