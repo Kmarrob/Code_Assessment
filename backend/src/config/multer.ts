@@ -1,116 +1,139 @@
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
-import { Request } from 'express';
+import { AppError } from '../middleware/errorHandler.js';
 import { logger } from '../utils/logger.js';
 
-// Garantir que o diretório de uploads existe
-const uploadDir = path.join(process.cwd(), 'uploads');
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-  logger.info(`📁 Diretório de uploads criado: ${uploadDir}`);
-}
+// 🔴 CORREÇÃO: Definir caminho base para uploads
+// Usar o Disk do Render se estiver em produção, ou local se estiver em desenvolvimento
+const isProduction = process.env.NODE_ENV === 'production';
+const baseUploadDir = isProduction 
+  ? '/opt/render/project/src/backend/uploads' // Disk do Render
+  : path.join(process.cwd(), 'uploads'); // Local
 
-// Configuração de armazenamento
+// Garantir que os diretórios existam
+const ensureDirectoryExists = (dir: string) => {
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+    logger.info(`📁 Diretório criado: ${dir}`);
+  }
+};
+
+// Criar diretórios principais
+const uploadsDir = baseUploadDir;
+const logoDir = path.join(uploadsDir, 'logo');
+const faviconDir = path.join(uploadsDir, 'favicon');
+
+ensureDirectoryExists(uploadsDir);
+ensureDirectoryExists(logoDir);
+ensureDirectoryExists(faviconDir);
+
+// Configuração do storage do Multer
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, uploadDir);
+    let destinationPath = uploadsDir;
+    
+    // Determinar destino baseado no campo do formulário
+    if (file.fieldname === 'logo') {
+      destinationPath = logoDir;
+    } else if (file.fieldname === 'favicon') {
+      destinationPath = faviconDir;
+    }
+    
+    // Criar subdiretório para a empresa (se companyId estiver disponível)
+    const companyId = req.params.companyId;
+    if (companyId) {
+      destinationPath = path.join(destinationPath, companyId);
+      ensureDirectoryExists(destinationPath);
+    }
+    
+    cb(null, destinationPath);
   },
   filename: (req, file, cb) => {
-    // Gerar nome único: timestamp + nome original
+    // Gerar nome único para o arquivo
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
     const ext = path.extname(file.originalname);
-    const baseName = path.basename(file.originalname, ext);
-    const sanitizedName = baseName.replace(/[^a-zA-Z0-9]/g, '-');
-    cb(null, `${sanitizedName}-${uniqueSuffix}${ext}`);
+    const name = path.basename(file.originalname, ext);
+    const filename = `${name}-${uniqueSuffix}${ext}`;
+    cb(null, filename);
   }
 });
 
-// Filtro de arquivos - permitir apenas imagens
-const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
-  const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
+// Filtro de arquivos
+const fileFilter = (req: any, file: any, cb: any) => {
+  const allowedMimeTypes = [
+    'image/png', 
+    'image/jpeg', 
+    'image/jpg', 
+    'image/svg+xml', 
+    'image/webp',
+    'image/x-icon',
+    'image/vnd.microsoft.icon'
+  ];
   
-  if (allowedTypes.includes(file.mimetype)) {
+  if (allowedMimeTypes.includes(file.mimetype)) {
     cb(null, true);
   } else {
-    cb(new Error(`Tipo de arquivo não permitido. Use: ${allowedTypes.join(', ')}`));
+    cb(new AppError(`Formato de arquivo não suportado: ${file.mimetype}. Use PNG, JPG, SVG, WEBP ou ICO.`, 400), false);
   }
 };
 
-// Limites de arquivo
+// Limites de tamanho
 const limits = {
-  fileSize: 5 * 1024 * 1024, // 5MB
-  files: 1,
+  fileSize: 2 * 1024 * 1024, // 2MB para logo
 };
 
-// Middleware multer para upload de logo
+// Configuração do Multer para logo
 export const uploadLogo = multer({
   storage,
   fileFilter,
-  limits
+  limits: {
+    fileSize: 2 * 1024 * 1024, // 2MB
+  },
 });
 
-// Middleware multer para upload de favicon (permitir ícones)
-const faviconFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
-  const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml', 'image/x-icon', 'image/vnd.microsoft.icon'];
-  
-  if (allowedTypes.includes(file.mimetype)) {
-    cb(null, true);
-  } else {
-    cb(new Error(`Tipo de arquivo não permitido para favicon. Use: ${allowedTypes.join(', ')}`));
-  }
-};
-
+// Configuração do Multer para favicon
 export const uploadFavicon = multer({
   storage,
-  fileFilter: faviconFilter,
-  limits
+  fileFilter,
+  limits: {
+    fileSize: 512 * 1024, // 512KB
+  },
 });
 
-// Middleware de erro para multer
-export const handleMulterError = (err: any, req: Request, res: any, next: any) => {
-  // Verificar se é erro do Multer
+// Middleware para tratar erros do Multer
+export const handleMulterError = (err: any, req: any, res: any, next: any) => {
   if (err instanceof multer.MulterError) {
-    // 🔴 CORRIGIDO: Usar os códigos corretos do Multer
     if (err.code === 'LIMIT_FILE_SIZE') {
       return res.status(400).json({
         success: false,
-        message: 'Arquivo muito grande. Tamanho máximo permitido: 5MB',
-        code: 'LIMIT_FILE_SIZE',
+        message: 'Arquivo muito grande. Limite máximo: 2MB.',
         statusCode: 400,
         timestamp: new Date().toISOString(),
-        path: req.path
       });
     }
     if (err.code === 'LIMIT_UNEXPECTED_FILE') {
       return res.status(400).json({
         success: false,
-        message: 'Apenas um arquivo pode ser enviado por vez',
-        code: 'LIMIT_UNEXPECTED_FILE',
+        message: 'Campo de arquivo inesperado.',
         statusCode: 400,
         timestamp: new Date().toISOString(),
-        path: req.path
       });
     }
     return res.status(400).json({
       success: false,
       message: `Erro no upload: ${err.message}`,
-      code: err.code,
       statusCode: 400,
       timestamp: new Date().toISOString(),
-      path: req.path
     });
   }
   
-  // Outros erros (não relacionados ao Multer)
   if (err) {
     return res.status(400).json({
       success: false,
-      message: err.message || 'Erro no upload do arquivo',
-      code: 'UPLOAD_ERROR',
+      message: err.message || 'Erro ao fazer upload do arquivo',
       statusCode: 400,
       timestamp: new Date().toISOString(),
-      path: req.path
     });
   }
   
@@ -120,5 +143,5 @@ export const handleMulterError = (err: any, req: Request, res: any, next: any) =
 export default {
   uploadLogo,
   uploadFavicon,
-  handleMulterError
+  handleMulterError,
 };
