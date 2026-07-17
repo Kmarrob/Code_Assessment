@@ -38,11 +38,13 @@ export class PDFService {
         const puppeteerCore = await import('puppeteer-core');
         puppeteer = puppeteerCore.default || puppeteerCore;
         
+        // 🔴 CORREÇÃO: API correta para @sparticuz/chromium
         browserOptions = {
-          args: chromium.default.args,
-          defaultViewport: chromium.default.defaultViewport,
-          executablePath: await chromium.default.executablePath(),
-          headless: chromium.default.headless,
+          args: chromium.args || [],
+          defaultViewport: chromium.defaultViewport || { width: 1200, height: 800 },
+          executablePath: await chromium.executablePath(),
+          headless: true,
+          ignoreHTTPSErrors: true,
         };
         
         logger.info('🔄 Usando Chromium do @sparticuz em produção');
