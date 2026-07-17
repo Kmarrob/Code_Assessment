@@ -1,5 +1,3 @@
-// Puppeteer é ESM, usar importação dinâmica
-type PuppeteerType = typeof import('puppeteer');
 import { logger } from '../utils/logger.js';
 
 interface PDFData {
@@ -26,51 +24,23 @@ export class PDFService {
     let browser = null;
 
     try {
-      // 🔴 CORREÇÃO: Detectar ambiente
-      const isProduction = process.env.NODE_ENV === 'production';
-      
-      let puppeteer;
-      let browserOptions;
+      // 🔴 CORREÇÃO: Importação dinâmica do Puppeteer (ESM)
+      const puppeteerModule = await import('puppeteer');
+      const puppeteer = puppeteerModule.default || puppeteerModule;
 
-      if (isProduction) {
-        // 🔴 CORREÇÃO: Em produção, usar @sparticuz/chromium com puppeteer-core
-        const chromium = await import('@sparticuz/chromium');
-        const puppeteerCore = await import('puppeteer-core');
-        puppeteer = puppeteerCore.default || puppeteerCore;
-        
-        // 🔴 CORREÇÃO: API correta para @sparticuz/chromium
-        browserOptions = {
-          args: chromium.args || [],
-          defaultViewport: chromium.defaultViewport || { width: 1200, height: 800 },
-          executablePath: await chromium.executablePath(),
-          headless: true,
-          ignoreHTTPSErrors: true,
-        };
-        
-        logger.info('🔄 Usando Chromium do @sparticuz em produção');
-      } else {
-        // 🔴 CORREÇÃO: Em desenvolvimento, usar puppeteer normal
-        const puppeteerModule = await import('puppeteer') as PuppeteerType;
-        puppeteer = puppeteerModule.default || puppeteerModule;
-        
-        browserOptions = {
-          headless: true,
-          args: [
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage',
-            '--disable-accelerated-2d-canvas',
-            '--disable-gpu',
-            '--disable-web-security',
-            '--disable-features=IsolateOrigins,site-per-process'
-          ]
-        };
-        
-        logger.info('🔄 Usando Puppeteer local em desenvolvimento');
-      }
-
-      // Inicializar o browser
-      browser = await puppeteer.launch(browserOptions);
+      // 🔴 CORREÇÃO: args simplificados e otimizados para o Render
+      browser = await puppeteer.launch({
+        headless: true,
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-accelerated-2d-canvas',
+          '--disable-gpu',
+          '--disable-web-security',
+          '--disable-features=IsolateOrigins,site-per-process'
+        ]
+      });
 
       const page = await browser.newPage();
 
@@ -84,7 +54,7 @@ export class PDFService {
       // Gerar o HTML do relatório
       const html = this.generateReportHTML(data);
 
-      // 🔴 CORREÇÃO 1: waitUntil com tipo correto e mais robusto
+      // 🔴 CORREÇÃO: waitUntil com tipo correto e mais robusto
       await page.setContent(html, {
         waitUntil: ['load', 'domcontentloaded', 'networkidle0'] as any
       });
@@ -94,7 +64,7 @@ export class PDFService {
         await page.waitForSelector('.recharts-wrapper', { timeout: 10000 });
         logger.info('✅ Gráficos Recharts encontrados, aguardando renderização...');
         
-        // 🔴 CORREÇÃO 2: Espera mais tempo para renderizar gráficos
+        // 🔴 CORREÇÃO: Espera mais tempo para renderizar gráficos
         await page.evaluate(() => {
           return new Promise((resolve) => {
             // Aguardar 2 segundos para garantir que os gráficos sejam renderizados
@@ -118,7 +88,7 @@ export class PDFService {
         });
       });
 
-      // 🔴 CORREÇÃO 3: Ajustar margens para melhor aproveitamento da página
+      // 🔴 CORREÇÃO: Ajustar margens para melhor aproveitamento da página
       const pdf = await page.pdf({
         format: 'A4',
         printBackground: true,
@@ -147,7 +117,7 @@ export class PDFService {
         `,
         preferCSSPageSize: true,
         scale: 1,
-        // 🔴 CORREÇÃO 5: Aumentar timeout para relatórios grandes
+        // 🔴 CORREÇÃO: Aumentar timeout para relatórios grandes
         timeout: 120000,
       });
 
@@ -262,7 +232,7 @@ export class PDFService {
       finalLogoUrl = `${baseUrl}${finalLogoUrl.startsWith('/') ? '' : '/'}${finalLogoUrl}`;
     }
 
-    // 🔴 NOVA CORREÇÃO: Se estiver em produção, substituir o domínio para o Render
+    // 🔴 CORREÇÃO: Se estiver em produção, substituir o domínio para o Render
     const isProduction = process.env.NODE_ENV === 'production';
     if (isProduction && finalLogoUrl && finalLogoUrl.includes('cisatool.com.br')) {
       finalLogoUrl = finalLogoUrl.replace('cisatool.com.br', 'code-assessment-898z.onrender.com');
