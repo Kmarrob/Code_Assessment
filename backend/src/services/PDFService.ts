@@ -1,3 +1,5 @@
+// Puppeteer é ESM, usar importação dinâmica
+type PuppeteerType = typeof import('puppeteer');
 import { logger } from '../utils/logger.js';
 
 interface PDFData {
@@ -24,23 +26,49 @@ export class PDFService {
     let browser = null;
 
     try {
-      // 🔴 CORREÇÃO: Importação dinâmica do Puppeteer (ESM)
-      const puppeteerModule = await import('puppeteer');
-      const puppeteer = puppeteerModule.default || puppeteerModule;
+      // 🔴 CORREÇÃO: Detectar ambiente
+      const isProduction = process.env.NODE_ENV === 'production';
+      
+      let puppeteer;
+      let browserOptions;
 
-      // 🔴 CORREÇÃO: args simplificados e otimizados para o Render
-      browser = await puppeteer.launch({
-        headless: true,
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-accelerated-2d-canvas',
-          '--disable-gpu',
-          '--disable-web-security',
-          '--disable-features=IsolateOrigins,site-per-process'
-        ]
-      });
+      if (isProduction) {
+        // 🔴 CORREÇÃO: Em produção, usar @sparticuz/chromium com puppeteer-core
+        const chromium = await import('@sparticuz/chromium');
+        const puppeteerCore = await import('puppeteer-core');
+        puppeteer = puppeteerCore.default || puppeteerCore;
+        
+        browserOptions = {
+          args: chromium.args || [],
+          defaultViewport: chromium.defaultViewport || { width: 1200, height: 800 },
+          executablePath: await chromium.executablePath() || '/usr/bin/chromium-browser',
+          headless: true,
+        };
+        
+        logger.info('🔄 Usando Chromium do @sparticuz em produção');
+      } else {
+        // 🔴 CORREÇÃO: Em desenvolvimento, usar puppeteer normal
+        const puppeteerModule = await import('puppeteer') as PuppeteerType;
+        puppeteer = puppeteerModule.default || puppeteerModule;
+        
+        browserOptions = {
+          headless: true,
+          args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-accelerated-2d-canvas',
+            '--disable-gpu',
+            '--disable-web-security',
+            '--disable-features=IsolateOrigins,site-per-process'
+          ]
+        };
+        
+        logger.info('🔄 Usando Puppeteer local em desenvolvimento');
+      }
+
+      // Inicializar o browser
+      browser = await puppeteer.launch(browserOptions);
 
       const page = await browser.newPage();
 
@@ -54,7 +82,7 @@ export class PDFService {
       // Gerar o HTML do relatório
       const html = this.generateReportHTML(data);
 
-      // 🔴 CORREÇÃO: waitUntil com tipo correto e mais robusto
+      // 🔴 CORREÇÃO 1: waitUntil com tipo correto e mais robusto
       await page.setContent(html, {
         waitUntil: ['load', 'domcontentloaded', 'networkidle0'] as any
       });
@@ -64,7 +92,7 @@ export class PDFService {
         await page.waitForSelector('.recharts-wrapper', { timeout: 10000 });
         logger.info('✅ Gráficos Recharts encontrados, aguardando renderização...');
         
-        // 🔴 CORREÇÃO: Espera mais tempo para renderizar gráficos
+        // 🔴 CORREÇÃO 2: Espera mais tempo para renderizar gráficos
         await page.evaluate(() => {
           return new Promise((resolve) => {
             // Aguardar 2 segundos para garantir que os gráficos sejam renderizados
@@ -88,7 +116,7 @@ export class PDFService {
         });
       });
 
-      // 🔴 CORREÇÃO: Ajustar margens para melhor aproveitamento da página
+      // 🔴 CORREÇÃO 3: Ajustar margens para melhor aproveitamento da página
       const pdf = await page.pdf({
         format: 'A4',
         printBackground: true,
@@ -117,7 +145,7 @@ export class PDFService {
         `,
         preferCSSPageSize: true,
         scale: 1,
-        // 🔴 CORREÇÃO: Aumentar timeout para relatórios grandes
+        // 🔴 CORREÇÃO 5: Aumentar timeout para relatórios grandes
         timeout: 120000,
       });
 
@@ -232,7 +260,7 @@ export class PDFService {
       finalLogoUrl = `${baseUrl}${finalLogoUrl.startsWith('/') ? '' : '/'}${finalLogoUrl}`;
     }
 
-    // 🔴 CORREÇÃO: Se estiver em produção, substituir o domínio para o Render
+    // 🔴 NOVA CORREÇÃO: Se estiver em produção, substituir o domínio para o Render
     const isProduction = process.env.NODE_ENV === 'production';
     if (isProduction && finalLogoUrl && finalLogoUrl.includes('cisatool.com.br')) {
       finalLogoUrl = finalLogoUrl.replace('cisatool.com.br', 'code-assessment-898z.onrender.com');
@@ -707,9 +735,15 @@ export class PDFService {
       <!-- METODOLOGIA DE AVALIAÇÃO -->
       <div class="page print-section">
         <h2>4. Metodologia de Avaliação</h2>
-        <p>Com estrutura mais simples e controles contemporâneos, a ABNT NBR ISO/IEC 27002:2022, tem uma visão holística e coordenada dos riscos de segurança da informação das organizações (SGSI), a fim de determinar e implementar um conjunto abrangente de controles na estrutura geral de um sistema de gestão coerente. Deste modo, é possível direcionar a análise/avaliação de riscos, gerenciamento, especificação, reavaliação e implementação de segurança na <strong>${companyName}</strong>.</p>
-        <p>É composta por 93 controles agrupados em 4 temas:</p>
-
+        
+        <p class="text-justify mb-4">
+          Com estrutura mais simples e controles contemporâneos, a ABNT NBR ISO/IEC 27002:2022, tem uma visão holística e coordenada dos riscos de segurança da informação das organizações (SGSI), a fim de determinar e implementar um conjunto abrangente de controles na estrutura geral de um sistema de gestão coerente. Deste modo, é possível direcionar a análise/avaliação de riscos, gerenciamento, especificação, reavaliação e implementação de segurança na <strong>${companyName}</strong>.
+        </p>
+        
+        <p class="text-justify mb-4">
+          É composta por 93 controles agrupados em 4 temas:
+        </p>
+        
         <div class="grid-2" style="margin-bottom: 8pt;">
           <div style="background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 4pt; padding: 8pt 12pt;">
             <div style="display: flex; align-items: center; gap: 4pt; margin-bottom: 2pt;">
@@ -776,37 +810,70 @@ export class PDFService {
       <!-- ATRIBUTOS -->
       <div class="page print-section">
         <h2>5. Atributos</h2>
-        <p>De forma complementar, a ABNT NBR ISO/IEC 27002:2022 possibilitou a análise dos controles à luz de 05 (cinco) atributos: 1) tipo de controle; 2) propriedades de segurança da informação; 3) conceitos de segurança cibernética; 4) capacidades operacionais; 5) domínios de segurança.</p>
+        
+        <p class="text-justify mb-4">
+          De forma complementar, a ABNT NBR ISO/IEC 27002:2022 possibilitou a análise dos controles à luz de 05 (cinco) atributos: 1) tipo de controle; 2) propriedades de segurança da informação; 3) conceitos de segurança cibernética; 4) capacidades operacionais; 5) domínios de segurança.
+        </p>
 
         <h3>5.1 Tipo de Controle</h3>
-        <p>Atributo utilizado para fornecer uma visão dos controles na perspectiva de quando e como uma medida altera o risco relacionado com a ocorrência de um incidente de segurança da informação. Assim, o controle poderá variar entre:</p>
-        <div style="display: flex; flex-wrap: wrap; gap: 4pt; margin-bottom: 8pt;">
-          <span style="display: inline-block; padding: 2pt 8pt; background-color: #dbeafe; color: #1e40af; border-radius: 12pt; font-size: 9pt; font-weight: 500;">Preventivo</span>
-          <span style="display: inline-block; padding: 2pt 8pt; background-color: #fef9c3; color: #854d0e; border-radius: 12pt; font-size: 9pt; font-weight: 500;">Detectivo</span>
-          <span style="display: inline-block; padding: 2pt 8pt; background-color: #d1fae5; color: #065f46; border-radius: 12pt; font-size: 9pt; font-weight: 500;">Corretivo</span>
+        <p class="text-justify mb-2">
+          Atributo utilizado para fornecer uma visão dos controles na perspectiva de quando e como uma medida altera o risco relacionado com a ocorrência de um incidente de segurança da informação. Assim, o controle poderá variar entre:
+        </p>
+        <div style="display: flex; flex-wrap: wrap; gap: 2px; margin-bottom: 8pt;">
+          <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+            Preventivo
+          </span>
+          <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-medium">
+            Detectivo
+          </span>
+          <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
+            Corretivo
+          </span>
         </div>
 
         <h3>5.2 Propriedades de Segurança da Informação</h3>
-        <p>Atributo para visualizar controles na perspectiva de qual característica das informações o controle contribuirá para a preservação. Os valores dos atributos consistem em:</p>
-        <div style="display: flex; flex-wrap: wrap; gap: 4pt; margin-bottom: 8pt;">
-          <span style="display: inline-block; padding: 2pt 8pt; background-color: #fecaca; color: #991b1b; border-radius: 12pt; font-size: 9pt; font-weight: 500;">Confidencialidade</span>
-          <span style="display: inline-block; padding: 2pt 8pt; background-color: #dbeafe; color: #1e40af; border-radius: 12pt; font-size: 9pt; font-weight: 500;">Integridade</span>
-          <span style="display: inline-block; padding: 2pt 8pt; background-color: #d1fae5; color: #065f46; border-radius: 12pt; font-size: 9pt; font-weight: 500;">Disponibilidade</span>
+        <p class="text-justify mb-2">
+          Atributo para visualizar controles na perspectiva de qual característica das informações o controle contribuirá para a preservação. Os valores dos atributos consistem em:
+        </p>
+        <div style="display: flex; flex-wrap: wrap; gap: 2px; margin-bottom: 8pt;">
+          <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs font-medium">
+            Confidencialidade
+          </span>
+          <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+            Integridade
+          </span>
+          <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
+            Disponibilidade
+          </span>
         </div>
 
         <h3>5.3 Conceitos de Segurança Cibernética</h3>
-        <p>Atributo para visualizar os controles sob a perspectiva da associação de controles aos conceitos de segurança cibernética definidos no quadro de segurança cibernética descrito no ISO/IEC TS 27110. Os valores dos atributos consistem em:</p>
-        <div style="display: flex; flex-wrap: wrap; gap: 4pt; margin-bottom: 8pt;">
-          <span style="display: inline-block; padding: 2pt 8pt; background-color: #e0e7ff; color: #3730a3; border-radius: 12pt; font-size: 9pt; font-weight: 500;">Identificar</span>
-          <span style="display: inline-block; padding: 2pt 8pt; background-color: #dbeafe; color: #1e40af; border-radius: 12pt; font-size: 9pt; font-weight: 500;">Proteger</span>
-          <span style="display: inline-block; padding: 2pt 8pt; background-color: #fef9c3; color: #854d0e; border-radius: 12pt; font-size: 9pt; font-weight: 500;">Detectar</span>
-          <span style="display: inline-block; padding: 2pt 8pt; background-color: #ffedd5; color: #9a3412; border-radius: 12pt; font-size: 9pt; font-weight: 500;">Responder</span>
-          <span style="display: inline-block; padding: 2pt 8pt; background-color: #d1fae5; color: #065f46; border-radius: 12pt; font-size: 9pt; font-weight: 500;">Recuperar</span>
+        <p class="text-justify mb-2">
+          Atributo para visualizar os controles sob a perspectiva da associação de controles aos conceitos de segurança cibernética definidos no quadro de segurança cibernética descrito no ISO/IEC TS 27110. Os valores dos atributos consistem em:
+        </p>
+        <div style="display: flex; flex-wrap: wrap; gap: 2px; margin-bottom: 8pt;">
+          <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-xs font-medium">
+            Identificar
+          </span>
+          <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+            Proteger
+          </span>
+          <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-medium">
+            Detectar
+          </span>
+          <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-xs font-medium">
+            Responder
+          </span>
+          <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
+            Recuperar
+          </span>
         </div>
 
         <h3>5.4 Capacidades Operacionais</h3>
-        <p>As capacidades operacionais são atributos para visualizar controles da perspectiva do praticante sobre os recursos de segurança da informação. Os valores de atributos consistem em:</p>
-        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 4pt; margin-bottom: 8pt;">
+        <p class="text-justify mb-2">
+          As capacidades operacionais são atributos para visualizar controles da perspectiva do praticante sobre os recursos de segurança da informação. Os valores de atributos consistem em:
+        </p>
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; margin-bottom: 8pt;">
           <span style="padding: 2pt 6pt; background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 4pt; font-size: 9pt;">Governança, Gestão de identidade e acesso</span>
           <span style="padding: 2pt 6pt; background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 4pt; font-size: 9pt;">Gestão de ameaças e vulnerabilidades</span>
           <span style="padding: 2pt 6pt; background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 4pt; font-size: 9pt;">Garantia de segurança da informação</span>
@@ -823,8 +890,10 @@ export class PDFService {
         </div>
 
         <h3>5.5 Domínios de Segurança</h3>
-        <p>Os domínios de segurança são um atributo para visualizar controles na perspectiva de 4 domínios de SI:</p>
-        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 6pt;">
+        <p class="text-justify mb-2">
+          Os domínios de segurança são um atributo para visualizar controles na perspectiva de 4 domínios de SI:
+        </p>
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 3px;">
           <div style="background-color: #eef2ff; border: 1px solid #c7d2fe; border-radius: 4pt; padding: 6pt 10pt;">
             <div style="display: flex; align-items: center; gap: 4pt; margin-bottom: 2pt;">
               <span style="font-weight: 600; color: #3730a3;">Governança e Ecossistema</span>
@@ -855,10 +924,19 @@ export class PDFService {
       <!-- RECOMENDAÇÕES -->
       <div class="page print-section">
         <h2>6. Recomendações</h2>
-        <p>As recomendações propostas neste relatório são oriundas da norma <strong>ISO/IEC 27002:2022</strong> que fornecem um conjunto abrangente de controles de segurança da informação comumente utilizados, incluindo orientação para implementação desses controles em uma organização.</p>
-        <p>A norma <strong>ISO/IEC 27002:2022</strong> é complementar à norma <strong>ISO/IEC 27001</strong> e totalmente indispensável à sua aplicação. Enquanto a norma ISO/IEC 27001 estabelece os requisitos para implementação de um Sistema de Gestão da Segurança da Informação (SGSI), a norma fornece um conjunto de controles genéricos de segurança da informação, além da ISO/IEC 27002:2022 fornecer orientação para implementação de controles de segurança da informação.</p>
-        <p>A norma <strong>ISO/IEC 27002:2022</strong> foi concebida para ser usada pelas organizações:</p>
-        <ul>
+        
+        <p class="text-justify mb-3">
+          As recomendações propostas neste relatório são oriundas da norma <strong>ISO/IEC 27002:2022</strong> que fornecem um conjunto abrangente de controles de segurança da informação comumente utilizados, incluindo orientação para implementação desses controles em uma organização.
+        </p>
+        
+        <p class="text-justify mb-3">
+          A norma <strong>ISO/IEC 27002:2022</strong> é complementar à norma <strong>ISO/IEC 27001</strong> e totalmente indispensável à sua aplicação. Enquanto a norma ISO/IEC 27001 estabelece os requisitos para implementação de um Sistema de Gestão da Segurança da Informação (SGSI), a norma fornece um conjunto de controles genéricos de segurança da informação, além da ISO/IEC 27002:2022 fornecer orientação para implementação de controles de segurança da informação.
+        </p>
+        
+        <p class="text-justify">
+          A norma <strong>ISO/IEC 27002:2022</strong> foi concebida para ser usada pelas organizações:
+        </p>
+        <ul style="list-style: disc; padding-left: 1.5cm; margin-top: 4pt;">
           <li>no contexto de um sistema de gestão de segurança da informação (SGSI) baseado na ISO/IEC 27001;</li>
           <li>para a implementação de controles de segurança da informação com base em melhores práticas reconhecidas internacionalmente;</li>
           <li>para o desenvolvimento de diretrizes específicas de gestão de segurança da informação da organização.</li>
@@ -870,7 +948,9 @@ export class PDFService {
         <h2>7. Resultados da Avaliação</h2>
 
         <h3>7.1 Categorização dos controles</h3>
-        <p>A análise dos controles e processos utilizados pela <strong>${companyName}</strong>, no que se refere a ISO 27001, permitiu identificar a média geral do Nível de Maturidade dos 93 controles, que estão claramente subdivididos e resumidos em 4 áreas temáticas: controles organizacionais, controle de pessoas, controles físicos e controles tecnológicos. O resultado exibido abaixo diz respeito ao <strong>percentual de controles efetivamente implementados</strong>.</p>
+        <p class="text-justify mb-3">
+          A análise dos controles e processos utilizados pela <strong>${companyName}</strong>, no que se refere a ISO 27001, permitiu identificar a média geral do Nível de Maturidade dos 93 controles, que estão claramente subdivididos e resumidos em 4 áreas temáticas: controles organizacionais, controle de pessoas, controles físicos e controles tecnológicos. O resultado exibido abaixo diz respeito ao <strong>percentual de controles efetivamente implementados</strong>.
+        </p>
 
         <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6pt; margin-bottom: 8pt;">
           ${resultados?.categorizacao?.categories?.map((cat: any) => `
@@ -881,7 +961,9 @@ export class PDFService {
           `).join('')}
         </div>
 
-        <p>O quadro abaixo mostra o quantitativo de controles identificados em cada uma das 04 (quatro) categorizações da ISO 27001:2022, bem como a quantidade de controles que se encontram implementados, parcialmente implementados, não implementados e os que não se aplicam, mostrando uma visão geral das lacunas que foram encontradas na <strong>${companyName}</strong>.</p>
+        <p class="text-justify mt-4 mb-3">
+          O quadro abaixo mostra o quantitativo de controles identificados em cada uma das 04 (quatro) categorizações da ISO 27001:2022, bem como a quantidade de controles que se encontram implementados, parcialmente implementados, não implementados e os que não se aplicam, mostrando uma visão geral das lacunas que foram encontradas na <strong>${companyName}</strong>.
+        </p>
 
         <table style="font-size: 8pt;">
           <thead>
@@ -917,7 +999,9 @@ export class PDFService {
         </table>
 
         <h3 style="margin-top: 12pt;">7.2 Capacidades Operacionais</h3>
-        <p>A capacidade operacional analisa os controles da perspectiva de seus recursos operacionais de segurança da informação e oferece suporte a uma visão prática dos controles pelo usuário.</p>
+        <p class="text-justify mb-3">
+          A capacidade operacional analisa os controles da perspectiva de seus recursos operacionais de segurança da informação e oferece suporte a uma visão prática dos controles pelo usuário.
+        </p>
 
         ${resultados?.capacidades?.capabilities ? `
           <table style="font-size: 8pt;">
@@ -1028,9 +1112,14 @@ export class PDFService {
       <!-- MATRIZ DE PRIORIZAÇÃO -->
       <div class="page print-section landscape-page">
         <h2>9. Matriz de Priorização</h2>
-        <p style="font-size: 10pt;">Eventual plano de ação para adequação, em razão do resultado deste assessment, deve considerar estratégias de SI e esforços. Para subsidiar as decisões inerentes, elaboramos a <strong>${companyName}</strong> - Matriz de Priorização 27001:2022, documento anexo que contém sugestão de priorização, analisando-se probabilidade e impacto de riscos se materializarem perante das vulnerabilidades identificadas no ambiente da organização.</p>
+        
+        <p style="font-size: 10pt; text-align: justify;">
+          Eventual plano de ação para adequação, em razão do resultado deste assessment, deve considerar estratégias de SI e esforços. Para subsidiar as decisões inerentes, elaboramos a <strong>${companyName}</strong> - Matriz de Priorização 27001:2022, documento anexo que contém sugestão de priorização, analisando-se probabilidade e impacto de riscos se materializarem perante das vulnerabilidades identificadas no ambiente da organização.
+        </p>
 
-        ${renderMatrix()}
+        <div class="overflow-x-auto mt-4 w-full">
+          ${renderMatrix()}
+        </div>
 
         <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 4pt; padding: 8pt 12pt; margin-top: 8pt;">
           <p style="font-weight: 600; font-size: 9pt; margin-bottom: 4pt;">Nível de Priorização</p>
@@ -1068,13 +1157,19 @@ export class PDFService {
         <h2>10. Roadmap de Implementação</h2>
 
         ${roadmap ? `
-          <p style="font-size: 10pt;">O Roadmap de Implementação apresenta um conjunto estruturado de recomendações organizadas em três categorias principais: <strong>Medidas Processuais</strong>, <strong>Políticas</strong> e <strong>Soluções Técnicas</strong>, todas alinhadas com os controles da ISO 27001:2022 e organizadas por nível de priorização.</p>
+          <p style="font-size: 10pt; text-align: justify;">
+            O Roadmap de Implementação apresenta um conjunto estruturado de recomendações organizadas em três categorias principais: <strong>Medidas Processuais</strong>, <strong>Políticas</strong> e <strong>Soluções Técnicas</strong>, todas alinhadas com os controles da ISO 27001:2022 e organizadas por nível de priorização.
+          </p>
 
-          <p style="font-size: 9pt; color: #4b5563; margin-bottom: 8pt;"><strong>Resumo:</strong> Total de ${roadmap.summary?.totalItems || 0} itens distribuídos entre Crítico (${roadmap.summary?.byPriority?.critico || 0}), Muito Alto (${roadmap.summary?.byPriority?.muitoAlto || 0}), Alto (${roadmap.summary?.byPriority?.alto || 0}) e Médio (${roadmap.summary?.byPriority?.medio || 0}).</p>
+          <p style="font-size: 9pt; color: #4b5563; margin-bottom: 8pt; text-align: justify;">
+            <strong>Resumo:</strong> Total de ${roadmap.summary?.totalItems || 0} itens distribuídos entre 
+            Crítico (${roadmap.summary?.byPriority?.critico || 0}), Muito Alto (${roadmap.summary?.byPriority?.muitoAlto || 0}), 
+            Alto (${roadmap.summary?.byPriority?.alto || 0}) e Médio (${roadmap.summary?.byPriority?.medio || 0}).
+          </p>
 
           ${roadmap.sections?.processuais ? `
             <h3>10.1 ${roadmap.sections.processuais.title}</h3>
-            <p style="font-size: 9pt; color: #4b5563; margin-bottom: 4pt;">${roadmap.sections.processuais.description}</p>
+            <p style="font-size: 9pt; color: #4b5563; margin-bottom: 4pt; text-align: justify;">${roadmap.sections.processuais.description}</p>
             <table style="font-size: 7.5pt;">
               <thead>
                 <tr style="background-color: #eff6ff;">
@@ -1086,22 +1181,31 @@ export class PDFService {
                 </tr>
               </thead>
               <tbody>
-                ${roadmap.sections.processuais.items.map((item: any, idx: number) => `
-                  <tr>
-                    <td style="text-align: center; font-size: 7pt;">${idx + 1}</td>
-                    <td style="font-size: 7pt;">${item.name}</td>
-                    <td style="font-size: 6.5pt;">${item.description || '-'}</td>
-                    <td style="text-align: center; font-size: 7pt; font-weight: ${item.priority === 'Crítico' ? 'bold' : ''}; color: ${item.priority === 'Crítico' ? '#dc2626' : item.priority === 'Muito Alto' ? '#f97316' : item.priority === 'Alto' ? '#d97706' : '#3b82f6'};">${item.priority}</td>
-                    <td style="text-align: center; font-size: 6.5pt;">${item.relatedControls?.length ? item.relatedControls.join(', ') : '-'}</td>
-                  </tr>
-                `).join('')}
+                ${roadmap.sections.processuais.items.map((item: any, idx: number) => {
+                  const priorityColors = {
+                    'Crítico': 'text-red-600 font-bold',
+                    'Muito Alto': 'text-orange-600 font-bold',
+                    'Alto': 'text-yellow-600 font-bold',
+                    'Médio': 'text-blue-600',
+                    'Baixo': 'text-gray-500',
+                  };
+                  return `
+                    <tr>
+                      <td style="text-align: center; font-size: 7pt;">${idx + 1}</td>
+                      <td style="font-size: 7pt;">${item.name}</td>
+                      <td style="font-size: 6.5pt;">${item.description || '-'}</td>
+                      <td style="text-align: center; font-size: 7pt; ${priorityColors[item.priority] || 'text-gray-700'}">${item.priority}</td>
+                      <td style="text-align: center; font-size: 6.5pt;">${item.relatedControls?.length ? item.relatedControls.join(', ') : '-'}</td>
+                    </tr>
+                  `;
+                }).join('')}
               </tbody>
             </table>
           ` : ''}
 
           ${roadmap.sections?.politicas ? `
             <h3 style="margin-top: 10pt;">10.2 ${roadmap.sections.politicas.title}</h3>
-            <p style="font-size: 9pt; color: #4b5563; margin-bottom: 4pt;">${roadmap.sections.politicas.description}</p>
+            <p style="font-size: 9pt; color: #4b5563; margin-bottom: 4pt; text-align: justify;">${roadmap.sections.politicas.description}</p>
             <table style="font-size: 7.5pt;">
               <thead>
                 <tr style="background-color: #eff6ff;">
@@ -1113,22 +1217,31 @@ export class PDFService {
                 </tr>
               </thead>
               <tbody>
-                ${roadmap.sections.politicas.items.map((item: any, idx: number) => `
-                  <tr>
-                    <td style="text-align: center; font-size: 7pt;">${idx + 1}</td>
-                    <td style="font-size: 7pt;">${item.name}</td>
-                    <td style="font-size: 6.5pt;">${item.description || '-'}</td>
-                    <td style="text-align: center; font-size: 7pt; font-weight: ${item.priority === 'Crítico' ? 'bold' : ''}; color: ${item.priority === 'Crítico' ? '#dc2626' : item.priority === 'Muito Alto' ? '#f97316' : item.priority === 'Alto' ? '#d97706' : '#3b82f6'};">${item.priority}</td>
-                    <td style="text-align: center; font-size: 6.5pt;">${item.relatedControls?.length ? item.relatedControls.join(', ') : '-'}</td>
-                  </tr>
-                `).join('')}
+                ${roadmap.sections.politicas.items.map((item: any, idx: number) => {
+                  const priorityColors = {
+                    'Crítico': 'text-red-600 font-bold',
+                    'Muito Alto': 'text-orange-600 font-bold',
+                    'Alto': 'text-yellow-600 font-bold',
+                    'Médio': 'text-blue-600',
+                    'Baixo': 'text-gray-500',
+                  };
+                  return `
+                    <tr>
+                      <td style="text-align: center; font-size: 7pt;">${idx + 1}</td>
+                      <td style="font-size: 7pt;">${item.name}</td>
+                      <td style="font-size: 6.5pt;">${item.description || '-'}</td>
+                      <td style="text-align: center; font-size: 7pt; ${priorityColors[item.priority] || 'text-gray-700'}">${item.priority}</td>
+                      <td style="text-align: center; font-size: 6.5pt;">${item.relatedControls?.length ? item.relatedControls.join(', ') : '-'}</td>
+                    </tr>
+                  `;
+                }).join('')}
               </tbody>
             </table>
           ` : ''}
 
           ${roadmap.sections?.tecnicas ? `
             <h3 style="margin-top: 10pt;">10.3 ${roadmap.sections.tecnicas.title}</h3>
-            <p style="font-size: 9pt; color: #4b5563; margin-bottom: 4pt;">${roadmap.sections.tecnicas.description}</p>
+            <p style="font-size: 9pt; color: #4b5563; margin-bottom: 4pt; text-align: justify;">${roadmap.sections.tecnicas.description}</p>
             <table style="font-size: 7.5pt;">
               <thead>
                 <tr style="background-color: #eff6ff;">
@@ -1140,21 +1253,34 @@ export class PDFService {
                 </tr>
               </thead>
               <tbody>
-                ${roadmap.sections.tecnicas.items.map((item: any, idx: number) => `
-                  <tr>
-                    <td style="text-align: center; font-size: 7pt;">${idx + 1}</td>
-                    <td style="font-size: 7pt;">${item.name}</td>
-                    <td style="font-size: 6.5pt;">${item.description || '-'}</td>
-                    <td style="text-align: center; font-size: 7pt; font-weight: ${item.priority === 'Crítico' ? 'bold' : ''}; color: ${item.priority === 'Crítico' ? '#dc2626' : item.priority === 'Muito Alto' ? '#f97316' : item.priority === 'Alto' ? '#d97706' : '#3b82f6'};">${item.priority}</td>
-                    <td style="text-align: center; font-size: 6.5pt;">${item.relatedControls?.length ? item.relatedControls.join(', ') : '-'}</td>
-                  </tr>
-                `).join('')}
+                ${roadmap.sections.tecnicas.items.map((item: any, idx: number) => {
+                  const priorityColors = {
+                    'Crítico': 'text-red-600 font-bold',
+                    'Muito Alto': 'text-orange-600 font-bold',
+                    'Alto': 'text-yellow-600 font-bold',
+                    'Médio': 'text-blue-600',
+                    'Baixo': 'text-gray-500',
+                  };
+                  return `
+                    <tr>
+                      <td style="text-align: center; font-size: 7pt;">${idx + 1}</td>
+                      <td style="font-size: 7pt;">${item.name}</td>
+                      <td style="font-size: 6.5pt;">${item.description || '-'}</td>
+                      <td style="text-align: center; font-size: 7pt; ${priorityColors[item.priority] || 'text-gray-700'}">${item.priority}</td>
+                      <td style="text-align: center; font-size: 6.5pt;">${item.relatedControls?.length ? item.relatedControls.join(', ') : '-'}</td>
+                    </tr>
+                  `;
+                }).join('')}
               </tbody>
             </table>
           ` : ''}
 
           <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 4pt; padding: 8pt 12pt; margin-top: 8pt;">
-            <p style="font-size: 9pt;"><strong>Legenda:</strong> Os itens listados acima representam um conjunto de recomendações organizadas por nível de priorização, baseadas nos controles da ISO/IEC 27001:2022. A implementação deve seguir a ordem de criticidade para garantir a conformidade e a melhoria contínua da segurança da informação.</p>
+            <p style="font-size: 9pt; text-align: justify;">
+              <strong>Legenda:</strong> Os itens listados acima representam um conjunto de recomendações organizadas por nível de priorização, 
+              baseadas nos controles da ISO/IEC 27001:2022. A implementação deve seguir a ordem de criticidade para garantir a conformidade 
+              e a melhoria contínua da segurança da informação.
+            </p>
           </div>
         ` : `
           <p style="text-align: center; color: #6b7280; padding: 20pt 0;">Carregando roadmap...</p>
