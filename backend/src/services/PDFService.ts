@@ -32,22 +32,21 @@ export class PDFService {
       let puppeteer;
       let browserOptions;
 
-      if (isProduction) {
+    if (isProduction) {
   // 🔴 CORREÇÃO: Usar @sparticuz/chromium versão 149.0.0
-  const chromium = await import('@sparticuz/chromium');
+  const chromiumModule = await import('@sparticuz/chromium');
+  const chromium = chromiumModule.default || chromiumModule;
   const puppeteerCore = await import('puppeteer-core');
   puppeteer = puppeteerCore.default || puppeteerCore;
   
-  // 🔴 CORREÇÃO: API correta para a versão 149.0.0
-  const executablePath = await chromium.executablePath();
-  
+  // 🔴 CORREÇÃO: API correta para a versão 149.0.0 (tudo via default)
   browserOptions = {
     args: chromium.args || [],
-    executablePath: executablePath,
+    executablePath: await chromium.executablePath(),
     headless: true,
   };
   
-  logger.info(`🔄 Usando Chromium do @sparticuz v149.0.0 em produção`);
+  logger.info('🔄 Usando Chromium do @sparticuz v149.0.0 em produção');
 } else {
   // 🔴 CORREÇÃO: Em desenvolvimento, usar puppeteer normal
   const puppeteerModule = await import('puppeteer') as PuppeteerType;
@@ -68,7 +67,6 @@ export class PDFService {
   
   logger.info('🔄 Usando Puppeteer local em desenvolvimento');
 }
-
       // Inicializar o browser
       browser = await puppeteer.launch(browserOptions);
 
