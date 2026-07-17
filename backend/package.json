@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@emailjs/nodejs": "^5.0.2",
+    "@sparticuz/chromium": "^149.0.0",
     "@types/multer": "^2.2.0",
     "@types/uuid": "^10.0.0",
     "bcryptjs": "^2.4.3",
@@ -27,6 +28,7 @@
     "multer": "^2.2.0",
     "nodemailer": "^9.0.3",
     "puppeteer": "^25.3.0",
+    "puppeteer-core": "^25.3.0",
     "stripe": "^22.3.1",
     "uuid": "^14.0.1",
     "winston": "^3.11.0",

@@ -43,7 +43,6 @@ export class PDFService {
           defaultViewport: chromium.default.defaultViewport,
           executablePath: await chromium.default.executablePath(),
           headless: chromium.default.headless,
-          ignoreHTTPSErrors: true,
         };
         
         logger.info('🔄 Usando Chromium do @sparticuz em produção');
