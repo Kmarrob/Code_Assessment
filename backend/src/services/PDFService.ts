@@ -1,4 +1,5 @@
-import puppeteer from 'puppeteer';
+// Puppeteer é ESM, usar importação dinâmica
+type PuppeteerType = typeof import('puppeteer');
 import { logger } from '../utils/logger.js';
 
 interface PDFData {
@@ -25,6 +26,10 @@ export class PDFService {
     let browser = null;
 
     try {
+      // 🔴 CORREÇÃO: Importação dinâmica do Puppeteer (ESM)
+      const puppeteerModule = await import('puppeteer') as PuppeteerType;
+      const puppeteer = puppeteerModule.default || puppeteerModule;
+
       // Inicializar o browser
       browser = await puppeteer.launch({
         headless: true,
