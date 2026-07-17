@@ -1,4 +1,3 @@
-// backend/src/services/AdminService.ts
 import { Types } from 'mongoose';
 import { User } from '../models/User.js';
 import { Company } from '../models/Company.js';
@@ -416,6 +415,9 @@ export class AdminService {
               throw new AppError('Arquivo muito grande. Máximo 2MB.', 400);
             }
 
+            // 🔴 CORREÇÃO: Usar URL absoluta para a logo
+            const baseUrl = process.env.BASE_URL || 'https://cisatool.com.br';
+
             // Atualizar branding da empresa
             const branding = company.branding || {
               logo: {
@@ -454,7 +456,7 @@ export class AdminService {
 
             // Atualizar apenas o logo mantendo o restante do branding
             branding.logo = {
-              url: `/uploads/logo/${companyId}/${file.filename}`,
+              url: `${baseUrl}/uploads/logo/${companyId}/${file.filename}`,
               filename: file.filename,
               size: file.size,
               mimeType: file.mimetype,
@@ -523,6 +525,9 @@ export class AdminService {
               throw new AppError('Arquivo muito grande. Máximo 512KB.', 400);
             }
 
+            // 🔴 CORREÇÃO: Usar URL absoluta para o favicon
+            const baseUrl = process.env.BASE_URL || 'https://cisatool.com.br';
+
             // Atualizar branding da empresa
             const branding = company.branding || {
               logo: {
@@ -560,7 +565,7 @@ export class AdminService {
             };
 
             branding.favicon = {
-              url: `/uploads/favicon/${companyId}/${file.filename}`,
+              url: `${baseUrl}/uploads/favicon/${companyId}/${file.filename}`,
               filename: file.filename,
               size: file.size,
               mimeType: file.mimetype,

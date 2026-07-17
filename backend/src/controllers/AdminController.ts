@@ -1,4 +1,3 @@
-// backend/src/controllers/AdminController.ts
 import { Response, NextFunction } from 'express';
 import { AdminService } from '../services/AdminService.js';
 import { validate } from '../utils/validation.js';
@@ -427,7 +426,7 @@ export class AdminController {
   // ============================================
 
   /**
-   * Upload da logo da empresa (apenas ADMIN)
+   * Upload da logo da empresa (ADMIN ou REP da própria empresa)
    * POST /api/admin/company/:companyId/branding/logo
    */
   static async uploadLogo(
@@ -442,9 +441,22 @@ export class AdminController {
         throw new ValidationError({ companyId: ['ID da empresa é obrigatório'] });
       }
 
-      // Verificar se o usuário é ADMIN
-      if (req.user?.role !== UserRole.ADMIN) {
-        throw new AppError('Apenas administradores podem fazer upload da logo', 403);
+      // 🔴 CORREÇÃO: Permitir ADMIN ou REP da própria empresa
+      const user = req.user;
+      if (!user) {
+        throw new AppError('Usuário não autenticado', 401);
+      }
+
+      if (user.role === UserRole.ADMIN) {
+        // ADMIN pode fazer upload para qualquer empresa
+      } else if (user.role === UserRole.REP) {
+        // REP só pode fazer upload para sua própria empresa
+        const userCompanyId = user.companyId?.toString();
+        if (userCompanyId !== companyId) {
+          throw new AppError('Você não tem permissão para fazer upload da logo desta empresa', 403);
+        }
+      } else {
+        throw new AppError('Apenas administradores e prepostos podem fazer upload da logo', 403);
       }
 
       // Verificar se o arquivo foi enviado
