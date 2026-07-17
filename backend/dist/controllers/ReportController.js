@@ -3,12 +3,15 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ReportController = void 0;
 const ReportService_js_1 = require("../services/ReportService.js");
 const ReportResultService_js_1 = require("../services/ReportResultService.js");
+const RecommendationService_js_1 = require("../services/RecommendationService.js");
 const errorHandler_js_1 = require("../middleware/errorHandler.js");
+const logger_js_1 = require("../utils/logger.js");
 const index_js_1 = require("../types/index.js");
 const User_js_1 = require("../models/User.js");
 const Response_js_1 = require("../models/Response.js");
 const Assignment_js_1 = require("../models/Assignment.js");
 const Company_js_1 = require("../models/Company.js");
+const PDFService_js_1 = require("../services/PDFService.js");
 class ReportController {
     /**
      * Obter ou criar relatório de uma empresa
@@ -401,6 +404,72 @@ class ReportController {
             });
         }
         catch (error) {
+            next(error);
+        }
+    }
+    /**
+     * 🔴 NOVO: Gerar PDF do relatório
+     * GET /api/reports/:companyId/pdf
+     * Acesso: ADMIN ou REP (da empresa)
+     */
+    static async generatePDF(req, res, next) {
+        try {
+            const user = req.user;
+            if (!user) {
+                throw new errorHandler_js_1.AppError('Usuário não autenticado', 401);
+            }
+            const { companyId } = req.params;
+            if (!companyId) {
+                throw new errorHandler_js_1.AppError('ID da empresa é obrigatório', 400);
+            }
+            // Verificar permissões
+            if (user.role !== index_js_1.UserRole.ADMIN && user.companyId?.toString() !== companyId) {
+                throw new errorHandler_js_1.AppError('Você não tem permissão para gerar o PDF deste relatório', 403);
+            }
+            // Buscar dados do relatório
+            const report = await ReportService_js_1.ReportService.getOrCreateReport(companyId);
+            let reportData = report;
+            if (report.clientTeam.length === 0) {
+                reportData = await ReportService_js_1.ReportService.generateReportData(companyId);
+            }
+            await reportData.populate('companyId', 'name cnpj');
+            // Buscar dados complementares
+            const resultados = await ReportResultService_js_1.ReportResultService.getResultadosData(companyId);
+            const matrixData = await ReportService_js_1.ReportService.getPriorizationMatrix(companyId);
+            const roadmapData = await ReportService_js_1.ReportService.getRoadmap(companyId);
+            // 🔴 CORRIGIDO: Usar RecommendationService em vez de ReportService
+            const recomendacoes = await RecommendationService_js_1.RecommendationService.getRecommendationsForReport(companyId);
+            // Buscar branding da empresa
+            const company = await Company_js_1.Company.findById(companyId).select('branding');
+            const branding = company?.branding || null;
+            // 🔴 CORRIGIDO: Acessar name corretamente com type assertion
+            const companyName = reportData.companyId?.name || 'NOME DO CLIENTE';
+            // Preparar dados para o PDF
+            const pdfData = {
+                report: reportData,
+                resultados: resultados,
+                matrix: matrixData,
+                roadmap: roadmapData,
+                recomendacoes: recomendacoes,
+                branding: branding,
+                user: {
+                    name: user.name,
+                    email: user.email,
+                },
+                companyName: companyName,
+                generatedAt: new Date().toISOString(),
+            };
+            // Gerar PDF
+            const pdfBuffer = await PDFService_js_1.PDFService.generateReportPDF(pdfData);
+            // 🔴 CORRIGIDO: Usar a variável companyName já definida
+            const fileName = `relatorio_${companyName}_${new Date().toISOString().split('T')[0]}.pdf`;
+            res.setHeader('Content-Type', 'application/pdf');
+            res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+            res.setHeader('Content-Length', pdfBuffer.length);
+            res.send(pdfBuffer);
+        }
+        catch (error) {
+            logger_js_1.logger.error('Erro ao gerar PDF:', error);
             next(error);
         }
     }

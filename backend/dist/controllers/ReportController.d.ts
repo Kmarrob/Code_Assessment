@@ -55,5 +55,11 @@ export declare class ReportController {
      * Acesso: ADMIN ou REP (da empresa)
      */
     static getRoadmap(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void>;
+    /**
+     * 🔴 NOVO: Gerar PDF do relatório
+     * GET /api/reports/:companyId/pdf
+     * Acesso: ADMIN ou REP (da empresa)
+     */
+    static generatePDF(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void>;
 }
 //# sourceMappingURL=ReportController.d.ts.map

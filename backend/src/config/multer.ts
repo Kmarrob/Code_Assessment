@@ -1,4 +1,3 @@
-// backend/src/config/multer.ts
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
@@ -70,12 +69,14 @@ export const uploadFavicon = multer({
 
 // Middleware de erro para multer
 export const handleMulterError = (err: any, req: Request, res: any, next: any) => {
+  // Verificar se é erro do Multer
   if (err instanceof multer.MulterError) {
-    if (err.code === 'FILE_TOO_LARGE') {
+    // 🔴 CORRIGIDO: Usar os códigos corretos do Multer
+    if (err.code === 'LIMIT_FILE_SIZE') {
       return res.status(400).json({
         success: false,
         message: 'Arquivo muito grande. Tamanho máximo permitido: 5MB',
-        code: 'FILE_TOO_LARGE',
+        code: 'LIMIT_FILE_SIZE',
         statusCode: 400,
         timestamp: new Date().toISOString(),
         path: req.path
@@ -101,6 +102,7 @@ export const handleMulterError = (err: any, req: Request, res: any, next: any) =
     });
   }
   
+  // Outros erros (não relacionados ao Multer)
   if (err) {
     return res.status(400).json({
       success: false,

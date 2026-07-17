@@ -67,6 +67,21 @@ export declare class FunnelAnalyticsController {
      */
     getTrend(req: Request, res: Response, next: NextFunction): Promise<void>;
     /**
+     * GET /api/admin/analytics/comparison
+     * Comparação de métricas entre períodos
+     */
+    getComparison(req: Request, res: Response, next: NextFunction): Promise<void>;
+    /**
+     * GET /api/admin/analytics/forecast
+     * Previsão de receita para os próximos meses
+     */
+    getForecast(req: Request, res: Response, next: NextFunction): Promise<void>;
+    /**
+     * GET /api/admin/analytics/clients/:clientId
+     * Detalhamento completo de um cliente específico
+     */
+    getClientDetails(req: Request, res: Response, next: NextFunction): Promise<void>;
+    /**
      * Obtém distribuição por plano
      */
     private getPlanDistribution;

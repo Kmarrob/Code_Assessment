@@ -45,6 +45,72 @@ export declare class RevenueAnalyticsService {
         };
         message: string;
     }>;
+    getPeriodComparison(currentStart: Date, currentEnd: Date, previousStart: Date, previousEnd: Date): Promise<{
+        current: {
+            totalRevenue: number;
+            mrr: number;
+            arpu: number;
+            activeClients: number;
+        };
+        previous: {
+            totalRevenue: number;
+            mrr: number;
+            arpu: number;
+            activeClients: number;
+        };
+        changes: {
+            totalRevenue: {
+                amount: number;
+                percent: number;
+            };
+            mrr: {
+                amount: number;
+                percent: number;
+            };
+            arpu: {
+                amount: number;
+                percent: number;
+            };
+            activeClients: {
+                amount: number;
+                percent: number;
+            };
+        };
+        trend: 'up' | 'down' | 'stable';
+    }>;
+    getRevenueForecast(startDate: Date, endDate: Date, monthsToForecast?: number): Promise<{
+        historical: {
+            period: string;
+            revenue: number;
+        }[];
+        forecast: {
+            optimistic: {
+                period: string;
+                revenue: number;
+            }[];
+            realistic: {
+                period: string;
+                revenue: number;
+            }[];
+            pessimistic: {
+                period: string;
+                revenue: number;
+            }[];
+        };
+        summary: {
+            currentMRR: number;
+            projectedMRR: {
+                optimistic: number;
+                realistic: number;
+                pessimistic: number;
+            };
+            growthRate: {
+                optimistic: number;
+                realistic: number;
+                pessimistic: number;
+            };
+        };
+    }>;
 }
 export declare const revenueAnalyticsService: RevenueAnalyticsService;
 export default revenueAnalyticsService;

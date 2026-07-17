@@ -13,6 +13,8 @@ const sanitizeAdmin_js_1 = require("../middleware/sanitizeAdmin.js");
 const adminPerformance_js_1 = require("../middleware/adminPerformance.js");
 const ControlController_js_1 = require("../controllers/ControlController.js");
 const index_js_1 = require("../types/index.js");
+// 🔴 NOVO: Import do multer
+const multer_js_1 = require("../config/multer.js");
 const router = (0, express_1.Router)();
 // ============================================
 // MIDDLEWARES - Todas as rotas admin exigem autenticação e role ADMIN
@@ -121,10 +123,10 @@ router.patch('/questions/:id/toggle', rateLimit_js_1.adminRateLimiter, cache_js_
 // ============================================
 // ROTAS DE BRANDING - LOGO E FAVICON
 // ============================================
-// Upload da logo
-router.post('/company/:companyId/branding/logo', rateLimit_js_1.adminRateLimiter, cache_js_1.noCache, AdminController_js_1.AdminController.uploadLogo);
-// Upload do favicon
-router.post('/company/:companyId/branding/favicon', rateLimit_js_1.adminRateLimiter, cache_js_1.noCache, AdminController_js_1.AdminController.uploadFavicon);
+// 🔴 CORRIGIDO: Upload da logo com multer
+router.post('/company/:companyId/branding/logo', rateLimit_js_1.adminRateLimiter, cache_js_1.noCache, multer_js_1.uploadLogo.single('logo'), multer_js_1.handleMulterError, AdminController_js_1.AdminController.uploadLogo);
+// 🔴 CORRIGIDO: Upload do favicon com multer
+router.post('/company/:companyId/branding/favicon', rateLimit_js_1.adminRateLimiter, cache_js_1.noCache, multer_js_1.uploadFavicon.single('favicon'), multer_js_1.handleMulterError, AdminController_js_1.AdminController.uploadFavicon);
 // Obter branding da empresa
 router.get('/company/:companyId/branding', rateLimit_js_1.adminRateLimiter, cache_js_1.noCache, AdminController_js_1.AdminController.getBranding);
 // Remover logo

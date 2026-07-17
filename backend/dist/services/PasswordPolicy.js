@@ -3,8 +3,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.passwordPolicy = exports.PasswordPolicy = exports.defaultPasswordPolicy = void 0;
 // backend/src/services/PasswordPolicy.ts
 const zod_1 = require("zod");
+// 🔴 CORRIGIDO: minLength de 12 para 8
 exports.defaultPasswordPolicy = {
-    minLength: 12,
+    minLength: 8,
     requireUppercase: true,
     requireLowercase: true,
     requireNumbers: true,

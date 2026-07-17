@@ -1,6 +1,5 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-// backend/src/routes/report.routes.ts
 const express_1 = require("express");
 const ReportController_js_1 = require("../controllers/ReportController.js");
 const auth_js_1 = require("../middleware/auth.js");
@@ -46,5 +45,9 @@ router.get('/company/:companyId', (0, auth_js_1.authorize)(index_js_1.UserRole.R
 router.post('/company/:companyId/generate', (0, auth_js_1.authorize)(index_js_1.UserRole.REP, index_js_1.UserRole.ADMIN), rateLimit_js_1.authenticatedRateLimiter, ReportController_js_1.ReportController.generateReport);
 // Atualizar relatório
 router.put('/company/:companyId', (0, auth_js_1.authorize)(index_js_1.UserRole.REP, index_js_1.UserRole.ADMIN), rateLimit_js_1.authenticatedRateLimiter, sanitizeAdmin_js_1.sanitizeAdminInputs, ReportController_js_1.ReportController.updateReport);
+// ============================================
+// 🔴 NOVA ROTA: Gerar PDF do relatório
+// ============================================
+router.get('/:companyId/pdf', (0, auth_js_1.authorize)(index_js_1.UserRole.REP, index_js_1.UserRole.ADMIN), rateLimit_js_1.authenticatedRateLimiter, ReportController_js_1.ReportController.generatePDF);
 exports.default = router;
 //# sourceMappingURL=report.routes.js.map

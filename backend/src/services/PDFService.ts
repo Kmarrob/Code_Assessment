@@ -51,9 +51,9 @@ export class PDFService {
       // Gerar o HTML do relatório
       const html = this.generateReportHTML(data);
 
-      // Carregar o HTML
+      // 🔴 CORRIGIDO: waitUntil com tipo correto
       await page.setContent(html, {
-        waitUntil: 'networkidle0'
+        waitUntil: 'networkidle2' as any
       });
 
       // Aguardar renderização dos gráficos (Recharts)
@@ -61,17 +61,14 @@ export class PDFService {
         logger.debug('Nenhum gráfico Recharts encontrado, continuando...');
       });
 
-      // Aguardar renderização adicional
+      // 🔴 CORRIGIDO: Substituir requestAnimationFrame por setTimeout
       await page.evaluate(() => {
         return new Promise((resolve) => {
-          // Aguardar o próximo frame de animação
-          requestAnimationFrame(() => {
-            setTimeout(resolve, 500);
-          });
+          setTimeout(resolve, 500);
         });
       });
 
-      // Gerar o PDF
+      // 🔴 CORRIGIDO: Remover propriedades duplicadas e não suportadas
       const pdf = await page.pdf({
         format: 'A4',
         printBackground: true,
@@ -100,9 +97,6 @@ export class PDFService {
         `,
         preferCSSPageSize: true,
         scale: 1,
-        displayHeaderFooter: true,
-        headerHeight: '15mm',
-        footerHeight: '15mm',
         timeout: 60000,
       });
 

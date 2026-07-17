@@ -66,6 +66,12 @@ export declare class RecommendationService {
      */
     static getRecommendationsWithResponses(companyId: string): Promise<RecommendationWithResponse[]>;
     /**
+     * 🔴 NOVO: Buscar recomendações para o relatório (formato simplificado para PDF)
+     * GET /api/reports/:companyId/pdf
+     * Acesso: ADMIN ou REP (da empresa)
+     */
+    static getRecommendationsForReport(companyId: string): Promise<any[]>;
+    /**
      * Obter domínios disponíveis para filtro
      */
     static getDominios(): Promise<string[]>;

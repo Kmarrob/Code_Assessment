@@ -9,9 +9,10 @@ const zod_1 = require("zod");
 // ============================================
 // VALIDAÇÕES REFORÇADAS
 // ============================================
+// 🔴 CORRIGIDO: Senha com mínimo de 8 caracteres
 exports.passwordSchema = zod_1.z
     .string()
-    .min(12, 'Senha deve ter pelo menos 12 caracteres')
+    .min(8, 'Senha deve ter pelo menos 8 caracteres')
     .regex(/[A-Z]/, 'Senha deve conter pelo menos 1 letra maiúscula')
     .regex(/[a-z]/, 'Senha deve conter pelo menos 1 letra minúscula')
     .regex(/[0-9]/, 'Senha deve conter pelo menos 1 número')
@@ -22,11 +23,12 @@ exports.emailSchema = zod_1.z
     .min(5, 'Email muito curto')
     .max(255, 'Email muito longo')
     .regex(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/, 'Formato de email inválido');
+// 🔴 CORRIGIDO: Regex do nameSchema - \\s corrigido para \s
 exports.nameSchema = zod_1.z
     .string()
     .min(3, 'Nome deve ter pelo menos 3 caracteres')
     .max(100, 'Nome deve ter no máximo 100 caracteres')
-    .regex(/^[a-zA-ZÀ-ÿ\\s]+$/, 'Nome deve conter apenas letras e espaços');
+    .regex(/^[a-zA-ZÀ-ÿ\s]+$/, 'Nome deve conter apenas letras e espaços');
 // ============================================
 // ESQUEMAS ATUALIZADOS
 // ============================================

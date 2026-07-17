@@ -341,6 +341,36 @@ export class RecommendationService {
   }
 
   /**
+   * 🔴 NOVO: Buscar recomendações para o relatório (formato simplificado para PDF)
+   * GET /api/reports/:companyId/pdf
+   * Acesso: ADMIN ou REP (da empresa)
+   */
+  static async getRecommendationsForReport(
+    companyId: string
+  ): Promise<any[]> {
+    try {
+      // Buscar recomendações com respostas
+      const recommendationsWithResponses = await this.getRecommendationsWithResponses(companyId);
+
+      // Mapear para o formato esperado pelo relatório
+      return recommendationsWithResponses.map(item => ({
+        controlId: item.controlId,
+        titulo: item.titulo,
+        dominio: item.dominio,
+        status: item.status,
+        cenarioIdentificado: item.cenarioIdentificado,
+        recomendacoes: item.recomendacoes,
+        solucoesTecnicas: item.solucoesTecnicas || [],
+        maturityLevel: item.maturityLevel,
+      }));
+
+    } catch (error) {
+      logger.error('❌ Erro ao buscar recomendações para relatório:', error);
+      return [];
+    }
+  }
+
+  /**
    * Obter domínios disponíveis para filtro
    */
   static async getDominios(): Promise<string[]> {

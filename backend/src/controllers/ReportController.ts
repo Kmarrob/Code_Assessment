@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { ReportService } from '../services/ReportService.js';
 import { ReportResultService } from '../services/ReportResultService.js';
+import { RecommendationService } from '../services/RecommendationService.js';
 import { AppError, NotFoundError, ValidationError } from '../middleware/errorHandler.js';
 import { logger } from '../utils/logger.js';
 import { AuthenticatedRequest, UserRole } from '../types/index.js';
@@ -8,7 +9,7 @@ import { User } from '../models/User.js';
 import { Response as ResponseModel } from '../models/Response.js';
 import { Assignment } from '../models/Assignment.js';
 import { Company } from '../models/Company.js';
-import { PDFService } from '../services/PDFService.js'; // NOVO IMPORT
+import { PDFService } from '../services/PDFService.js';
 
 export class ReportController {
   /**
@@ -562,12 +563,15 @@ export class ReportController {
       const matrixData = await ReportService.getPriorizationMatrix(companyId);
       const roadmapData = await ReportService.getRoadmap(companyId);
 
-      // Buscar recomendações
-      const recomendacoes = await ReportService.getRecommendationsForReport(companyId);
+      // 🔴 CORRIGIDO: Usar RecommendationService em vez de ReportService
+      const recomendacoes = await RecommendationService.getRecommendationsForReport(companyId);
 
       // Buscar branding da empresa
       const company = await Company.findById(companyId).select('branding');
       const branding = company?.branding || null;
+
+      // 🔴 CORRIGIDO: Acessar name corretamente com type assertion
+      const companyName = (reportData.companyId as any)?.name || 'NOME DO CLIENTE';
 
       // Preparar dados para o PDF
       const pdfData = {
@@ -581,15 +585,14 @@ export class ReportController {
           name: user.name,
           email: user.email,
         },
-        companyName: reportData.companyId?.name || 'NOME DO CLIENTE',
+        companyName: companyName,
         generatedAt: new Date().toISOString(),
       };
 
       // Gerar PDF
       const pdfBuffer = await PDFService.generateReportPDF(pdfData);
 
-      // Configurar headers para download
-      const companyName = reportData.companyId?.name || 'relatorio';
+      // 🔴 CORRIGIDO: Usar a variável companyName já definida
       const fileName = `relatorio_${companyName}_${new Date().toISOString().split('T')[0]}.pdf`;
 
       res.setHeader('Content-Type', 'application/pdf');
