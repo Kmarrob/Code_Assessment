@@ -51,66 +51,85 @@ export class PDFService {
       // Gerar o HTML do relatório
       const html = this.generateReportHTML(data);
 
-      // 🔴 CORRIGIDO: waitUntil com tipo correto
+      // 🔴 CORREÇÃO 1: waitUntil com tipo correto e mais robusto
       await page.setContent(html, {
-        waitUntil: 'networkidle2' as any
+        waitUntil: ['load', 'domcontentloaded', 'networkidle0'] as any
       });
 
-      // Aguardar renderização dos gráficos (Recharts)
-      await page.waitForSelector('.recharts-wrapper', { timeout: 5000 }).catch(() => {
-        logger.debug('Nenhum gráfico Recharts encontrado, continuando...');
-      });
+      // Aguardar renderização dos gráficos (Recharts) com timeout maior
+      try {
+        await page.waitForSelector('.recharts-wrapper', { timeout: 10000 });
+        logger.info('✅ Gráficos Recharts encontrados, aguardando renderização...');
+        
+        // 🔴 CORREÇÃO 2: Espera mais tempo para renderizar gráficos
+        await page.evaluate(() => {
+          return new Promise((resolve) => {
+            // Aguardar 2 segundos para garantir que os gráficos sejam renderizados
+            setTimeout(resolve, 2000);
+          });
+        });
 
-      // 🔴 CORRIGIDO: Substituir requestAnimationFrame por setTimeout
+        // Verificar se os gráficos foram realmente renderizados
+        const chartCount = await page.evaluate(() => {
+          return document.querySelectorAll('.recharts-wrapper').length;
+        });
+        logger.info(`📊 ${chartCount} gráficos encontrados na página`);
+      } catch (error) {
+        logger.warn('⚠️ Nenhum gráfico Recharts encontrado, continuando...');
+      }
+
+      // Aguardar mais tempo para garantir que tudo foi renderizado
       await page.evaluate(() => {
         return new Promise((resolve) => {
-          setTimeout(resolve, 500);
+          setTimeout(resolve, 1000);
         });
       });
 
-      // 🔴 CORRIGIDO: Remover propriedades duplicadas e não suportadas
+      // 🔴 CORREÇÃO 3: Ajustar margens para melhor aproveitamento da página
       const pdf = await page.pdf({
         format: 'A4',
         printBackground: true,
         margin: {
-          top: '15mm',
+          top: '18mm',
           bottom: '15mm',
-          left: '10mm',
-          right: '10mm'
+          left: '12mm',
+          right: '12mm'
         },
         displayHeaderFooter: true,
         headerTemplate: `
-          <div style="font-size: 8pt; color: #475569; border-bottom: 1px solid #e2e8f0; padding: 5mm 10mm; width: 100%; font-family: Arial, Helvetica, sans-serif;">
+          <div style="font-size: 8pt; color: #475569; border-bottom: 1px solid #e2e8f0; padding: 5mm 12mm; width: 100%; font-family: Arial, Helvetica, sans-serif;">
             <span style="float: left; font-weight: bold;">
               <span style="color: #2563eb;">Code</span><span style="color: #475569;">_Assessment</span>
             </span>
-            <span style="float: right; color: #64748b;">
+            <span style="float: right; color: #64748b; font-size: 7pt;">
               <strong>Emitido por:</strong> ${data.user.name || 'Consultor Técnico'} | ${data.user.email || ''}
             </span>
           </div>
         `,
         footerTemplate: `
-          <div style="font-size: 8pt; color: #64748b; border-top: 1px solid #e2e8f0; padding: 5mm 10mm; width: 100%; font-family: Arial, Helvetica, sans-serif;">
+          <div style="font-size: 8pt; color: #64748b; border-top: 1px solid #e2e8f0; padding: 5mm 12mm; width: 100%; font-family: Arial, Helvetica, sans-serif;">
             <span style="float: left;">Sistema de Gestão de Conformidade e Segurança · MRS Consultoria</span>
             <span style="float: right;">Página <span class="pageNumber"></span> de <span class="totalPages"></span></span>
           </div>
         `,
         preferCSSPageSize: true,
         scale: 1,
-        timeout: 60000,
+        // 🔴 CORREÇÃO 5: Aumentar timeout para relatórios grandes
+        timeout: 120000,
       });
 
       const endTime = Date.now();
-      logger.info(`PDF gerado em ${endTime - startTime}ms`);
+      logger.info(`✅ PDF gerado com sucesso em ${endTime - startTime}ms (${pdf.length} bytes)`);
 
       return Buffer.from(pdf);
 
     } catch (error) {
-      logger.error('Erro ao gerar PDF:', error);
+      logger.error('❌ Erro ao gerar PDF:', error);
       throw error;
     } finally {
       if (browser) {
         await browser.close();
+        logger.debug('🔒 Browser fechado');
       }
     }
   }
@@ -198,6 +217,12 @@ export class PDFService {
         </table>
       `;
     };
+
+    // 🔴 CORREÇÃO 6: Tratar URL do logo para ser absoluta
+    const logoUrl = branding?.logo?.url || '';
+    const logoHtml = logoUrl ? 
+      `<img src="${logoUrl}" alt="MRS Consultoria" style="max-height: 100pt; width: auto;" onerror="this.style.display='none'" />` :
+      '<span style="font-size: 24pt; font-weight: bold; color: #2563eb;">Code</span><span style="font-size: 24pt; font-weight: bold; color: #475569;">_Assessment</span>';
 
     return `
     <!DOCTYPE html>
@@ -483,6 +508,37 @@ export class PDFService {
         .recommendation-block li {
           font-size: 9.5pt;
         }
+
+        /* 🔴 CORREÇÃO 7: Estilos para gráficos Recharts */
+        .recharts-wrapper {
+          max-width: 100% !important;
+          margin: 0 auto !important;
+          display: block !important;
+        }
+
+        .recharts-surface {
+          width: 100% !important;
+          max-width: 100% !important;
+        }
+
+        .recharts-text {
+          fill: #334155 !important;
+          font-size: 8pt !important;
+        }
+
+        .recharts-legend-item-text {
+          font-size: 7pt !important;
+        }
+
+        .recharts-tooltip-wrapper {
+          display: none !important;
+        }
+
+        /* 🔴 CORREÇÃO 8: Forçar cores de impressão */
+        * {
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
       </style>
     </head>
     <body>
@@ -490,7 +546,7 @@ export class PDFService {
       <!-- CAPA -->
       <div class="page cover-page">
         <div class="logo">
-          ${branding?.logo?.url ? `<img src="${branding.logo.url}" alt="MRS Consultoria" style="max-height: 100pt; width: auto;" />` : '<span style="font-size: 24pt; font-weight: bold; color: #2563eb;">Code</span><span style="font-size: 24pt; font-weight: bold; color: #475569;">_Assessment</span>'}
+          ${logoHtml}
         </div>
         <h1>Consultoria para avaliação de maturidade ABNT NBR ISO 27001:2022</h1>
         <p style="font-weight: 500; font-size: 12pt; margin-top: 8pt;">Recomendações</p>

@@ -563,15 +563,29 @@ export class ReportController {
       const matrixData = await ReportService.getPriorizationMatrix(companyId);
       const roadmapData = await ReportService.getRoadmap(companyId);
 
-      // 🔴 CORRIGIDO: Usar RecommendationService em vez de ReportService
-      const recomendacoes = await RecommendationService.getRecommendationsForReport(companyId);
+      // 🔴 CORREÇÃO 1: Verificar se o método existe no RecommendationService
+      let recomendacoes = [];
+      try {
+        recomendacoes = await RecommendationService.getRecommendationsForReport(companyId);
+        logger.info(`✅ ${recomendacoes.length} recomendações carregadas para o PDF`);
+      } catch (recError) {
+        logger.warn('⚠️ Erro ao carregar recomendações para o PDF:', recError);
+        recomendacoes = []; // Fallback para array vazio
+      }
 
       // Buscar branding da empresa
       const company = await Company.findById(companyId).select('branding');
       const branding = company?.branding || null;
 
-      // 🔴 CORRIGIDO: Acessar name corretamente com type assertion
-      const companyName = (reportData.companyId as any)?.name || 'NOME DO CLIENTE';
+      // 🔴 CORREÇÃO 2: Acessar name de forma segura
+      const companyName = (reportData.companyId as any)?.name || 'NOME_DO_CLIENTE';
+
+      // 🔴 CORREÇÃO 3: Sanitizar nome do arquivo (remover caracteres especiais)
+      const sanitizedCompanyName = companyName
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '') // Remove acentos
+        .replace(/[^a-zA-Z0-9_\-]/g, '_') // Substitui caracteres especiais por _
+        .replace(/_+/g, '_'); // Remove underscores duplicados
 
       // Preparar dados para o PDF
       const pdfData = {
@@ -585,23 +599,31 @@ export class ReportController {
           name: user.name,
           email: user.email,
         },
-        companyName: companyName,
+        companyName: companyName, // Nome original para exibição no PDF
         generatedAt: new Date().toISOString(),
       };
 
       // Gerar PDF
       const pdfBuffer = await PDFService.generateReportPDF(pdfData);
 
-      // 🔴 CORRIGIDO: Usar a variável companyName já definida
-      const fileName = `relatorio_${companyName}_${new Date().toISOString().split('T')[0]}.pdf`;
+      // 🔴 CORREÇÃO 4: Verificar se o PDF foi gerado corretamente
+      if (!pdfBuffer || pdfBuffer.length === 0) {
+        throw new AppError('Falha ao gerar o PDF: buffer vazio', 500);
+      }
+
+      logger.info(`✅ PDF gerado com sucesso: ${pdfBuffer.length} bytes para ${companyName}`);
+
+      // Usar nome sanitizado para o arquivo
+      const fileName = `relatorio_${sanitizedCompanyName}_${new Date().toISOString().split('T')[0]}.pdf`;
 
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
       res.setHeader('Content-Length', pdfBuffer.length);
+      res.setHeader('Cache-Control', 'private, max-age=0, must-revalidate');
       
       res.send(pdfBuffer);
     } catch (error) {
-      logger.error('Erro ao gerar PDF:', error);
+      logger.error('❌ Erro ao gerar PDF:', error);
       next(error);
     }
   }

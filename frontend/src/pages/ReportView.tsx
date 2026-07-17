@@ -269,48 +269,95 @@ export const ReportView: React.FC = () => {
     }, 500);
   };
 
+  // ============================================
+  // 🔧 CORREÇÃO v34.3 - handleDownloadPDF com a chave correta E async
+  // ============================================
   const handleDownloadPDF = async () => {
     setIsDownloading(true);
     try {
+      // Obter companyId corretamente
       const companyId = report?.companyId?._id || report?.companyId;
       if (!companyId) {
-        console.error('ID da empresa não encontrado');
+        console.error('❌ ID da empresa não encontrado');
         setIsDownloading(false);
         return;
       }
 
-      const token = localStorage.getItem('accessToken');
+      // Obter companyName corretamente
+      const company = (report as any)?.companyId as any;
+      const companyName = company?.name || 'relatorio';
+
+      // 🔴 CORREÇÃO: Usar a chave correta 'access_token' (com underscore)
+      // DEFINIDA EM STORAGE_KEYS.ACCESS_TOKEN = 'access_token'
+      let token = localStorage.getItem('access_token');
+      
+      // Fallback para outras chaves possíveis (por compatibilidade)
       if (!token) {
-        console.error('Token não encontrado');
+        token = localStorage.getItem('accessToken');
+      }
+      if (!token) {
+        token = localStorage.getItem('token');
+      }
+
+      if (!token) {
+        console.error('❌ Token não encontrado. Chaves disponíveis:', Object.keys(localStorage));
+        alert('⚠️ Você precisa estar logado para baixar o PDF. Faça login novamente.');
         setIsDownloading(false);
         return;
       }
 
-      const response = await fetch(`/api/reports/${companyId}/pdf`, {
+      console.log('✅ Token encontrado, tamanho:', token.length);
+
+      // Usar URL completa para API
+      const apiUrl = import.meta.env.VITE_API_URL || '';
+      const url = `${apiUrl}/api/reports/${companyId}/pdf`;
+      
+      console.log('📄 Gerando PDF para empresa:', companyId);
+      console.log('📄 URL:', url);
+
+      const response = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
         },
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || 'Erro ao gerar PDF');
+        let errorMessage = `Erro ${response.status}: `;
+        try {
+          const errorData = await response.json();
+          errorMessage += errorData.message || response.statusText;
+        } catch {
+          errorMessage += response.statusText || 'Erro desconhecido';
+        }
+        throw new Error(errorMessage);
       }
 
       const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
+      
+      if (blob.type !== 'application/pdf' && !blob.type.includes('pdf')) {
+        console.warn('⚠️ O blob não é um PDF válido:', blob.type);
+        if (blob.size === 0) {
+          throw new Error('O PDF gerado está vazio');
+        }
+      }
+
+      console.log(`✅ Blob recebido: ${blob.size} bytes, tipo: ${blob.type}`);
+
+      const downloadUrl = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url;
+      a.href = downloadUrl;
       a.download = `relatorio_${companyName}_${new Date().toISOString().split('T')[0]}.pdf`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
+      window.URL.revokeObjectURL(downloadUrl);
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      console.log('✅ PDF baixado com sucesso!');
     } catch (error) {
-      console.error('Erro ao baixar PDF:', error);
-      alert('Erro ao gerar o PDF. Tente novamente.');
+      console.error('❌ Erro ao baixar PDF:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Erro ao gerar o PDF. Tente novamente.';
+      alert(`❌ ${errorMessage}`);
     } finally {
       setIsDownloading(false);
     }
