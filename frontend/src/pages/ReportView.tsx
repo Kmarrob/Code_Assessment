@@ -1,6 +1,6 @@
 //frontend/src/pages/ReportView.tsx
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext.js';
 import { reportService } from '../services/report.service.js';
 import { recommendationService } from '../services/recommendation.service.js';
@@ -120,7 +120,9 @@ export const ReportView: React.FC = () => {
     setIsLoading(true);
     setError(null);
     try {
-      const companyIdFromUrl = params.companyId;
+      const companyIdFromParams = params.companyId;
+const companyIdFromQuery = searchParams.get('companyId');
+const companyIdFromUrl = companyIdFromParams || companyIdFromQuery;
       
       let data;
       
@@ -280,7 +282,7 @@ export const ReportView: React.FC = () => {
       // Obter companyId corretamente
       const companyId = report?.companyId?._id || report?.companyId;
       if (!companyId) {
-        console.error('❌ ID da empresa não encontrado');
+        console.error('�?ID da empresa não encontrado');
         setIsDownloading(false);
         return;
       }
@@ -306,7 +308,7 @@ export const ReportView: React.FC = () => {
         }
       }
 
-      console.log(`✅ Blob recebido: ${blob.size} bytes, tipo: ${blob.type}`);
+      console.log(`�?Blob recebido: ${blob.size} bytes, tipo: ${blob.type}`);
 
       const downloadUrl = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -317,9 +319,9 @@ export const ReportView: React.FC = () => {
       document.body.removeChild(a);
       window.URL.revokeObjectURL(downloadUrl);
 
-      console.log('✅ PDF baixado com sucesso!');
+      console.log('�?PDF baixado com sucesso!');
     } catch (error: any) {
-      console.error('❌ Erro ao baixar PDF:', error);
+      console.error('�?Erro ao baixar PDF:', error);
       
       // 🔴 CORREÇÃO: Se for erro 401, redirecionar para login
       if (error.response?.status === 401) {
@@ -327,7 +329,7 @@ export const ReportView: React.FC = () => {
         window.location.href = '/login';
       } else {
         const errorMessage = error.message || 'Erro ao gerar o PDF. Tente novamente.';
-        alert(`❌ ${errorMessage}`);
+        alert(`�?${errorMessage}`);
       }
     } finally {
       setIsDownloading(false);
@@ -1020,7 +1022,7 @@ export const ReportView: React.FC = () => {
                 <strong>{companyName}</strong>, identificando lacunas que impactam na sua maturidade, 
                 propondo recomendações de melhorias técnicas e processuais que precisam ser implementadas 
                 para elevação do nível de segurança. Através deste documento, a empresa terá um material 
-                que auxiliará na melhoria contínua do SGSI – Sistema de Gestão de Segurança da Informação, 
+                que auxiliará na melhoria contínua do SGSI �?Sistema de Gestão de Segurança da Informação, 
                 visando otimizar a segurança da informação em seus processos, recursos e pessoas.
               </p>
               <p className="text-gray-700 text-justify mt-3">
@@ -1530,7 +1532,7 @@ export const ReportView: React.FC = () => {
                     return (
                       <div key={dominio} className="mb-6">
                         <h3 className="text-lg font-semibold text-gray-800 mb-3 text-left">
-                          {dominioNumero} – {dominio}
+                          {dominioNumero} �?{dominio}
                         </h3>
 
                         {items.map((item, idx) => {

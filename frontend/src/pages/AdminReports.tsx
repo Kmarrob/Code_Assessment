@@ -1,4 +1,3 @@
-// frontend/src/pages/AdminReports.tsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -51,7 +50,7 @@ export const AdminReports: React.FC = () => {
         search: search || undefined,
       });
       
-      // üî¥ CORRE√á√ÉO 1: Filtrar relat√≥rios que t√™m empresa v√°lida
+      // ?? CORRE??O 1: Filtrar relat®Ærios que t®∫m empresa v®¢lida
       const validReports = (response.reports || []).filter((report: Report) => {
         const company = (report as any).companyId as any;
         return company && company._id && company.name;
@@ -60,8 +59,8 @@ export const AdminReports: React.FC = () => {
       setReports(validReports);
       setPagination(response.pagination);
     } catch (err: any) {
-      console.error('Erro ao carregar relat√≥rios:', err);
-      setError(err.response?.data?.message || 'Erro ao carregar relat√≥rios');
+      console.error('Erro ao carregar relat®Ærios:', err);
+      setError(err.response?.data?.message || 'Erro ao carregar relat®Ærios');
     } finally {
       setIsLoading(false);
     }
@@ -87,9 +86,10 @@ export const AdminReports: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // üî¥ CORRE√á√ÉO 2: Usar a rota que funciona (/rep/report com companyId)
+  // ?? CORRE??O 2: Admin usa rota de admin, REP usa rota de rep
+  // O ReportView suporta ambos: /admin/relatorios/:companyId (params) e /rep/report?companyId= (query)
   const goToReport = (companyId: string) => {
-    navigate(`/rep/report?companyId=${companyId}`);
+    navigate(`/admin/relatorios/${companyId}`);
   };
 
   const handleRefresh = () => {
@@ -97,7 +97,7 @@ export const AdminReports: React.FC = () => {
   };
 
   const formatDate = (date?: Date | string) => {
-    if (!date) return 'N√£o dispon√≠vel';
+    if (!date) return 'N?o dispon®™vel';
     return new Date(date).toLocaleDateString('pt-BR', {
       day: '2-digit',
       month: '2-digit',
@@ -108,7 +108,7 @@ export const AdminReports: React.FC = () => {
   const getStatusLabel = (status: string) => {
     const labels: Record<string, { label: string; color: string; bg: string }> = {
       draft: { label: 'Rascunho', color: 'text-gray-700', bg: 'bg-gray-100' },
-      in_review: { label: 'Em Revis√£o', color: 'text-yellow-700', bg: 'bg-yellow-100' },
+      in_review: { label: 'Em Revis?o', color: 'text-yellow-700', bg: 'bg-yellow-100' },
       finalized: { label: 'Finalizado', color: 'text-green-700', bg: 'bg-green-100' },
       archived: { label: 'Arquivado', color: 'text-gray-500', bg: 'bg-gray-100' },
     };
@@ -119,7 +119,7 @@ export const AdminReports: React.FC = () => {
     return [
       { value: 'all', label: 'Todos' },
       { value: 'draft', label: 'Rascunho' },
-      { value: 'in_review', label: 'Em Revis√£o' },
+      { value: 'in_review', label: 'Em Revis?o' },
       { value: 'finalized', label: 'Finalizado' },
       { value: 'archived', label: 'Arquivado' },
     ];
@@ -133,7 +133,7 @@ export const AdminReports: React.FC = () => {
       <div className="min-h-[60vh] flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto" />
-          <p className="mt-4 text-gray-500">Carregando relat√≥rios...</p>
+          <p className="mt-4 text-gray-500">Carregando relat®Ærios...</p>
         </div>
       </div>
     );
@@ -146,16 +146,16 @@ export const AdminReports: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Cabe√ßalho da p√°gina */}
+      {/* Cabe?alho da p®¢gina */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="container mx-auto px-4 py-4">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <FileText className="h-6 w-6 text-blue-600" />
               <div>
-                <h1 className="text-xl font-bold text-gray-900">Relat√≥rios de Recomenda√ß√µes</h1>
+                <h1 className="text-xl font-bold text-gray-900">Relat®Ærios de Recomenda??es</h1>
                 <p className="text-sm text-gray-500">
-                  Gerencie todos os relat√≥rios gerados pelas empresas
+                  Gerencie todos os relat®Ærios gerados pelas empresas
                 </p>
               </div>
             </div>
@@ -173,7 +173,7 @@ export const AdminReports: React.FC = () => {
         </div>
       </div>
 
-      {/* Conte√∫do principal */}
+      {/* Conte®≤do principal */}
       <div className="container mx-auto px-4 py-8">
         {/* Filtros */}
         <Card className="mb-8">
@@ -214,13 +214,13 @@ export const AdminReports: React.FC = () => {
           </CardContent>
         </Card>
 
-        {/* Tabela de Relat√≥rios */}
+        {/* Tabela de Relat®Ærios */}
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle>Lista de Relat√≥rios</CardTitle>
+              <CardTitle>Lista de Relat®Ærios</CardTitle>
               <span className="text-sm text-gray-500">
-                {reports.length} {reports.length === 1 ? 'relat√≥rio' : 'relat√≥rios'}
+                {reports.length} {reports.length === 1 ? 'relat®Ærio' : 'relat®Ærios'}
               </span>
             </div>
           </CardHeader>
@@ -234,11 +234,11 @@ export const AdminReports: React.FC = () => {
             ) : reports.length === 0 ? (
               <div className="text-center py-12">
                 <FileText className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900">Nenhum relat√≥rio encontrado</h3>
+                <h3 className="text-lg font-medium text-gray-900">Nenhum relat®Ærio encontrado</h3>
                 <p className="text-gray-500 mt-1">
                   {search || statusFilter !== 'all' 
                     ? 'Tente ajustar os filtros de busca' 
-                    : 'Os relat√≥rios ser√£o gerados automaticamente quando as empresas come√ßarem a responder os controles'}
+                    : 'Os relat®Ærios ser?o gerados automaticamente quando as empresas come?arem a responder os controles'}
                 </p>
               </div>
             ) : (
@@ -248,11 +248,11 @@ export const AdminReports: React.FC = () => {
                     <tr>
                       <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider py-3 px-4">Empresa</th>
                       <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider py-3 px-4">Projeto</th>
-                      <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider py-3 px-4">Per√≠odo</th>
+                      <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider py-3 px-4">Per®™odo</th>
                       <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider py-3 px-4">Equipe</th>
                       <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider py-3 px-4">Status</th>
                       <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider py-3 px-4">Atualizado</th>
-                      <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider py-3 px-4">A√ß√µes</th>
+                      <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider py-3 px-4">A??es</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -260,7 +260,7 @@ export const AdminReports: React.FC = () => {
                       const status = getStatusLabel(report.status);
                       const company = (report as any).companyId as any;
                       const companyId = report.companyId?._id || report.companyId;
-                      const companyName = company?.name || 'Empresa n√£o identificada';
+                      const companyName = company?.name || 'Empresa n?o identificada';
                       
                       return (
                         <tr key={report._id} className="hover:bg-gray-50">
@@ -307,12 +307,12 @@ export const AdminReports: React.FC = () => {
                           </td>
                           <td className="py-3 px-4">
                             <div className="flex items-center gap-2">
-                              {/* üî¥ CORRE√á√ÉO: Todos os bot√µes usam goToReport com /rep/report?companyId= */}
+                              {/* ?? CORRE??O: Todos os bot?es usam goToReport com /admin/relatorios/:companyId */}
                               <Button
                                 size="sm"
                                 variant="outline"
                                 onClick={() => goToReport(companyId)}
-                                title="Visualizar relat√≥rio"
+                                title="Visualizar relat®Ærio"
                               >
                                 <Eye className="h-4 w-4 mr-1" />
                                 Visualizar
@@ -346,11 +346,11 @@ export const AdminReports: React.FC = () => {
                   </tbody>
                 </table>
 
-                {/* Pagina√ß√£o */}
+                {/* Pagina??o */}
                 {totalPages > 1 && (
                   <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200">
                     <div className="text-sm text-gray-500">
-                      P√°gina {currentPage} de {totalPages}
+                      P®¢gina {currentPage} de {totalPages}
                     </div>
                     <div className="flex gap-2">
                       <button
