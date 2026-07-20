@@ -145,3 +145,45 @@ export function sanitizeOutput(data: any): any {
 
   return data;
 }
+
+// ============================================
+// ADICIONADO INCREMENTALMENTE PARA SUPORTE GRC / ADMIN
+// ============================================
+export const adminListUsersSchema = z.object({
+  page: z.coerce.number().min(1).default(1),
+  limit: z.coerce.number().min(1).max(100).default(10),
+  role: z.enum(['admin', 'rep', 'consultant', 'user']).optional(),
+  isActive: z.preprocess((val) => {
+    if (val === 'true' || val === true) return true;
+    if (val === 'false' || val === false) return false;
+    return undefined;
+  }, z.boolean().optional()),
+  search: z.string().max(100).optional(),
+  company: z.string().max(100).optional(),
+  companyId: z.string().max(100).optional(),
+  department: z.string().max(100).optional(),
+});
+
+export const adminResetPasswordSchema = z.object({
+  password: passwordSchema,
+});
+
+export const adminCreateUserSchema = z.object({
+  name: nameSchema,
+  email: emailSchema,
+  password: passwordSchema,
+  company: z.string().max(100).optional(),
+  companyId: z.string().max(100).optional(),
+  department: z.string().max(100).optional(),
+  role: z.enum(['admin', 'rep', 'consultant', 'user']).default('user'),
+});
+
+export const adminUpdateUserSchema = z.object({
+  name: nameSchema.optional(),
+  email: emailSchema.optional(),
+  company: z.string().max(100).optional(),
+  companyId: z.string().max(100).optional(),
+  department: z.string().max(100).optional(),
+  role: z.enum(['admin', 'rep', 'consultant', 'user']).optional(),
+  isActive: z.boolean().optional(),
+});

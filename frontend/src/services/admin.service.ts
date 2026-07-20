@@ -107,10 +107,10 @@ export const adminService = {
     const response = await api.get(`/admin/users?${params.toString()}`);
     const data = extractData<any>(response);
 
-    // Retornar com fallback seguro
+    // Retornar buscando a paginação diretamente na raiz da resposta HTTP (response.data)
     return {
       users: data.users || [],
-      pagination: data.pagination || {
+      pagination: response.data?.pagination || data.pagination || {
         page: 1,
         limit: 10,
         total: 0,
