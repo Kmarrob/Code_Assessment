@@ -10,36 +10,91 @@
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
     <link rel="manifest" href="/site.webmanifest" />
     
+    <!-- ============================================ -->
+    <!-- FAVICON DINÂMICO VIA API (sobrescreve os estáticos) -->
+    <!-- ============================================ -->
+    <script>
+      // Carregar favicon dinâmico da API
+      (function() {
+        // Função para criar link de favicon dinâmico
+        function setDynamicFavicon(url) {
+          // Remover favicon existente (exceto o SVG que é o fallback)
+          const existingLinks = document.querySelectorAll('link[rel="icon"]:not([href*="favicon.svg"])');
+          existingLinks.forEach(link => link.remove());
+          
+          // Criar novo link para o favicon dinâmico
+          const link = document.createElement('link');
+          link.rel = 'icon';
+          link.type = 'image/png';
+          link.href = url;
+          document.head.appendChild(link);
+          
+          // Atualizar também o apple-touch-icon
+          const appleLink = document.querySelector('link[rel="apple-touch-icon"]');
+          if (appleLink) {
+            appleLink.href = url;
+          }
+        }
+
+        // Tentar buscar o favicon da API
+        async function loadFavicon() {
+          try {
+            // Usar empresa ID padrão (pode ser configurado pelo admin)
+            const companyId = '67f8a1b2c3d4e5f6g7h8i9j0';
+            const response = await fetch(`/api/branding/${companyId}`);
+            if (response.ok) {
+              const data = await response.json();
+              if (data.data && data.data.favicon && data.data.favicon.url) {
+                setDynamicFavicon(data.data.favicon.url);
+                console.log('✅ Favicon dinâmico carregado com sucesso');
+                return;
+              }
+            }
+            console.log('ℹ️ Favicon dinâmico não disponível, usando fallback');
+          } catch (error) {
+            console.log('ℹ️ Erro ao carregar favicon dinâmico, usando fallback:', error.message);
+          }
+        }
+
+        // Executar após o carregamento da página
+        if (document.readyState === 'complete') {
+          loadFavicon();
+        } else {
+          window.addEventListener('load', loadFavicon);
+        }
+      })();
+    </script>
+    
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     
     <!-- ============================================ -->
     <!-- META TAGS - SEO BÁSICO -->
     <!-- ============================================ -->
-    <title>Code_Assessment - Sistema de Avaliação de Maturidade ISO 27001</title>
-    <meta name="description" content="Sistema completo para avaliação de maturidade em Segurança da Informação baseado na ISO 27001. Gerencie controles, usuários e relatórios em um só lugar." />
-    <meta name="keywords" content="ISO 27001, Segurança da Informação, Assessment, Maturidade, Controles, Auditoria, SGSI" />
+    <title>MRS Consultoria - Sistema de Avaliação de Maturidade ISO 27001</title>
+    <meta name="description" content="Sistema completo para avaliação de maturidade em Segurança da Informação baseado na ISO 27001. Gerencie controles, usuários e relatórios em um só lugar. MRS Consultoria." />
+    <meta name="keywords" content="ISO 27001, Segurança da Informação, Assessment, Maturidade, Controles, Auditoria, SGSI, MRS Consultoria" />
     <meta name="robots" content="index, follow" />
     <link rel="canonical" href="https://code-assessment.com/" />
     
     <!-- ============================================ -->
     <!-- OPEN GRAPH - COMPARTILHAMENTO EM REDES SOCIAIS -->
     <!-- ============================================ -->
-    <meta property="og:title" content="Code_Assessment - Avaliação de Maturidade ISO 27001" />
-    <meta property="og:description" content="Sistema completo para avaliação de maturidade em Segurança da Informação baseado na ISO 27001." />
+    <meta property="og:title" content="MRS Consultoria - Avaliação de Maturidade ISO 27001" />
+    <meta property="og:description" content="Sistema completo para avaliação de maturidade em Segurança da Informação baseado na ISO 27001. MRS Consultoria - Especialistas em GRC e Segurança da Informação." />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://code-assessment.com/" />
     <meta property="og:image" content="https://code-assessment.com/og-image.jpg" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="Code_Assessment - Sistema de Avaliação de Maturidade ISO 27001" />
-    <meta property="og:site_name" content="Code_Assessment" />
+    <meta property="og:image:alt" content="MRS Consultoria - Sistema de Avaliação de Maturidade ISO 27001" />
+    <meta property="og:site_name" content="MRS Consultoria" />
     
     <!-- ============================================ -->
     <!-- TWITTER CARDS -->
     <!-- ============================================ -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Code_Assessment - Avaliação de Maturidade ISO 27001" />
-    <meta name="twitter:description" content="Sistema completo para avaliação de maturidade em Segurança da Informação baseado na ISO 27001." />
+    <meta name="twitter:title" content="MRS Consultoria - Avaliação de Maturidade ISO 27001" />
+    <meta name="twitter:description" content="Sistema completo para avaliação de maturidade em Segurança da Informação baseado na ISO 27001. MRS Consultoria." />
     <meta name="twitter:image" content="https://code-assessment.com/og-image.jpg" />
     
     <!-- ============================================ -->
@@ -49,7 +104,7 @@
       default-src 'self';
       script-src 'self' 'unsafe-inline' 'unsafe-eval';
       style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
-      img-src 'self' data: https:;
+      img-src 'self' data: https: http://localhost:3000;
       font-src 'self' data: https: https://fonts.gstatic.com;
       connect-src 'self' http://localhost:3000 https://api.code-assessment.com https://code-assessment-898z.onrender.com https://*.onrender.com;
       frame-src 'none';
@@ -69,12 +124,17 @@
     {
       "@context": "https://schema.org",
       "@type": "WebApplication",
-      "name": "Code_Assessment",
-      "description": "Sistema completo para avaliação de maturidade em Segurança da Informação baseado na ISO 27001.",
+      "name": "MRS Consultoria - Code_Assessment",
+      "description": "Sistema completo para avaliação de maturidade em Segurança da Informação baseado na ISO 27001. MRS Consultoria - Especialistas em GRC e Segurança da Informação.",
       "url": "https://code-assessment.com/",
       "applicationCategory": "BusinessApplication",
       "operatingSystem": "Web",
       "browserRequirements": "Requires JavaScript",
+      "author": {
+        "@type": "Organization",
+        "name": "MRS Consultoria",
+        "url": "https://cisatool.com.br"
+      },
       "offers": {
         "@type": "Offer",
         "price": "0",
@@ -82,12 +142,31 @@
       }
     }
     </script>
-    <script type="module" crossorigin src="/assets/index-BYi7gLZh.js"></script>
-    <link rel="modulepreload" crossorigin href="/assets/react-vendor-Dful8Yib.js">
-    <link rel="modulepreload" crossorigin href="/assets/data-vendor-BtX-BDgx.js">
-    <link rel="modulepreload" crossorigin href="/assets/ui-vendor-D6HeE-7R.js">
+
+    <!-- ============================================ -->
+    <!-- ORGANIZATION SCHEMA MARKUP - MRS CONSULTORIA -->
+    <!-- ============================================ -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "MRS Consultoria",
+      "url": "https://cisatool.com.br",
+      "logo": "https://code-assessment.com/logo.png",
+      "description": "Especialistas em Segurança da Informação, GRC e Computação na Nuvem.",
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "contactType": "customer service",
+        "email": "contato@cisatool.com.br"
+      }
+    }
+    </script>
+    <script type="module" crossorigin src="/assets/index-BwRLNboD.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/react-vendor-C9sE3epI.js">
+    <link rel="modulepreload" crossorigin href="/assets/data-vendor-CFTwWV2q.js">
+    <link rel="modulepreload" crossorigin href="/assets/ui-vendor-CGxPOaUJ.js">
     <link rel="modulepreload" crossorigin href="/assets/utils-vendor-BOm53U30.js">
-    <link rel="stylesheet" crossorigin href="/assets/index-DFAPTgYT.css">
+    <link rel="stylesheet" crossorigin href="/assets/index-D39jl4ar.css">
   </head>
   <body>
     <div id="root"></div>

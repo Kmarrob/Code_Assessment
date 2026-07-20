@@ -1,4 +1,4 @@
-// frontend/src/pages/AdminDashboard.tsx
+// frontend/src/pages/admin/AdminDashboard.tsx
 import React, { useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext.js';
@@ -23,8 +23,9 @@ export const AdminDashboard: React.FC = () => {
   const { data: activeUsersData } = useUsers({ limit: 1, isActive: true });
 
   const stats = useMemo(() => ({
-    totalUsers: usersData?.pagination?.total || 0,
-    activeUsers: activeUsersData?.pagination?.total || 0,
+    // 🔴 CORRIGIDO: Acessar os dados corretamente
+    totalUsers: usersData?.data?.total || usersData?.total || usersData?.pagination?.total || 0,
+    activeUsers: activeUsersData?.data?.total || activeUsersData?.total || activeUsersData?.pagination?.total || 0,
     totalControls: 93,
     completedAssessments: 8,
     isLoading: isLoadingUsers,
