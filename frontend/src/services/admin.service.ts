@@ -9,6 +9,7 @@ export interface UserFilters {
   isActive?: boolean;
   search?: string;
   company?: string;
+  companyId?: string;
   department?: string;
 }
 
@@ -50,16 +51,19 @@ function extractData<T>(response: any): T {
   if (response.data?.data) {
     return response.data.data;
   }
+
   // Se response.data existir, usar
   if (response.data) {
     return response.data;
   }
+
   // Fallback: retornar o próprio response
   return response;
 }
 
 function extractUser(response: any): IUser {
   const data = extractData<any>(response);
+
   // Tentar diferentes estruturas
   return data.user || data;
 }
@@ -67,44 +71,71 @@ function extractUser(response: any): IUser {
 export const adminService = {
   async listUsers(filters: UserFilters = {}): Promise<UserListResponse> {
     const params = new URLSearchParams();
-    
-    if (filters.page) params.append('page', String(filters.page));
-    if (filters.limit) params.append('limit', String(filters.limit));
-    if (filters.role) params.append('role', filters.role);
-    if (filters.isActive !== undefined) params.append('isActive', String(filters.isActive));
-    if (filters.search) params.append('search', filters.search);
-    if (filters.company) params.append('company', filters.company);
-    if (filters.department) params.append('department', filters.department);
+
+    if (filters.page) {
+      params.append('page', String(filters.page));
+    }
+
+    if (filters.limit) {
+      params.append('limit', String(filters.limit));
+    }
+
+    if (filters.role) {
+      params.append('role', filters.role);
+    }
+
+    if (filters.isActive !== undefined) {
+      params.append('isActive', String(filters.isActive));
+    }
+
+    if (filters.search) {
+      params.append('search', filters.search);
+    }
+
+    if (filters.company) {
+      params.append('company', filters.company);
+    }
+
+    if (filters.companyId) {
+      params.append('companyId', filters.companyId);
+    }
+
+    if (filters.department) {
+      params.append('department', filters.department);
+    }
 
     const response = await api.get(`/admin/users?${params.toString()}`);
     const data = extractData<any>(response);
-    
+
     // Retornar com fallback seguro
     return {
       users: data.users || [],
-      pagination: data.pagination || { 
-        page: 1, 
-        limit: 10, 
-        total: 0, 
-        totalPages: 0, 
-        hasNext: false, 
-        hasPrevious: false 
+      pagination: data.pagination || {
+        page: 1,
+        limit: 10,
+        total: 0,
+        totalPages: 0,
+        hasNext: false,
+        hasPrevious: false
       }
     };
   },
 
   async getUserById(id: string): Promise<IUser> {
     const response = await api.get(`/admin/users/${id}`);
+
     return extractUser(response);
   },
 
   async createUser(data: CreateUserData): Promise<IUser> {
     const response = await api.post('/admin/users', data);
+
     return extractUser(response);
   },
 
   async updateUser(id: string, data: UpdateUserData): Promise<IUser> {
     const response = await api.put(`/admin/users/${id}`, data);
+
     return extractUser(response);
   },
 
@@ -114,6 +145,7 @@ export const adminService = {
 
   async reactivateUser(id: string): Promise<IUser> {
     const response = await api.post(`/admin/users/${id}/reactivate`);
+
     return extractUser(response);
   },
 

@@ -153,6 +153,7 @@ export const UsersTable = React.memo(({ onEdit, onCreate }: UsersTableProps) => 
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('');
+  const [companyFilter, setCompanyFilter] = useState<string>('');
   const [deleteTarget, setDeleteTarget] = useState<IUser | null>(null);
   const [reactivateTarget, setReactivateTarget] = useState<IUser | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -162,19 +163,23 @@ export const UsersTable = React.memo(({ onEdit, onCreate }: UsersTableProps) => 
   const debouncedSearch = useDebounce(search, 300);
   const limit = 10;
 
+  // ============================================
+  // FILTROS
+  // ============================================
   const filters = useMemo(() => ({
     page,
     limit,
     search: debouncedSearch,
     role: roleFilter || undefined,
-  }), [page, limit, debouncedSearch, roleFilter]);
+    companyId: companyFilter || undefined,
+  }), [page, limit, debouncedSearch, roleFilter, companyFilter]);
 
   const { data, isLoading, error, refetch } = useUsers(filters);
   const deleteUser = useDeleteUser();
   const reactivateUser = useReactivateUser();
 
   // ============================================
-  // CARREGAR EMPRESAS PARA EXIBIÇÃO - CORRIGIDO
+  // CARREGAR EMPRESAS PARA EXIBIÇÃO
   // ============================================
   useEffect(() => {
     const loadCompanies = async () => {
@@ -182,7 +187,6 @@ export const UsersTable = React.memo(({ onEdit, onCreate }: UsersTableProps) => 
         const response = await companyService.listCompanies({ limit: 100 });
         const companyMap: Record<string, string> = {};
         
-        // Verificar diferentes formatos de resposta
         let companiesList: Company[] = [];
         
         if (response && Array.isArray(response)) {
@@ -211,9 +215,20 @@ export const UsersTable = React.memo(({ onEdit, onCreate }: UsersTableProps) => 
         console.error('❌ Erro ao carregar empresas:', error);
       }
     };
+
     loadCompanies();
   }, []);
 
+  const companyOptions = useMemo(() => {
+    return Object.entries(companies).map(([id, name]) => ({
+      id,
+      name
+    }));
+  }, [companies]);
+
+  // ============================================
+  // HANDLERS
+  // ============================================
   const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setSearch(e.target.value);
     setPage(1);
@@ -221,6 +236,11 @@ export const UsersTable = React.memo(({ onEdit, onCreate }: UsersTableProps) => 
 
   const handleRoleFilterChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
     setRoleFilter(e.target.value);
+    setPage(1);
+  }, []);
+
+  const handleCompanyFilterChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+    setCompanyFilter(e.target.value);
     setPage(1);
   }, []);
 
@@ -239,27 +259,39 @@ export const UsersTable = React.memo(({ onEdit, onCreate }: UsersTableProps) => 
   const handleConfirmDelete = useCallback(async () => {
     if (deleteTarget) {
       setIsDeleting(true);
-      await deleteUser.mutateAsync(deleteTarget._id);
-      setIsDeleting(false);
-      setDeleteTarget(null);
+
+      try {
+        await deleteUser.mutateAsync(deleteTarget._id);
+        setDeleteTarget(null);
+      } finally {
+        setIsDeleting(false);
+      }
     }
   }, [deleteTarget, deleteUser]);
 
   const handleConfirmReactivate = useCallback(async () => {
     if (reactivateTarget) {
       setIsReactivating(true);
-      await reactivateUser.mutateAsync(reactivateTarget._id);
-      setIsReactivating(false);
-      setReactivateTarget(null);
+
+      try {
+        await reactivateUser.mutateAsync(reactivateTarget._id);
+        setReactivateTarget(null);
+      } finally {
+        setIsReactivating(false);
+      }
     }
   }, [reactivateTarget, reactivateUser]);
 
   const handleClearFilters = useCallback(() => {
     setSearch('');
     setRoleFilter('');
+    setCompanyFilter('');
     setPage(1);
   }, []);
 
+  // ============================================
+  // ESTADOS DE CARREGAMENTO E ERRO
+  // ============================================
   if (isLoading) {
     return <AdminLoadingFallback />;
   }
@@ -271,7 +303,10 @@ export const UsersTable = React.memo(({ onEdit, onCreate }: UsersTableProps) => 
   const users = Array.isArray(data?.users) ? data.users : [];
   const pagination = data?.pagination;
 
-  if (users.length === 0 && !search && !roleFilter) {
+  // ============================================
+  // ESTADO VAZIO - SEM USUÁRIOS
+  // ============================================
+  if (users.length === 0 && !search && !roleFilter && !companyFilter) {
     return (
       <Card role="region" aria-label="Lista de usuários vazia">
         <CardContent className="p-8">
@@ -288,7 +323,10 @@ export const UsersTable = React.memo(({ onEdit, onCreate }: UsersTableProps) => 
     );
   }
 
-  if (users.length === 0 && (search || roleFilter)) {
+  // ============================================
+  // ESTADO VAZIO - FILTROS SEM RESULTADOS
+  // ============================================
+  if (users.length === 0 && (search || roleFilter || companyFilter)) {
     return (
       <Card role="region" aria-label="Resultados da busca vazios">
         <CardContent className="p-8">
@@ -308,6 +346,9 @@ export const UsersTable = React.memo(({ onEdit, onCreate }: UsersTableProps) => 
     );
   }
 
+  // ============================================
+  // RENDER PRINCIPAL
+  // ============================================
   return (
     <>
       <AdminLoadingOverlay 
@@ -320,9 +361,15 @@ export const UsersTable = React.memo(({ onEdit, onCreate }: UsersTableProps) => 
               <h2 id="users-table-title" className="text-lg font-semibold text-gray-900">
                 Usuários Cadastrados
               </h2>
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto" role="search" aria-label="Buscar usuários">
+
+              <div 
+                className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto" 
+                role="search" 
+                aria-label="Buscar usuários"
+              >
                 <div className="relative w-full sm:w-48">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+
                   <Input
                     placeholder="Buscar..."
                     value={search}
@@ -331,6 +378,7 @@ export const UsersTable = React.memo(({ onEdit, onCreate }: UsersTableProps) => 
                     aria-label="Buscar usuários por nome ou email"
                   />
                 </div>
+
                 <select
                   value={roleFilter}
                   onChange={handleRoleFilterChange}
@@ -343,6 +391,22 @@ export const UsersTable = React.memo(({ onEdit, onCreate }: UsersTableProps) => 
                   <option value="consultant">Consultor</option>
                   <option value="user">Usuário</option>
                 </select>
+
+                <select
+                  value={companyFilter}
+                  onChange={handleCompanyFilterChange}
+                  className="h-10 rounded-md border border-input bg-transparent px-3 py-2 text-sm w-full sm:w-auto"
+                  aria-label="Filtrar por empresa"
+                >
+                  <option value="">Todas as empresas</option>
+
+                  {companyOptions.map((company) => (
+                    <option key={company.id} value={company.id}>
+                      {company.name}
+                    </option>
+                  ))}
+                </select>
+
                 {onCreate && (
                   <Button 
                     size="sm" 
@@ -357,21 +421,37 @@ export const UsersTable = React.memo(({ onEdit, onCreate }: UsersTableProps) => 
               </div>
             </div>
           </CardHeader>
+
           <CardContent>
             {users.length > 0 && (
               <div className="w-full overflow-x-auto">
                 <div className="min-w-[900px]">
-                  {/* Cabeçalho da tabela com grid */}
                   <div className="grid grid-cols-[1.5fr_2fr_1fr_0.8fr_1fr_0.8fr] items-center bg-gray-50 border-b border-gray-200 rounded-t-lg px-4 py-3 gap-2">
-                    <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Usuário</span>
-                    <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Email</span>
-                    <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Perfil</span>
-                    <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Empresa</span>
-                    <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Status</span>
-                    <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</span>
+                    <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Usuário
+                    </span>
+
+                    <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Email
+                    </span>
+
+                    <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Perfil
+                    </span>
+
+                    <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Empresa
+                    </span>
+
+                    <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
+                    </span>
+
+                    <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Ações
+                    </span>
                   </div>
 
-                  {/* Corpo da tabela */}
                   <div className="divide-y divide-gray-100">
                     {users.map((user, index) => (
                       <UserRow
@@ -393,10 +473,14 @@ export const UsersTable = React.memo(({ onEdit, onCreate }: UsersTableProps) => 
             )}
 
             {pagination && pagination.totalPages > 1 && (
-              <nav aria-label="Navegação de páginas" className="flex flex-col sm:flex-row items-center justify-between mt-4 pt-4 border-t border-gray-100 gap-3">
+              <nav 
+                aria-label="Navegação de páginas" 
+                className="flex flex-col sm:flex-row items-center justify-between mt-4 pt-4 border-t border-gray-100 gap-3"
+              >
                 <span className="text-sm text-gray-500">
                   Mostrando {((pagination.page - 1) * pagination.limit) + 1} - {Math.min(pagination.page * pagination.limit, pagination.total)} de {pagination.total} usuários
                 </span>
+
                 <div className="flex gap-2">
                   <Button
                     variant="outline"
@@ -408,9 +492,11 @@ export const UsersTable = React.memo(({ onEdit, onCreate }: UsersTableProps) => 
                   >
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
+
                   <span className="flex items-center px-3 text-sm">
                     {pagination.page} / {pagination.totalPages}
                   </span>
+
                   <Button
                     variant="outline"
                     size="sm"
@@ -454,4 +540,5 @@ export const UsersTable = React.memo(({ onEdit, onCreate }: UsersTableProps) => 
 });
 
 UsersTable.displayName = 'UsersTable';
+
 export default UsersTable;

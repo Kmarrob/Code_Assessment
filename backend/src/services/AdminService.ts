@@ -53,12 +53,16 @@ export class AdminService {
 
             if (filters.role) filter.role = filters.role;
             if (filters.isActive !== undefined) filter.isActive = filters.isActive;
-            if (filters.company) {
-              filter.company = { $regex: filters.company, $options: 'i' };
-            }
+            
+            // 🔴 CORREÇÃO: Filtrar por companyId
             if (filters.companyId) {
               filter.companyId = new Types.ObjectId(filters.companyId);
             }
+            
+            if (filters.company) {
+              filter.company = { $regex: filters.company, $options: 'i' };
+            }
+            
             if (filters.department) {
               filter.department = { $regex: filters.department, $options: 'i' };
             }

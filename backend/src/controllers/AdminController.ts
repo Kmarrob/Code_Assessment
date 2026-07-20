@@ -1,3 +1,4 @@
+// backend/src/controllers/AdminController.ts
 import { Response, NextFunction } from 'express';
 import { AdminService } from '../services/AdminService.js';
 import { validate } from '../utils/validation.js';
@@ -32,7 +33,8 @@ export class AdminController {
         throw new ValidationError(validation.errors || {});
       }
 
-      const { page, limit, role, isActive, search, company, department } = validation.data;
+      // ✅ Extrair companyId da query
+      const { page, limit, role, isActive, search, company, companyId, department } = validation.data;
 
       // Garantir que role seja do tipo correto usando enum
       let validRole: UserRole | undefined;
@@ -43,12 +45,14 @@ export class AdminController {
         }
       }
 
+      // ✅ Repassar companyId para o service
       const result = await AdminService.listUsers(
         { 
           role: validRole, 
           isActive, 
           search, 
           company, 
+          companyId, // ← DEVE ESTAR AQUI
           department 
         },
         page,
