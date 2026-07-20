@@ -120,9 +120,7 @@ export const ReportView: React.FC = () => {
     setIsLoading(true);
     setError(null);
     try {
-      const companyIdFromParams = params.companyId;
-const companyIdFromQuery = searchParams.get('companyId');
-const companyIdFromUrl = companyIdFromParams || companyIdFromQuery;
+      const companyIdFromUrl = params.companyId;
       
       let data;
       
