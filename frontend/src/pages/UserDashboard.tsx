@@ -1,8 +1,8 @@
 // frontend/src/pages/UserDashboard.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext.js';
-import { LayoutDashboard, ClipboardList, CheckCircle, Clock, AlertCircle, Loader2, LogOut, Download } from 'lucide-react';
+import { LayoutDashboard, ClipboardList, CheckCircle, Clock, AlertCircle, Loader2, LogOut, Download, Filter } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card.js';
 import { Button } from '../components/ui/Button.js';
 import { userService, UserStats, UserControl } from '../services/user.service.js';
@@ -15,6 +15,9 @@ export const UserDashboard: React.FC = () => {
   const [controls, setControls] = useState<UserControl[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // 🔴 NOVO: Estado para filtro de status
+  const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'in_progress' | 'completed'>('all');
 
   // ============================================
   // HANDLERS
@@ -26,6 +29,11 @@ export const UserDashboard: React.FC = () => {
   const handleLogout = async () => {
     await logout();
     navigate('/login');
+  };
+
+  // 🔴 NOVO: Handler para mudar o filtro
+  const handleFilterChange = (status: 'all' | 'pending' | 'in_progress' | 'completed') => {
+    setFilterStatus(status);
   };
 
   // ============================================
@@ -73,6 +81,17 @@ export const UserDashboard: React.FC = () => {
   };
 
   const progressBarColor = getProgressBarColor();
+
+  // 🔴 NOVO: Filtrar controles pelo status selecionado
+  const filteredControls = useMemo(() => {
+    if (filterStatus === 'all') {
+      return controls;
+    }
+    return controls.filter((item) => item.status === filterStatus);
+  }, [controls, filterStatus]);
+
+  // 🔴 NOVO: Contar quantos controles estão sendo exibidos
+  const displayedCount = filteredControls.length;
 
   // ============================================
   // RENDER
@@ -139,7 +158,7 @@ export const UserDashboard: React.FC = () => {
               Gerencie seus controles atribuídos e acompanhe seu progresso
             </p>
           </div>
-          {/* 🔴 NOVO: Botão de Exportação protegido por FeatureGuard */}
+          {/* Botão de Exportação protegido por FeatureGuard */}
           <FeatureGuard feature="canExportData">
             <Button
               variant="outline"
@@ -156,7 +175,7 @@ export const UserDashboard: React.FC = () => {
           </FeatureGuard>
         </div>
 
-        {/* CORREÇÃO: Barra de Progresso Geral */}
+        {/* Barra de Progresso Geral */}
         <div className="mb-8">
           <Card>
             <CardContent className="p-6">
@@ -245,17 +264,77 @@ export const UserDashboard: React.FC = () => {
         {/* Controls List */}
         <Card>
           <CardHeader>
-            <CardTitle>Meus Controles</CardTitle>
-            <p className="text-sm text-gray-500">
-              {controls.length} {controls.length === 1 ? 'controle atribuído' : 'controles atribuídos'}
-            </p>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <CardTitle>Meus Controles</CardTitle>
+                <p className="text-sm text-gray-500">
+                  {displayedCount} {displayedCount === 1 ? 'controle exibido' : 'controles exibidos'}
+                  {filterStatus !== 'all' && ` (filtrado por ${filterStatus === 'pending' ? 'Pendentes' : filterStatus === 'in_progress' ? 'Em Andamento' : 'Concluídos'})`}
+                </p>
+              </div>
+              
+              {/* 🔴 NOVO: Filtros por Status */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-sm text-gray-500 flex items-center gap-1">
+                  <Filter className="h-4 w-4" />
+                  Filtrar:
+                </span>
+                <div className="flex gap-1">
+                  <button
+                    onClick={() => handleFilterChange('all')}
+                    className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${
+                      filterStatus === 'all'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    Todos
+                  </button>
+                  <button
+                    onClick={() => handleFilterChange('pending')}
+                    className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${
+                      filterStatus === 'pending'
+                        ? 'bg-red-600 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    Pendentes
+                  </button>
+                  <button
+                    onClick={() => handleFilterChange('in_progress')}
+                    className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${
+                      filterStatus === 'in_progress'
+                        ? 'bg-yellow-600 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    Em Andamento
+                  </button>
+                  <button
+                    onClick={() => handleFilterChange('completed')}
+                    className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${
+                      filterStatus === 'completed'
+                        ? 'bg-green-600 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    Concluídos
+                  </button>
+                </div>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
-            {controls.length === 0 ? (
+            {filteredControls.length === 0 ? (
               <div className="text-center py-12 text-gray-500">
                 <ClipboardList className="h-12 w-12 mx-auto mb-3 text-gray-300" />
-                <p>Nenhum controle atribuído ainda.</p>
-                <p className="text-sm">Aguarde a atribuição do seu preposto.</p>
+                <p>Nenhum controle encontrado com o filtro selecionado.</p>
+                <button
+                  onClick={() => handleFilterChange('all')}
+                  className="mt-2 text-blue-600 hover:text-blue-800 text-sm"
+                >
+                  Ver todos os controles
+                </button>
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -270,7 +349,7 @@ export const UserDashboard: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {controls.map((item) => (
+                    {filteredControls.map((item) => (
                       <tr key={item.assignmentId} className="hover:bg-gray-50">
                         <td className="py-3 px-4 font-mono text-gray-600">{item.control?.id || '-'}</td>
                         <td className="py-3 px-4 text-gray-900">{item.control?.nome || '-'}</td>
