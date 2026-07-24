@@ -153,6 +153,28 @@ export class AdminService {
               if (!company) {
                 throw new AppError('Empresa não encontrada', 404);
               }
+
+              // ============================================
+              // 🔴 CORREÇÃO: VALIDAR LIMITE DE USUÁRIOS DO PLANO
+              // ============================================
+              // Contar usuários ativos da empresa (excluindo admins e reps)
+              const activeUserCount = await User.countDocuments({
+                companyId: companyId,
+                isActive: true,
+                role: { $nin: [UserRole.ADMIN, UserRole.REP] }
+              });
+
+              // Verificar se atingiu o limite
+              if (data.role !== UserRole.ADMIN && data.role !== UserRole.REP) {
+                if (activeUserCount >= company.maxUsers) {
+                  const planName = company.plan === 'enterprise' ? 'Enterprise' : 
+                                   company.plan === 'pro' ? 'Profissional' : 'Básico';
+                  throw new AppError(
+                    `Limite de usuários do plano ${planName} atingido (${company.maxUsers}). Faça upgrade para adicionar mais usuários.`,
+                    403
+                  );
+                }
+              }
             }
 
             const user = new User({

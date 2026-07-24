@@ -34,6 +34,8 @@ interface UserFormProps {
   onSubmit: (data: UserFormData) => Promise<void>;
   onCancel: () => void;
   isLoading?: boolean;
+  // 🔴 NOVA PROP: Callback para quando o limite de usuários for atingido
+  onUpgradeNeeded?: (message: string) => void;
 }
 
 export const UserForm = React.memo(({
@@ -41,6 +43,7 @@ export const UserForm = React.memo(({
   onSubmit,
   onCancel,
   isLoading = false,
+  onUpgradeNeeded,
 }: UserFormProps) => {
   const isEditing = !!user;
   const { validatePassword, validateEmail } = useAdminSecurity();
@@ -55,7 +58,6 @@ export const UserForm = React.memo(({
       try {
         const response = await companyService.listCompanies({ limit: 100 });
         
-        // Verificar diferentes formatos de resposta
         let companiesList: Company[] = [];
         
         if (response && Array.isArray(response)) {
@@ -111,7 +113,6 @@ export const UserForm = React.memo(({
   const name = watch('name');
   const companyId = watch('companyId');
 
-  // Quando o usuário seleciona uma empresa, limpar o campo company
   useEffect(() => {
     if (companyId) {
       const selectedCompany = companies.find(c => c._id === companyId);
@@ -171,9 +172,24 @@ export const UserForm = React.memo(({
     return 'success';
   }, [touchedFields, errors]);
 
+  // 🔴 CORRIGIDO: Capturar erro de limite e chamar onUpgradeNeeded
   const handleFormSubmit = useCallback(async (data: UserFormData) => {
-    await onSubmit(data);
-  }, [onSubmit]);
+    try {
+      await onSubmit(data);
+    } catch (err: any) {
+      const status = err?.response?.status;
+      const message = err?.response?.data?.message || '';
+      
+      // Se for erro de limite de usuários (403) e tiver a mensagem específica
+      if (status === 403 && message.includes('Limite de usuários')) {
+        if (onUpgradeNeeded) {
+          onUpgradeNeeded(message);
+        }
+      }
+      // Re-lançar o erro para o componente pai lidar
+      throw err;
+    }
+  }, [onSubmit, onUpgradeNeeded]);
 
   if (isLoading) {
     return (
@@ -283,9 +299,6 @@ export const UserForm = React.memo(({
             )}
           </div>
 
-          {/* ============================================
-              CAMPO EMPRESA - COM SELECT
-              ============================================ */}
           <div className="animate-slide-up" style={{ animationDelay: '0.2s' }}>
             <div className="flex items-center gap-2 mb-1.5">
               <Building2 className="h-4 w-4 text-gray-400" />

@@ -177,6 +177,32 @@ export class RepService {
     }
 
     // ============================================
+    // 🔴 CORREÇÃO: VALIDAR LIMITE DE USUÁRIOS DO PLANO
+    // ============================================
+    // Buscar a empresa para obter o plano e limite
+    const company = await Company.findById(companyId);
+    if (!company) {
+      throw new AppError('Empresa não encontrada', 404);
+    }
+
+    // Contar usuários ativos da empresa (excluindo o preposto)
+    const activeUserCount = await User.countDocuments({
+      companyId: companyId,
+      isActive: true,
+      role: { $ne: UserRole.REP } // não contar o preposto
+    });
+
+    // Verificar se atingiu o limite
+    if (activeUserCount >= company.maxUsers) {
+      const planName = company.plan === 'enterprise' ? 'Enterprise' : 
+                       company.plan === 'pro' ? 'Profissional' : 'Básico';
+      throw new AppError(
+        `Limite de usuários do plano ${planName} atingido (${company.maxUsers}). Faça upgrade para adicionar mais usuários.`,
+        403
+      );
+    }
+
+    // ============================================
     // CORREÇÃO: Senha NÃO é gerada para primeiro acesso
     // O usuário deve criar a senha via link de redefinição
     // ============================================
