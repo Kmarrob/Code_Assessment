@@ -460,6 +460,7 @@ export class RepController {
 
   /**
    * Obter controles da empresa do preposto
+   * 🔴 CORRIGIDO: Controles agora são ordenados por ID
    */
   static async getCompanyControls(
     req: AuthenticatedRequest,
@@ -493,8 +494,22 @@ export class RepController {
         throw new NotFoundError('Empresa não encontrada');
       }
 
-      // Pegar os controles da empresa
-      const controls = company.assignedControls || [];
+      // 🔴 CORREÇÃO: Ordenar controles por ID (número do controle)
+      const controls = (company.assignedControls || []).sort((a: any, b: any) => {
+        // Extrair o número do controle (ex: "A.5.1" → 5.1, "5.8" → 5.8)
+        const aMatch = a.id?.match(/(\d+\.\d+)/);
+        const bMatch = b.id?.match(/(\d+\.\d+)/);
+        
+        const aNum = aMatch ? parseFloat(aMatch[1]) : 0;
+        const bNum = bMatch ? parseFloat(bMatch[1]) : 0;
+        
+        // Se os números principais forem iguais, ordenar pelo ID completo
+        if (aNum === bNum) {
+          return (a.id || '').localeCompare(b.id || '');
+        }
+        
+        return aNum - bNum;
+      });
 
       res.json({
         success: true,
@@ -659,6 +674,144 @@ export class RepController {
         userAgent: req.headers['user-agent'],
         path: req.path,
         method: req.method,
+      });
+      next(error);
+    }
+  }
+
+  // ============================================
+  // 🔴 NOVOS MÉTODOS PARA ATRIBUIÇÃO PARA SI MESMO
+  // ============================================
+
+  /**
+   * 🔴 NOVO: Buscar controles já atribuídos ao preposto
+   * GET /api/rep/my-assignments
+   */
+  static async getMyAssignments(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const repId = req.userId;
+      if (!repId) {
+        throw new AppError('Usuário não autenticado', 401);
+      }
+
+      // Buscar o preposto para obter a empresa
+      const rep = await User.findById(repId);
+      if (!rep) {
+        throw new NotFoundError('Preposto não encontrado');
+      }
+
+      // Buscar atribuições do preposto (onde ele é o usuário)
+      const assignments = await Assignment.find({
+        userId: repId,
+      })
+        .populate({
+          path: 'controlId',
+          select: '_id id nome dominioDeSI tipoDeControle nota',
+        })
+        .lean();
+
+      // Formatar resposta
+      const result = assignments.map((a: any) => ({
+        _id: a._id,
+        userId: a.userId,
+        controlId: a.controlId?._id || a.controlId,
+        controlName: a.controlId?.nome || 'Controle não encontrado',
+        status: a.status,
+        assignedAt: a.assignedAt,
+      }));
+
+      res.json({
+        success: true,
+        data: result,
+        statusCode: 200,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      ErrorLogger.logError(error as Error, {
+        userId: req.userId,
+        email: req.user?.email,
+        ip: req.ip,
+        userAgent: req.headers['user-agent'],
+        path: req.path,
+        method: req.method,
+      });
+      next(error);
+    }
+  }
+
+  /**
+   * 🔴 NOVO: Atribuir controles para o próprio preposto
+   * POST /api/rep/assign-to-self
+   */
+  static async assignToSelf(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const repId = req.userId;
+      if (!repId) {
+        throw new AppError('Usuário não autenticado', 401);
+      }
+
+      const { controlIds } = req.body;
+
+      if (!controlIds || !Array.isArray(controlIds) || controlIds.length === 0) {
+        throw new ValidationError({
+          controlIds: ['Lista de controles é obrigatória e deve conter pelo menos um ID']
+        });
+      }
+
+      // Buscar o preposto
+      const rep = await User.findById(repId);
+      if (!rep) {
+        throw new NotFoundError('Preposto não encontrado');
+      }
+
+      // Usar o método assignControls do RepService com o próprio ID
+      const result = await RepService.assignControls(repId, {
+        userId: repId,
+        controlIds: controlIds,
+        force: false,
+      });
+
+      // 🔴 NOTIFICAÇÃO: Atribuição para si mesmo
+      if (result.assigned > 0) {
+        const controlNames = controlIds
+          .map((id) => id)
+          .join(', ');
+        await AuditService.logUserCreation(
+          req.userId,
+          req.user?.email || '',
+          repId,
+          rep.email,
+          'rep',
+          req.ip || '',
+          req.headers['user-agent'] || '',
+          true
+        );
+      }
+
+      res.json({
+        success: true,
+        message: `${result.assigned} controle(s) atribuído(s) para você com sucesso`,
+        data: result,
+        statusCode: 200,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      ErrorLogger.logError(error as Error, {
+        userId: req.userId,
+        email: req.user?.email,
+        ip: req.ip,
+        userAgent: req.headers['user-agent'],
+        path: req.path,
+        method: req.method,
+        body: req.body,
       });
       next(error);
     }

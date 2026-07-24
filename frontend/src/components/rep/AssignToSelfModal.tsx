@@ -1,3 +1,4 @@
+// frontend/src/components/rep/AssignToSelfModal.tsx
 import React, { useEffect, useState } from 'react';
 import {
   AlertCircle,
@@ -86,11 +87,8 @@ export const AssignToSelfModal: React.FC<AssignToSelfModalProps> = ({
       setSuccess(null);
 
       try {
-        const response = await controlService.listControls({
-          limit: 200,
-        });
-
-        const allControls = response.items ?? [];
+        // 🔴 CORRIGIDO: Usar método específico para preposto
+        const allControls = await controlService.getAvailableControls();
 
         const myAssignments = await repService.getMyAssignments();
 
