@@ -107,4 +107,29 @@ router.get(
   RepController.getCompanyControls
 );
 
+// ============================================
+// 🔴 NOVAS ROTAS PARA ATRIBUIÇÃO PARA SI MESMO
+// ============================================
+
+/**
+ * 🔴 NOVO: Buscar controles já atribuídos ao preposto
+ * GET /api/rep/my-assignments
+ */
+router.get(
+  '/my-assignments',
+  adminRateLimiter,
+  RepController.getMyAssignments
+);
+
+/**
+ * 🔴 NOVO: Atribuir controles para o próprio preposto
+ * POST /api/rep/assign-to-self
+ */
+router.post(
+  '/assign-to-self',
+  adminRateLimiter,
+  sanitizeAdminInputs,
+  RepController.assignToSelf
+);
+
 export default router;
