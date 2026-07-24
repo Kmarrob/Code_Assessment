@@ -483,12 +483,14 @@ export class RepController {
       }
 
       // Buscar a empresa com os controles atribuídos
-      const company = await Company.findById(rep.companyId)
-        .populate({
-          path: 'assignedControls',
-          select: '_id id nome dominioDeSI tipoDeControle nota',
-        })
-        .lean();
+      const company = rep.companyId ? await Company.findById(rep.companyId) : null;
+if (company) {
+  await company.populate({
+    path: 'assignedControls',
+    select: '_id id nome dominioDeSI tipoDeControle nota',
+  });
+  await company.lean();
+}
 
       if (!company) {
         throw new NotFoundError('Empresa não encontrada');
