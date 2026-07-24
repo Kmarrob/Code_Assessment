@@ -16,7 +16,7 @@ export const UserDashboard: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  // 🔴 NOVO: Estado para filtro de status
+  // Estado para filtro de status
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'in_progress' | 'completed'>('all');
 
   // ============================================
@@ -31,7 +31,7 @@ export const UserDashboard: React.FC = () => {
     navigate('/login');
   };
 
-  // 🔴 NOVO: Handler para mudar o filtro
+  // Handler para mudar o filtro
   const handleFilterChange = (status: 'all' | 'pending' | 'in_progress' | 'completed') => {
     setFilterStatus(status);
   };
@@ -82,7 +82,7 @@ export const UserDashboard: React.FC = () => {
 
   const progressBarColor = getProgressBarColor();
 
-  // 🔴 NOVO: Filtrar controles pelo status selecionado
+  // Filtrar controles pelo status selecionado
   const filteredControls = useMemo(() => {
     if (filterStatus === 'all') {
       return controls;
@@ -90,7 +90,7 @@ export const UserDashboard: React.FC = () => {
     return controls.filter((item) => item.status === filterStatus);
   }, [controls, filterStatus]);
 
-  // 🔴 NOVO: Contar quantos controles estão sendo exibidos
+  // Contar quantos controles estão sendo exibidos
   const displayedCount = filteredControls.length;
 
   // ============================================
@@ -129,10 +129,15 @@ export const UserDashboard: React.FC = () => {
       {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          {/* 🔴 CORRIGIDO: Logo redireciona para o dashboard do usuário */}
+          <button
+            onClick={() => navigate('/user/dashboard')}
+            className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+            aria-label="Ir para o dashboard"
+          >
             <LayoutDashboard className="h-6 w-6 text-primary-600" />
             <span className="text-lg font-semibold text-gray-900">Code_Assessment</span>
-          </div>
+          </button>
           <div className="flex items-center gap-4">
             <span className="text-sm text-gray-600">Olá, {user?.name}</span>
             <button
@@ -273,7 +278,7 @@ export const UserDashboard: React.FC = () => {
                 </p>
               </div>
               
-              {/* 🔴 NOVO: Filtros por Status */}
+              {/* Filtros por Status */}
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-sm text-gray-500 flex items-center gap-1">
                   <Filter className="h-4 w-4" />

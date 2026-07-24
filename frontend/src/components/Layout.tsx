@@ -158,7 +158,8 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       >
         <div className="container mx-auto px-4 py-3 flex items-center justify-between" style={{ minHeight: '80px' }}>
           <div className="flex items-center gap-2">
-            <Link to="/" className="flex items-center gap-2">
+            {/* 🔴 CORRIGIDO: Redirecionar para o dashboard correto com base no perfil */}
+            <Link to={user ? (user.role === 'user' ? '/dashboard' : `/${user.role}`) : "/"} className="flex items-center gap-2">
               {showLogo ? (
                 <img
                   src={finalLogoUrl}

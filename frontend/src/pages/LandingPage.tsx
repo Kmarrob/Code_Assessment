@@ -124,7 +124,7 @@ const plans = [
     price: '1.497',
     priceAnnual: '14.970',
     description: 'Perfeito para pequenas empresas que estão começando sua jornada de maturidade em segurança da informação.',
-    users: 'Até 3', // 🔴 CORRIGIDO: 5 → 3
+    users: 'Até 3',
     features: [
       '93 Controles ISO 27001',
       'Dashboards Avançados',
@@ -150,7 +150,7 @@ const plans = [
     price: '3.297',
     priceAnnual: '32.970',
     description: 'Ideal para empresas que buscam um assessment completo com suporte especializado.',
-    users: 'Até 4', // 🔴 CORRIGIDO: 10 → 4
+    users: 'Até 4',
     features: [
       'Tudo do Plano Básico',
       'Exportação de Dados (CSV/Excel)',
@@ -170,11 +170,11 @@ const plans = [
   },
   {
     id: 'enterprise',
-  name: 'Enterprise',
-  price: '5.997',
-  priceAnnual: '59.970',
-  description: 'Solução completa para grandes organizações com necessidades avançadas de conformidade.',
-  users: 'Até 10',
+    name: 'Enterprise',
+    price: '5.997',
+    priceAnnual: '59.970',
+    description: 'Solução completa para grandes organizações com necessidades avançadas de conformidade.',
+    users: 'Até 10',
     features: [
       'Tudo do Plano Profissional',
       'Impressão/Download do Relatório',
@@ -188,7 +188,7 @@ const plans = [
     badge: 'Completo',
     isPopular: false,
     cta: 'Contratar',
-    link: '/register?plan=enterprise', // 🔴 CORRIGIDO: /contact → /register?plan=enterprise
+    link: '/register?plan=enterprise',
   },
 ];
 
@@ -196,32 +196,64 @@ export const LandingPage: React.FC = () => {
   const [branding, setBranding] = useState<PublicBrandingData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // ============================================
+  // 🔴 CORRIGIDO: Carregar branding sem requisições autenticadas
+  // ============================================
   useEffect(() => {
     const loadBranding = async () => {
+      setIsLoading(true);
       try {
-        const response = await fetch('/api/admin/companies', {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        });
+        // ✅ Buscar companyId do localStorage (se existir)
+        const savedCompanyId = localStorage.getItem('companyId');
         
-        let companyId = '67f8a1b2c3d4e5f6g7h8i9j0';
-        if (response.ok) {
-          const data = await response.json();
-          if (data.data?.companies?.length > 0) {
-            companyId = data.data.companies[0]._id;
+        // ✅ Se tiver companyId salvo, tentar carregar o branding
+        if (savedCompanyId) {
+          try {
+            const data = await brandingService.getPublicBranding(savedCompanyId);
+            if (data) {
+              setBranding(data);
+              setIsLoading(false);
+              return;
+            }
+          } catch (err) {
+            // Se falhar, continua para o fallback
+            console.debug('Erro ao carregar branding com companyId salvo:', err);
           }
         }
 
-        const data = await brandingService.getPublicBranding(companyId);
-        setBranding(data);
+        // ✅ Fallback: usar valores padrão (sem fazer requisição)
+        setBranding({
+          companyId: 'default',
+          companyName: 'MRS Consultoria',
+          logo: null,
+          favicon: null,
+          colors: MRS_COLORS,
+          settings: {
+            showLogoInHeader: true,
+            showLogoInReport: true,
+            useCustomColors: false,
+          },
+        });
       } catch (error) {
         console.error('Erro ao carregar branding na landing:', error);
-        setBranding(null);
+        // ✅ Fallback: usar valores padrão
+        setBranding({
+          companyId: 'default',
+          companyName: 'MRS Consultoria',
+          logo: null,
+          favicon: null,
+          colors: MRS_COLORS,
+          settings: {
+            showLogoInHeader: true,
+            showLogoInReport: true,
+            useCustomColors: false,
+          },
+        });
       } finally {
         setIsLoading(false);
       }
     };
+
     loadBranding();
   }, []);
 
