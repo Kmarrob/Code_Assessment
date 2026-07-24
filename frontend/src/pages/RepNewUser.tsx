@@ -1,7 +1,7 @@
 // frontend/src/pages/rep/RepNewUser.tsx
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, UserPlus, Loader2, AlertCircle, Mail } from 'lucide-react';
+import { ArrowLeft, UserPlus, Loader2, AlertCircle, Mail, Crown, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card.js';
 import { Button } from '../components/ui/Button.js';
 import { Input } from '../components/ui/Input.js';
@@ -18,6 +18,10 @@ export const RepNewUser: React.FC = () => {
     department: '',
   });
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  
+  // 🔴 NOVO: Estado para o modal de upgrade
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [upgradeMessage, setUpgradeMessage] = useState('');
 
   const handleChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -50,6 +54,16 @@ export const RepNewUser: React.FC = () => {
     return Object.keys(errors).length === 0;
   };
 
+  // 🔴 NOVO: Função para fechar o modal
+  const handleCloseModal = () => {
+    setShowUpgradeModal(false);
+  };
+
+  // 🔴 NOVO: Função para redirecionar para a página de planos
+  const handleUpgrade = () => {
+    navigate('/plans');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -65,7 +79,6 @@ export const RepNewUser: React.FC = () => {
         name: formData.name.trim(),
         email: formData.email.trim(),
         department: formData.department.trim() || undefined,
-        // 🔴 REMOVIDO: password não é mais enviado
       });
 
       setSuccess(`✅ Usuário ${formData.name} criado com sucesso! Um e-mail com o link para criar a senha foi enviado para ${formData.email}.`);
@@ -84,8 +97,17 @@ export const RepNewUser: React.FC = () => {
     } catch (err: any) {
       console.error('Erro ao criar usuário:', err);
       
+      const status = err.response?.status;
       const message = err.response?.data?.message || 'Erro ao criar usuário. Tente novamente.';
-      setError(message);
+      
+      // 🔴 NOVO: Verificar se é erro de limite de usuários (403)
+      if (status === 403 && message.includes('Limite de usuários')) {
+        setUpgradeMessage(message);
+        setShowUpgradeModal(true);
+        setError(null);
+      } else {
+        setError(message);
+      }
 
       const errors = err.response?.data?.errors;
       if (errors) {
@@ -214,8 +236,6 @@ export const RepNewUser: React.FC = () => {
                 <p className="text-xs text-gray-400 mt-1">Opcional</p>
               </div>
 
-              {/* 🔴 REMOVIDOS: Campos de senha e confirmar senha */}
-
               {/* Botões */}
               <div className="flex gap-3 pt-4 border-t border-gray-200">
                 <Button
@@ -260,6 +280,110 @@ export const RepNewUser: React.FC = () => {
           </p>
         </div>
       </div>
+
+      {/* 🔴 NOVO: Modal de Upgrade de Plano */}
+      {showUpgradeModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl overflow-hidden animate-scale-in">
+            {/* Header com ícone */}
+            <div className="bg-gradient-to-r from-amber-500 to-amber-600 px-6 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-white/20 rounded-full">
+                  <Crown className="h-6 w-6 text-white" />
+                </div>
+                <h2 className="text-xl font-bold text-white">Limite do Plano Atingido</h2>
+              </div>
+              <button
+                onClick={handleCloseModal}
+                className="text-white/80 hover:text-white transition-colors"
+                aria-label="Fechar"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Conteúdo */}
+            <div className="p-6">
+              <div className="flex items-start gap-4 mb-4">
+                <div className="p-3 bg-amber-50 rounded-full flex-shrink-0">
+                  <AlertCircle className="h-6 w-6 text-amber-500" />
+                </div>
+                <div>
+                  <p className="text-gray-700 text-sm leading-relaxed">
+                    {upgradeMessage || 'Você atingiu o limite máximo de usuários do seu plano atual.'}
+                  </p>
+                  <p className="text-gray-500 text-sm mt-2">
+                    Faça o upgrade para adicionar mais usuários e desbloquear novas funcionalidades.
+                  </p>
+                </div>
+              </div>
+
+              {/* Benefícios do Upgrade */}
+              <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                  Benefícios do Upgrade
+                </p>
+                <ul className="space-y-2">
+                  <li className="flex items-center gap-2 text-sm text-gray-600">
+                    <span className="w-1.5 h-1.5 bg-amber-500 rounded-full" />
+                    Mais usuários simultâneos
+                  </li>
+                  <li className="flex items-center gap-2 text-sm text-gray-600">
+                    <span className="w-1.5 h-1.5 bg-amber-500 rounded-full" />
+                    Funcionalidades exclusivas
+                  </li>
+                  <li className="flex items-center gap-2 text-sm text-gray-600">
+                    <span className="w-1.5 h-1.5 bg-amber-500 rounded-full" />
+                    Suporte prioritário
+                  </li>
+                </ul>
+              </div>
+
+              {/* Botões */}
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  onClick={handleCloseModal}
+                  className="flex-1"
+                >
+                  Fechar
+                </Button>
+                <Button
+                  onClick={handleUpgrade}
+                  className="flex-1 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white border-0"
+                >
+                  <Crown className="h-4 w-4 mr-2" />
+                  Fazer Upgrade
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Estilos para animações */}
+      <style>{`
+        @keyframes fade-in {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes scale-in {
+          from { 
+            opacity: 0;
+            transform: scale(0.95) translateY(10px);
+          }
+          to { 
+            opacity: 1;
+            transform: scale(1) translateY(0);
+          }
+        }
+        .animate-fade-in {
+          animation: fade-in 0.2s ease-out;
+        }
+        .animate-scale-in {
+          animation: scale-in 0.25s ease-out;
+        }
+      `}</style>
     </div>
   );
 };

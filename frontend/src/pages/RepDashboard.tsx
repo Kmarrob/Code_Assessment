@@ -8,7 +8,7 @@ import {
   Search, ChevronLeft, ChevronRight, Plus, Loader2,
   LayoutDashboard, MessageSquare, Edit, Trash2, 
   X, RefreshCw, AlertTriangle, ChevronDown, FileText,
-  Palette
+  Palette, UserCheck
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card.js';
 import { Button } from '../components/ui/Button.js';
@@ -17,6 +17,8 @@ import { EmptyState } from '../components/ui/EmptyState.js';
 import { repService, RepUser, RepStats } from '../services/rep.service.js';
 import { RevokeControlModal } from '../components/rep/RevokeControlModal.js';
 import { FeatureGuard } from '../components/common/FeatureGuard.js';
+// 🔴 NOVO: Import do modal de atribuição para si mesmo
+import { AssignToSelfModal } from '../components/rep/AssignToSelfModal.js';
 
 export const RepDashboard: React.FC = () => {
   const { user, logout } = useAuth();
@@ -35,6 +37,7 @@ export const RepDashboard: React.FC = () => {
   // Estados para modais
   const [showInactivateModal, setShowInactivateModal] = useState(false);
   const [showRevokeModal, setShowRevokeModal] = useState(false);
+  const [showAssignToSelfModal, setShowAssignToSelfModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<RepUser | null>(null);
   const [selectedAssignmentId, setSelectedAssignmentId] = useState<string>('');
   const [selectedControlName, setSelectedControlName] = useState<string>('');
@@ -109,6 +112,11 @@ export const RepDashboard: React.FC = () => {
 
   const handleEditUser = (userId: string) => {
     navigate(`/rep/users/${userId}/edit`);
+  };
+
+  // 🔴 NOVO: Abrir modal para atribuir controles para si mesmo
+  const handleOpenAssignToSelf = () => {
+    setShowAssignToSelfModal(true);
   };
 
   // Abrir modal de inativação
@@ -204,17 +212,14 @@ export const RepDashboard: React.FC = () => {
     }
   };
 
-  // 🔴 NOVO: Navegar para página de documentos
   const handleManageDocuments = () => {
     navigate('/rep/documents');
   };
 
-  // 🔴 NOVO (v17): Navegar para página de relatório
   const handleManageReport = () => {
     navigate('/rep/report');
   };
 
-  // 🔴 NOVO: Navegar para página de branding (Personalizar Identidade Visual)
   const handleManageBranding = () => {
     navigate('/rep/branding');
   };
@@ -428,7 +433,23 @@ export const RepDashboard: React.FC = () => {
             <ChevronRight className="w-4 h-4 text-gray-400 mt-2" />
           </div>
 
-          {/* 🔴 SUBSTITUÍDO: Card "Atribuir" pelo card "Documentos" */}
+          {/* 🔴 NOVO: Card "Atribuir para Mim" */}
+          <div
+            onClick={handleOpenAssignToSelf}
+            className="bg-white border-2 border-purple-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-purple-600">Atribuir</p>
+                <p className="text-lg font-bold text-purple-900">Controles para Mim</p>
+              </div>
+              <div className="p-3 bg-purple-100 rounded-full">
+                <UserCheck className="w-6 h-6 text-purple-600" />
+              </div>
+            </div>
+            <ChevronRight className="w-4 h-4 text-purple-400 mt-2" />
+          </div>
+
           <div
             onClick={handleManageDocuments}
             className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
@@ -445,7 +466,6 @@ export const RepDashboard: React.FC = () => {
             <ChevronRight className="w-4 h-4 text-gray-400 mt-2" />
           </div>
 
-          {/* 🔴 NOVO (v17): Card "Relatório de Recomendações" */}
           <div
             onClick={handleManageReport}
             className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
@@ -845,6 +865,19 @@ export const RepDashboard: React.FC = () => {
           currentUserId={selectedUser._id}
           repId={user?.id || ''}
           isSubmitting={isSubmitting}
+        />
+      )}
+
+      {/* 🔴 NOVO: Modal para atribuir controles para si mesmo */}
+      {showAssignToSelfModal && (
+        <AssignToSelfModal
+          isOpen={showAssignToSelfModal}
+          onClose={() => setShowAssignToSelfModal(false)}
+          repId={user?.id || ''}
+          onSuccess={() => {
+            loadStats();
+            loadUsers();
+          }}
         />
       )}
     </div>

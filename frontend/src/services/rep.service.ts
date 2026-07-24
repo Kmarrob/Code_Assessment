@@ -121,6 +121,25 @@ export interface UpdateUserData {
   department?: string;
 }
 
+/**
+ * 🔴 NOVO: Interface para atribuição para si mesmo
+ */
+export interface AssignToSelfData {
+  controlIds: string[];
+}
+
+/**
+ * 🔴 NOVO: Interface para atribuição retornada
+ */
+export interface Assignment {
+  _id: string;
+  userId: string;
+  controlId: string;
+  controlName?: string;
+  status: string;
+  assignedAt: string;
+}
+
 export const repService = {
   /**
    * Listar usuários do preposto
@@ -162,7 +181,7 @@ export const repService = {
   async createUser(data: {
     name: string;
     email: string;
-    password?: string; // 🔴 TORNADO OPCIONAL
+    password?: string;
     company?: string;
     department?: string;
   }): Promise<User> {
@@ -258,5 +277,27 @@ export const repService = {
   async getUsersWithResponses(): Promise<UsersWithResponsesResponse> {
     const response = await api.get<UsersWithResponsesResponse>('/rep/users-with-responses');
     return response.data;
+  },
+
+  // ============================================
+  // 🔴 NOVOS MÉTODOS PARA ATRIBUIÇÃO PARA SI MESMO
+  // ============================================
+
+  /**
+   * 🔴 NOVO: Buscar controles já atribuídos ao preposto
+   * GET /api/rep/my-assignments
+   */
+  async getMyAssignments(): Promise<Assignment[]> {
+    const response = await api.get<ApiResponse<Assignment[]>>('/rep/my-assignments');
+    return response.data.data;
+  },
+
+  /**
+   * 🔴 NOVO: Atribuir controles para o próprio preposto
+   * POST /api/rep/assign-to-self
+   */
+  async assignToSelf(data: AssignToSelfData): Promise<AssignmentResult> {
+    const response = await api.post<ApiResponse<AssignmentResult>>('/rep/assign-to-self', data);
+    return response.data.data;
   },
 };

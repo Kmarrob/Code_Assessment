@@ -53,6 +53,44 @@ export const RepAssignControls: React.FC = () => {
   const [pendingSubmit, setPendingSubmit] = useState<{ controlIds: string[] } | null>(null);
 
   // ============================================
+// FUNÇÃO DE ORDENAÇÃO NUMÉRICA POR ID DO CONTROLE
+// ============================================
+// Ordena cada segmento numérico individualmente.
+//
+// Exemplos:
+// A.5.1  → [5, 1]
+// A.5.2  → [5, 2]
+// A.5.9  → [5, 9]
+// A.5.10 → [5, 10]
+// A.5.11 → [5, 11]
+// A.6.1  → [6, 1]
+//
+// Dessa forma, 5.10 nunca será interpretado como 5.1.
+const sortControlsById = (controlsArray: Control[]): Control[] => {
+  return [...controlsArray].sort((a, b) => {
+    const aNumbers = a.id.match(/\d+/g)?.map(Number) || [];
+    const bNumbers = b.id.match(/\d+/g)?.map(Number) || [];
+
+    const maxLength = Math.max(aNumbers.length, bNumbers.length);
+
+    for (let i = 0; i < maxLength; i++) {
+      const aNumber = aNumbers[i] ?? 0;
+      const bNumber = bNumbers[i] ?? 0;
+
+      if (aNumber !== bNumber) {
+        return aNumber - bNumber;
+      }
+    }
+
+    // Critério de desempate para IDs com a mesma estrutura numérica
+    return a.id.localeCompare(b.id, undefined, {
+      numeric: true,
+      sensitivity: 'base',
+    });
+  });
+};
+
+  // ============================================
   // CARREGAR DADOS
   // ============================================
   const loadUser = async () => {
@@ -82,7 +120,10 @@ export const RepAssignControls: React.FC = () => {
       
       const response = await api.get(`/rep/controls?${params.toString()}`);
       const data = response.data;
-      setAllControls(data.data || []);
+      
+      // 🔴 CORREÇÃO: Ordenar os controles por ID antes de setar
+      const sortedControls = sortControlsById(data.data || []);
+      setAllControls(sortedControls);
       setPagination(null);
     } catch (err) {
       console.error('Erro ao carregar controles:', err);
