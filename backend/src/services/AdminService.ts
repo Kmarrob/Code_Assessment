@@ -157,15 +157,15 @@ export class AdminService {
               // ============================================
               // 🔴 CORREÇÃO: VALIDAR LIMITE DE USUÁRIOS DO PLANO
               // ============================================
-              // Contar usuários ativos da empresa (excluindo admins e reps)
+              // ✅ CORRIGIDO: Contar todos os usuários da empresa (exceto admins e consultores)
               const activeUserCount = await User.countDocuments({
                 companyId: companyId,
                 isActive: true,
-                role: { $nin: [UserRole.ADMIN, UserRole.REP] }
+                role: { $nin: [UserRole.ADMIN, UserRole.CONSULTANT] }
               });
 
-              // Verificar se atingiu o limite
-              if (data.role !== UserRole.ADMIN && data.role !== UserRole.REP) {
+              // Verificar se atingiu o limite (apenas para usuários comuns, prepostos e outros que consomem o plano)
+              if (data.role !== UserRole.ADMIN && data.role !== UserRole.CONSULTANT) {
                 if (activeUserCount >= company.maxUsers) {
                   const planName = company.plan === 'enterprise' ? 'Enterprise' : 
                                    company.plan === 'pro' ? 'Profissional' : 'Básico';

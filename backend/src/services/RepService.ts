@@ -185,11 +185,11 @@ export class RepService {
       throw new AppError('Empresa não encontrada', 404);
     }
 
-    // Contar usuários ativos da empresa (excluindo o preposto)
+    // ✅ CORRIGIDO: Contar todos os usuários da empresa (exceto admins e consultores)
     const activeUserCount = await User.countDocuments({
       companyId: companyId,
       isActive: true,
-      role: { $ne: UserRole.REP } // não contar o preposto
+      role: { $nin: [UserRole.ADMIN, UserRole.CONSULTANT] }
     });
 
     // Verificar se atingiu o limite
