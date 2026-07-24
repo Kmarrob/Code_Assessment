@@ -1656,8 +1656,9 @@ export class RepService {
     };
   }
 
-  /**
+   /**
    * Obter estatísticas do preposto
+   * 🔴 CORRIGIDO: Agora inclui o próprio preposto na contagem
    */
   static async getStats(
     repId: string
@@ -1703,18 +1704,19 @@ export class RepService {
           u._id
       );
 
+    // 🔴 CORRIGIDO: Adicionar o próprio preposto à contagem de usuários
     const totalUsers =
       await User.countDocuments(
         filter
-      );
+      ) + 1;
 
+    // 🔴 CORRIGIDO: Incluir atribuições do próprio preposto
     const totalAssignments =
       await Assignment.countDocuments({
         assignedBy:
           repId,
         userId: {
-          $in:
-            activeUserIds
+          $in: [...activeUserIds, repId]
         }
       });
 
