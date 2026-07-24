@@ -24,6 +24,8 @@ import AdminConsultantView from './pages/AdminConsultantView.js';
 import AdminCompanyDetail from './pages/AdminCompanyDetail.js';
 // 🔴 NOVO: Import da página de branding (corrigido)
 import AdminBranding from './pages/AdminBranding.js';
+// 🔴 NOVO: Import da página de controles do preposto
+import RepMyControls from './pages/RepMyControls.js';
 
 // ============================================
 // IMPORTAÇÕES DO DASHBOARD (DIRETAS - CORRIGIDO)
@@ -321,6 +323,12 @@ function App() {
                     <Route path="/rep/branding" element={
                       <Layout>
                         <AdminBranding />
+                      </Layout>
+                    } />
+                    {/* 🔴 NOVO: Rota para Meus Controles (preposto responder) */}
+                    <Route path="/rep/my-controls" element={
+                      <Layout>
+                        <RepMyControls />
                       </Layout>
                     } />
                     

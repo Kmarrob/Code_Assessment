@@ -449,6 +449,22 @@ export const RepDashboard: React.FC = () => {
             </div>
             <ChevronRight className="w-4 h-4 text-purple-400 mt-2" />
           </div>
+		  {/* 🔴 NOVO: Card "Meus Controles" - para o preposto ver e responder seus controles */}
+<div
+  onClick={() => navigate('/rep/my-controls')}
+  className="bg-white border-2 border-indigo-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+>
+  <div className="flex items-center justify-between">
+    <div>
+      <p className="text-sm font-medium text-indigo-600">Meus</p>
+      <p className="text-lg font-bold text-indigo-900">Controles</p>
+    </div>
+    <div className="p-3 bg-indigo-100 rounded-full">
+      <ClipboardList className="w-6 h-6 text-indigo-600" />
+    </div>
+  </div>
+  <ChevronRight className="w-4 h-4 text-indigo-400 mt-2" />
+</div>
 
           <div
             onClick={handleManageDocuments}
