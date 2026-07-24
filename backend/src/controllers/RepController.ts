@@ -139,7 +139,7 @@ export class RepController {
       // Validar se pelo menos um campo foi enviado
       if (!name && !email && !department) {
         throw new ValidationError({
-          fields: ['Pelo menos um campo (name, email, department) deve ser fornecido']
+          fields: ['Pelo menos um campo (name, email, department) deve ser fornecido'],
         });
       }
 
@@ -196,14 +196,16 @@ export class RepController {
       const validReasons = ['Desligado', 'Mudou de setor', 'Outros'];
       if (!reason || !validReasons.includes(reason)) {
         throw new ValidationError({
-          reason: [`Motivo inválido. Use: ${validReasons.join(', ')}`]
+          reason: [`Motivo inválido. Use: ${validReasons.join(', ')}`],
         });
       }
 
       // Se motivo for "Outros", descrição é obrigatória
       if (reason === 'Outros' && (!description || description.trim().length < 5)) {
         throw new ValidationError({
-          description: ['Descrição é obrigatória e deve ter no mínimo 5 caracteres quando motivo for "Outros"']
+          description: [
+            'Descrição é obrigatória e deve ter no mínimo 5 caracteres quando motivo for "Outros"',
+          ],
         });
       }
 
@@ -250,7 +252,9 @@ export class RepController {
 
       const { assignmentId } = req.params;
       if (!assignmentId) {
-        throw new ValidationError({ assignmentId: ['ID da atribuição é obrigatório'] });
+        throw new ValidationError({
+          assignmentId: ['ID da atribuição é obrigatório'],
+        });
       }
 
       const { newUserId, confirmRevoke } = req.body;
@@ -258,7 +262,7 @@ export class RepController {
       // Validar confirmação
       if (confirmRevoke !== true) {
         throw new ValidationError({
-          confirmRevoke: ['Você deve confirmar a revogação do controle']
+          confirmRevoke: ['Você deve confirmar a revogação do controle'],
         });
       }
 
@@ -270,6 +274,7 @@ export class RepController {
           role: 'user',
           isActive: true,
         });
+
         if (!userExists) {
           throw new NotFoundError('Usuário destino não encontrado ou inativo');
         }
@@ -284,7 +289,7 @@ export class RepController {
       res.json({
         success: true,
         message: result.newUserId
-          ? `Controle revogado e reatribuído com sucesso`
+          ? 'Controle revogado e reatribuído com sucesso'
           : 'Controle revogado com sucesso',
         data: result,
         statusCode: 200,
@@ -363,7 +368,9 @@ export class RepController {
 
       const { userId } = req.params;
       if (!userId) {
-        throw new ValidationError({ userId: ['ID do usuário é obrigatório'] });
+        throw new ValidationError({
+          userId: ['ID do usuário é obrigatório'],
+        });
       }
 
       const progress = await RepService.getUserProgress(repId, userId);
@@ -469,11 +476,13 @@ export class RepController {
   ): Promise<void> {
     try {
       const repId = req.userId;
+
       if (!repId) {
         throw new AppError('Usuário não autenticado', 401);
       }
 
       const rep = await User.findById(repId);
+
       if (!rep) {
         throw new NotFoundError('Preposto não encontrado');
       }
@@ -483,33 +492,35 @@ export class RepController {
       }
 
       // Buscar a empresa com os controles atribuídos
-      const company = rep.companyId ? await Company.findById(rep.companyId) : null;
-if (company) {
-  await company.populate({
-    path: 'assignedControls',
-    select: '_id id nome dominioDeSI tipoDeControle nota',
-  });
-  await company.lean();
-}
+      const company = await Company.findById(rep.companyId);
 
       if (!company) {
         throw new NotFoundError('Empresa não encontrada');
       }
+
+      await company.populate({
+        path: 'assignedControls',
+        select: '_id id nome dominioDeSI tipoDeControle nota',
+      });
+
+      // Não utilizar .lean() aqui.
+      // O documento já foi materializado com await Company.findById().
+      // O uso de .lean() deve ocorrer na query, antes do await.
 
       // 🔴 CORREÇÃO: Ordenar controles por ID (número do controle)
       const controls = (company.assignedControls || []).sort((a: any, b: any) => {
         // Extrair o número do controle (ex: "A.5.1" → 5.1, "5.8" → 5.8)
         const aMatch = a.id?.match(/(\d+\.\d+)/);
         const bMatch = b.id?.match(/(\d+\.\d+)/);
-        
+
         const aNum = aMatch ? parseFloat(aMatch[1]) : 0;
         const bNum = bMatch ? parseFloat(bMatch[1]) : 0;
-        
+
         // Se os números principais forem iguais, ordenar pelo ID completo
         if (aNum === bNum) {
           return (a.id || '').localeCompare(b.id || '');
         }
-        
+
         return aNum - bNum;
       });
 
@@ -543,17 +554,20 @@ if (company) {
   ): Promise<void> {
     try {
       const repId = req.userId;
+
       if (!repId) {
         throw new AppError('Usuário não autenticado', 401);
       }
 
       // Buscar o preposto para obter a empresa
       const rep = await User.findById(repId);
+
       if (!rep) {
         throw new NotFoundError('Preposto não encontrado');
       }
 
       const companyId = rep.companyId;
+
       if (!companyId) {
         throw new AppError('Preposto não possui empresa associada', 400);
       }
@@ -567,11 +581,18 @@ if (company) {
         isActive: true,
       }).select('_id name email department');
 
-      console.log('🔵 [getUsersWithResponses] Usuários encontrados:', users.length);
-      console.log('🔵 [getUsersWithResponses] IDs dos usuários:', users.map(u => u._id));
+      console.log(
+        '🔵 [getUsersWithResponses] Usuários encontrados:',
+        users.length
+      );
+
+      console.log(
+        '🔵 [getUsersWithResponses] IDs dos usuários:',
+        users.map((u) => u._id)
+      );
 
       // Buscar respostas por userId
-      const userIds = users.map(u => u._id);
+      const userIds = users.map((u) => u._id);
 
       // Buscar respostas com controle populado
       const responses = await ResponseModel.find({
@@ -583,14 +604,18 @@ if (company) {
         })
         .lean();
 
-      console.log('🔵 [getUsersWithResponses] Respostas encontradas:', responses.length);
+      console.log(
+        '🔵 [getUsersWithResponses] Respostas encontradas:',
+        responses.length
+      );
 
       // 🔴 NOVO: Buscar todas as perguntas relacionadas aos controles
       const controlIds = responses
-        .map(r => r.controlId?.id || '')
-        .filter(id => id);
+        .map((r) => r.controlId?.id || '')
+        .filter((id) => id);
 
       let questionsMap: Record<string, any> = {};
+
       if (controlIds.length > 0) {
         const questions = await Question.find({
           controlId: { $in: controlIds },
@@ -601,13 +626,19 @@ if (company) {
           acc[q.controlId] = q;
           return acc;
         }, {});
-        console.log('🔵 [getUsersWithResponses] Perguntas encontradas:', questions.length);
+
+        console.log(
+          '🔵 [getUsersWithResponses] Perguntas encontradas:',
+          questions.length
+        );
       }
 
       // Mapear respostas por usuário
       const responsesByUser: Record<string, any[]> = {};
+
       responses.forEach((r: any) => {
         const userId = r.userId?.toString() || r.userId;
+
         if (userId) {
           if (!responsesByUser[userId]) {
             responsesByUser[userId] = [];
@@ -620,28 +651,47 @@ if (company) {
           responsesByUser[userId].push({
             _id: r._id,
             controlId: r.controlId?._id || r.controlId,
-            controlIdString: controlIdString || r.controlId?._id || 'N/A',
-            controlName: r.controlId?.nome || r.controlId?.name || 'Controle não identificado',
+            controlIdString:
+              controlIdString || r.controlId?._id || 'N/A',
+            controlName:
+              r.controlId?.nome ||
+              r.controlId?.name ||
+              'Controle não identificado',
             questionText: question?.text || '',
             questionObjective: question?.objective || '',
-            maturityLevel: r.maturityLevel !== undefined && r.maturityLevel !== null 
-              ? Number(r.maturityLevel) 
-              : -1,
-            scenarioDescription: r.scenarioDescription || r.scenario || '',
+            maturityLevel:
+              r.maturityLevel !== undefined &&
+              r.maturityLevel !== null
+                ? Number(r.maturityLevel)
+                : -1,
+            scenarioDescription:
+              r.scenarioDescription || r.scenario || '',
             observations: r.observations || '',
-            updatedAt: r.updatedAt || r.lastUpdatedAt || r.createdAt,
+            updatedAt:
+              r.updatedAt ||
+              r.lastUpdatedAt ||
+              r.createdAt,
           });
         }
       });
 
-      console.log('🔵 [getUsersWithResponses] Respostas mapeadas por usuário:', Object.keys(responsesByUser));
+      console.log(
+        '🔵 [getUsersWithResponses] Respostas mapeadas por usuário:',
+        Object.keys(responsesByUser)
+      );
 
       // Montar resultado
       const result = users.map((user: any) => {
-        const userResponses = responsesByUser[user._id.toString()] || [];
+        const userResponses =
+          responsesByUser[user._id.toString()] || [];
+
         const totalResponses = userResponses.length;
+
         const completedResponses = userResponses.filter(
-          (r) => r.maturityLevel !== undefined && r.maturityLevel !== null && r.maturityLevel !== -1
+          (r) =>
+            r.maturityLevel !== undefined &&
+            r.maturityLevel !== null &&
+            r.maturityLevel !== -1
         ).length;
 
         return {
@@ -652,11 +702,19 @@ if (company) {
           responses: userResponses,
           totalResponses,
           completedResponses,
-          progress: totalResponses > 0 ? Math.round((completedResponses / totalResponses) * 100) : 0,
+          progress:
+            totalResponses > 0
+              ? Math.round(
+                  (completedResponses / totalResponses) * 100
+                )
+              : 0,
         };
       });
 
-      console.log('🔵 [getUsersWithResponses] Resultado final:', JSON.stringify(result, null, 2).substring(0, 500));
+      console.log(
+        '🔵 [getUsersWithResponses] Resultado final:',
+        JSON.stringify(result, null, 2).substring(0, 500)
+      );
 
       res.status(200).json({
         success: true,
@@ -696,12 +754,14 @@ if (company) {
   ): Promise<void> {
     try {
       const repId = req.userId;
+
       if (!repId) {
         throw new AppError('Usuário não autenticado', 401);
       }
 
       // Buscar o preposto para obter a empresa
       const rep = await User.findById(repId);
+
       if (!rep) {
         throw new NotFoundError('Preposto não encontrado');
       }
@@ -721,7 +781,8 @@ if (company) {
         _id: a._id,
         userId: a.userId,
         controlId: a.controlId?._id || a.controlId,
-        controlName: a.controlId?.nome || 'Controle não encontrado',
+        controlName:
+          a.controlId?.nome || 'Controle não encontrado',
         status: a.status,
         assignedAt: a.assignedAt,
       }));
@@ -756,20 +817,28 @@ if (company) {
   ): Promise<void> {
     try {
       const repId = req.userId;
+
       if (!repId) {
         throw new AppError('Usuário não autenticado', 401);
       }
 
       const { controlIds } = req.body;
 
-      if (!controlIds || !Array.isArray(controlIds) || controlIds.length === 0) {
+      if (
+        !controlIds ||
+        !Array.isArray(controlIds) ||
+        controlIds.length === 0
+      ) {
         throw new ValidationError({
-          controlIds: ['Lista de controles é obrigatória e deve conter pelo menos um ID']
+          controlIds: [
+            'Lista de controles é obrigatória e deve conter pelo menos um ID',
+          ],
         });
       }
 
       // Buscar o preposto
       const rep = await User.findById(repId);
+
       if (!rep) {
         throw new NotFoundError('Preposto não encontrado');
       }
@@ -784,18 +853,23 @@ if (company) {
       // 🔴 NOTIFICAÇÃO: Atribuição para si mesmo
       if (result.assigned > 0) {
         const controlNames = controlIds
-          .map((id) => id)
+          .map((id: string) => id)
           .join(', ');
+
+        // Mantido para preservar a lógica existente.
+        // A variável controlNames continua sendo construída conforme o comportamento original.
+        void controlNames;
+
         await AuditService.logUserCreation(
-          req.userId,
-          req.user?.email || '',
-          repId,
-          rep.email,
-          'rep',
-          req.ip || '',
-          req.headers['user-agent'] || '',
-          true
-        );
+  repId,
+  req.user?.email || '',
+  repId,
+  rep.email,
+  'rep',
+  req.ip || '',
+  req.headers['user-agent'] || '',
+  true
+);
       }
 
       res.json({
