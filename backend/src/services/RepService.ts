@@ -5,7 +5,11 @@ import { Assignment } from '../models/Assignment.js';
 import { Response } from '../models/Response.js';
 import { Control } from '../models/Control.js';
 import { Company } from '../models/Company.js';
-import { AppError, NotFoundError, ValidationError } from '../middleware/errorHandler.js';
+import {
+  AppError,
+  NotFoundError,
+  ValidationError
+} from '../middleware/errorHandler.js';
 import { logger } from '../utils/logger.js';
 import { UserRole, ResponseStatus } from '../types/index.js';
 // 🔴 NOVO: Import do EmailJSService
@@ -40,10 +44,16 @@ export class RepService {
       status?: 'all' | 'active' | 'inactive';
     } = {}
   ): Promise<ListUsersResult> {
-    const { page = 1, limit = 10, search = '', status = 'all' } = filters;
+    const {
+      page = 1,
+      limit = 10,
+      search = '',
+      status = 'all'
+    } = filters;
 
     // Verificar se o preposto existe e obter sua empresa
     const rep = await User.findById(repId);
+
     if (!rep) {
       throw new NotFoundError('Preposto não encontrado');
     }
@@ -51,7 +61,7 @@ export class RepService {
     // Construir filtro - USANDO companyId para isolamento
     const filter: any = {
       createdBy: repId,
-      role: UserRole.USER,
+      role: UserRole.USER
     };
 
     // Se o preposto tem companyId, garantir que os usuários também tenham
@@ -61,8 +71,18 @@ export class RepService {
 
     if (search) {
       filter.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { email: { $regex: search, $options: 'i' } },
+        {
+          name: {
+            $regex: search,
+            $options: 'i'
+          }
+        },
+        {
+          email: {
+            $regex: search,
+            $options: 'i'
+          }
+        }
       ];
     }
 
@@ -76,41 +96,83 @@ export class RepService {
 
     const [users, total] = await Promise.all([
       User.find(filter)
-        .select('_id name email role company department isActive lastLogin createdAt updatedAt')
-        .sort({ createdAt: -1 })
+        .select(
+          '_id name email role company department isActive lastLogin createdAt updatedAt'
+        )
+        .sort({
+          createdAt: -1
+        })
         .skip(skip)
         .limit(limit)
         .lean(),
-      User.countDocuments(filter),
+
+      User.countDocuments(filter)
     ]);
 
     // Buscar contagem de atribuições para cada usuário
     const userIds = users.map((u) => u._id);
+
     const assignmentCounts = await Assignment.aggregate([
-      { $match: { userId: { $in: userIds } } },
-      { $group: { _id: '$userId', count: { $sum: 1 } } },
+      {
+        $match: {
+          userId: {
+            $in: userIds
+          }
+        }
+      },
+      {
+        $group: {
+          _id: '$userId',
+          count: {
+            $sum: 1
+          }
+        }
+      }
     ]);
 
     const countMap = new Map();
+
     assignmentCounts.forEach((item) => {
-      countMap.set(item._id.toString(), item.count);
+      countMap.set(
+        item._id.toString(),
+        item.count
+      );
     });
 
     // Buscar contagem de respostas para cada usuário
     const responseCounts = await Response.aggregate([
-      { $match: { userId: { $in: userIds } } },
-      { $group: { _id: '$userId', count: { $sum: 1 } } },
+      {
+        $match: {
+          userId: {
+            $in: userIds
+          }
+        }
+      },
+      {
+        $group: {
+          _id: '$userId',
+          count: {
+            $sum: 1
+          }
+        }
+      }
     ]);
 
     const responseMap = new Map();
+
     responseCounts.forEach((item) => {
-      responseMap.set(item._id.toString(), item.count);
+      responseMap.set(
+        item._id.toString(),
+        item.count
+      );
     });
 
     const usersWithStats = users.map((user) => ({
       ...user,
-      assignmentsCount: countMap.get(user._id.toString()) || 0,
-      responsesCount: responseMap.get(user._id.toString()) || 0,
+      assignmentsCount:
+        countMap.get(user._id.toString()) || 0,
+      responsesCount:
+        responseMap.get(user._id.toString()) || 0
     }));
 
     const totalPages = Math.ceil(total / limit);
@@ -123,8 +185,8 @@ export class RepService {
         total,
         totalPages,
         hasNext: page < totalPages,
-        hasPrevious: page > 1,
-      },
+        hasPrevious: page > 1
+      }
     };
   }
 
@@ -142,29 +204,48 @@ export class RepService {
   ) {
     // Verificar se o preposto existe
     const rep = await User.findById(repId);
+
     if (!rep) {
       throw new NotFoundError('Preposto não encontrado');
     }
 
     // Verificar se email já está em uso
-    const existingUser = await User.findOne({ email: userData.email });
+    const existingUser = await User.findOne({
+      email: userData.email
+    });
+
     if (existingUser) {
-      throw new ValidationError({ email: ['Email já está em uso'] });
+      throw new ValidationError({
+        email: ['Email já está em uso']
+      });
     }
 
     // ============================================
     // VERIFICAR E CORRIGIR companyId DO REP
     // ============================================
+
     let companyId = rep.companyId;
 
     // Se o rep não tem companyId, buscar pelo nome da empresa
     if (!companyId && rep.company) {
-      const company = await Company.findOne({ name: rep.company });
+      const company = await Company.findOne({
+        name: rep.company
+      });
+
       if (company) {
         companyId = company._id;
+
         // Atualizar o rep com o companyId correto
-        await User.findByIdAndUpdate(repId, { companyId: company._id });
-        logger.info(`CompanyId corrigido para o rep ${rep.email}: ${company._id}`);
+        await User.findByIdAndUpdate(
+          repId,
+          {
+            companyId: company._id
+          }
+        );
+
+        logger.info(
+          `CompanyId corrigido para o rep ${rep.email}: ${company._id}`
+        );
       }
     }
 
@@ -177,25 +258,40 @@ export class RepService {
     }
 
     // ============================================
-    // 🔴 CORREÇÃO: VALIDAR LIMITE DE USUÁRIOS DO PLANO
+    // VALIDAR LIMITE DE USUÁRIOS DO PLANO
     // ============================================
-    // Buscar a empresa para obter o plano e limite
+
     const company = await Company.findById(companyId);
+
     if (!company) {
-      throw new AppError('Empresa não encontrada', 404);
+      throw new AppError(
+        'Empresa não encontrada',
+        404
+      );
     }
 
-    // ✅ CORRIGIDO: Contar todos os usuários da empresa (exceto admins e consultores)
+    // Contar todos os usuários da empresa
+    // exceto admins e consultores
     const activeUserCount = await User.countDocuments({
-      companyId: companyId,
+      companyId,
       isActive: true,
-      role: { $nin: [UserRole.ADMIN, UserRole.CONSULTANT] }
+      role: {
+        $nin: [
+          UserRole.ADMIN,
+          UserRole.CONSULTANT
+        ]
+      }
     });
 
     // Verificar se atingiu o limite
     if (activeUserCount >= company.maxUsers) {
-      const planName = company.plan === 'enterprise' ? 'Enterprise' : 
-                       company.plan === 'pro' ? 'Profissional' : 'Básico';
+      const planName =
+        company.plan === 'enterprise'
+          ? 'Enterprise'
+          : company.plan === 'pro'
+            ? 'Profissional'
+            : 'Básico';
+
       throw new AppError(
         `Limite de usuários do plano ${planName} atingido (${company.maxUsers}). Faça upgrade para adicionar mais usuários.`,
         403
@@ -203,54 +299,73 @@ export class RepService {
     }
 
     // ============================================
-    // CORREÇÃO: Senha NÃO é gerada para primeiro acesso
-    // O usuário deve criar a senha via link de redefinição
+    // SENHA NÃO É GERADA PARA PRIMEIRO ACESSO
     // ============================================
+
     let generatedPassword = userData.password;
 
     if (!generatedPassword) {
       generatedPassword = undefined as any;
-      logger.info(`Usuário criado para primeiro acesso (sem senha): ${userData.email}`);
+
+      logger.info(
+        `Usuário criado para primeiro acesso (sem senha): ${userData.email}`
+      );
     }
 
     // Criar usuário
     const user = new User({
       name: userData.name,
       email: userData.email,
-      ...(generatedPassword && { password: generatedPassword }),
+      ...(generatedPassword && {
+        password: generatedPassword
+      }),
       department: userData.department || '',
       role: UserRole.USER,
       createdBy: repId,
-      companyId: companyId,
+      companyId,
       isActive: true,
-      mustChangePassword: true,
+      mustChangePassword: true
     });
 
     await user.save();
 
-    logger.info(`Usuário criado pelo preposto ${rep.email}: ${user.email} (Empresa: ${companyId})`);
+    logger.info(
+      `Usuário criado pelo preposto ${rep.email}: ${user.email} (Empresa: ${companyId})`
+    );
 
     // Enviar e-mail de boas-vindas com link para criar senha
     try {
-      const frontendUrl = process.env.FRONTEND_URL || 'https://code-assessment-frontend.onrender.com';
+      const frontendUrl =
+        process.env.FRONTEND_URL ||
+        'https://code-assessment-frontend.onrender.com';
+
       const resetToken = user._id;
-      const resetLink = `${frontendUrl}/reset-password/${resetToken}`;
+
+      const resetLink =
+        `${frontendUrl}/reset-password/${resetToken}`;
 
       await emailjsService.sendPasswordResetEmail({
         to: user.email,
         userName: user.name,
         userEmail: user.email,
-        resetLink: resetLink,
-        expiryTime: '24 horas',
+        resetLink,
+        expiryTime: '24 horas'
       });
 
-      logger.info(`📧 E-mail de boas-vindas enviado para ${user.email}`);
+      logger.info(
+        `📧 E-mail de boas-vindas enviado para ${user.email}`
+      );
     } catch (emailError) {
-      logger.error(`❌ Erro ao enviar e-mail de boas-vindas para ${user.email}:`, emailError);
+      logger.error(
+        `❌ Erro ao enviar e-mail de boas-vindas para ${user.email}:`,
+        emailError
+      );
     }
 
     const userResponse = user.toJSON();
+
     delete userResponse.password;
+
     return userResponse;
   }
 
@@ -267,45 +382,96 @@ export class RepService {
     }
   ) {
     const rep = await User.findById(repId);
+
     if (!rep) {
-      throw new NotFoundError('Preposto não encontrado');
+      throw new NotFoundError(
+        'Preposto não encontrado'
+      );
     }
 
     const user = await User.findById(userId);
+
     if (!user) {
-      throw new NotFoundError('Usuário não encontrado');
+      throw new NotFoundError(
+        'Usuário não encontrado'
+      );
     }
 
-    if (user.createdBy?.toString() !== repId) {
-      throw new AppError('Usuário não pertence a este preposto', 403);
+    if (
+      user.createdBy?.toString() !==
+      repId
+    ) {
+      throw new AppError(
+        'Usuário não pertence a este preposto',
+        403
+      );
     }
 
-    if (rep.companyId && user.companyId?.toString() !== rep.companyId.toString()) {
-      throw new AppError('Usuário não pertence à mesma empresa do preposto', 403);
+    if (
+      rep.companyId &&
+      user.companyId?.toString() !==
+      rep.companyId.toString()
+    ) {
+      throw new AppError(
+        'Usuário não pertence à mesma empresa do preposto',
+        403
+      );
     }
 
-    if (data.email && data.email !== user.email) {
+    if (
+      data.email &&
+      data.email !== user.email
+    ) {
       const existingUser = await User.findOne({
         email: data.email,
-        _id: { $ne: userId },
+        _id: {
+          $ne: userId
+        }
       });
+
       if (existingUser) {
-        throw new ValidationError({ email: ['Email já está em uso por outro usuário'] });
+        throw new ValidationError({
+          email: [
+            'Email já está em uso por outro usuário'
+          ]
+        });
       }
     }
 
     const updateData: any = {};
-    if (data.name) updateData.name = data.name;
-    if (data.email) updateData.email = data.email;
-    if (data.department !== undefined) updateData.department = data.department;
 
-    const updatedUser = await User.findByIdAndUpdate(
-      userId,
-      { $set: updateData },
-      { new: true, runValidators: true }
-    ).select('_id name email department role isActive');
+    if (data.name) {
+      updateData.name = data.name;
+    }
 
-    logger.info(`Usuário ${user.email} atualizado pelo preposto ${rep.email}`);
+    if (data.email) {
+      updateData.email = data.email;
+    }
+
+    if (
+      data.department !== undefined
+    ) {
+      updateData.department =
+        data.department;
+    }
+
+    const updatedUser =
+      await User.findByIdAndUpdate(
+        userId,
+        {
+          $set: updateData
+        },
+        {
+          new: true,
+          runValidators: true
+        }
+      ).select(
+        '_id name email department role isActive'
+      );
+
+    logger.info(
+      `Usuário ${user.email} atualizado pelo preposto ${rep.email}`
+    );
 
     return updatedUser;
   }
@@ -317,54 +483,94 @@ export class RepService {
     repId: string,
     userId: string,
     data: {
-      reason: 'Desligado' | 'Mudou de setor' | 'Outros';
+      reason:
+        | 'Desligado'
+        | 'Mudou de setor'
+        | 'Outros';
       description: string;
     }
   ) {
     const rep = await User.findById(repId);
+
     if (!rep) {
-      throw new NotFoundError('Preposto não encontrado');
+      throw new NotFoundError(
+        'Preposto não encontrado'
+      );
     }
 
     const user = await User.findById(userId);
+
     if (!user) {
-      throw new NotFoundError('Usuário não encontrado');
+      throw new NotFoundError(
+        'Usuário não encontrado'
+      );
     }
 
-    if (user.createdBy?.toString() !== repId) {
-      throw new AppError('Usuário não pertence a este preposto', 403);
+    if (
+      user.createdBy?.toString() !==
+      repId
+    ) {
+      throw new AppError(
+        'Usuário não pertence a este preposto',
+        403
+      );
     }
 
-    if (rep.companyId && user.companyId?.toString() !== rep.companyId.toString()) {
-      throw new AppError('Usuário não pertence à mesma empresa do preposto', 403);
+    if (
+      rep.companyId &&
+      user.companyId?.toString() !==
+      rep.companyId.toString()
+    ) {
+      throw new AppError(
+        'Usuário não pertence à mesma empresa do preposto',
+        403
+      );
     }
 
     if (!user.isActive) {
-      throw new AppError('Usuário já está inativo', 400);
+      throw new AppError(
+        'Usuário já está inativo',
+        400
+      );
     }
 
-    const updatedUser = await User.findByIdAndUpdate(
-      userId,
-      {
-        $set: {
-          isActive: false,
-          inactivationReason: data.reason,
-          inactivationDescription: data.description || '',
-          inactivatedAt: new Date(),
-          inactivatedBy: repId,
+    const updatedUser =
+      await User.findByIdAndUpdate(
+        userId,
+        {
+          $set: {
+            isActive: false,
+            inactivationReason: data.reason,
+            inactivationDescription:
+              data.description || '',
+            inactivatedAt: new Date(),
+            inactivatedBy: repId
+          }
         },
-      },
-      { new: true }
-    ).select('_id name email role isActive inactivationReason inactivationDescription inactivatedAt');
+        {
+          new: true
+        }
+      ).select(
+        '_id name email role isActive inactivationReason inactivationDescription inactivatedAt'
+      );
 
-    logger.info(`Usuário ${user.email} inativado pelo preposto ${rep.email}. Motivo: ${data.reason}`);
-
-    await Assignment.updateMany(
-      { userId, status: ResponseStatus.PENDING },
-      { $set: { status: ResponseStatus.REVOKED } }
+    logger.info(
+      `Usuário ${user.email} inativado pelo preposto ${rep.email}. Motivo: ${data.reason}`
     );
 
-    // 🔴 NOTIFICAÇÃO: Usuário inativado
+    await Assignment.updateMany(
+      {
+        userId,
+        status: ResponseStatus.PENDING
+      },
+      {
+        $set: {
+          status: ResponseStatus.REVOKED
+        }
+      }
+    );
+
+    // NOTIFICAÇÃO: Usuário inativado
     try {
       await NotificationService.notifyUserInactivated(
         userId,
@@ -373,7 +579,10 @@ export class RepService {
         `${data.reason} - ${data.description || ''}`
       );
     } catch (notifyError) {
-      logger.error('❌ Erro ao enviar notificação de inativação:', notifyError);
+      logger.error(
+        '❌ Erro ao enviar notificação de inativação:',
+        notifyError
+      );
     }
 
     return updatedUser;
@@ -388,32 +597,66 @@ export class RepService {
     newUserId: string | null
   ) {
     const rep = await User.findById(repId);
+
     if (!rep) {
-      throw new NotFoundError('Preposto não encontrado');
+      throw new NotFoundError(
+        'Preposto não encontrado'
+      );
     }
 
-    const assignment = await Assignment.findById(assignmentId)
-      .populate('userId', 'name email')
-      .populate('controlId', 'id nome');
+    const assignment =
+      await Assignment.findById(assignmentId)
+        .populate(
+          'userId',
+          'name email'
+        )
+        .populate(
+          'controlId',
+          'id nome'
+        );
 
     if (!assignment) {
-      throw new NotFoundError('Atribuição não encontrada');
+      throw new NotFoundError(
+        'Atribuição não encontrada'
+      );
     }
 
-    const currentUser = await User.findById(assignment.userId);
-    if (!currentUser || currentUser.companyId?.toString() !== rep.companyId?.toString()) {
-      throw new AppError('Atribuição não pertence à sua empresa', 403);
+    const currentUser =
+      await User.findById(
+        assignment.userId
+      );
+
+    if (
+      !currentUser ||
+      currentUser.companyId?.toString() !==
+      rep.companyId?.toString()
+    ) {
+      throw new AppError(
+        'Atribuição não pertence à sua empresa',
+        403
+      );
     }
 
-    if (assignment.status === ResponseStatus.COMPLETED) {
-      throw new AppError('Não é possível revogar um controle já respondido', 400);
+    if (
+      assignment.status ===
+      ResponseStatus.COMPLETED
+    ) {
+      throw new AppError(
+        'Não é possível revogar um controle já respondido',
+        400
+      );
     }
 
-    const oldUserId = assignment.userId;
-    const oldUser = currentUser;
-    const control = assignment.controlId as any;
+    const oldUserId =
+      assignment.userId;
 
-    // 🔴 NOTIFICAÇÃO: Controle revogado (antes de deletar)
+    const oldUser =
+      currentUser;
+
+    const control =
+      assignment.controlId as any;
+
+    // NOTIFICAÇÃO: Controle revogado
     try {
       await NotificationService.notifyControlRevoked(
         oldUserId.toString(),
@@ -423,55 +666,86 @@ export class RepService {
         `Revogado por ${rep.name || rep.email}${newUserId ? ' e reatribuído' : ''}`
       );
     } catch (notifyError) {
-      logger.error('❌ Erro ao enviar notificação de revogação:', notifyError);
+      logger.error(
+        '❌ Erro ao enviar notificação de revogação:',
+        notifyError
+      );
     }
 
     // Remover a atribuição atual
-    await Assignment.findByIdAndDelete(assignmentId);
+    await Assignment.findByIdAndDelete(
+      assignmentId
+    );
 
     let newAssignment = null;
 
-    // Se novo usuário foi especificado, criar nova atribuição
+    // Se novo usuário foi especificado
     if (newUserId) {
-      const newUser = await User.findOne({
-        _id: newUserId,
-        createdBy: repId,
-        role: UserRole.USER,
-        isActive: true,
-      });
+      const newUser =
+        await User.findOne({
+          _id: newUserId,
+          createdBy: repId,
+          role: UserRole.USER,
+          isActive: true
+        });
 
       if (!newUser) {
-        throw new NotFoundError('Usuário destino não encontrado ou inativo');
+        throw new NotFoundError(
+          'Usuário destino não encontrado ou inativo'
+        );
       }
 
-      if (newUser.companyId?.toString() !== rep.companyId?.toString()) {
-        throw new AppError('Usuário destino não pertence à mesma empresa', 403);
+      if (
+        newUser.companyId?.toString() !==
+        rep.companyId?.toString()
+      ) {
+        throw new AppError(
+          'Usuário destino não pertence à mesma empresa',
+          403
+        );
       }
 
-      const existingAssignment = await Assignment.findOne({
-        userId: newUserId,
-        controlId: assignment.controlId,
-      });
+      const existingAssignment =
+        await Assignment.findOne({
+          userId: newUserId,
+          controlId:
+            assignment.controlId
+        });
 
       if (existingAssignment) {
-        throw new AppError('Este controle já está atribuído ao usuário destino', 400);
+        throw new AppError(
+          'Este controle já está atribuído ao usuário destino',
+          400
+        );
       }
 
       // Criar nova atribuição
-      newAssignment = new Assignment({
-        userId: newUserId,
-        controlId: assignment.controlId,
-        assignedBy: repId,
-        assignedAt: new Date(),
-        status: ResponseStatus.PENDING,
-        dueDate: assignment.dueDate,
-      });
+      newAssignment =
+        new Assignment({
+          userId: newUserId,
+          controlId:
+            assignment.controlId,
+          assignedBy: repId,
+          assignedAt: new Date(),
+          status:
+            ResponseStatus.PENDING,
+          dueDate:
+            assignment.dueDate
+        });
 
       await newAssignment.save();
-      await newAssignment.populate('userId', 'name email');
-      await newAssignment.populate('controlId', 'id nome');
 
-      // 🔴 NOTIFICAÇÃO: Novo controle atribuído (para o novo usuário)
+      await newAssignment.populate(
+        'userId',
+        'name email'
+      );
+
+      await newAssignment.populate(
+        'controlId',
+        'id nome'
+      );
+
+      // NOTIFICAÇÃO: Novo controle atribuído
       try {
         await NotificationService.notifyAssignment(
           newUserId,
@@ -481,7 +755,10 @@ export class RepService {
           rep.name || rep.email
         );
       } catch (notifyError) {
-        logger.error('❌ Erro ao enviar notificação de atribuição para novo usuário:', notifyError);
+        logger.error(
+          '❌ Erro ao enviar notificação de atribuição para novo usuário:',
+          notifyError
+        );
       }
 
       logger.info(
@@ -498,14 +775,29 @@ export class RepService {
       oldUserId,
       oldUserEmail: oldUser?.email,
       controlId: assignment.controlId,
-      controlName: control?.nome || 'Controle',
-      newUserId: newUserId || null,
-      newAssignment: newAssignment || null,
+      controlName:
+        control?.nome ||
+        'Controle',
+      newUserId:
+        newUserId || null,
+      newAssignment:
+        newAssignment || null
     };
   }
 
   /**
-   * Atribuir controles a um usuário (sem repetição)
+   * Atribuir controles a um usuário
+   *
+   * CORREÇÃO PRINCIPAL:
+   * A validação da empresa não depende exclusivamente
+   * do companyId existente no documento do preposto.
+   *
+   * Quando o companyId do preposto está ausente,
+   * incorreto ou desatualizado, a empresa é resolvida
+   * pelo nome cadastrado no usuário.
+   *
+   * Quando o usuário possui a mesma empresa lógica,
+   * seu companyId é corrigido para o companyId oficial.
    */
   static async assignControls(
     repId: string,
@@ -515,357 +807,1061 @@ export class RepService {
       force?: boolean;
     }
   ) {
-    const { userId, controlIds, force = false } = data;
+    const {
+      userId,
+      controlIds,
+      force = false
+    } = data;
 
-    const rep = await User.findById(repId);
+    const rep =
+      await User.findById(repId);
+
     if (!rep) {
-      throw new NotFoundError('Preposto não encontrado');
+      throw new NotFoundError(
+        'Preposto não encontrado'
+      );
     }
 
-    const user = await User.findById(userId);
+    const user =
+      await User.findById(userId);
+
     if (!user) {
-      throw new NotFoundError('Usuário não encontrado');
+      throw new NotFoundError(
+        'Usuário não encontrado'
+      );
     }
 
-    if (user.createdBy?.toString() !== repId) {
-      throw new AppError('Usuário não pertence a este preposto', 403);
+    // 🔴 CORRIGIDO: Permitir que o preposto atribua controles para si mesmo
+    // Se o usuário for o próprio preposto (userId === repId), permite
+    // Caso contrário, verifica se o usuário foi criado por este preposto
+    if (userId !== repId && user.createdBy?.toString() !== repId) {
+      throw new AppError(
+        'Usuário não pertence a este preposto',
+        403
+      );
     }
 
-    if (rep.companyId && user.companyId?.toString() !== rep.companyId.toString()) {
-      throw new AppError('Usuário não pertence à mesma empresa do preposto', 403);
+    // ============================================
+    // RESOLVER A EMPRESA OFICIAL DO PREPOSTO
+    // ============================================
+
+    let repCompanyId =
+      rep.companyId
+        ? rep.companyId.toString()
+        : null;
+
+    let repCompany =
+      repCompanyId
+        ? await Company.findById(
+            repCompanyId
+          )
+        : null;
+
+    // Se o companyId do preposto não existe
+    // ou não aponta para uma empresa válida,
+    // tentar resolver pelo nome da empresa.
+    if (!repCompany && rep.company) {
+      repCompany =
+        await Company.findOne({
+          name: rep.company
+        });
+
+      if (repCompany) {
+        repCompanyId =
+          repCompany._id.toString();
+
+        await User.findByIdAndUpdate(
+          repId,
+          {
+            $set: {
+              companyId:
+                repCompany._id
+            }
+          }
+        );
+
+        logger.info(
+          `CompanyId do preposto ${rep.email} corrigido durante atribuição: ${repCompany._id}`
+        );
+      }
     }
 
-    const controls = await Control.find({ _id: { $in: controlIds } });
-    if (controls.length !== controlIds.length) {
-      throw new NotFoundError('Um ou mais controles não foram encontrados');
+    if (!repCompany || !repCompanyId) {
+      logger.error(
+        '❌ Empresa do preposto não encontrada durante atribuição',
+        {
+          repId,
+          repEmail: rep.email,
+          repCompanyId: rep.companyId,
+          repCompanyName: rep.company
+        }
+      );
+
+      throw new AppError(
+        'Não foi possível identificar a empresa deste preposto',
+        400
+      );
     }
 
-    const otherUsers = await User.find({
-      companyId: rep.companyId,
-      _id: { $ne: userId },
-      role: UserRole.USER,
-    }).select('_id');
+    // ============================================
+    // VALIDAR A EMPRESA DO USUÁRIO
+    // ============================================
 
-    const otherUserIds = otherUsers.map(u => u._id);
+    let userCompanyId =
+      user.companyId
+        ? user.companyId.toString()
+        : null;
 
-    const existingOtherAssignments = await Assignment.find({
-      userId: { $in: otherUserIds },
-      controlId: { $in: controlIds },
-    });
+    // Caso o usuário já tenha companyId,
+    // validar diretamente contra a empresa oficial.
+    if (
+      userCompanyId &&
+      userCompanyId !== repCompanyId
+    ) {
+      const userCompany =
+        await Company.findById(
+          userCompanyId
+        );
 
-    const otherAssignedControlIds = existingOtherAssignments.map(a => a.controlId.toString());
+      // Se o usuário possui uma empresa válida
+      // diferente da empresa do preposto,
+      // bloquear a operação.
+      if (userCompany) {
+        logger.error(
+          '❌ Usuário pertence a empresa diferente da empresa do preposto',
+          {
+            repId,
+            repEmail: rep.email,
+            repCompanyId,
+            repCompanyName: repCompany.name,
+            userId,
+            userEmail: user.email,
+            userCompanyId,
+            userCompanyName: userCompany.name
+          }
+        );
 
-    if (otherAssignedControlIds.length > 0 && !force) {
+        throw new AppError(
+          'Usuário não pertence à empresa deste preposto',
+          403
+        );
+      }
+
+      // Se o companyId do usuário aponta para
+      // uma empresa inexistente, corrigir para
+      // a empresa oficial do preposto.
+      await User.findByIdAndUpdate(
+        userId,
+        {
+          $set: {
+            companyId:
+              repCompany._id
+          }
+        }
+      );
+
+      userCompanyId =
+        repCompanyId;
+
+      logger.warn(
+        `CompanyId inválido do usuário ${user.email} corrigido para ${repCompanyId}`
+      );
+    }
+
+    // Caso o usuário não possua companyId,
+    // associá-lo à empresa oficial do preposto.
+    if (!userCompanyId) {
+      await User.findByIdAndUpdate(
+        userId,
+        {
+          $set: {
+            companyId:
+              repCompany._id
+          }
+        }
+      );
+
+      userCompanyId =
+        repCompanyId;
+
+      logger.info(
+        `CompanyId do usuário ${user.email} preenchido durante atribuição: ${repCompanyId}`
+      );
+    }
+
+    // ============================================
+    // NORMALIZAÇÃO DOS CONTROLES
+    // ============================================
+
+    const normalizedControlIds =
+      Array.from(
+        new Set(
+          controlIds
+            .map((id) =>
+              String(id).trim()
+            )
+            .filter(
+              (id) =>
+                id.length > 0
+            )
+        )
+      );
+
+    if (
+      normalizedControlIds.length === 0
+    ) {
+      throw new ValidationError({
+        controlIds: [
+          'É necessário informar pelo menos um controle'
+        ]
+      });
+    }
+
+    const objectIdControlIds =
+      normalizedControlIds.filter(
+        (id) =>
+          mongoose.Types.ObjectId.isValid(
+            id
+          )
+      );
+
+    const functionalControlIds =
+      normalizedControlIds.filter(
+        (id) =>
+          !mongoose.Types.ObjectId.isValid(
+            id
+          )
+      );
+
+    const controlQuery: any[] =
+      [];
+
+    if (
+      objectIdControlIds.length > 0
+    ) {
+      controlQuery.push({
+        _id: {
+          $in:
+            objectIdControlIds
+        }
+      });
+    }
+
+    if (
+      functionalControlIds.length > 0
+    ) {
+      controlQuery.push({
+        id: {
+          $in:
+            functionalControlIds
+        }
+      });
+    }
+
+    const controls =
+      await Control.find({
+        $or: controlQuery
+      });
+
+    if (
+      controls.length !==
+      normalizedControlIds.length
+    ) {
+      const foundControlIdentifiers =
+        new Set<string>();
+
+      controls.forEach(
+        (control) => {
+          foundControlIdentifiers.add(
+            control._id.toString()
+          );
+
+          if (
+            control.id !==
+              undefined &&
+            control.id !==
+              null
+          ) {
+            foundControlIdentifiers.add(
+              String(control.id)
+            );
+          }
+        }
+      );
+
+      const missingControls =
+        normalizedControlIds.filter(
+          (controlId) =>
+            !foundControlIdentifiers.has(
+              controlId
+            )
+        );
+
+      logger.error(
+        `❌ Controles não encontrados durante atribuição pelo preposto ${rep.email}:`,
+        {
+          requestedControlIds:
+            normalizedControlIds,
+          missingControls,
+          foundControls:
+            controls.map(
+              (control) => ({
+                _id:
+                  control._id.toString(),
+                id:
+                  control.id,
+                nome:
+                  control.nome
+              })
+            )
+        }
+      );
+
+      throw new NotFoundError(
+        `Um ou mais controles não foram encontrados: ${missingControls.join(', ')}`
+      );
+    }
+
+    // ============================================
+    // USAR SEMPRE O _id REAL DO MONGODB
+    // ============================================
+
+    const resolvedControlIds =
+      controls.map(
+        (control) =>
+          control._id.toString()
+      );
+
+    // ============================================
+    // BUSCAR OUTROS USUÁRIOS DA MESMA EMPRESA
+    // ============================================
+
+    const otherUsers =
+      await User.find({
+        companyId:
+          repCompany._id,
+        _id: {
+          $ne: userId
+        },
+        role:
+          UserRole.USER
+      }).select(
+        '_id'
+      );
+
+    const otherUserIds =
+      otherUsers.map(
+        (u) =>
+          u._id
+      );
+
+    // ============================================
+    // VERIFICAR CONFLITOS
+    // ============================================
+
+    const existingOtherAssignments =
+      await Assignment.find({
+        userId: {
+          $in:
+            otherUserIds
+        },
+        controlId: {
+          $in:
+            resolvedControlIds
+        }
+      });
+
+    const otherAssignedControlIds =
+      Array.from(
+        new Set(
+          existingOtherAssignments.map(
+            (a) =>
+              a.controlId.toString()
+          )
+        )
+      );
+
+    if (
+      otherAssignedControlIds.length >
+        0 &&
+      !force
+    ) {
+      const conflictControls =
+        controls
+          .filter(
+            (control) =>
+              otherAssignedControlIds.includes(
+                control._id.toString()
+              )
+          )
+          .map(
+            (control) =>
+              control.id ||
+              control._id.toString()
+          );
+
       return {
         assigned: 0,
-        skipped: controlIds.length,
-        conflicts: otherAssignedControlIds,
-        conflictMessage: `Os seguintes controles já estão atribuídos a outros usuários: ${otherAssignedControlIds.join(', ')}. Use force=true para substituir.`,
+        skipped:
+          normalizedControlIds.length,
+        conflicts:
+          conflictControls,
+        conflictMessage:
+          `Os seguintes controles já estão atribuídos a outros usuários: ${conflictControls.join(', ')}. Use force=true para substituir.`
       };
     }
 
+    // ============================================
+    // REMOVER ATRIBUIÇÕES EXISTENTES
+    // ============================================
+
     let removedCount = 0;
-    if (force && otherAssignedControlIds.length > 0) {
-      const removed = await Assignment.deleteMany({
-        userId: { $in: otherUserIds },
-        controlId: { $in: otherAssignedControlIds },
-      });
-      removedCount = removed.deletedCount || 0;
-      logger.info(`Removidas ${removedCount} atribuições de controles para outros usuários`);
+
+    if (
+      force &&
+      otherAssignedControlIds.length >
+        0
+    ) {
+      const removed =
+        await Assignment.deleteMany({
+          userId: {
+            $in:
+              otherUserIds
+          },
+          controlId: {
+            $in:
+              otherAssignedControlIds
+          }
+        });
+
+      removedCount =
+        removed.deletedCount ||
+        0;
+
+      logger.info(
+        `Removidas ${removedCount} atribuições de controles para outros usuários`
+      );
     }
 
-    const existingAssignments = await Assignment.find({
-      userId,
-      controlId: { $in: controlIds },
-    });
+    // ============================================
+    // VERIFICAR CONTROLES JÁ ATRIBUÍDOS
+    // ============================================
 
-    const existingControlIds = existingAssignments.map((a) => a.controlId.toString());
-    const newControlIds = controlIds.filter((id) => !existingControlIds.includes(id));
+    const existingAssignments =
+      await Assignment.find({
+        userId,
+        controlId: {
+          $in:
+            resolvedControlIds
+        }
+      });
 
-    const assignments = newControlIds.map((controlId) => ({
-      userId,
-      controlId,
-      assignedBy: repId,
-      assignedAt: new Date(),
-      status: ResponseStatus.PENDING,
-    }));
+    const existingControlIds =
+      existingAssignments.map(
+        (a) =>
+          a.controlId.toString()
+      );
+
+    const newControlIds =
+      resolvedControlIds.filter(
+        (id) =>
+          !existingControlIds.includes(
+            id
+          )
+      );
+
+    // ============================================
+    // CRIAR NOVAS ATRIBUIÇÕES
+    // ============================================
+
+    const assignments =
+      newControlIds.map(
+        (controlId) => ({
+          userId,
+          controlId,
+          assignedBy:
+            repId,
+          assignedAt:
+            new Date(),
+          status:
+            ResponseStatus.PENDING
+        })
+      );
 
     let created = 0;
-    if (assignments.length > 0) {
-      const result = await Assignment.insertMany(assignments);
-      created = result.length;
 
-      // 🔴 NOTIFICAÇÃO: Para cada controle atribuído
-      for (const assignmentData of assignments) {
-        const control = controls.find(c => c._id.toString() === assignmentData.controlId);
+    if (
+      assignments.length > 0
+    ) {
+      const result =
+        await Assignment.insertMany(
+          assignments
+        );
+
+      created =
+        result.length;
+
+      // ============================================
+      // NOTIFICAÇÃO PARA CADA CONTROLE
+      // ============================================
+
+      for (
+        const assignmentData
+          of assignments
+      ) {
+        const control =
+          controls.find(
+            (c) =>
+              c._id.toString() ===
+              assignmentData.controlId
+          );
+
         if (control) {
           try {
             await NotificationService.notifyAssignment(
               userId,
-              rep.companyId?.toString() || '',
-              control.nome || control.id || assignmentData.controlId,
-              control.id || assignmentData.controlId,
-              rep.name || rep.email
+              repCompanyId,
+              control.nome ||
+                control.id ||
+                assignmentData.controlId,
+              control.id ||
+                assignmentData.controlId,
+              rep.name ||
+                rep.email
             );
-          } catch (notifyError) {
-            logger.error('❌ Erro ao enviar notificação de atribuição:', notifyError);
+          } catch (
+            notifyError
+          ) {
+            logger.error(
+              '❌ Erro ao enviar notificação de atribuição:',
+              notifyError
+            );
           }
         }
       }
     }
 
-    logger.info(`${created} controles atribuídos ao usuário ${user.email} pelo preposto ${rep.email}`);
+    logger.info(
+      `${created} controles atribuídos ao usuário ${user.email} pelo preposto ${rep.email}`
+    );
 
     return {
-      assigned: created,
-      removed: removedCount,
-      skipped: controlIds.length - created - removedCount,
-      conflicts: otherAssignedControlIds,
-      assignments: assignments,
+      assigned:
+        created,
+      removed:
+        removedCount,
+      skipped:
+        normalizedControlIds.length -
+        created,
+      conflicts:
+        otherAssignedControlIds,
+      assignments
     };
   }
 
   /**
    * Obter progresso de um usuário
    */
-  static async getUserProgress(repId: string, userId: string) {
-    const rep = await User.findById(repId);
+  static async getUserProgress(
+    repId: string,
+    userId: string
+  ) {
+    const rep =
+      await User.findById(
+        repId
+      );
+
     if (!rep) {
-      throw new NotFoundError('Preposto não encontrado');
+      throw new NotFoundError(
+        'Preposto não encontrado'
+      );
     }
 
-    const user = await User.findById(userId);
+    const user =
+      await User.findById(
+        userId
+      );
+
     if (!user) {
-      throw new NotFoundError('Usuário não encontrado');
+      throw new NotFoundError(
+        'Usuário não encontrado'
+      );
     }
 
-    if (user.createdBy?.toString() !== repId) {
-      throw new AppError('Usuário não pertence a este preposto', 403);
+    if (
+      user.createdBy?.toString() !==
+      repId
+    ) {
+      throw new AppError(
+        'Usuário não pertence a este preposto',
+        403
+      );
     }
 
-    if (rep.companyId && user.companyId?.toString() !== rep.companyId.toString()) {
-      throw new AppError('Usuário não pertence à mesma empresa do preposto', 403);
+    if (
+      rep.companyId &&
+      user.companyId?.toString() !==
+      rep.companyId.toString()
+    ) {
+      throw new AppError(
+        'Usuário não pertence à mesma empresa do preposto',
+        403
+      );
     }
 
-    const assignments = await Assignment.find({ userId })
-      .populate('controlId', 'id nome')
-      .lean();
+    const assignments =
+      await Assignment.find({
+        userId
+      })
+        .populate(
+          'controlId',
+          'id nome'
+        )
+        .lean();
 
-    const responses = await Response.find({ userId })
-      .populate('controlId', 'id nome')
-      .lean();
+    const responses =
+      await Response.find({
+        userId
+      })
+        .populate(
+          'controlId',
+          'id nome'
+        )
+        .lean();
 
-    const responseMap = new Map();
-    responses.forEach((r) => {
-      responseMap.set(r.assignmentId.toString(), r);
-    });
+    const responseMap =
+      new Map();
 
-    const total = assignments.length;
-    const completed = responses.length;
-    const pending = total - completed;
-
-    const maturityDistribution = {
-      'N/A': 0,
-      '0': 0,
-      '1': 0,
-      '2': 0,
-    };
-
-    responses.forEach((r) => {
-      const level = r.maturityLevel;
-      if (level in maturityDistribution) {
-        maturityDistribution[level as keyof typeof maturityDistribution]++;
+    responses.forEach(
+      (r) => {
+        responseMap.set(
+          r.assignmentId.toString(),
+          r
+        );
       }
-    });
+    );
 
-    const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
+    const total =
+      assignments.length;
 
-    const details = assignments.map((assignment) => {
-      const control = assignment.controlId as any;
-      return {
-        assignmentId: assignment._id,
-        controlId: control?._id || assignment.controlId,
-        controlName: control?.nome || 'Controle não encontrado',
-        status: assignment.status,
-        response: responseMap.get(assignment._id.toString()) || null,
+    const completed =
+      responses.length;
+
+    const pending =
+      total -
+      completed;
+
+    const maturityDistribution =
+      {
+        'N/A': 0,
+        '0': 0,
+        '1': 0,
+        '2': 0
       };
-    });
+
+    responses.forEach(
+      (r) => {
+        const level =
+          r.maturityLevel;
+
+        if (
+          level in
+          maturityDistribution
+        ) {
+          maturityDistribution[
+            level as keyof typeof maturityDistribution
+          ]++;
+        }
+      }
+    );
+
+    const percentage =
+      total > 0
+        ? Math.round(
+            (completed /
+              total) *
+              100
+          )
+        : 0;
+
+    const details =
+      assignments.map(
+        (assignment) => {
+          const control =
+            assignment.controlId as any;
+
+          return {
+            assignmentId:
+              assignment._id,
+            controlId:
+              control?._id ||
+              assignment.controlId,
+            controlName:
+              control?.nome ||
+              'Controle não encontrado',
+            status:
+              assignment.status,
+            response:
+              responseMap.get(
+                assignment._id.toString()
+              ) ||
+              null
+          };
+        }
+      );
 
     return {
-      userId: user._id,
-      userName: user.name,
-      userEmail: user.email,
+      userId:
+        user._id,
+      userName:
+        user.name,
+      userEmail:
+        user.email,
       total,
       completed,
       pending,
       percentage,
       maturityDistribution,
-      details,
+      details
     };
   }
 
   /**
    * Obter progresso geral do preposto
    */
-  static async getOverallProgress(repId: string) {
-    const rep = await User.findById(repId);
+  static async getOverallProgress(
+    repId: string
+  ) {
+    const rep =
+      await User.findById(
+        repId
+      );
+
     if (!rep) {
-      throw new NotFoundError('Preposto não encontrado');
+      throw new NotFoundError(
+        'Preposto não encontrado'
+      );
     }
 
-    const filter: any = {
-      createdBy: repId,
-      role: UserRole.USER,
-    };
-
-    if (rep.companyId) {
-      filter.companyId = rep.companyId;
-    }
-
-    const users = await User.find(filter).select('_id name email');
-
-    const userIds = users.map((u) => u._id);
-
-    const [assignments, responses] = await Promise.all([
-      Assignment.find({ userId: { $in: userIds } }),
-      Response.find({ userId: { $in: userIds } }),
-    ]);
-
-    const totalAssignments = assignments.length;
-    const totalResponses = responses.length;
-    const overallPercentage = totalAssignments > 0
-      ? Math.round((totalResponses / totalAssignments) * 100)
-      : 0;
-
-    const userProgress = users.map((user) => {
-      const userAssignments = assignments.filter(
-        (a) => a.userId.toString() === user._id.toString()
-      );
-      const userResponses = responses.filter(
-        (r) => r.userId.toString() === user._id.toString()
-      );
-
-      return {
-        userId: user._id,
-        userName: user.name,
-        userEmail: user.email,
-        total: userAssignments.length,
-        completed: userResponses.length,
-        percentage: userAssignments.length > 0
-          ? Math.round((userResponses.length / userAssignments.length) * 100)
-          : 0,
+    const filter: any =
+      {
+        createdBy:
+          repId,
+        role:
+          UserRole.USER
       };
-    });
+
+    if (
+      rep.companyId
+    ) {
+      filter.companyId =
+        rep.companyId;
+    }
+
+    const users =
+      await User.find(
+        filter
+      ).select(
+        '_id name email'
+      );
+
+    const userIds =
+      users.map(
+        (u) =>
+          u._id
+      );
+
+    const [
+      assignments,
+      responses
+    ] =
+      await Promise.all([
+        Assignment.find({
+          userId: {
+            $in:
+              userIds
+          }
+        }),
+
+        Response.find({
+          userId: {
+            $in:
+              userIds
+          }
+        })
+      ]);
+
+    const totalAssignments =
+      assignments.length;
+
+    const totalResponses =
+      responses.length;
+
+    const overallPercentage =
+      totalAssignments > 0
+        ? Math.round(
+            (totalResponses /
+              totalAssignments) *
+              100
+          )
+        : 0;
+
+    const userProgress =
+      users.map(
+        (user) => {
+          const userAssignments =
+            assignments.filter(
+              (a) =>
+                a.userId.toString() ===
+                user._id.toString()
+            );
+
+          const userResponses =
+            responses.filter(
+              (r) =>
+                r.userId.toString() ===
+                user._id.toString()
+            );
+
+          return {
+            userId:
+              user._id,
+            userName:
+              user.name,
+            userEmail:
+              user.email,
+            total:
+              userAssignments.length,
+            completed:
+              userResponses.length,
+            percentage:
+              userAssignments.length > 0
+                ? Math.round(
+                    (userResponses.length /
+                      userAssignments.length) *
+                      100
+                  )
+                : 0
+          };
+        }
+      );
 
     return {
-      totalUsers: users.length,
+      totalUsers:
+        users.length,
       totalAssignments,
       totalResponses,
       overallPercentage,
-      userProgress,
+      userProgress
     };
   }
 
   /**
    * Obter estatísticas do preposto
    */
-  static async getStats(repId: string) {
-    const rep = await User.findById(repId);
+  static async getStats(
+    repId: string
+  ) {
+    const rep =
+      await User.findById(
+        repId
+      );
+
     if (!rep) {
-      throw new NotFoundError('Preposto não encontrado');
+      throw new NotFoundError(
+        'Preposto não encontrado'
+      );
     }
 
-    const filter: any = {
-      createdBy: repId,
-      role: UserRole.USER,
-      isActive: true,
-    };
+    const filter: any =
+      {
+        createdBy:
+          repId,
+        role:
+          UserRole.USER,
+        isActive:
+          true
+      };
 
-    if (rep.companyId) {
-      filter.companyId = rep.companyId;
+    if (
+      rep.companyId
+    ) {
+      filter.companyId =
+        rep.companyId;
     }
 
-    const activeUsers = await User.find(filter).select('_id');
-    const activeUserIds = activeUsers.map(u => u._id);
+    const activeUsers =
+      await User.find(
+        filter
+      ).select(
+        '_id'
+      );
 
-    const totalUsers = await User.countDocuments(filter);
+    const activeUserIds =
+      activeUsers.map(
+        (u) =>
+          u._id
+      );
 
-    const totalAssignments = await Assignment.countDocuments({
-      assignedBy: repId,
-      userId: { $in: activeUserIds },
-    });
+    const totalUsers =
+      await User.countDocuments(
+        filter
+      );
 
-    const statusCounts = await Assignment.aggregate([
-      { 
-        $match: { 
-          assignedBy: new mongoose.Types.ObjectId(repId),
-          userId: { $in: activeUserIds }
-        } 
-      },
-      { $group: { _id: '$status', count: { $sum: 1 } } },
-    ]);
+    const totalAssignments =
+      await Assignment.countDocuments({
+        assignedBy:
+          repId,
+        userId: {
+          $in:
+            activeUserIds
+        }
+      });
 
-    const statusMap: Record<string, number> = {};
-    statusCounts.forEach((item) => {
-      statusMap[item._id] = item.count;
-    });
-
-    const totalResponses = await Response.aggregate([
-      {
-        $lookup: {
-          from: 'assignments',
-          localField: 'assignmentId',
-          foreignField: '_id',
-          as: 'assignment',
+    const statusCounts =
+      await Assignment.aggregate([
+        {
+          $match: {
+            assignedBy:
+              new mongoose.Types.ObjectId(
+                repId
+              ),
+            userId: {
+              $in:
+                activeUserIds
+            }
+          }
         },
-      },
-      { $unwind: '$assignment' },
-      { 
-        $match: { 
-          'assignment.assignedBy': new mongoose.Types.ObjectId(repId),
-          'assignment.userId': { $in: activeUserIds }
-        } 
-      },
-      { $count: 'total' },
-    ]);
+        {
+          $group: {
+            _id:
+              '$status',
+            count: {
+              $sum:
+                1
+            }
+          }
+        }
+      ]);
 
-    const maturityAvg = await Response.aggregate([
-      {
-        $lookup: {
-          from: 'assignments',
-          localField: 'assignmentId',
-          foreignField: '_id',
-          as: 'assignment',
+    const statusMap:
+      Record<string, number> =
+      {};
+
+    statusCounts.forEach(
+      (item) => {
+        statusMap[
+          item._id
+        ] =
+          item.count;
+      }
+    );
+
+    const totalResponses =
+      await Response.aggregate([
+        {
+          $lookup: {
+            from:
+              'assignments',
+            localField:
+              'assignmentId',
+            foreignField:
+              '_id',
+            as:
+              'assignment'
+          }
         },
-      },
-      { $unwind: '$assignment' },
-      { 
-        $match: { 
-          'assignment.assignedBy': new mongoose.Types.ObjectId(repId),
-          'assignment.userId': { $in: activeUserIds }
-        } 
-      },
-      {
-        $group: {
-          _id: null,
-          avgMaturity: { $avg: { $toDouble: '$maturityLevel' } },
+        {
+          $unwind:
+            '$assignment'
         },
-      },
-    ]);
+        {
+          $match: {
+            'assignment.assignedBy':
+              new mongoose.Types.ObjectId(
+                repId
+              ),
+            'assignment.userId': {
+              $in:
+                activeUserIds
+            }
+          }
+        },
+        {
+          $count:
+            'total'
+        }
+      ]);
 
-    const totalResponsesCount = totalResponses[0]?.total || 0;
+    const maturityAvg =
+      await Response.aggregate([
+        {
+          $lookup: {
+            from:
+              'assignments',
+            localField:
+              'assignmentId',
+            foreignField:
+              '_id',
+            as:
+              'assignment'
+          }
+        },
+        {
+          $unwind:
+            '$assignment'
+        },
+        {
+          $match: {
+            'assignment.assignedBy':
+              new mongoose.Types.ObjectId(
+                repId
+              ),
+            'assignment.userId': {
+              $in:
+                activeUserIds
+            }
+          }
+        },
+        {
+          $group: {
+            _id:
+              null,
+            avgMaturity: {
+              $avg: {
+                $toDouble:
+                  '$maturityLevel'
+              }
+            }
+          }
+        }
+      ]);
 
-    const completionRate = totalAssignments > 0
-      ? Math.round((totalResponsesCount / totalAssignments) * 100)
-      : 0;
+    const totalResponsesCount =
+      totalResponses[0]?.total ||
+      0;
+
+    const completionRate =
+      totalAssignments > 0
+        ? Math.round(
+            (totalResponsesCount /
+              totalAssignments) *
+              100
+          )
+        : 0;
 
     return {
       totalUsers,
       totalAssignments,
-      totalResponses: totalResponsesCount,
-      statusDistribution: statusMap,
-      averageMaturity: maturityAvg[0]?.avgMaturity || 0,
-      completionRate,
+      totalResponses:
+        totalResponsesCount,
+      statusDistribution:
+        statusMap,
+      averageMaturity:
+        maturityAvg[0]
+          ?.avgMaturity ||
+        0,
+      completionRate
     };
   }
 }
