@@ -1,6 +1,5 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-// backend/src/routes/admin.ts
 const express_1 = require("express");
 const AdminController_js_1 = require("../controllers/AdminController.js");
 const CompanyController_js_1 = require("../controllers/CompanyController.js");
@@ -135,5 +134,14 @@ router.delete('/company/:companyId/branding/logo', rateLimit_js_1.adminRateLimit
 router.delete('/company/:companyId/branding/favicon', rateLimit_js_1.adminRateLimiter, cache_js_1.noCache, AdminController_js_1.AdminController.removeFavicon);
 // Atualizar configurações de branding
 router.put('/company/:companyId/branding/settings', rateLimit_js_1.adminRateLimiter, cache_js_1.noCache, AdminController_js_1.AdminController.updateBrandingSettings);
+// ============================================
+// 🔴 NOVO: ROTAS DE BRANDING PARA PREPOSTO (REP)
+// ============================================
+// 🔴 NOVO: Upload da logo para REP (rota separada com autorização mista)
+router.post('/rep/company/:companyId/branding/logo', rateLimit_js_1.authenticatedRateLimiter, cache_js_1.noCache, multer_js_1.uploadLogo.single('logo'), multer_js_1.handleMulterError, AdminController_js_1.AdminController.uploadLogo);
+// 🔴 NOVO: Remover logo para REP
+router.delete('/rep/company/:companyId/branding/logo', rateLimit_js_1.authenticatedRateLimiter, cache_js_1.noCache, AdminController_js_1.AdminController.removeLogo);
+// 🔴 NOVO: Obter branding para REP
+router.get('/rep/company/:companyId/branding', rateLimit_js_1.authenticatedRateLimiter, cache_js_1.noCache, AdminController_js_1.AdminController.getBranding);
 exports.default = router;
 //# sourceMappingURL=admin.js.map

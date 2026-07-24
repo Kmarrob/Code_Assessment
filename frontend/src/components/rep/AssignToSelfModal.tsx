@@ -31,6 +31,13 @@ interface Control {
   isAssigned: boolean;
 }
 
+type ControlCategory =
+  | 'all'
+  | 'organizational'
+  | 'people'
+  | 'physical'
+  | 'technological';
+
 export const AssignToSelfModal: React.FC<AssignToSelfModalProps> = ({
   isOpen,
   onClose,
@@ -43,6 +50,8 @@ export const AssignToSelfModal: React.FC<AssignToSelfModalProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [search, setSearch] = useState('');
+  const [selectedCategory, setSelectedCategory] =
+    useState<ControlCategory>('all');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [availableCount, setAvailableCount] = useState(0);
@@ -74,6 +83,50 @@ export const AssignToSelfModal: React.FC<AssignToSelfModalProps> = ({
   };
 
   // ============================================
+  // OBTER O NÚMERO PRINCIPAL DO CONTROLE
+  // ============================================
+  const getControlNumber = (controlId: string): number | null => {
+    const match = controlId.match(/(\d+)\.(\d+)/);
+
+    if (!match) {
+      return null;
+    }
+
+    return Number(match[1] + '.' + match[2]);
+  };
+
+  // ============================================
+  // IDENTIFICAR A CATEGORIA DO CONTROLE
+  // ============================================
+  const getControlCategory = (
+    controlId: string
+  ): Exclude<ControlCategory, 'all'> | null => {
+    const controlNumber = getControlNumber(controlId);
+
+    if (controlNumber === null) {
+      return null;
+    }
+
+    if (controlNumber >= 5.1 && controlNumber <= 5.37) {
+      return 'organizational';
+    }
+
+    if (controlNumber >= 6.1 && controlNumber <= 6.8) {
+      return 'people';
+    }
+
+    if (controlNumber >= 7.1 && controlNumber <= 7.14) {
+      return 'physical';
+    }
+
+    if (controlNumber >= 8.1 && controlNumber <= 8.34) {
+      return 'technological';
+    }
+
+    return null;
+  };
+
+  // ============================================
   // CARREGAR CONTROLES DISPONÍVEIS
   // ============================================
   useEffect(() => {
@@ -87,34 +140,23 @@ export const AssignToSelfModal: React.FC<AssignToSelfModalProps> = ({
       setSuccess(null);
 
       try {
-        // 🔴 CORRIGIDO: Usar método específico para preposto
+        /*
+         * IMPORTANTE:
+         *
+         * A fonte de verdade para os controles disponíveis deve ser o backend.
+         *
+         * O endpoint controlService.getAvailableControls() deve consultar
+         * o banco de dados e retornar somente controles que ainda não estejam
+         * atribuídos a nenhum usuário da empresa.
+         *
+         * Não utilizamos getMyAssignments() aqui para filtrar os controles,
+         * pois esse método verifica apenas as atribuições do próprio preposto.
+         * Isso não seria suficiente para impedir que um controle já atribuído
+         * a outro usuário aparecesse neste modal.
+         */
         const allControls = await controlService.getAvailableControls();
 
-        const myAssignments = await repService.getMyAssignments();
-
-        const assignedIds = new Set(
-          myAssignments
-            .map((assignment: any) => {
-              const controlId = assignment?.controlId;
-
-              if (
-                controlId &&
-                typeof controlId === 'object' &&
-                '_id' in controlId
-              ) {
-                return String(controlId._id);
-              }
-
-              return controlId ? String(controlId) : null;
-            })
-            .filter((id: string | null): id is string => Boolean(id))
-        );
-
         const available = allControls
-          .filter((control: any) => {
-            const controlId = String(control?._id ?? '');
-            return controlId && !assignedIds.has(controlId);
-          })
           .map(
             (control: any): Control => ({
               _id: String(control._id),
@@ -136,6 +178,8 @@ export const AssignToSelfModal: React.FC<AssignToSelfModalProps> = ({
         setFilteredControls(sortedAvailable);
         setAvailableCount(sortedAvailable.length);
         setSelectedControls([]);
+        setSearch('');
+        setSelectedCategory('all');
       } catch (err: any) {
         console.error('Erro ao carregar controles:', err);
 
@@ -152,17 +196,26 @@ export const AssignToSelfModal: React.FC<AssignToSelfModalProps> = ({
   }, [isOpen, repId]);
 
   // ============================================
-  // FILTRO DE BUSCA
+  // FILTRO DE BUSCA E CATEGORIA
   // ============================================
   useEffect(() => {
     const normalizedSearch = search.trim().toLowerCase();
 
-    if (!normalizedSearch) {
-      setFilteredControls(controls);
-      return;
-    }
-
     const filtered = controls.filter((control) => {
+      const controlCategory = getControlCategory(control.id);
+
+      const matchesCategory =
+        selectedCategory === 'all' ||
+        controlCategory === selectedCategory;
+
+      if (!matchesCategory) {
+        return false;
+      }
+
+      if (!normalizedSearch) {
+        return true;
+      }
+
       const matchesName = control.nome
         .toLowerCase()
         .includes(normalizedSearch);
@@ -175,11 +228,20 @@ export const AssignToSelfModal: React.FC<AssignToSelfModalProps> = ({
         domain.toLowerCase().includes(normalizedSearch)
       );
 
-      return matchesName || matchesId || matchesDomain;
+      const matchesControlType = control.tipoDeControle.some((type) =>
+        type.toLowerCase().includes(normalizedSearch)
+      );
+
+      return (
+        matchesName ||
+        matchesId ||
+        matchesDomain ||
+        matchesControlType
+      );
     });
 
     setFilteredControls(filtered);
-  }, [search, controls]);
+  }, [search, selectedCategory, controls]);
 
   // ============================================
   // SELECIONAR / DESSELECIONAR CONTROLE
@@ -286,6 +348,7 @@ export const AssignToSelfModal: React.FC<AssignToSelfModalProps> = ({
 
     setSelectedControls([]);
     setSearch('');
+    setSelectedCategory('all');
     setError(null);
     setSuccess(null);
 
@@ -411,12 +474,90 @@ export const AssignToSelfModal: React.FC<AssignToSelfModalProps> = ({
                 </div>
               </div>
 
+              {/* ============================================ */}
+              {/* FILTRO POR CATEGORIA */}
+              {/* ============================================ */}
+              <div className="mb-4 flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={
+                    selectedCategory === 'all' ? 'default' : 'outline'
+                  }
+                  onClick={() => setSelectedCategory('all')}
+                  disabled={isSubmitting}
+                >
+                  Todos
+                </Button>
+
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={
+                    selectedCategory === 'organizational'
+                      ? 'default'
+                      : 'outline'
+                  }
+                  onClick={() =>
+                    setSelectedCategory('organizational')
+                  }
+                  disabled={isSubmitting}
+                >
+                  Organizacionais
+                </Button>
+
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={
+                    selectedCategory === 'people'
+                      ? 'default'
+                      : 'outline'
+                  }
+                  onClick={() => setSelectedCategory('people')}
+                  disabled={isSubmitting}
+                >
+                  Pessoas
+                </Button>
+
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={
+                    selectedCategory === 'physical'
+                      ? 'default'
+                      : 'outline'
+                  }
+                  onClick={() => setSelectedCategory('physical')}
+                  disabled={isSubmitting}
+                >
+                  Físicos
+                </Button>
+
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={
+                    selectedCategory === 'technological'
+                      ? 'default'
+                      : 'outline'
+                  }
+                  onClick={() =>
+                    setSelectedCategory('technological')
+                  }
+                  disabled={isSubmitting}
+                >
+                  Tecnológicos
+                </Button>
+              </div>
+
               {filteredControls.length === 0 ? (
                 <div className="py-8 text-center text-gray-500">
                   <Search className="mx-auto mb-3 h-12 w-12 text-gray-300" />
 
                   <p>
-                    Nenhum controle encontrado para &quot;{search}&quot;
+                    Nenhum controle encontrado para os filtros selecionados
+                    {search && ` e para "${search}"`}
                   </p>
                 </div>
               ) : (

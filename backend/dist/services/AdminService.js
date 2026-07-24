@@ -1,7 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AdminService = void 0;
-// backend/src/services/AdminService.ts
 const mongoose_1 = require("mongoose");
 const User_js_1 = require("../models/User.js");
 const Company_js_1 = require("../models/Company.js");
@@ -24,11 +23,12 @@ class AdminService {
                             filter.role = filters.role;
                         if (filters.isActive !== undefined)
                             filter.isActive = filters.isActive;
-                        if (filters.company) {
-                            filter.company = { $regex: filters.company, $options: 'i' };
-                        }
+                        // 🔴 CORREÇÃO: Filtrar por companyId
                         if (filters.companyId) {
                             filter.companyId = new mongoose_1.Types.ObjectId(filters.companyId);
+                        }
+                        if (filters.company) {
+                            filter.company = { $regex: filters.company, $options: 'i' };
                         }
                         if (filters.department) {
                             filter.department = { $regex: filters.department, $options: 'i' };
@@ -112,6 +112,23 @@ class AdminService {
                             const company = await Company_js_1.Company.findById(companyId);
                             if (!company) {
                                 throw new errorHandler_js_1.AppError('Empresa não encontrada', 404);
+                            }
+                            // ============================================
+                            // 🔴 CORREÇÃO: VALIDAR LIMITE DE USUÁRIOS DO PLANO
+                            // ============================================
+                            // ✅ CORRIGIDO: Contar todos os usuários da empresa (exceto admins e consultores)
+                            const activeUserCount = await User_js_1.User.countDocuments({
+                                companyId: companyId,
+                                isActive: true,
+                                role: { $nin: [index_js_1.UserRole.ADMIN, index_js_1.UserRole.CONSULTANT] }
+                            });
+                            // Verificar se atingiu o limite (apenas para usuários comuns, prepostos e outros que consomem o plano)
+                            if (data.role !== index_js_1.UserRole.ADMIN && data.role !== index_js_1.UserRole.CONSULTANT) {
+                                if (activeUserCount >= company.maxUsers) {
+                                    const planName = company.plan === 'enterprise' ? 'Enterprise' :
+                                        company.plan === 'pro' ? 'Profissional' : 'Básico';
+                                    throw new errorHandler_js_1.AppError(`Limite de usuários do plano ${planName} atingido (${company.maxUsers}). Faça upgrade para adicionar mais usuários.`, 403);
+                                }
                             }
                         }
                         const user = new User_js_1.User({
@@ -351,6 +368,8 @@ class AdminService {
                         if (file.size > maxSize) {
                             throw new errorHandler_js_1.AppError('Arquivo muito grande. Máximo 2MB.', 400);
                         }
+                        // 🔴 CORREÇÃO: Usar URL absoluta para a logo
+                        const baseUrl = process.env.BASE_URL || 'https://cisatool.com.br';
                         // Atualizar branding da empresa
                         const branding = company.branding || {
                             logo: {
@@ -388,7 +407,7 @@ class AdminService {
                         };
                         // Atualizar apenas o logo mantendo o restante do branding
                         branding.logo = {
-                            url: `/uploads/logo/${companyId}/${file.filename}`,
+                            url: `${baseUrl}/uploads/logo/${companyId}/${file.filename}`,
                             filename: file.filename,
                             size: file.size,
                             mimeType: file.mimetype,
@@ -446,6 +465,8 @@ class AdminService {
                         if (file.size > maxSize) {
                             throw new errorHandler_js_1.AppError('Arquivo muito grande. Máximo 512KB.', 400);
                         }
+                        // 🔴 CORREÇÃO: Usar URL absoluta para o favicon
+                        const baseUrl = process.env.BASE_URL || 'https://cisatool.com.br';
                         // Atualizar branding da empresa
                         const branding = company.branding || {
                             logo: {
@@ -482,7 +503,7 @@ class AdminService {
                             updatedAt: new Date(),
                         };
                         branding.favicon = {
-                            url: `/uploads/favicon/${companyId}/${file.filename}`,
+                            url: `${baseUrl}/uploads/favicon/${companyId}/${file.filename}`,
                             filename: file.filename,
                             size: file.size,
                             mimeType: file.mimetype,

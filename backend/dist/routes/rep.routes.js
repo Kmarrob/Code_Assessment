@@ -40,5 +40,18 @@ router.get('/dashboard/:companyId', rateLimit_js_1.authenticatedRateLimiter, Das
 // ROTA: Obter controles da empresa do preposto
 // ============================================
 router.get('/controls', rateLimit_js_1.adminRateLimiter, RepController_js_1.RepController.getCompanyControls);
+// ============================================
+// 🔴 NOVAS ROTAS PARA ATRIBUIÇÃO PARA SI MESMO
+// ============================================
+/**
+ * 🔴 NOVO: Buscar controles já atribuídos ao preposto
+ * GET /api/rep/my-assignments
+ */
+router.get('/my-assignments', rateLimit_js_1.adminRateLimiter, RepController_js_1.RepController.getMyAssignments);
+/**
+ * 🔴 NOVO: Atribuir controles para o próprio preposto
+ * POST /api/rep/assign-to-self
+ */
+router.post('/assign-to-self', rateLimit_js_1.adminRateLimiter, sanitizeAdmin_js_1.sanitizeAdminInputs, RepController_js_1.RepController.assignToSelf);
 exports.default = router;
 //# sourceMappingURL=rep.routes.js.map

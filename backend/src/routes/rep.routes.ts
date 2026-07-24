@@ -98,6 +98,13 @@ router.get(
   DashboardController.getRepDashboard
 );
 
+// 🔴 NOVO: Gerar PDF do dashboard da empresa
+router.get(
+  '/dashboard/:companyId/pdf',
+  authenticatedRateLimiter,
+  DashboardController.generateDashboardPDF
+);
+
 // ============================================
 // ROTA: Obter controles da empresa do preposto
 // ============================================

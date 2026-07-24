@@ -1,7 +1,7 @@
 // frontend/src/pages/dashboard/DashboardOverview.tsx
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Loader2, AlertCircle, Building2, ClipboardList, TrendingUp, CheckCircle, Clock, Info, Printer } from 'lucide-react';
+import { Loader2, AlertCircle, Building2, ClipboardList, TrendingUp, CheckCircle, Clock, Info, Printer, FileText } from 'lucide-react';
 import { Card, CardContent } from '../../components/ui/Card.js';
 import { DashboardLayout } from '../../components/dashboard/DashboardLayout.js';
 import { dashboardService, DashboardData } from '../../services/dashboard.service.js';
@@ -287,27 +287,53 @@ export const DashboardOverview: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isPrinting, setIsPrinting] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
 
-  // ============================================
-  // 🔴 CORREÇÃO: getCompanyId - retorna apenas ID válido
-  // ============================================
+  const handleDownloadPDF = async () => {
+    if (!companyId) {
+      toast.error('ID da empresa não disponível');
+      return;
+    }
+
+    setIsDownloading(true);
+    try {
+      const blob = await dashboardService.downloadDashboardPDF(companyId);
+      
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      const companyName = company?.name || 'dashboard';
+      const sanitizedCompanyName = companyName
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-zA-Z0-9_\-]/g, '_')
+        .replace(/_+/g, '_');
+      link.download = `dashboard_${sanitizedCompanyName}_${new Date().toISOString().split('T')[0]}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      toast.success('PDF baixado com sucesso!');
+    } catch (error: any) {
+      console.error('Erro ao baixar PDF:', error);
+      toast.error(error?.message || 'Erro ao baixar PDF');
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   const getCompanyId = (): string | undefined => {
-    // Prioridade 1: ID da URL (param)
     if (paramCompanyId) return paramCompanyId;
     
-    // Prioridade 2: ID do usuário
     if (user) {
       const userAny = user as any;
-      
-      // Verifica se é um ObjectId válido (24 caracteres hex)
       const isValidObjectId = (id: string): boolean => /^[0-9a-fA-F]{24}$/.test(id);
       
-      // Tenta obter o companyId de diferentes fontes
       const possibleIds = [
         userAny.companyId,
         userAny.company?._id,
         userAny.company?.id,
-        // Só usa o company se for um ObjectId válido (não é nome)
         typeof userAny.company === 'string' && isValidObjectId(userAny.company) ? userAny.company : undefined,
       ];
       
@@ -317,7 +343,6 @@ export const DashboardOverview: React.FC = () => {
         }
       }
       
-      // Se não encontrou nenhum ID válido, retorna undefined
       return undefined;
     }
     
@@ -326,7 +351,6 @@ export const DashboardOverview: React.FC = () => {
 
   const companyId = getCompanyId();
 
-  // 🔴 CORREÇÃO: Função de impressão com requestAnimationFrame
   const handlePrint = async () => {
     setIsPrinting(true);
     
@@ -339,7 +363,6 @@ export const DashboardOverview: React.FC = () => {
     window.print();
   };
 
-  // 🔴 CORREÇÃO: Restaura o estado após a impressão
   useEffect(() => {
     const handleAfterPrint = () => {
       setIsPrinting(false);
@@ -352,19 +375,13 @@ export const DashboardOverview: React.FC = () => {
     };
   }, []);
 
-  // ============================================
-  // 🔴 CORREÇÃO: Aguardar companyId estar pronto
-  // ============================================
   useEffect(() => {
     const loadData = async () => {
-      // Se não tem companyId, tenta obter novamente após pequeno delay
       let finalCompanyId = companyId;
       
       if (!finalCompanyId && user) {
-        // Aguarda 300ms para o Layout terminar de carregar o companyId
         await new Promise(resolve => setTimeout(resolve, 300));
         
-        // Tenta obter novamente
         const userAny = user as any;
         const isValidObjectId = (id: string): boolean => /^[0-9a-fA-F]{24}$/.test(id);
         
@@ -390,7 +407,6 @@ export const DashboardOverview: React.FC = () => {
           return;
         }
         if (user?.role === 'rep') {
-          // Tenta extrair companyId mais uma vez
           const userAny = user as any;
           const hasValidCompanyId = (id: string): boolean => /^[0-9a-fA-F]{24}$/.test(id);
           
@@ -430,20 +446,15 @@ export const DashboardOverview: React.FC = () => {
     loadData();
   }, [companyId, user?.role, user]);
 
-  // ============================================
-  // ESTILOS DE IMPRESSÃO — CORREÇÃO ESTRUTURAL
-  // ============================================
   const PrintStyles = () => (
     <style dangerouslySetInnerHTML={{ __html: `
       @media print {
-        /* ─── 1. RESET GLOBAL ─── */
         * {
           -webkit-print-color-adjust: exact !important;
           print-color-adjust: exact !important;
           box-sizing: border-box !important;
         }
 
-        /* ─── 2. OCULTAR CHROME DA APLICAÇÃO ─── */
         aside, nav, header,
         .dashboard-sidebar,
         .dashboard-header,
@@ -456,7 +467,6 @@ export const DashboardOverview: React.FC = () => {
           left: -9999px !important;
         }
 
-        /* ─── 3. EXPANDIR CONTAINER PRINCIPAL ─── */
         body, #root,
         main, .dashboard-main,
         div[class*="layout"],
@@ -470,13 +480,11 @@ export const DashboardOverview: React.FC = () => {
           overflow: visible !important;
         }
 
-        /* ─── 4. PÁGINA EM PAISAGEM ─── */
         @page {
           size: A4 landscape;
           margin: 8mm 8mm 8mm 8mm;
         }
 
-        /* ─── 5. CAPA DO RELATÓRIO ─── */
         .report-cover {
           display: flex !important;
           flex-direction: column !important;
@@ -535,7 +543,6 @@ export const DashboardOverview: React.FC = () => {
           width: 60% !important;
         }
 
-        /* ─── 6. CABEÇALHO DAS PÁGINAS SEGUINTES ─── */
         .report-header {
           display: flex !important;
           justify-content: space-between !important;
@@ -562,7 +569,6 @@ export const DashboardOverview: React.FC = () => {
           color: #1e293b !important;
         }
 
-        /* ─── 7. SEÇÕES ─── */
         .print-section {
           margin-top: 0 !important;
           padding-top: 8px !important;
@@ -578,7 +584,6 @@ export const DashboardOverview: React.FC = () => {
           padding-bottom: 3px !important;
         }
 
-        /* ─── 8. CARDS ─── */
         .print-card {
           break-inside: avoid !important;
           page-break-inside: avoid !important;
@@ -589,7 +594,6 @@ export const DashboardOverview: React.FC = () => {
           background: #fff !important;
         }
 
-        /* ─── 9. GRIDS ─── */
         .print-grid-2 {
           display: grid !important;
           grid-template-columns: 1fr 1fr !important;
@@ -615,8 +619,6 @@ export const DashboardOverview: React.FC = () => {
           width: 100% !important;
         }
 
-        /* ─── 10. GRÁFICOS — CORREÇÃO ESTRUTURAL ─── */
-        /* Forçar visibilidade de todos os elementos do Recharts */
         .recharts-wrapper,
         .recharts-responsive-container,
         .recharts-surface,
@@ -642,7 +644,6 @@ export const DashboardOverview: React.FC = () => {
           opacity: 1 !important;
         }
 
-        /* Containers de gráficos devem ter altura total */
         .recharts-responsive-container {
           width: 100% !important;
           height: 100% !important;
@@ -668,7 +669,6 @@ export const DashboardOverview: React.FC = () => {
           overflow: visible !important;
         }
 
-        /* Legendas */
         .recharts-legend-item {
           display: inline-block !important;
         }
@@ -710,7 +710,6 @@ export const DashboardOverview: React.FC = () => {
           opacity: 1 !important;
         }
 
-        /* ─── 11. TABELAS ─── */
         .print-table {
           font-size: 8px !important;
           width: 100% !important;
@@ -721,7 +720,6 @@ export const DashboardOverview: React.FC = () => {
         .print-table th,
         .print-table td { padding: 2px 3px !important; }
 
-        /* ─── 12. RODAPÉ ─── */
         .report-footer {
           text-align: center !important;
           font-size: 8px !important;
@@ -731,20 +729,17 @@ export const DashboardOverview: React.FC = () => {
           margin-top: 8px !important;
         }
 
-        /* ─── 13. QUEBRAS DE PÁGINA ─── */
         .section-break {
           page-break-before: always !important;
           break-before: page !important;
         }
 
-        /* ─── 14. FORÇA DE RENDERIZAÇÃO ─── */
         .recharts-wrapper,
         .recharts-responsive-container {
           transform: none !important;
           -webkit-transform: none !important;
         }
 
-        /* ─── 15. VERSÃO DE IMPRESSÃO DOS GRÁFICOS ─── */
         .print-only {
           display: block !important;
         }
@@ -754,7 +749,6 @@ export const DashboardOverview: React.FC = () => {
         }
       }
 
-      /* ─── 16. TELA: OCULTAR VERSÃO DE IMPRESSÃO ─── */
       @media screen {
         .print-only {
           display: none !important;
@@ -906,550 +900,545 @@ export const DashboardOverview: React.FC = () => {
       </div>
 
       {/* ============================================ */}
-      {/* CONTEÚDO PRINCIPAL (TELA) */}
+      {/* HEADER DO RELATÓRIO EXECUTIVO (TELA) */}
       {/* ============================================ */}
-      <div className="space-y-6" ref={printRef}>
-        
-        {/* ============================================ */}
-        {/* HEADER DO RELATÓRIO EXECUTIVO (TELA) */}
-        {/* ============================================ */}
-        <div className="flex items-start justify-between no-print">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">📊 Relatório Executivo</h1>
-            <div className="flex items-center gap-2 mt-1">
-              <Building2 className="w-4 h-4 text-gray-400" />
-              <span className="text-sm text-gray-600">{company?.name || 'Carregando...'}</span>
-            </div>
-            <p className="text-xs text-gray-400 mt-1">
-              Gerado em: {new Date().toLocaleDateString('pt-BR')} às {new Date().toLocaleTimeString('pt-BR')}
-            </p>
+      <div className="flex items-start justify-between no-print">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">📊 Relatório Executivo</h1>
+          <div className="flex items-center gap-2 mt-1">
+            <Building2 className="w-4 h-4 text-gray-400" />
+            <span className="text-sm text-gray-600">{company?.name || 'Carregando...'}</span>
           </div>
-          <div className="flex items-center gap-3 no-print">
-            <button
-              onClick={handlePrint}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm hover:shadow-md"
+          <p className="text-xs text-gray-400 mt-1">
+            Gerado em: {new Date().toLocaleDateString('pt-BR')} às {new Date().toLocaleTimeString('pt-BR')}
+          </p>
+        </div>
+        <div className="flex items-center gap-3 no-print">
+          {/* Botão Baixar PDF */}
+          <button
+            onClick={handleDownloadPDF}
+            disabled={isDownloading}
+            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isDownloading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span className="text-sm font-medium">Gerando PDF...</span>
+              </>
+            ) : (
+              <>
+                <FileText className="w-4 h-4" />
+                <span className="text-sm font-medium">📄 Baixar PDF</span>
+              </>
+            )}
+          </button>
+          <button
+            onClick={handlePrint}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm hover:shadow-md"
+          >
+            <Printer className="w-4 h-4" />
+            <span className="text-sm font-medium">🖨️ Imprimir Relatório</span>
+          </button>
+          <div className="relative group">
+            <button 
+              className="p-2 text-gray-400 hover:text-gray-600 transition-colors rounded-full hover:bg-gray-100"
+              aria-label="Metodologia de cálculo"
+              title="Clique para ver a metodologia"
             >
-              <Printer className="w-4 h-4" />
-              <span className="text-sm font-medium">🖨️ Imprimir Relatório</span>
+              <Info className="w-5 h-5" />
             </button>
-            <div className="relative group">
-              <button 
-                className="p-2 text-gray-400 hover:text-gray-600 transition-colors rounded-full hover:bg-gray-100"
-                aria-label="Metodologia de cálculo"
-                title="Clique para ver a metodologia"
-              >
-                <Info className="w-5 h-5" />
-              </button>
-              <div className="absolute right-0 top-full mt-2 w-80 p-4 bg-white rounded-lg shadow-lg border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
-                <h4 className="text-sm font-semibold text-gray-900 mb-2">📊 Metodologia de Cálculo</h4>
-                <ul className="text-xs text-gray-600 space-y-1">
-                  <li>• <strong>Implementado:</strong> Controles com nível de maturidade <strong>2</strong></li>
-                  <li>• <strong>Parcial:</strong> Controles com nível de maturidade <strong>1</strong></li>
-                  <li>• <strong>Não Implementado:</strong> Controles com nível de maturidade <strong>0</strong></li>
-                  <li>• <strong>Não se Aplica:</strong> Controles com nível <strong>N/A</strong></li>
-                  <li>• <strong>Taxa de Conclusão:</strong> (Implementados / Total) × 100</li>
-                </ul>
-              </div>
+            <div className="absolute right-0 top-full mt-2 w-80 p-4 bg-white rounded-lg shadow-lg border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+              <h4 className="text-sm font-semibold text-gray-900 mb-2">📊 Metodologia de Cálculo</h4>
+              <ul className="text-xs text-gray-600 space-y-1">
+                <li>• <strong>Implementado:</strong> Controles com nível de maturidade <strong>2</strong></li>
+                <li>• <strong>Parcial:</strong> Controles com nível de maturidade <strong>1</strong></li>
+                <li>• <strong>Não Implementado:</strong> Controles com nível de maturidade <strong>0</strong></li>
+                <li>• <strong>Não se Aplica:</strong> Controles com nível <strong>N/A</strong></li>
+                <li>• <strong>Taxa de Conclusão:</strong> (Implementados / Total) × 100</li>
+              </ul>
             </div>
           </div>
         </div>
+      </div>
 
-        {/* ============================================ */}
-        {/* SEÇÃO 1: VISÃO GERAL */}
-        {/* ============================================ */}
-        <div className="border-t-4 border-blue-600 pt-4 print-section">
+      {/* ============================================ */}
+      {/* SEÇÃO 1: VISÃO GERAL */}
+      {/* ============================================ */}
+      <div className="border-t-4 border-blue-600 pt-4 print-section">
+        <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2 mb-4 print-section-title">
+          <span className="text-blue-600">📊</span> 1. Visão Geral
+          <span className="text-xs font-normal text-gray-400 ml-2">
+            Resumo consolidado da maturidade
+          </span>
+        </h2>
+
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4 print-grid-5">
+          <Card className="print-card">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-gray-500">Total Controles</p>
+                  <p className="text-2xl font-bold text-gray-900">{summary.totalControls}</p>
+                </div>
+                <div className="p-2 bg-blue-100 rounded-lg no-print">
+                  <ClipboardList className="w-5 h-5 text-blue-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="print-card">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-gray-500">Implementados</p>
+                  <p className="text-2xl font-bold text-green-600">{summary.Implementado || 0}</p>
+                </div>
+                <div className="p-2 bg-green-100 rounded-lg no-print">
+                  <CheckCircle className="w-5 h-5 text-green-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="print-card">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-gray-500">Parciais</p>
+                  <p className="text-2xl font-bold text-yellow-600">{summary.Parcialmente || 0}</p>
+                </div>
+                <div className="p-2 bg-yellow-100 rounded-lg no-print">
+                  <Clock className="w-5 h-5 text-yellow-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="print-card">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-gray-500">Não Implementados</p>
+                  <p className="text-2xl font-bold text-red-600">{summary.NaoImplementado || 0}</p>
+                </div>
+                <div className="p-2 bg-red-100 rounded-lg no-print">
+                  <AlertCircle className="w-5 h-5 text-red-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="print-card">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-gray-500">Taxa de Conclusão</p>
+                  <p className="text-2xl font-bold text-blue-600">{completionRate}%</p>
+                </div>
+                <div className="p-2 bg-blue-100 rounded-lg no-print">
+                  <TrendingUp className="w-5 h-5 text-blue-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 print-grid-2">
+          <div className="print-card screen-only">
+            <PieChart
+              data={pieData}
+              title="Distribuição de Status"
+              subtitle={`${summary.totalControls} controles analisados`}
+              isPrinting={false}
+            />
+          </div>
+          <div className="print-card screen-only">
+            <BarChart
+              data={barData}
+              title="Contagem por Status"
+              subtitle="Distribuição dos controles por nível de implementação"
+              isPrinting={false}
+            />
+          </div>
+          
+          <div className="print-card print-only">
+            <PieChart
+              data={pieData}
+              title="Distribuição de Status"
+              subtitle={`${summary.totalControls} controles analisados`}
+              height={260}
+              isPrinting={true}
+            />
+          </div>
+          <div className="print-card print-only">
+            <BarChart
+              data={barData}
+              title="Contagem por Status"
+              subtitle="Distribuição dos controles por nível de implementação"
+              height={260}
+              isPrinting={true}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* ============================================ */}
+      {/* SEÇÃO 2: CATEGORIZAÇÃO */}
+      {/* ============================================ */}
+      {totalCategories > 0 && (
+        <div className="border-t-4 border-purple-600 pt-4 print-section section-break">
           <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2 mb-4 print-section-title">
-            <span className="text-blue-600">📊</span> 1. Visão Geral
+            <span className="text-purple-600">📂</span> 2. Categorização
             <span className="text-xs font-normal text-gray-400 ml-2">
-              Resumo consolidado da maturidade
+              Distribuição por categoria
+            </span>
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 print-grid-4">
+            {categoryData.map((cat) => (
+              <div key={cat.name} className="bg-gray-50 rounded-lg p-3 border border-gray-200 print-card">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-700">{cat.name}</span>
+                  <span className="text-sm font-bold text-gray-900">{cat.total}</span>
+                </div>
+                <div className="mt-2 flex gap-1 text-[10px]">
+                  <span className="text-emerald-600">✅ {cat.implemented}</span>
+                  <span className="text-amber-600">🔄 {cat.partial}</span>
+                  <span className="text-red-600">❌ {cat.notImpl}</span>
+                </div>
+                <div className="mt-1 w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all bg-purple-500"
+                    style={{ width: `${cat.total > 0 ? Math.round((cat.implemented / cat.total) * 100) : 0}%` }}
+                  />
+                </div>
+                <div className="text-[10px] text-gray-400 mt-0.5">
+                  {cat.total > 0 ? Math.round((cat.implemented / cat.total) * 100) : 0}% implementados
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ============================================ */}
+      {/* SEÇÃO 3: TIPOS DE CONTROLE */}
+      {/* ============================================ */}
+      {totalTypes > 0 && (
+        <div className="border-t-4 border-indigo-600 pt-4 print-section section-break">
+          <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2 mb-4 print-section-title">
+            <span className="text-indigo-600">🏷️</span> 3. Tipos de Controle
+            <span className="text-xs font-normal text-gray-400 ml-2">
+              {totalTypes} controles analisados
+            </span>
+          </h2>
+          
+          <div className="mb-4 print-card screen-only">
+            <PieChart
+              data={typePieData}
+              title="Distribuição por Tipo de Controle"
+              subtitle="Preventivo, Detectivo e Corretivo"
+              isPrinting={false}
+            />
+          </div>
+          
+          <div className="mb-4 print-card print-only">
+            <PieChart
+              data={typePieData}
+              title="Distribuição por Tipo de Controle"
+              subtitle="Preventivo, Detectivo e Corretivo"
+              height={260}
+              isPrinting={true}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 print-grid-3">
+            {typeData.map((type) => (
+              <div key={type.name} className="bg-gray-50 rounded-lg p-3 border border-gray-200 print-card">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-700">{type.name}</span>
+                  <span className="text-sm font-bold text-gray-900">{type.total}</span>
+                </div>
+                <div className="mt-2 flex gap-2 text-xs">
+                  <span className="text-emerald-600">✅ {type.implemented}</span>
+                  <span className="text-amber-600">🔄 {type.partial}</span>
+                  <span className="text-red-600">❌ {type.notImpl}</span>
+                </div>
+                <div className="mt-1 w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all"
+                    style={{ 
+                      width: `${type.pImpl}%`,
+                      backgroundColor: type.color 
+                    }}
+                  />
+                </div>
+                <div className="text-[10px] font-medium mt-0.5" style={{ color: type.color }}>
+                  {type.pImpl}% implementados
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4 print-grid-3">
+            {typeData.map((type) => {
+              const detailData = generateTypeDetailData(data, type.name);
+              if (detailData.length === 0) return null;
+              return (
+                <div key={`detail-${type.name}`} className="bg-white border border-gray-200 rounded-lg p-3 print-card">
+                  <h4 className="text-sm font-semibold text-gray-700 mb-2 text-center">{type.name}</h4>
+                  <div className="screen-only">
+                    <PieChart
+                      data={detailData}
+                      title=""
+                      subtitle={`${type.total} controles`}
+                      isPrinting={false}
+                    />
+                  </div>
+                  <div className="print-only">
+                    <PieChart
+                      data={detailData}
+                      title=""
+                      subtitle={`${type.total} controles`}
+                      height={200}
+                      isPrinting={true}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ============================================ */}
+      {/* SEÇÃO 4: CONCEITOS CIBERNÉTICOS */}
+      {/* ============================================ */}
+      {totalConcepts > 0 && (
+        <div className="border-t-4 border-pink-600 pt-4 print-section section-break">
+          <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2 mb-4 print-section-title">
+            <span className="text-pink-600">🛡️</span> 4. Conceitos Cibernéticos
+            <span className="text-xs font-normal text-gray-400 ml-2">
+              {totalConcepts} controles analisados
             </span>
           </h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4 print-grid-5">
-            <Card className="print-card">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs text-gray-500">Total Controles</p>
-                    <p className="text-2xl font-bold text-gray-900">{summary.totalControls}</p>
-                  </div>
-                  <div className="p-2 bg-blue-100 rounded-lg no-print">
-                    <ClipboardList className="w-5 h-5 text-blue-600" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="print-card">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs text-gray-500">Implementados</p>
-                    <p className="text-2xl font-bold text-green-600">{summary.Implementado || 0}</p>
-                  </div>
-                  <div className="p-2 bg-green-100 rounded-lg no-print">
-                    <CheckCircle className="w-5 h-5 text-green-600" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="print-card">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs text-gray-500">Parciais</p>
-                    <p className="text-2xl font-bold text-yellow-600">{summary.Parcialmente || 0}</p>
-                  </div>
-                  <div className="p-2 bg-yellow-100 rounded-lg no-print">
-                    <Clock className="w-5 h-5 text-yellow-600" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="print-card">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs text-gray-500">Não Implementados</p>
-                    <p className="text-2xl font-bold text-red-600">{summary.NaoImplementado || 0}</p>
-                  </div>
-                  <div className="p-2 bg-red-100 rounded-lg no-print">
-                    <AlertCircle className="w-5 h-5 text-red-600" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="print-card">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs text-gray-500">Taxa de Conclusão</p>
-                    <p className="text-2xl font-bold text-blue-600">{completionRate}%</p>
-                  </div>
-                  <div className="p-2 bg-blue-100 rounded-lg no-print">
-                    <TrendingUp className="w-5 h-5 text-blue-600" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+          <div className="mb-4 print-card screen-only">
+            <BarChart
+              data={conceptBarData}
+              title="Distribuição por Conceito Cibernético"
+              subtitle="Identificar, Proteger, Detectar, Responder, Restaurar"
+              isPrinting={false}
+            />
+          </div>
+          
+          <div className="mb-4 print-card print-only">
+            <BarChart
+              data={conceptBarData}
+              title="Distribuição por Conceito Cibernético"
+              subtitle="Identificar, Proteger, Detectar, Responder, Restaurar"
+              height={260}
+              isPrinting={true}
+            />
           </div>
 
-          {/* 🔴 CORREÇÃO: Versão para TELA e versão para IMPRESSÃO */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 print-grid-2">
-            {/* Versão para TELA */}
-            <div className="print-card screen-only">
-              <PieChart
-                data={pieData}
-                title="Distribuição de Status"
-                subtitle={`${summary.totalControls} controles analisados`}
-                isPrinting={false}
-              />
-            </div>
-            <div className="print-card screen-only">
-              <BarChart
-                data={barData}
-                title="Contagem por Status"
-                subtitle="Distribuição dos controles por nível de implementação"
-                isPrinting={false}
-              />
-            </div>
-            
-            {/* Versão para IMPRESSÃO - ALTURA REDUZIDA */}
-            <div className="print-card print-only">
-              <PieChart
-                data={pieData}
-                title="Distribuição de Status"
-                subtitle={`${summary.totalControls} controles analisados`}
-                height={260}
-                isPrinting={true}
-              />
-            </div>
-            <div className="print-card print-only">
-              <BarChart
-                data={barData}
-                title="Contagem por Status"
-                subtitle="Distribuição dos controles por nível de implementação"
-                height={260}
-                isPrinting={true}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* ============================================ */}
-        {/* SEÇÃO 2: CATEGORIZAÇÃO */}
-        {/* ============================================ */}
-        {totalCategories > 0 && (
-          <div className="border-t-4 border-purple-600 pt-4 print-section section-break">
-            <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2 mb-4 print-section-title">
-              <span className="text-purple-600">📂</span> 2. Categorização
-              <span className="text-xs font-normal text-gray-400 ml-2">
-                Distribuição por categoria
-              </span>
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 print-grid-4">
-              {categoryData.map((cat) => (
-                <div key={cat.name} className="bg-gray-50 rounded-lg p-3 border border-gray-200 print-card">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-700">{cat.name}</span>
-                    <span className="text-sm font-bold text-gray-900">{cat.total}</span>
-                  </div>
-                  <div className="mt-2 flex gap-1 text-[10px]">
-                    <span className="text-emerald-600">✅ {cat.implemented}</span>
-                    <span className="text-amber-600">🔄 {cat.partial}</span>
-                    <span className="text-red-600">❌ {cat.notImpl}</span>
-                  </div>
-                  <div className="mt-1 w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                    <div
-                      className="h-full rounded-full transition-all bg-purple-500"
-                      style={{ width: `${cat.total > 0 ? Math.round((cat.implemented / cat.total) * 100) : 0}%` }}
-                    />
-                  </div>
-                  <div className="text-[10px] text-gray-400 mt-0.5">
-                    {cat.total > 0 ? Math.round((cat.implemented / cat.total) * 100) : 0}% implementados
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* ============================================ */}
-        {/* SEÇÃO 3: TIPOS DE CONTROLE */}
-        {/* ============================================ */}
-        {totalTypes > 0 && (
-          <div className="border-t-4 border-indigo-600 pt-4 print-section section-break">
-            <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2 mb-4 print-section-title">
-              <span className="text-indigo-600">🏷️</span> 3. Tipos de Controle
-              <span className="text-xs font-normal text-gray-400 ml-2">
-                {totalTypes} controles analisados
-              </span>
-            </h2>
-            
-            {/* Versão para TELA */}
-            <div className="mb-4 print-card screen-only">
-              <PieChart
-                data={typePieData}
-                title="Distribuição por Tipo de Controle"
-                subtitle="Preventivo, Detectivo e Corretivo"
-                isPrinting={false}
-              />
-            </div>
-            
-            {/* Versão para IMPRESSÃO - ALTURA REDUZIDA */}
-            <div className="mb-4 print-card print-only">
-              <PieChart
-                data={typePieData}
-                title="Distribuição por Tipo de Controle"
-                subtitle="Preventivo, Detectivo e Corretivo"
-                height={260}
-                isPrinting={true}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 print-grid-3">
-              {typeData.map((type) => (
-                <div key={type.name} className="bg-gray-50 rounded-lg p-3 border border-gray-200 print-card">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-700">{type.name}</span>
-                    <span className="text-sm font-bold text-gray-900">{type.total}</span>
-                  </div>
-                  <div className="mt-2 flex gap-2 text-xs">
-                    <span className="text-emerald-600">✅ {type.implemented}</span>
-                    <span className="text-amber-600">🔄 {type.partial}</span>
-                    <span className="text-red-600">❌ {type.notImpl}</span>
-                  </div>
-                  <div className="mt-1 w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                    <div
-                      className="h-full rounded-full transition-all"
-                      style={{ 
-                        width: `${type.pImpl}%`,
-                        backgroundColor: type.color 
-                      }}
-                    />
-                  </div>
-                  <div className="text-[10px] font-medium mt-0.5" style={{ color: type.color }}>
-                    {type.pImpl}% implementados
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4 print-grid-3">
-              {typeData.map((type) => {
-                const detailData = generateTypeDetailData(data, type.name);
-                if (detailData.length === 0) return null;
-                return (
-                  <div key={`detail-${type.name}`} className="bg-white border border-gray-200 rounded-lg p-3 print-card">
-                    <h4 className="text-sm font-semibold text-gray-700 mb-2 text-center">{type.name}</h4>
-                    {/* Versão para TELA */}
-                    <div className="screen-only">
-                      <PieChart
-                        data={detailData}
-                        title=""
-                        subtitle={`${type.total} controles`}
-                        isPrinting={false}
-                      />
-                    </div>
-                    {/* Versão para IMPRESSÃO - ALTURA REDUZIDA */}
-                    <div className="print-only">
-                      <PieChart
-                        data={detailData}
-                        title=""
-                        subtitle={`${type.total} controles`}
-                        height={200}
-                        isPrinting={true}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* ============================================ */}
-        {/* SEÇÃO 4: CONCEITOS CIBERNÉTICOS */}
-        {/* ============================================ */}
-        {totalConcepts > 0 && (
-          <div className="border-t-4 border-pink-600 pt-4 print-section section-break">
-            <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2 mb-4 print-section-title">
-              <span className="text-pink-600">🛡️</span> 4. Conceitos Cibernéticos
-              <span className="text-xs font-normal text-gray-400 ml-2">
-                {totalConcepts} controles analisados
-              </span>
-            </h2>
-
-            {/* Versão para TELA */}
-            <div className="mb-4 print-card screen-only">
-              <BarChart
-                data={conceptBarData}
-                title="Distribuição por Conceito Cibernético"
-                subtitle="Identificar, Proteger, Detectar, Responder, Restaurar"
-                isPrinting={false}
-              />
-            </div>
-            
-            {/* Versão para IMPRESSÃO - ALTURA REDUZIDA */}
-            <div className="mb-4 print-card print-only">
-              <BarChart
-                data={conceptBarData}
-                title="Distribuição por Conceito Cibernético"
-                subtitle="Identificar, Proteger, Detectar, Responder, Restaurar"
-                height={260}
-                isPrinting={true}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-3 print-grid-5">
-              {conceptData.map((concept) => (
-                <div key={concept.name} className="bg-gray-50 rounded-lg p-3 text-center border border-gray-200 print-card">
-                  <div className="text-xs font-medium text-gray-600">{concept.name}</div>
-                  <div className="text-lg font-bold text-gray-900">{concept.implemented}</div>
-                  <div className="text-[10px] text-gray-400">de {concept.total}</div>
-                  <div className="mt-1 w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                    <div
-                      className="h-full rounded-full transition-all"
-                      style={{ 
-                        width: `${concept.pImpl}%`,
-                        backgroundColor: concept.color 
-                      }}
-                    />
-                  </div>
-                  <div className="text-[10px] font-medium mt-0.5" style={{ color: concept.color }}>
-                    {concept.pImpl}%
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 print-grid-5">
-              {conceptData.map((concept) => {
-                const detailData = generateConceptDetailData(data, concept.name);
-                if (detailData.length === 0) return null;
-                return (
-                  <div key={`detail-${concept.name}`} className="bg-white border border-gray-200 rounded-lg p-2 print-card">
-                    <h4 className="text-[10px] font-semibold text-gray-700 mb-1 text-center">{concept.name}</h4>
-                    {/* Versão para TELA */}
-                    <div className="screen-only">
-                      <PieChart
-                        data={detailData}
-                        title=""
-                        subtitle=""
-                        isPrinting={false}
-                      />
-                    </div>
-                    {/* Versão para IMPRESSÃO - ALTURA REDUZIDA */}
-                    <div className="print-only">
-                      <PieChart
-                        data={detailData}
-                        title=""
-                        subtitle=""
-                        height={170}
-                        isPrinting={true}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* ============================================ */}
-        {/* SEÇÃO 5: CAPACIDADES OPERACIONAIS */}
-        {/* ============================================ */}
-        {totalCapabilities > 0 && (
-          <div className="border-t-4 border-teal-600 pt-4 print-section section-break">
-            <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2 mb-4 print-section-title">
-              <span className="text-teal-600">🎯</span> 5. Capacidades Operacionais
-              <span className="text-xs font-normal text-gray-400 ml-2">
-                {totalCapabilities} controles analisados
-              </span>
-            </h2>
-            
-            {radarData.length > 0 && radarData.some(d => d.Implementado > 0) && (
-              <>
-                {/* Versão para TELA */}
-                <div className="mb-4 print-card print-radar screen-only">
-                  <RadarChart
-                    data={radarData}
-                    title="Radar de Capacidades Operacionais"
-                    subtitle="Comparação entre o nível implementado e o recomendado (100%)"
-                    height={400}
-                    colors={RADAR_COLORS}
-                    isPrinting={false}
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 print-grid-5">
+            {conceptData.map((concept) => (
+              <div key={concept.name} className="bg-gray-50 rounded-lg p-3 text-center border border-gray-200 print-card">
+                <div className="text-xs font-medium text-gray-600">{concept.name}</div>
+                <div className="text-lg font-bold text-gray-900">{concept.implemented}</div>
+                <div className="text-[10px] text-gray-400">de {concept.total}</div>
+                <div className="mt-1 w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all"
+                    style={{ 
+                      width: `${concept.pImpl}%`,
+                      backgroundColor: concept.color 
+                    }}
                   />
                 </div>
-                
-                {/* Versão para IMPRESSÃO - ALTURA REDUZIDA */}
-                <div className="mb-4 print-card print-radar print-only">
-                  <RadarChart
-                    data={radarData}
-                    title="Radar de Capacidades Operacionais"
-                    subtitle="Comparação entre o nível implementado e o recomendado (100%)"
-                    height={350}
-                    colors={RADAR_COLORS}
-                    isPrinting={true}
-                  />
+                <div className="text-[10px] font-medium mt-0.5" style={{ color: concept.color }}>
+                  {concept.pImpl}%
                 </div>
-              </>
-            )}
-
-            <div className="print-table">
-              <DataTable 
-                data={capabilityData} 
-                columns={capabilityColumns}
-              />
-            </div>
+              </div>
+            ))}
           </div>
-        )}
 
-        {/* ============================================ */}
-        {/* SEÇÃO 6: DOMÍNIOS DE SI */}
-        {/* ============================================ */}
-        {totalDomains > 0 && (
-          <div className="border-t-4 border-emerald-600 pt-4 print-section section-break">
-            <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2 mb-4 print-section-title">
-              <span className="text-emerald-600">🏛️</span> 6. Domínios de SI
-              <span className="text-xs font-normal text-gray-400 ml-2">
-                {totalDomains} controles analisados
-              </span>
-            </h2>
-
-            {/* Versão para TELA */}
-            <div className="mb-4 print-card screen-only">
-              <BarChart
-                data={domainBarData}
-                title="Distribuição por Domínio de SI"
-                subtitle="Defesa, Resiliência, Governança e ecossistema, Proteção"
-                isPrinting={false}
-              />
-            </div>
-            
-            {/* Versão para IMPRESSÃO - ALTURA REDUZIDA */}
-            <div className="mb-4 print-card print-only">
-              <BarChart
-                data={domainBarData}
-                title="Distribuição por Domínio de SI"
-                subtitle="Defesa, Resiliência, Governança e ecossistema, Proteção"
-                height={260}
-                isPrinting={true}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 print-grid-4">
-              {domainData.map((domain) => (
-                <div key={domain.name} className="bg-gray-50 rounded-lg p-3 border border-gray-200 print-card">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-700">{domain.name}</span>
-                    <span className="text-sm font-bold text-gray-900">{domain.total}</span>
-                  </div>
-                  <div className="mt-2 flex gap-2 text-xs">
-                    <span className="text-emerald-600">✅ {domain.implemented}</span>
-                    <span className="text-amber-600">🔄 {domain.partial}</span>
-                    <span className="text-red-600">❌ {domain.notImpl}</span>
-                  </div>
-                  <div className="mt-1 w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                    <div
-                      className="h-full rounded-full transition-all"
-                      style={{ 
-                        width: `${domain.pImpl}%`,
-                        backgroundColor: domain.color 
-                      }}
+          <div className="mt-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 print-grid-5">
+            {conceptData.map((concept) => {
+              const detailData = generateConceptDetailData(data, concept.name);
+              if (detailData.length === 0) return null;
+              return (
+                <div key={`detail-${concept.name}`} className="bg-white border border-gray-200 rounded-lg p-2 print-card">
+                  <h4 className="text-[10px] font-semibold text-gray-700 mb-1 text-center">{concept.name}</h4>
+                  <div className="screen-only">
+                    <PieChart
+                      data={detailData}
+                      title=""
+                      subtitle=""
+                      isPrinting={false}
                     />
                   </div>
-                  <div className="text-[10px] font-medium mt-0.5" style={{ color: domain.color }}>
-                    {domain.pImpl}% implementados
+                  <div className="print-only">
+                    <PieChart
+                      data={detailData}
+                      title=""
+                      subtitle=""
+                      height={170}
+                      isPrinting={true}
+                    />
                   </div>
                 </div>
-              ))}
-            </div>
-
-            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 print-grid-4">
-              {domainData.map((domain) => {
-                const detailData = generateDomainDetailData(data, domain.name);
-                if (detailData.length === 0) return null;
-                return (
-                  <div key={`detail-${domain.name}`} className="bg-white border border-gray-200 rounded-lg p-2 print-card">
-                    <h4 className="text-[10px] font-semibold text-gray-700 mb-1 text-center truncate">{domain.name}</h4>
-                    {/* Versão para TELA */}
-                    <div className="screen-only">
-                      <PieChart
-                        data={detailData}
-                        title=""
-                        subtitle=""
-                        isPrinting={false}
-                      />
-                    </div>
-                    {/* Versão para IMPRESSÃO - ALTURA REDUZIDA */}
-                    <div className="print-only">
-                      <PieChart
-                        data={detailData}
-                        title=""
-                        subtitle=""
-                        height={170}
-                        isPrinting={true}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+              );
+            })}
           </div>
-        )}
-
-        {/* ============================================ */}
-        {/* RODAPÉ DO RELATÓRIO */}
-        {/* ============================================ */}
-        <div className="text-center text-xs text-gray-400 border-t border-gray-200 pt-4 mt-4 report-footer">
-          <p>© {new Date().getFullYear()} Code_Assessment - Sistema de Avaliação de Maturidade ISO 27001</p>
-          <p>Relatório gerado em {new Date().toLocaleDateString('pt-BR')} às {new Date().toLocaleTimeString('pt-BR')}</p>
-          <p className="mt-1">Este relatório consolida todas as métricas de maturidade da empresa {company?.name}.</p>
         </div>
+      )}
+
+      {/* ============================================ */}
+      {/* SEÇÃO 5: CAPACIDADES OPERACIONAIS */}
+      {/* ============================================ */}
+      {totalCapabilities > 0 && (
+        <div className="border-t-4 border-teal-600 pt-4 print-section section-break">
+          <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2 mb-4 print-section-title">
+            <span className="text-teal-600">🎯</span> 5. Capacidades Operacionais
+            <span className="text-xs font-normal text-gray-400 ml-2">
+              {totalCapabilities} controles analisados
+            </span>
+          </h2>
+          
+          {radarData.length > 0 && radarData.some(d => d.Implementado > 0) && (
+            <>
+              <div className="mb-4 print-card print-radar screen-only">
+                <RadarChart
+                  data={radarData}
+                  title="Radar de Capacidades Operacionais"
+                  subtitle="Comparação entre o nível implementado e o recomendado (100%)"
+                  height={400}
+                  colors={RADAR_COLORS}
+                  isPrinting={false}
+                />
+              </div>
+              
+              <div className="mb-4 print-card print-radar print-only">
+                <RadarChart
+                  data={radarData}
+                  title="Radar de Capacidades Operacionais"
+                  subtitle="Comparação entre o nível implementado e o recomendado (100%)"
+                  height={350}
+                  colors={RADAR_COLORS}
+                  isPrinting={true}
+                />
+              </div>
+            </>
+          )}
+
+          <div className="print-table">
+            <DataTable 
+              data={capabilityData} 
+              columns={capabilityColumns}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* ============================================ */}
+      {/* SEÇÃO 6: DOMÍNIOS DE SI */}
+      {/* ============================================ */}
+      {totalDomains > 0 && (
+        <div className="border-t-4 border-emerald-600 pt-4 print-section section-break">
+          <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2 mb-4 print-section-title">
+            <span className="text-emerald-600">🏛️</span> 6. Domínios de SI
+            <span className="text-xs font-normal text-gray-400 ml-2">
+              {totalDomains} controles analisados
+            </span>
+          </h2>
+
+          <div className="mb-4 print-card screen-only">
+            <BarChart
+              data={domainBarData}
+              title="Distribuição por Domínio de SI"
+              subtitle="Defesa, Resiliência, Governança e ecossistema, Proteção"
+              isPrinting={false}
+            />
+          </div>
+          
+          <div className="mb-4 print-card print-only">
+            <BarChart
+              data={domainBarData}
+              title="Distribuição por Domínio de SI"
+              subtitle="Defesa, Resiliência, Governança e ecossistema, Proteção"
+              height={260}
+              isPrinting={true}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 print-grid-4">
+            {domainData.map((domain) => (
+              <div key={domain.name} className="bg-gray-50 rounded-lg p-3 border border-gray-200 print-card">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-700">{domain.name}</span>
+                  <span className="text-sm font-bold text-gray-900">{domain.total}</span>
+                </div>
+                <div className="mt-2 flex gap-2 text-xs">
+                  <span className="text-emerald-600">✅ {domain.implemented}</span>
+                  <span className="text-amber-600">🔄 {domain.partial}</span>
+                  <span className="text-red-600">❌ {domain.notImpl}</span>
+                </div>
+                <div className="mt-1 w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all"
+                    style={{ 
+                      width: `${domain.pImpl}%`,
+                      backgroundColor: domain.color 
+                    }}
+                  />
+                </div>
+                <div className="text-[10px] font-medium mt-0.5" style={{ color: domain.color }}>
+                  {domain.pImpl}% implementados
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 print-grid-4">
+            {domainData.map((domain) => {
+              const detailData = generateDomainDetailData(data, domain.name);
+              if (detailData.length === 0) return null;
+              return (
+                <div key={`detail-${domain.name}`} className="bg-white border border-gray-200 rounded-lg p-2 print-card">
+                  <h4 className="text-[10px] font-semibold text-gray-700 mb-1 text-center truncate">{domain.name}</h4>
+                  <div className="screen-only">
+                    <PieChart
+                      data={detailData}
+                      title=""
+                      subtitle=""
+                      isPrinting={false}
+                    />
+                  </div>
+                  <div className="print-only">
+                    <PieChart
+                      data={detailData}
+                      title=""
+                      subtitle=""
+                      height={170}
+                      isPrinting={true}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ============================================ */}
+      {/* RODAPÉ DO RELATÓRIO */}
+      {/* ============================================ */}
+      <div className="text-center text-xs text-gray-400 border-t border-gray-200 pt-4 mt-4 report-footer">
+        <p>© {new Date().getFullYear()} Code_Assessment - Sistema de Avaliação de Maturidade ISO 27001</p>
+        <p>Relatório gerado em {new Date().toLocaleDateString('pt-BR')} às {new Date().toLocaleTimeString('pt-BR')}</p>
+        <p className="mt-1">Este relatório consolida todas as métricas de maturidade da empresa {company?.name}.</p>
       </div>
     </DashboardLayout>
   );

@@ -9,7 +9,7 @@ export declare class AdminController {
     static reactivateUser(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void>;
     static resetPassword(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void>;
     /**
-     * Upload da logo da empresa (apenas ADMIN)
+     * Upload da logo da empresa (ADMIN ou REP da própria empresa)
      * POST /api/admin/company/:companyId/branding/logo
      */
     static uploadLogo(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void>;

@@ -68,4 +68,20 @@ export const dashboardService = {
     const response = await api.get<ApiResponse<CompanySummary[]>>('/admin/dashboard/companies');
     return response.data.data;
   },
+
+  // ============================================
+  // 🔴 NOVO: BAIXAR PDF DO DASHBOARD
+  // ============================================
+
+  /**
+   * 🔴 NOVO: Baixar PDF do dashboard de maturidade
+   * GET /api/rep/dashboard/:companyId/pdf
+   */
+  async downloadDashboardPDF(companyId: string): Promise<Blob> {
+    const response = await api.get(`/rep/dashboard/${companyId}/pdf`, {
+      responseType: 'blob',
+      timeout: 60000,
+    });
+    return response.data;
+  },
 };

@@ -24,7 +24,8 @@ class AdminController {
                 });
                 throw new errorHandler_js_1.ValidationError(validation.errors || {});
             }
-            const { page, limit, role, isActive, search, company, department } = validation.data;
+            // ✅ Extrair companyId da query
+            const { page, limit, role, isActive, search, company, companyId, department } = validation.data;
             // Garantir que role seja do tipo correto usando enum
             let validRole;
             if (role && typeof role === 'string') {
@@ -33,11 +34,13 @@ class AdminController {
                     validRole = role;
                 }
             }
+            // ✅ Repassar companyId para o service
             const result = await AdminService_js_1.AdminService.listUsers({
                 role: validRole,
                 isActive,
                 search,
                 company,
+                companyId, // ← DEVE ESTAR AQUI
                 department
             }, page, limit);
             // Garantir que page seja um número
@@ -329,7 +332,7 @@ class AdminController {
     // MÉTODOS DE BRANDING - LOGO E FAVICON
     // ============================================
     /**
-     * Upload da logo da empresa (apenas ADMIN)
+     * Upload da logo da empresa (ADMIN ou REP da própria empresa)
      * POST /api/admin/company/:companyId/branding/logo
      */
     static async uploadLogo(req, res, next) {
@@ -338,9 +341,23 @@ class AdminController {
             if (!companyId) {
                 throw new errorHandler_js_1.ValidationError({ companyId: ['ID da empresa é obrigatório'] });
             }
-            // Verificar se o usuário é ADMIN
-            if (req.user?.role !== index_js_1.UserRole.ADMIN) {
-                throw new errorHandler_js_1.AppError('Apenas administradores podem fazer upload da logo', 403);
+            // 🔴 CORREÇÃO: Permitir ADMIN ou REP da própria empresa
+            const user = req.user;
+            if (!user) {
+                throw new errorHandler_js_1.AppError('Usuário não autenticado', 401);
+            }
+            if (user.role === index_js_1.UserRole.ADMIN) {
+                // ADMIN pode fazer upload para qualquer empresa
+            }
+            else if (user.role === index_js_1.UserRole.REP) {
+                // REP só pode fazer upload para sua própria empresa
+                const userCompanyId = user.companyId?.toString();
+                if (userCompanyId !== companyId) {
+                    throw new errorHandler_js_1.AppError('Você não tem permissão para fazer upload da logo desta empresa', 403);
+                }
+            }
+            else {
+                throw new errorHandler_js_1.AppError('Apenas administradores e prepostos podem fazer upload da logo', 403);
             }
             // Verificar se o arquivo foi enviado
             if (!req.file) {

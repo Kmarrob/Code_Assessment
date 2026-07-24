@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.updateProfileSchema = exports.refreshTokenSchema = exports.loginSchema = exports.registerSchema = exports.nameSchema = exports.emailSchema = exports.passwordSchema = void 0;
+exports.adminUpdateUserSchema = exports.adminCreateUserSchema = exports.adminResetPasswordSchema = exports.adminListUsersSchema = exports.updateProfileSchema = exports.refreshTokenSchema = exports.loginSchema = exports.registerSchema = exports.nameSchema = exports.emailSchema = exports.passwordSchema = void 0;
 exports.validate = validate;
 exports.sanitizeInput = sanitizeInput;
 exports.sanitizeOutput = sanitizeOutput;
@@ -129,4 +129,44 @@ function sanitizeOutput(data) {
     }
     return data;
 }
+// ============================================
+// ADICIONADO INCREMENTALMENTE PARA SUPORTE GRC / ADMIN
+// ============================================
+exports.adminListUsersSchema = zod_1.z.object({
+    page: zod_1.z.coerce.number().min(1).default(1),
+    limit: zod_1.z.coerce.number().min(1).max(100).default(10),
+    role: zod_1.z.enum(['admin', 'rep', 'consultant', 'user']).optional(),
+    isActive: zod_1.z.preprocess((val) => {
+        if (val === 'true' || val === true)
+            return true;
+        if (val === 'false' || val === false)
+            return false;
+        return undefined;
+    }, zod_1.z.boolean().optional()),
+    search: zod_1.z.string().max(100).optional(),
+    company: zod_1.z.string().max(100).optional(),
+    companyId: zod_1.z.string().max(100).optional(),
+    department: zod_1.z.string().max(100).optional(),
+});
+exports.adminResetPasswordSchema = zod_1.z.object({
+    password: exports.passwordSchema,
+});
+exports.adminCreateUserSchema = zod_1.z.object({
+    name: exports.nameSchema,
+    email: exports.emailSchema,
+    password: exports.passwordSchema,
+    company: zod_1.z.string().max(100).optional(),
+    companyId: zod_1.z.string().max(100).optional(),
+    department: zod_1.z.string().max(100).optional(),
+    role: zod_1.z.enum(['admin', 'rep', 'consultant', 'user']).default('user'),
+});
+exports.adminUpdateUserSchema = zod_1.z.object({
+    name: exports.nameSchema.optional(),
+    email: exports.emailSchema.optional(),
+    company: zod_1.z.string().max(100).optional(),
+    companyId: zod_1.z.string().max(100).optional(),
+    department: zod_1.z.string().max(100).optional(),
+    role: zod_1.z.enum(['admin', 'rep', 'consultant', 'user']).optional(),
+    isActive: zod_1.z.boolean().optional(),
+});
 //# sourceMappingURL=validation.js.map

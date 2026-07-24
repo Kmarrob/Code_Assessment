@@ -130,6 +130,26 @@ class RepService {
             throw new errorHandler_js_1.AppError('Preposto não possui empresa associada. Contate o administrador.', 400);
         }
         // ============================================
+        // 🔴 CORREÇÃO: VALIDAR LIMITE DE USUÁRIOS DO PLANO
+        // ============================================
+        // Buscar a empresa para obter o plano e limite
+        const company = await Company_js_1.Company.findById(companyId);
+        if (!company) {
+            throw new errorHandler_js_1.AppError('Empresa não encontrada', 404);
+        }
+        // ✅ CORRIGIDO: Contar todos os usuários da empresa (exceto admins e consultores)
+        const activeUserCount = await User_js_1.User.countDocuments({
+            companyId: companyId,
+            isActive: true,
+            role: { $nin: [index_js_1.UserRole.ADMIN, index_js_1.UserRole.CONSULTANT] }
+        });
+        // Verificar se atingiu o limite
+        if (activeUserCount >= company.maxUsers) {
+            const planName = company.plan === 'enterprise' ? 'Enterprise' :
+                company.plan === 'pro' ? 'Profissional' : 'Básico';
+            throw new errorHandler_js_1.AppError(`Limite de usuários do plano ${planName} atingido (${company.maxUsers}). Faça upgrade para adicionar mais usuários.`, 403);
+        }
+        // ============================================
         // CORREÇÃO: Senha NÃO é gerada para primeiro acesso
         // O usuário deve criar a senha via link de redefinição
         // ============================================

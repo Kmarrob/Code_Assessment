@@ -3,10 +3,13 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+//backend/src/server.ts
 const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
 const helmet_1 = __importDefault(require("helmet"));
 const compression_1 = __importDefault(require("compression"));
+const path_1 = __importDefault(require("path"));
+const fs_1 = __importDefault(require("fs"));
 const env_js_1 = require("./config/env.js");
 const database_js_1 = require("./config/database.js");
 const logger_js_1 = require("./utils/logger.js");
@@ -59,7 +62,8 @@ app.use((0, helmet_1.default)({
                 "https://api.code-assessment.com"
             ],
             fontSrc: ["'self'", "https:", "data:"],
-            imgSrc: ["'self'", "data:", "https:"],
+            // 🔴 CORREÇÃO: Adicionar blob: para permitir pré-visualização de imagens
+            imgSrc: ["'self'", "data:", "https:", "blob:"],
             scriptSrc: ["'self'", "'unsafe-inline'"],
             styleSrc: ["'self'", "https:", "'unsafe-inline'"],
         },
@@ -103,6 +107,18 @@ app.use((0, cors_1.default)({
 app.use(express_1.default.json({ limit: '10mb' }));
 app.use(express_1.default.urlencoded({ extended: true, limit: '10mb' }));
 app.use(logger_js_1.httpLogger);
+// ============================================
+// 🔴 CORREÇÃO: Servir arquivos estáticos (uploads)
+// ============================================
+const uploadsPath = path_1.default.join(process.cwd(), 'uploads');
+// Criar diretório se não existir
+if (!fs_1.default.existsSync(uploadsPath)) {
+    fs_1.default.mkdirSync(uploadsPath, { recursive: true });
+    logger_js_1.logger.info(`📁 Diretório de uploads criado: ${uploadsPath}`);
+}
+// Servir arquivos estáticos da pasta uploads
+app.use('/uploads', express_1.default.static(uploadsPath));
+logger_js_1.logger.info(`📁 Servindo arquivos estáticos de: ${uploadsPath}`);
 // ============================================
 // RATE LIMIT
 // ============================================
@@ -202,6 +218,7 @@ async function startServer() {
             logger_js_1.logger.info(`📋 Payment Routes: http://localhost:${PORT}/api/payments`);
             logger_js_1.logger.info(`🏷️ Branding Routes: http://localhost:${PORT}/api/branding`);
             logger_js_1.logger.info(`📊 Analytics Routes: http://localhost:${PORT}/api/admin/analytics`);
+            logger_js_1.logger.info(`📁 Uploads servidos em: http://localhost:${PORT}/uploads`);
         });
     }
     catch (error) {
