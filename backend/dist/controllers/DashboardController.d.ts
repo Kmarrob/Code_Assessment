@@ -13,5 +13,11 @@ export declare class DashboardController {
      * Listar todas as empresas com resumo (Admin)
      */
     static listCompaniesSummary(_req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void>;
+    /**
+     * 🔴 NOVO: Gerar PDF do Dashboard de Maturidade
+     * GET /api/rep/dashboard/:companyId/pdf
+     * Acesso: REP ou ADMIN
+     */
+    static generateDashboardPDF(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void>;
 }
 //# sourceMappingURL=DashboardController.d.ts.map

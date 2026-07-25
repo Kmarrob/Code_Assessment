@@ -36,6 +36,8 @@ router.get('/progress/:userId', rateLimit_js_1.adminRateLimiter, RepController_j
 router.get('/stats', rateLimit_js_1.adminRateLimiter, RepController_js_1.RepController.getStats);
 // Obter dashboard da empresa
 router.get('/dashboard/:companyId', rateLimit_js_1.authenticatedRateLimiter, DashboardController_js_1.DashboardController.getRepDashboard);
+// 🔴 NOVO: Gerar PDF do dashboard da empresa
+router.get('/dashboard/:companyId/pdf', rateLimit_js_1.authenticatedRateLimiter, DashboardController_js_1.DashboardController.generateDashboardPDF);
 // ============================================
 // ROTA: Obter controles da empresa do preposto
 // ============================================

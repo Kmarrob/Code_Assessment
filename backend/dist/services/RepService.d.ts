@@ -74,7 +74,18 @@ export declare class RepService {
         }) | null;
     }>;
     /**
-     * Atribuir controles a um usuário (sem repetição)
+     * Atribuir controles a um usuário
+     *
+     * CORREÇÃO PRINCIPAL:
+     * A validação da empresa não depende exclusivamente
+     * do companyId existente no documento do preposto.
+     *
+     * Quando o companyId do preposto está ausente,
+     * incorreto ou desatualizado, a empresa é resolvida
+     * pelo nome cadastrado no usuário.
+     *
+     * Quando o usuário possui a mesma empresa lógica,
+     * seu companyId é corrigido para o companyId oficial.
      */
     static assignControls(repId: string, data: {
         userId: string;
@@ -83,7 +94,7 @@ export declare class RepService {
     }): Promise<{
         assigned: number;
         skipped: number;
-        conflicts: string[];
+        conflicts: any[];
         conflictMessage: string;
         removed?: undefined;
         assignments?: undefined;
@@ -144,8 +155,9 @@ export declare class RepService {
         }[];
     }>;
     /**
-     * Obter estatísticas do preposto
-     */
+    * Obter estatísticas do preposto
+    * 🔴 CORRIGIDO: Agora inclui o próprio preposto na contagem
+    */
     static getStats(repId: string): Promise<{
         totalUsers: number;
         totalAssignments: number;

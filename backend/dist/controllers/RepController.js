@@ -14,9 +14,8 @@ const Question_js_1 = require("../models/Question.js");
 const repValidation_js_1 = require("../utils/repValidation.js");
 class RepController {
     /**
-    
-    * Listar usuários do preposto
-      */
+     * Listar usuários do preposto
+     */
     static async listUsers(req, res, next) {
         try {
             const repId = req.userId;
@@ -50,9 +49,8 @@ class RepController {
         }
     }
     /**
-    
-    * Criar usuário pelo preposto
-      */
+     * Criar usuário pelo preposto
+     */
     static async createUser(req, res, next) {
         try {
             const repId = req.userId;
@@ -89,9 +87,8 @@ class RepController {
         }
     }
     /**
-    
-    * 🔴 NOVO: Editar usuário pelo preposto
-      */
+     * Editar usuário pelo preposto
+     */
     static async updateUser(req, res, next) {
         try {
             const repId = req.userId;
@@ -100,13 +97,17 @@ class RepController {
             }
             const { userId } = req.params;
             if (!userId) {
-                throw new errorHandler_js_1.ValidationError({ userId: ['ID do usuário é obrigatório'] });
+                throw new errorHandler_js_1.ValidationError({
+                    userId: ['ID do usuário é obrigatório'],
+                });
             }
             const { name, email, department } = req.body;
             // Validar se pelo menos um campo foi enviado
             if (!name && !email && !department) {
                 throw new errorHandler_js_1.ValidationError({
-                    fields: ['Pelo menos um campo (name, email, department) deve ser fornecido'],
+                    fields: [
+                        'Pelo menos um campo (name, email, department) deve ser fornecido',
+                    ],
                 });
             }
             const updatedUser = await RepService_js_1.RepService.updateUser(repId, userId, {
@@ -137,9 +138,8 @@ class RepController {
         }
     }
     /**
-    
-    * 🔴 NOVO: Inativar usuário com justificativa
-      */
+     * Inativar usuário com justificativa
+     */
     static async inactivateUser(req, res, next) {
         try {
             const repId = req.userId;
@@ -148,7 +148,9 @@ class RepController {
             }
             const { userId } = req.params;
             if (!userId) {
-                throw new errorHandler_js_1.ValidationError({ userId: ['ID do usuário é obrigatório'] });
+                throw new errorHandler_js_1.ValidationError({
+                    userId: ['ID do usuário é obrigatório'],
+                });
             }
             const { reason, description } = req.body;
             // Validar motivo
@@ -159,7 +161,8 @@ class RepController {
                 });
             }
             // Se motivo for "Outros", descrição é obrigatória
-            if (reason === 'Outros' && (!description || description.trim().length < 5)) {
+            if (reason === 'Outros' &&
+                (!description || description.trim().length < 5)) {
                 throw new errorHandler_js_1.ValidationError({
                     description: [
                         'Descrição é obrigatória e deve ter no mínimo 5 caracteres quando motivo for "Outros"',
@@ -193,9 +196,8 @@ class RepController {
         }
     }
     /**
-    
-    * 🔴 NOVO: Revogar controle com reatribuição
-      */
+     * Revogar controle com reatribuição
+     */
     static async revokeControl(req, res, next) {
         try {
             const repId = req.userId;
@@ -253,9 +255,8 @@ class RepController {
         }
     }
     /**
-    
-    * Atribuir controles a um usuário
-      */
+     * Atribuir controles a um usuário
+     */
     static async assignControls(req, res, next) {
         try {
             const repId = req.userId;
@@ -289,9 +290,8 @@ class RepController {
         }
     }
     /**
-    
-    * Obter progresso de um usuário
-      */
+     * Obter progresso de um usuário
+     */
     static async getUserProgress(req, res, next) {
         try {
             const repId = req.userId;
@@ -326,9 +326,8 @@ class RepController {
         }
     }
     /**
-    
-    * Obter progresso geral do preposto
-      */
+     * Obter progresso geral do preposto
+     */
     static async getOverallProgress(req, res, next) {
         try {
             const repId = req.userId;
@@ -356,9 +355,8 @@ class RepController {
         }
     }
     /**
-    
-    * Obter estatísticas do preposto
-      */
+     * Obter estatísticas do preposto
+     */
     static async getStats(req, res, next) {
         try {
             const repId = req.userId;
@@ -386,10 +384,12 @@ class RepController {
         }
     }
     /**
-    
-    * Obter controles da empresa do preposto
-    * 🔴 CORRIGIDO: Controles agora são ordenados por ID
-      */
+     * Obter controles da empresa do preposto
+     *
+     * Os controles continuam existindo normalmente no banco de dados.
+     * A lista retornada é apenas filtrada para remover controles que já
+     * possuem uma atribuição na coleção Assignment.
+     */
     static async getCompanyControls(req, res, next) {
         try {
             const repId = req.userId;
@@ -412,25 +412,23 @@ class RepController {
                 path: 'assignedControls',
                 select: '_id id nome dominioDeSI tipoDeControle nota',
             });
-            // Não utilizar .lean() aqui.
-            // O documento já foi materializado com await Company.findById().
-            // O uso de .lean() deve ocorrer na query, antes do await.
             /*
-          
-            * IMPORTANTE:
-            * Os controles da empresa NÃO são excluídos nem alterados.
-            *
-            * Esta consulta apenas identifica quais controles já possuem
-            * uma atribuição na coleção Assignment para que eles não sejam
-            * exibidos novamente como disponíveis para o preposto.
-            *
-            * O controle continua existindo normalmente em:
-            * * Control
-            * * Company.assignedControls
-            * * Assignment
-            *
-            * Apenas a lista retornada pela API é filtrada.
-              */
+             * IMPORTANTE:
+             *
+             * Os controles da empresa NÃO são excluídos nem alterados.
+             *
+             * Esta consulta apenas identifica quais controles já possuem
+             * uma atribuição na coleção Assignment para que eles não sejam
+             * exibidos novamente como disponíveis para o preposto.
+             *
+             * O controle continua existindo normalmente em:
+             *
+             * - Control
+             * - Company.assignedControls
+             * - Assignment
+             *
+             * Apenas a lista retornada pela API é filtrada.
+             */
             const assignedControls = await Assignment_js_1.Assignment.find({
                 controlId: {
                     $in: (company.assignedControls || []).map((control) => control._id),
@@ -440,23 +438,67 @@ class RepController {
                 .lean();
             // IDs dos controles que já foram atribuídos a qualquer usuário
             const assignedControlIds = new Set(assignedControls.map((assignment) => assignment.controlId.toString()));
-            // Retornar somente controles ainda não atribuídos
+            /*
+             * Retornar somente controles ainda não atribuídos.
+             *
+             * A ordenação é numérica e hierárquica.
+             *
+             * Exemplos:
+             *
+             * A.5.1
+             * A.5.2
+             * A.5.9
+             * A.5.10
+             * A.5.11
+             *
+             * Também funciona para:
+             *
+             * 5.1
+             * 5.2
+             * 5.10
+             * 8.1
+             * 8.2
+             * 8.10
+             *
+             * Nenhum controle é excluído ou alterado.
+             */
             const controls = (company.assignedControls || [])
                 .filter((control) => !assignedControlIds.has(control._id.toString()))
                 .sort((a, b) => {
-                // Extrair o número do controle
-                // Exemplo: "A.5.1" → 5.1
-                // Exemplo: "5.8" → 5.8
-                const aMatch = a.id?.match(/(\d+\.\d+)/);
-                const bMatch = b.id?.match(/(\d+\.\d+)/);
-                const aNum = aMatch ? parseFloat(aMatch[1]) : 0;
-                const bNum = bMatch ? parseFloat(bMatch[1]) : 0;
-                // Se os números principais forem iguais,
-                // ordenar pelo ID completo
-                if (aNum === bNum) {
-                    return (a.id || '').localeCompare(b.id || '');
+                const aId = String(a.id || '').trim();
+                const bId = String(b.id || '').trim();
+                /*
+                 * Extrair todos os componentes numéricos do identificador.
+                 *
+                 * Exemplos:
+                 *
+                 * A.5.1  -> [5, 1]
+                 * A.5.10 -> [5, 10]
+                 * 5.1    -> [5, 1]
+                 * 5.10   -> [5, 10]
+                 */
+                const aNumbers = aId.match(/\d+/g)?.map(Number) || [];
+                const bNumbers = bId.match(/\d+/g)?.map(Number) || [];
+                /*
+                 * Comparar cada nível hierárquico numericamente.
+                 */
+                const maxLength = Math.max(aNumbers.length, bNumbers.length);
+                for (let i = 0; i < maxLength; i++) {
+                    const aNumber = aNumbers[i] ?? 0;
+                    const bNumber = bNumbers[i] ?? 0;
+                    if (aNumber !== bNumber) {
+                        return aNumber - bNumber;
+                    }
                 }
-                return aNum - bNum;
+                /*
+                 * Se a parte numérica for exatamente igual,
+                 * usar o identificador completo como critério
+                 * secundário determinístico.
+                 */
+                return aId.localeCompare(bId, undefined, {
+                    numeric: true,
+                    sensitivity: 'base',
+                });
             });
             res.json({
                 success: true,
@@ -478,10 +520,10 @@ class RepController {
         }
     }
     /**
-    
-    * Busca todos os usuários do preposto com suas respostas (otimizado)
-    * GET /api/rep/users-with-responses
-      */
+     * Busca todos os usuários do preposto com suas respostas (otimizado)
+     *
+     * GET /api/rep/users-with-responses
+     */
     static async getUsersWithResponses(req, res, next) {
         try {
             const repId = req.userId;
@@ -518,7 +560,7 @@ class RepController {
             })
                 .lean();
             console.log('🔵 [getUsersWithResponses] Respostas encontradas:', responses.length);
-            // 🔴 NOVO: Buscar todas as perguntas relacionadas aos controles
+            // Buscar todas as perguntas relacionadas aos controles
             const controlIds = responses
                 .map((r) => r.controlId?.id || '')
                 .filter((id) => id);
@@ -542,7 +584,6 @@ class RepController {
                     if (!responsesByUser[userId]) {
                         responsesByUser[userId] = [];
                     }
-                    // 🔴 CORREÇÃO: Apenas r.controlId?.id
                     const controlIdString = r.controlId?.id || '';
                     const question = questionsMap[controlIdString];
                     responsesByUser[userId].push({
@@ -612,13 +653,13 @@ class RepController {
         }
     }
     // ============================================
-    // 🔴 NOVOS MÉTODOS PARA ATRIBUIÇÃO PARA SI MESMO
+    // NOVOS MÉTODOS PARA ATRIBUIÇÃO PARA SI MESMO
     // ============================================
     /**
-    
-    * 🔴 NOVO: Buscar controles já atribuídos ao preposto
-    * GET /api/rep/my-assignments
-      */
+     * Buscar controles já atribuídos ao preposto
+     *
+     * GET /api/rep/my-assignments
+     */
     static async getMyAssignments(req, res, next) {
         try {
             const repId = req.userId;
@@ -668,10 +709,10 @@ class RepController {
         }
     }
     /**
-    
-    * 🔴 NOVO: Atribuir controles para o próprio preposto
-    * POST /api/rep/assign-to-self
-      */
+     * Atribuir controles para o próprio preposto
+     *
+     * POST /api/rep/assign-to-self
+     */
     static async assignToSelf(req, res, next) {
         try {
             const repId = req.userId;
@@ -699,7 +740,7 @@ class RepController {
                 controlIds: controlIds,
                 force: false,
             });
-            // 🔴 NOTIFICAÇÃO: Atribuição para si mesmo
+            // NOTIFICAÇÃO: Atribuição para si mesmo
             if (result.assigned > 0) {
                 const controlNames = controlIds
                     .map((id) => id)

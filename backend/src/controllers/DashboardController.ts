@@ -232,24 +232,25 @@ export class DashboardController {
         maturityLevels: stats.maturityLevels,
       };
 
-      // Preparar dados para o PDF
-      const pdfData = {
-        company: {
-          id: maturityData.company?._id?.toString() || companyId,
-          name: maturityData.company?.name || 'Empresa não identificada',
-        },
-        summary: summary,
-        byDomain: byDomain || {},
-        byCategory: byCategory || {},
-        byType: byType || {},
-        byCyberConcept: byCyberConcept || {},
-        byCapability: byCapability || {},
-        user: {
-          name: user.name || 'Usuário não identificado',
-          email: user.email || 'email@nao.informado',
-        },
-        generatedAt: new Date().toISOString(),
-      };
+     // Preparar dados para o PDF
+const pdfData = {
+  company: {
+    // 🔴 CORREÇÃO: usar 'id' em vez de '_id'
+    id: maturityData.company?.id?.toString() || companyId,
+    name: maturityData.company?.name || 'Empresa não identificada',
+  },
+  summary: summary,
+  byDomain: byDomain || {},
+  byCategory: byCategory || {},
+  byType: byType || {},
+  byCyberConcept: byCyberConcept || {},
+  byCapability: byCapability || {},
+  user: {
+    name: user.name || 'Usuário não identificado',
+    email: user.email || 'email@nao.informado',
+  },
+  generatedAt: new Date().toISOString(),
+};
 
       // Gerar PDF
       const pdfBuffer = await DashboardPDFService.generateDashboardPDF(pdfData);
