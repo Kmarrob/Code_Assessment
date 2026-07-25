@@ -1,5 +1,5 @@
 // backend/src/services/DashboardPDFService.ts
-// 🔴 CORRIGIDO: Mantém TODO o HTML existente, apenas substitui gráficos por imagens PNG
+// 🔴 CORRIGIDO: Adiciona type assertion para resolver erro de tipo no ChartService
 
 import { logger } from '../utils/logger.js';
 import { ChartService } from './ChartService.js';
@@ -56,14 +56,14 @@ export class DashboardPDFService {
         { name: 'Parcialmente implementado', value: data.summary.Parcialmente || 0, color: '#f59e0b' },
         { name: 'Não implementado', value: data.summary.NaoImplementado || 0, color: '#ef4444' },
         { name: 'Não se aplica', value: data.summary.NaoSeAplica || 0, color: '#94a3b8' },
-      ].filter(d => d.value > 0));
+      ] as Array<{ name: string; value: number; color: string }>);
 
       // Gráfico de Barras (Contagem por Status)
       const barChartImage = ChartService.generateBarChart([
         { name: 'Implementados', value: data.summary.Implementado || 0, color: '#10b981' },
         { name: 'Parciais', value: data.summary.Parcialmente || 0, color: '#f59e0b' },
         { name: 'Não Implementados', value: data.summary.NaoImplementado || 0, color: '#ef4444' },
-      ].filter(d => d.value > 0));
+      ] as Array<{ name: string; value: number; color: string }>);
 
       // Gráfico de Barras (Conceitos Cibernéticos)
       const conceptBarData = Object.entries(data.byCyberConcept || {}).map(([key, value]: [string, any]) => ({
@@ -72,7 +72,8 @@ export class DashboardPDFService {
         color: ['#6366f1', '#8b5cf6', '#a855f7', '#d946ef', '#ec4899'][
           ['Identificar', 'Proteger', 'Detectar', 'Responder', 'Restaurar'].indexOf(key) % 5
         ] || '#6366f1',
-      })).filter(d => d.value > 0);
+      })).filter(d => d.value > 0) as Array<{ name: string; value: number; color: string }>;
+      
       const conceptBarImage = ChartService.generateBarChart(conceptBarData);
 
       // Gráfico de Barras (Domínios)
@@ -82,7 +83,8 @@ export class DashboardPDFService {
         color: ['#ef4444', '#f59e0b', '#3b82f6', '#10b981'][
           ['Defesa', 'Resiliência', 'Governança e ecossistema', 'Proteção'].indexOf(key) % 4
         ] || '#3b82f6',
-      })).filter(d => d.value > 0);
+      })).filter(d => d.value > 0) as Array<{ name: string; value: number; color: string }>;
+      
       const domainBarImage = ChartService.generateBarChart(domainBarData);
 
       // Gráfico Radar (Capacidades Operacionais)
@@ -103,7 +105,8 @@ export class DashboardPDFService {
             { name: 'Parcial', value: typeData.partial || 0, color: '#f59e0b' },
             { name: 'Não Implementado', value: typeData.notImpl || 0, color: '#ef4444' },
             { name: 'Não se aplica', value: typeData.na || 0, color: '#94a3b8' },
-          ].filter(d => d.value > 0);
+          ].filter(d => d.value > 0) as Array<{ name: string; value: number; color: string }>;
+          
           if (detailData.length > 0) {
             const img = ChartService.generatePieChart(detailData);
             typePieImages[type] = img.toString('base64');
@@ -120,7 +123,8 @@ export class DashboardPDFService {
             { name: 'Parcial', value: conceptData.partial || 0, color: '#f59e0b' },
             { name: 'Não Implementado', value: conceptData.notImpl || 0, color: '#ef4444' },
             { name: 'Não se aplica', value: conceptData.na || 0, color: '#94a3b8' },
-          ].filter(d => d.value > 0);
+          ].filter(d => d.value > 0) as Array<{ name: string; value: number; color: string }>;
+          
           if (detailData.length > 0) {
             const img = ChartService.generatePieChart(detailData, 300, 250);
             conceptPieImages[concept] = img.toString('base64');
@@ -137,7 +141,8 @@ export class DashboardPDFService {
             { name: 'Parcial', value: domainData.partial || 0, color: '#f59e0b' },
             { name: 'Não Implementado', value: domainData.notImpl || 0, color: '#ef4444' },
             { name: 'Não se aplica', value: domainData.na || 0, color: '#94a3b8' },
-          ].filter(d => d.value > 0);
+          ].filter(d => d.value > 0) as Array<{ name: string; value: number; color: string }>;
+          
           if (detailData.length > 0) {
             const img = ChartService.generatePieChart(detailData, 300, 250);
             domainPieImages[domain] = img.toString('base64');
@@ -755,7 +760,7 @@ export class DashboardPDFService {
     <div class="chart-container" style="margin-bottom: 8pt;">
       <p class="chart-title">Distribuição por Tipo de Controle</p>
       <p class="chart-subtitle">Preventivo, Detectivo e Corretivo</p>
-      <img src="data:image/png;base64,${ChartService.generatePieChart(typePieData).toString('base64')}" class="chart-img" alt="Tipos de Controle" />
+      <img src="data:image/png;base64,${ChartService.generatePieChart(typePieData as Array<{ name: string; value: number; color: string }>).toString('base64')}" class="chart-img" alt="Tipos de Controle" />
     </div>
 
     <div class="grid-3">
