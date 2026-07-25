@@ -34,16 +34,6 @@ interface DashboardPDFData {
   generatedAt: string;
 }
 
-/**
- * Opções de inicialização do Puppeteer/Puppeteer Core.
- *
- * A propriedade executablePath é utilizada somente quando:
- * - o caminho do Chromium é fornecido explicitamente em desenvolvimento; ou
- * - o Chromium do @sparticuz/chromium é utilizado em produção.
- *
- * A declaração explícita evita que o TypeScript infira o tipo de
- * browserOptions somente a partir do primeiro objeto atribuído.
- */
 interface BrowserLaunchOptions {
   headless: boolean;
   args?: string[];
@@ -773,6 +763,7 @@ export class DashboardPDFService {
               <span style="display: inline-block; width: 8pt; height: 8pt; border-radius: 50%; background-color: ${d.color};"></span>
               <span style="font-size: 8pt;">${d.name}</span>
             </div>
+
             <span style="font-size: 8pt; font-weight: bold;">
               ${d.value}
             </span>
@@ -900,8 +891,7 @@ export class DashboardPDFService {
 
     <div style="margin-top: 8pt; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4pt; padding: 6pt;">
       <p style="font-size: 7pt; color: #94a3b8; text-align: center;">
-        Distribuição dos controles por conceito cibernético (NIST):
-        Identificar, Proteger, Detectar, Responder, Restaurar
+        Distribuição dos controles por conceito cibernético (NIST): Identificar, Proteger, Detectar, Responder, Restaurar
       </p>
     </div>
   </div>
@@ -1059,8 +1049,7 @@ export class DashboardPDFService {
   <div class="page" style="page-break-after: auto;">
     <div style="text-align: center; padding: 20pt 0; border-top: 1px solid #e2e8f0; margin-top: 12pt;">
       <p style="font-size: 7pt; color: #94a3b8;">
-        © ${new Date().getFullYear()} Code_Assessment -
-        Sistema de Avaliação de Maturidade ISO 27001<br>
+        © ${new Date().getFullYear()} Code_Assessment - Sistema de Avaliação de Maturidade ISO 27001<br>
         Relatório gerado em ${formatDate(generatedAt)} para ${company.name}
       </p>
     </div>
@@ -1069,24 +1058,7 @@ export class DashboardPDFService {
   <!-- 🔴 SCRIPTS REACT PARA RENDERIZAR OS GRÁFICOS -->
   <script type="text/babel">
     (function() {
-      const {
-        PieChart,
-        Pie,
-        Cell,
-        BarChart,
-        Bar,
-        XAxis,
-        YAxis,
-        CartesianGrid,
-        Tooltip,
-        Legend,
-        ResponsiveContainer,
-        RadarChart,
-        Radar,
-        PolarGrid,
-        PolarAngleAxis,
-        PolarRadiusAxis
-      } = Recharts;
+      const { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis } = Recharts;
 
       // Dados
       const pieData = ${escapeJson(pieData)};
@@ -1097,20 +1069,8 @@ export class DashboardPDFService {
       const typeData = ${escapeJson(typeData)};
 
       // Cores para os gráficos
-      const COLORS = [
-        '#6366f1',
-        '#8b5cf6',
-        '#a855f7',
-        '#d946ef',
-        '#ec4899'
-      ];
-
-      const DOMAIN_COLORS = [
-        '#ef4444',
-        '#f59e0b',
-        '#3b82f6',
-        '#10b981'
-      ];
+      const COLORS = ['#6366f1', '#8b5cf6', '#a855f7', '#d946ef', '#ec4899'];
+      const DOMAIN_COLORS = ['#ef4444', '#f59e0b', '#3b82f6', '#10b981'];
 
       // Renderizar Pie Chart
       const pieRoot = document.getElementById('pie-chart-root');
@@ -1121,10 +1081,7 @@ export class DashboardPDFService {
 
           return React.createElement(
             ResponsiveContainer,
-            {
-              width: '100%',
-              height: 260
-            },
+            { width: '100%', height: 260 },
             React.createElement(
               PieChart,
               {},
@@ -1136,28 +1093,11 @@ export class DashboardPDFService {
                   cy: '50%',
                   outerRadius: 90,
                   dataKey: 'value',
-                  label: ({
-                    cx,
-                    cy,
-                    midAngle,
-                    innerRadius,
-                    outerRadius,
-                    percent
-                  }) => {
+                  label: ({ cx, cy, midAngle, innerRadius, outerRadius, percent }) => {
                     const RADIAN = Math.PI / 180;
-                    const radius =
-                      innerRadius +
-                      (outerRadius - innerRadius) * 0.6;
-
-                    const x =
-                      cx +
-                      radius *
-                      Math.cos(-midAngle * RADIAN);
-
-                    const y =
-                      cy +
-                      radius *
-                      Math.sin(-midAngle * RADIAN);
+                    const radius = innerRadius + (outerRadius - innerRadius) * 0.6;
+                    const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                    const y = cy + radius * Math.sin(-midAngle * RADIAN);
 
                     if (percent < 0.03) {
                       return null;
@@ -1231,10 +1171,7 @@ export class DashboardPDFService {
 
           return React.createElement(
             ResponsiveContainer,
-            {
-              width: '100%',
-              height: 260
-            },
+            { width: '100%', height: 260 },
             React.createElement(
               BarChart,
               {
@@ -1329,26 +1266,19 @@ export class DashboardPDFService {
       }
 
       // Renderizar Bar Chart (Conceitos)
-      const conceptBarRoot =
-        document.getElementById('concept-bar-chart-root');
+      const conceptBarRoot = document.getElementById('concept-bar-chart-root');
 
       if (conceptBarRoot && conceptData.length > 0) {
-        const conceptBarData = conceptData.map(
-          (item, index) => ({
-            name: item.name,
-            value: item.total || 0,
-            color: COLORS[index % COLORS.length]
-          })
-        );
+        const conceptBarData = conceptData.map((item, index) => ({
+          name: item.name,
+          value: item.total || 0,
+          color: COLORS[index % COLORS.length]
+        }));
 
         const ConceptBarApp = () => {
           return React.createElement(
             ResponsiveContainer,
-            {
-              width: '100%',
-              height: 260
-            },
-
+            { width: '100%', height: 260 },
             React.createElement(
               BarChart,
               {
@@ -1433,28 +1363,19 @@ export class DashboardPDFService {
       }
 
       // Renderizar Bar Chart (Domínios)
-      const domainBarRoot =
-        document.getElementById('domain-bar-chart-root');
+      const domainBarRoot = document.getElementById('domain-bar-chart-root');
 
       if (domainBarRoot && domainData.length > 0) {
-        const domainBarData = domainData.map(
-          (item, index) => ({
-            name: item.name,
-            value: item.total || 0,
-            color: DOMAIN_COLORS[
-              index % DOMAIN_COLORS.length
-            ]
-          })
-        );
+        const domainBarData = domainData.map((item, index) => ({
+          name: item.name,
+          value: item.total || 0,
+          color: DOMAIN_COLORS[index % DOMAIN_COLORS.length]
+        }));
 
         const DomainBarApp = () => {
           return React.createElement(
             ResponsiveContainer,
-            {
-              width: '100%',
-              height: 260
-            },
-
+            { width: '100%', height: 260 },
             React.createElement(
               BarChart,
               {
@@ -1539,32 +1460,23 @@ export class DashboardPDFService {
       }
 
       // Renderizar Radar Chart
-      const radarRoot =
-        document.getElementById('radar-chart-root');
+      const radarRoot = document.getElementById('radar-chart-root');
 
       if (
         radarRoot &&
         radarData.length > 0 &&
-        radarData.some(
-          d => d.Implementado > 0
-        )
+        radarData.some(d => d.Implementado > 0)
       ) {
-        const radarChartData = radarData.map(
-          item => ({
-            subject: item.subject,
-            Implementado: item.Implementado,
-            Recomendado: 100
-          })
-        );
+        const radarChartData = radarData.map(item => ({
+          subject: item.subject,
+          Implementado: item.Implementado,
+          Recomendado: 100
+        }));
 
         const RadarApp = () => {
           return React.createElement(
             ResponsiveContainer,
-            {
-              width: '100%',
-              height: 350
-            },
-
+            { width: '100%', height: 350 },
             React.createElement(
               RadarChart,
               {
@@ -1666,9 +1578,7 @@ export class DashboardPDFService {
           .render(React.createElement(RadarApp));
       }
 
-      console.log(
-        '✅ Todos os gráficos foram renderizados!'
-      );
+      console.log('✅ Todos os gráficos foram renderizados!');
     })();
   </script>
 
@@ -1676,4 +1586,4 @@ export class DashboardPDFService {
 </html>`;
   }
 }
-```
+
