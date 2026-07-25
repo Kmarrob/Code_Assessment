@@ -1,5 +1,5 @@
 // backend/src/services/ChartService.ts
-// 🔴 NOVO: Serviço para gerar gráficos como imagens PNG usando Chart.js + node-canvas
+// 🔴 CORRIGIDO: Usa 'as any' para evitar conflito de tipos entre canvas e Chart.js
 
 import { createCanvas } from 'canvas';
 import Chart from 'chart.js/auto';
@@ -15,7 +15,8 @@ export class ChartService {
     height: number = 350
   ): Buffer {
     const canvas = createCanvas(width, height);
-    const ctx = canvas.getContext('2d');
+    // 🔴 CORREÇÃO: 'as any' para evitar conflito de tipos
+    const ctx = canvas.getContext('2d') as any;
 
     new Chart(ctx, {
       type: 'pie',
@@ -65,7 +66,8 @@ export class ChartService {
     title: string = 'Controles'
   ): Buffer {
     const canvas = createCanvas(width, height);
-    const ctx = canvas.getContext('2d');
+    // 🔴 CORREÇÃO: 'as any' para evitar conflito de tipos
+    const ctx = canvas.getContext('2d') as any;
 
     new Chart(ctx, {
       type: 'bar',
@@ -119,7 +121,8 @@ export class ChartService {
     height: number = 450
   ): Buffer {
     const canvas = createCanvas(width, height);
-    const ctx = canvas.getContext('2d');
+    // 🔴 CORREÇÃO: 'as any' para evitar conflito de tipos
+    const ctx = canvas.getContext('2d') as any;
 
     new Chart(ctx, {
       type: 'radar',
