@@ -1,5 +1,5 @@
 // backend/src/services/DashboardPDFService.ts
-// 🔴 CORRIGIDO: Adiciona type assertion para resolver erro de tipo no ChartService
+// 🔴 CORRIGIDO: Ajusta CSS do PDF para centralizar gráficos e evitar corte
 
 import { logger } from '../utils/logger.js';
 import { ChartService } from './ChartService.js';
@@ -47,10 +47,8 @@ export class DashboardPDFService {
       let puppeteer;
       let browserOptions: any;
 
-      // 🔴 PASSO 1: Gerar gráficos como imagens PNG (substitui React/Recharts)
       logger.info('🔄 DashboardPDF: Gerando gráficos como imagens...');
       
-      // Gráfico de Pizza (Distribuição de Status)
       const pieChartImage = ChartService.generatePieChart([
         { name: 'Implementado', value: data.summary.Implementado || 0, color: '#10b981' },
         { name: 'Parcialmente implementado', value: data.summary.Parcialmente || 0, color: '#f59e0b' },
@@ -58,14 +56,12 @@ export class DashboardPDFService {
         { name: 'Não se aplica', value: data.summary.NaoSeAplica || 0, color: '#94a3b8' },
       ] as Array<{ name: string; value: number; color: string }>);
 
-      // Gráfico de Barras (Contagem por Status)
       const barChartImage = ChartService.generateBarChart([
         { name: 'Implementados', value: data.summary.Implementado || 0, color: '#10b981' },
         { name: 'Parciais', value: data.summary.Parcialmente || 0, color: '#f59e0b' },
         { name: 'Não Implementados', value: data.summary.NaoImplementado || 0, color: '#ef4444' },
       ] as Array<{ name: string; value: number; color: string }>);
 
-      // Gráfico de Barras (Conceitos Cibernéticos)
       const conceptBarData = Object.entries(data.byCyberConcept || {}).map(([key, value]: [string, any]) => ({
         name: key,
         value: value.total || 0,
@@ -76,7 +72,6 @@ export class DashboardPDFService {
       
       const conceptBarImage = ChartService.generateBarChart(conceptBarData);
 
-      // Gráfico de Barras (Domínios)
       const domainBarData = Object.entries(data.byDomain || {}).map(([key, value]: [string, any]) => ({
         name: key,
         value: value.total || 0,
@@ -87,7 +82,6 @@ export class DashboardPDFService {
       
       const domainBarImage = ChartService.generateBarChart(domainBarData);
 
-      // Gráfico Radar (Capacidades Operacionais)
       const radarData = Object.entries(data.byCapability || {}).map(([key, value]: [string, any]) => ({
         subject: key.length > 20 ? key.substring(0, 20) + '…' : key,
         Implementado: value.aderente || 0,
@@ -95,7 +89,6 @@ export class DashboardPDFService {
       }));
       const radarChartImage = ChartService.generateRadarChart(radarData);
 
-      // Gráficos de Pizza para detalhes (Tipo, Conceito, Domínio)
       const typePieImages: Record<string, string> = {};
       for (const type of ['Preventivo', 'Detectivo', 'Corretivo']) {
         const typeData = data.byType?.[type];
@@ -150,14 +143,12 @@ export class DashboardPDFService {
         }
       }
 
-      // 🔴 PASSO 2: Converter todas as imagens para base64
       const pieBase64 = pieChartImage.toString('base64');
       const barBase64 = barChartImage.toString('base64');
       const conceptBarBase64 = conceptBarImage.toString('base64');
       const domainBarBase64 = domainBarImage.toString('base64');
       const radarBase64 = radarChartImage.toString('base64');
 
-      // 🔴 PASSO 3: Montar HTML (MANTENDO TODA A ESTRUTURA ORIGINAL)
       const html = this.generateHTML(
         data,
         pieBase64,
@@ -170,7 +161,6 @@ export class DashboardPDFService {
         domainPieImages
       );
 
-      // 🔴 PASSO 4: Configurar Puppeteer
       if (isProduction) {
         const chromiumModule = await import('@sparticuz/chromium');
         const chromium = chromiumModule.default || chromiumModule;
@@ -218,7 +208,6 @@ export class DashboardPDFService {
         deviceScaleFactor: 1.5,
       });
 
-      // 🔴 PASSO 5: Carregar HTML (rápido, sem CDN)
       await page.setContent(html, {
         waitUntil: ['load', 'domcontentloaded'] as any,
         timeout: 30000,
@@ -226,7 +215,6 @@ export class DashboardPDFService {
 
       await page.evaluate(() => new Promise(resolve => setTimeout(resolve, 1000)));
 
-      // 🔴 PASSO 6: Gerar PDF
       const pdf = await page.pdf({
         format: 'A4',
         landscape: true,
@@ -588,7 +576,7 @@ export class DashboardPDFService {
     .w-full { width: 100%; }
     .w-50 { width: 50%; }
     
-    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6pt; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8pt; align-items: start; }
     .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6pt; }
     .grid-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 6pt; }
     .grid-5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4pt; }
@@ -613,12 +601,29 @@ export class DashboardPDFService {
     .section-break { page-break-before: always; }
     .page-break-avoid { page-break-inside: avoid; }
     
-    .chart-img { width: 100%; max-width: 500px; height: auto; margin: 0 auto; display: block; }
-    .chart-container { text-align: center; margin: 8pt 0; }
+    .chart-img { 
+      max-width: 100%; 
+      height: auto; 
+      display: block; 
+      margin: 0 auto;
+    }
+    .chart-container { 
+      text-align: center; 
+      margin: 8pt 0;
+      padding: 4pt;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
     .chart-title { font-size: 9pt; font-weight: bold; color: #475569; margin-bottom: 4pt; }
     .chart-subtitle { font-size: 7pt; color: #94a3b8; margin-bottom: 6pt; }
     
-    .radar-container { max-width: 600px; margin: 0 auto; }
+    .radar-container { 
+      max-width: 500px; 
+      margin: 0 auto;
+      padding: 4pt;
+    }
     
     * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
     
@@ -848,7 +853,7 @@ export class DashboardPDFService {
       <div class="chart-container">
         <p class="chart-title">Radar de Capacidades Operacionais</p>
         <p class="chart-subtitle">Comparação entre o nível implementado e o recomendado (100%)</p>
-        <img src="data:image/png;base64,${radarBase64}" class="chart-img" alt="Radar de Capacidades" style="max-width: 550px;" />
+        <img src="data:image/png;base64,${radarBase64}" class="chart-img" alt="Radar de Capacidades" style="max-width: 100%;" />
       </div>
     </div>
 
