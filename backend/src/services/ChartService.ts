@@ -1,5 +1,5 @@
 // backend/src/services/ChartService.ts
-// 🔴 CORRIGIDO: Usa 'as any' para evitar conflito de tipos entre canvas e Chart.js
+// 🔴 CORRIGIDO: Ajusta tamanhos dos gráficos para melhor proporção no PDF
 
 import { createCanvas } from 'canvas';
 import Chart from 'chart.js/auto';
@@ -8,14 +8,14 @@ import { logger } from '../utils/logger.js';
 export class ChartService {
   /**
    * Gera um gráfico de pizza como imagem PNG
+   * 🔴 Tamanho ajustado: 450x300 (era 500x350)
    */
   static generatePieChart(
     data: Array<{ name: string; value: number; color: string }>,
-    width: number = 500,
-    height: number = 350
+    width: number = 450,
+    height: number = 300
   ): Buffer {
     const canvas = createCanvas(width, height);
-    // 🔴 CORREÇÃO: 'as any' para evitar conflito de tipos
     const ctx = canvas.getContext('2d') as any;
 
     new Chart(ctx, {
@@ -35,9 +35,9 @@ export class ChartService {
           legend: {
             position: 'bottom',
             labels: {
-              font: { size: 12 },
+              font: { size: 10 },
               color: '#1e293b',
-              padding: 10,
+              padding: 8,
             }
           },
           tooltip: {
@@ -58,15 +58,15 @@ export class ChartService {
 
   /**
    * Gera um gráfico de barras como imagem PNG
+   * 🔴 Tamanho ajustado: 450x300 (era 500x350)
    */
   static generateBarChart(
     data: Array<{ name: string; value: number; color: string }>,
-    width: number = 500,
-    height: number = 350,
+    width: number = 450,
+    height: number = 300,
     title: string = 'Controles'
   ): Buffer {
     const canvas = createCanvas(width, height);
-    // 🔴 CORREÇÃO: 'as any' para evitar conflito de tipos
     const ctx = canvas.getContext('2d') as any;
 
     new Chart(ctx, {
@@ -87,7 +87,7 @@ export class ChartService {
           legend: {
             position: 'top',
             labels: {
-              font: { size: 12 },
+              font: { size: 10 },
               color: '#1e293b',
             }
           }
@@ -98,11 +98,13 @@ export class ChartService {
             ticks: {
               stepSize: 1,
               color: '#64748b',
+              font: { size: 9 },
             }
           },
           x: {
             ticks: {
               color: '#64748b',
+              font: { size: 9 },
             }
           }
         }
@@ -114,14 +116,14 @@ export class ChartService {
 
   /**
    * Gera um gráfico radar como imagem PNG
+   * 🔴 Tamanho ajustado: 550x400 (era 600x450)
    */
   static generateRadarChart(
     data: Array<{ subject: string; Implementado: number; Recomendado: number }>,
-    width: number = 600,
-    height: number = 450
+    width: number = 550,
+    height: number = 400
   ): Buffer {
     const canvas = createCanvas(width, height);
-    // 🔴 CORREÇÃO: 'as any' para evitar conflito de tipos
     const ctx = canvas.getContext('2d') as any;
 
     new Chart(ctx, {
@@ -156,7 +158,7 @@ export class ChartService {
           legend: {
             position: 'bottom',
             labels: {
-              font: { size: 12 },
+              font: { size: 10 },
               color: '#1e293b',
             }
           }
@@ -168,9 +170,10 @@ export class ChartService {
             ticks: {
               stepSize: 20,
               color: '#94a3b8',
+              font: { size: 9 },
             },
             pointLabels: {
-              font: { size: 10 },
+              font: { size: 9 },
               color: '#334155',
             }
           }
