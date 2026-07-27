@@ -1045,7 +1045,7 @@ export const DashboardOverview: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 print-grid-2">
-          <div className="print-card screen-only">
+          <div className="print-card screen-only max-w-full overflow-hidden">
             <PieChart
               data={pieData}
               title="Distribuição de Status"
@@ -1053,7 +1053,7 @@ export const DashboardOverview: React.FC = () => {
               isPrinting={false}
             />
           </div>
-          <div className="print-card screen-only">
+          <div className="print-card screen-only max-w-full overflow-hidden">
             <BarChart
               data={barData}
               title="Contagem por Status"
@@ -1062,7 +1062,7 @@ export const DashboardOverview: React.FC = () => {
             />
           </div>
           
-          <div className="print-card print-only">
+          <div className="print-card print-only max-w-full overflow-hidden">
             <PieChart
               data={pieData}
               title="Distribuição de Status"
@@ -1071,7 +1071,7 @@ export const DashboardOverview: React.FC = () => {
               isPrinting={true}
             />
           </div>
-          <div className="print-card print-only">
+          <div className="print-card print-only max-w-full overflow-hidden">
             <BarChart
               data={barData}
               title="Contagem por Status"
@@ -1133,7 +1133,7 @@ export const DashboardOverview: React.FC = () => {
             </span>
           </h2>
           
-          <div className="mb-4 print-card screen-only">
+          <div className="mb-4 print-card screen-only max-w-full overflow-hidden">
             <PieChart
               data={typePieData}
               title="Distribuição por Tipo de Controle"
@@ -1142,7 +1142,7 @@ export const DashboardOverview: React.FC = () => {
             />
           </div>
           
-          <div className="mb-4 print-card print-only">
+          <div className="mb-4 print-card print-only max-w-full overflow-hidden">
             <PieChart
               data={typePieData}
               title="Distribuição por Tipo de Controle"
@@ -1223,7 +1223,7 @@ export const DashboardOverview: React.FC = () => {
             </span>
           </h2>
 
-          <div className="mb-4 print-card screen-only">
+          <div className="mb-4 print-card screen-only max-w-full overflow-hidden">
             <BarChart
               data={conceptBarData}
               title="Distribuição por Conceito Cibernético"
@@ -1232,7 +1232,7 @@ export const DashboardOverview: React.FC = () => {
             />
           </div>
           
-          <div className="mb-4 print-card print-only">
+          <div className="mb-4 print-card print-only max-w-full overflow-hidden">
             <BarChart
               data={conceptBarData}
               title="Distribuição por Conceito Cibernético"
@@ -1309,18 +1309,18 @@ export const DashboardOverview: React.FC = () => {
           
           {radarData.length > 0 && radarData.some(d => d.Implementado > 0) && (
             <>
-              <div className="mb-4 print-card print-radar screen-only">
+              <div className="mb-4 print-card print-radar screen-only max-w-full overflow-hidden">
                 <RadarChart
                   data={radarData}
                   title="Radar de Capacidades Operacionais"
                   subtitle="Comparação entre o nível implementado e o recomendado (100%)"
-                  height={400}
+                  height={380}
                   colors={RADAR_COLORS}
                   isPrinting={false}
                 />
               </div>
               
-              <div className="mb-4 print-card print-radar print-only">
+              <div className="mb-4 print-card print-radar print-only max-w-full overflow-hidden">
                 <RadarChart
                   data={radarData}
                   title="Radar de Capacidades Operacionais"
@@ -1354,7 +1354,7 @@ export const DashboardOverview: React.FC = () => {
             </span>
           </h2>
 
-          <div className="mb-4 print-card screen-only">
+          <div className="mb-4 print-card screen-only max-w-full overflow-hidden">
             <BarChart
               data={domainBarData}
               title="Distribuição por Domínio de SI"
@@ -1363,7 +1363,7 @@ export const DashboardOverview: React.FC = () => {
             />
           </div>
           
-          <div className="mb-4 print-card print-only">
+          <div className="mb-4 print-card print-only max-w-full overflow-hidden">
             <BarChart
               data={domainBarData}
               title="Distribuição por Domínio de SI"
