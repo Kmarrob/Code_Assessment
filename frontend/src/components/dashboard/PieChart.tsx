@@ -1,51 +1,85 @@
 // frontend/src/components/dashboard/PieChart.tsx
+
 import React from 'react';
-import { PieChart as RechartsPieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
+import {
+  PieChart as RechartsPieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  Tooltip,
+  Legend,
+} from 'recharts';
 
 const RADIAN = Math.PI / 180;
 
-const renderLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }: any) => {
-  if (percent < 0.03) return null;
-  const r = innerRadius + (outerRadius - innerRadius) * 0.6;
-  const x = cx + r * Math.cos(-midAngle * RADIAN);
-  const y = cy + r * Math.sin(-midAngle * RADIAN);
-  return (
-    <text 
-      x={x} 
-      y={y} 
-      fill="#fff" 
-      textAnchor="middle" 
-      dominantBaseline="central" 
-      fontSize={12} 
-      fontWeight="bold"
-    >
-      {`${Math.round(percent * 100)}%`}
-    </text>
-  );
-};
+const renderLabel =
+  (isPrinting: boolean) =>
+  ({ cx, cy, midAngle, innerRadius, outerRadius, percent }: any) => {
+    if (percent < 0.03) return null;
+
+    const r = innerRadius + (outerRadius - innerRadius) * 0.6;
+
+    const x = cx + r * Math.cos(-midAngle * RADIAN);
+    const y = cy + r * Math.sin(-midAngle * RADIAN);
+
+    return (
+      <text
+        x={x}
+        y={y}
+        fill="#fff"
+        textAnchor="middle"
+        dominantBaseline="central"
+        fontSize={isPrinting ? 10 : 12}
+        fontWeight="bold"
+      >
+        {`${Math.round(percent * 100)}%`}
+      </text>
+    );
+  };
 
 interface PieChartProps {
-  data: Array<{ name: string; value: number; color: string }>;
+  data: Array<{
+    name: string;
+    value: number;
+    color: string;
+  }>;
+
   title?: string;
   subtitle?: string;
   height?: number;
   isPrinting?: boolean;
 }
 
-export const PieChart: React.FC<PieChartProps> = ({ 
-  data, 
-  title, 
-  subtitle, 
+export const PieChart: React.FC<PieChartProps> = ({
+  data,
+  title,
+  subtitle,
   height = 280,
-  isPrinting = false
+  isPrinting = false,
 }) => {
-  const filteredData = data.filter(d => d.value > 0);
+  const filteredData = data.filter((d) => d.value > 0);
+
+  const chartHeight = isPrinting ? 220 : height;
 
   if (filteredData.length === 0) {
     return (
-      <div className={`bg-card border border-border rounded-xl ${isPrinting ? 'p-3' : 'p-6'}`}>
-        {title && <h3 className="text-sm font-semibold text-foreground mb-1">{title}</h3>}
-        {subtitle && <p className="text-xs text-muted-foreground mb-4">{subtitle}</p>}
+      <div
+        className={`bg-card border border-border rounded-xl ${
+          isPrinting ? 'p-3' : 'p-6'
+        }`}
+      >
+        {title && (
+          <h3 className="text-sm font-semibold text-foreground mb-1">
+            {title}
+          </h3>
+        )}
+
+        {subtitle && (
+          <p className="text-xs text-muted-foreground mb-4">
+            {subtitle}
+          </p>
+        )}
+
         <div className="flex items-center justify-center h-[200px] text-muted-foreground text-sm">
           Nenhum dado disponível
         </div>
@@ -53,62 +87,100 @@ export const PieChart: React.FC<PieChartProps> = ({
     );
   }
 
-  // 🔴 CORREÇÃO 1: outerRadius reduzido para evitar corte (80 em tela, 70 em impressão)
-  // 🔴 CORREÇÃO 2: Tooltip não aparece na impressão
-  // 🔴 CORREÇÃO 3: Legenda com tamanho menor na impressão
-  // 🔴 CORREÇÃO 4: Largura do gráfico na impressão reduzida para 320px
-
   const pieContent = (
     <>
       <Pie
         data={filteredData}
         cx="50%"
-        cy="50%"
-        outerRadius={isPrinting ? 70 : 80}
+        cy={isPrinting ? '44%' : '50%'}
+        innerRadius={isPrinting ? 18 : 0}
+        outerRadius={isPrinting ? 58 : 80}
         dataKey="value"
         labelLine={false}
-        label={renderLabel}
+        label={renderLabel(isPrinting)}
       >
         {filteredData.map((entry, index) => (
-          <Cell key={`cell-${index}`} fill={entry.color} />
+          <Cell
+            key={`cell-${index}`}
+            fill={entry.color}
+          />
         ))}
       </Pie>
+
       {!isPrinting && (
         <Tooltip
-          contentStyle={{ 
-            background: 'hsl(222,44%,10%)', 
-            border: '1px solid hsl(222,30%,16%)', 
-            borderRadius: 8, 
-            color: '#fff', 
-            fontSize: 11 
+          contentStyle={{
+            background: 'hsl(222,44%,10%)',
+            border: '1px solid hsl(222,30%,16%)',
+            borderRadius: 8,
+            color: '#fff',
+            fontSize: 11,
           }}
           formatter={(v: any, n: any) => [v, n]}
         />
       )}
-      <Legend 
-        wrapperStyle={{ 
-          fontSize: isPrinting ? 9 : 11,
-          paddingTop: 10
-        }} 
+
+      <Legend
+        wrapperStyle={{
+          fontSize: isPrinting ? 8 : 11,
+          paddingTop: isPrinting ? 4 : 10,
+        }}
         iconSize={isPrinting ? 8 : 10}
       />
     </>
   );
 
   return (
-    <div className={`bg-card border border-border rounded-xl ${isPrinting ? 'p-3' : 'p-6'}`}>
-      {title && <h3 className="text-sm font-semibold text-foreground mb-1">{title}</h3>}
-      {subtitle && <p className="text-xs text-muted-foreground mb-4">{subtitle}</p>}
-      
+    <div
+      className={`bg-card border border-border rounded-xl ${
+        isPrinting ? 'p-3' : 'p-6'
+      }`}
+      style={
+        isPrinting
+          ? {
+              pageBreakInside: 'avoid',
+              breakInside: 'avoid',
+            }
+          : undefined
+      }
+    >
+      {title && (
+        <h3 className="text-sm font-semibold text-foreground mb-1">
+          {title}
+        </h3>
+      )}
+
+      {subtitle && (
+        <p className="text-xs text-muted-foreground mb-4">
+          {subtitle}
+        </p>
+      )}
+
       {!isPrinting ? (
-        <ResponsiveContainer width="100%" height={height}>
+        <ResponsiveContainer
+          width="100%"
+          height={chartHeight}
+        >
           <RechartsPieChart>{pieContent}</RechartsPieChart>
         </ResponsiveContainer>
       ) : (
-        <RechartsPieChart width={320} height={height}>
-          {pieContent}
-        </RechartsPieChart>
+        <div
+          style={{
+            width: 300,
+            height: chartHeight,
+            margin: '0 auto',
+          }}
+        >
+          <RechartsPieChart
+            width={300}
+            height={chartHeight}
+          >
+            {pieContent}
+          </RechartsPieChart>
+        </div>
       )}
     </div>
   );
 };
+
+export default PieChart;
