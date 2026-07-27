@@ -53,7 +53,7 @@ export const PieChart: React.FC<PieChartProps> = ({
     );
   }
 
-  // 🔴 CORREÇÃO 1: outerRadius menor na impressão (78) vs tela (100)
+  // 🔴 CORREÇÃO 1: outerRadius reduzido para evitar corte (80 em tela, 70 em impressão)
   // 🔴 CORREÇÃO 2: Tooltip não aparece na impressão
   // 🔴 CORREÇÃO 3: Legenda com tamanho menor na impressão
   // 🔴 CORREÇÃO 4: Largura do gráfico na impressão reduzida para 320px
@@ -64,7 +64,7 @@ export const PieChart: React.FC<PieChartProps> = ({
         data={filteredData}
         cx="50%"
         cy="50%"
-        outerRadius={isPrinting ? 78 : 100}
+        outerRadius={isPrinting ? 70 : 80}
         dataKey="value"
         labelLine={false}
         label={renderLabel}
@@ -105,7 +105,6 @@ export const PieChart: React.FC<PieChartProps> = ({
           <RechartsPieChart>{pieContent}</RechartsPieChart>
         </ResponsiveContainer>
       ) : (
-        // 🔴 CORREÇÃO: largura reduzida para 320px
         <RechartsPieChart width={320} height={height}>
           {pieContent}
         </RechartsPieChart>
