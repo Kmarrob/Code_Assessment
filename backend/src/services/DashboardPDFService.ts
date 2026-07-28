@@ -880,9 +880,23 @@ GRÁFICOS - LINHAS INDEPENDENTES
 CONTROLE DE QUEBRA
 ======================================================
 */
+/*
+ * IMPORTANTE: esta classe é usada em conjunto com .flex-row, .chart-row,
+ * .card-row e .main-chart-row (ex: class="flex-row pdf-section chart-row").
+ * Ela NAO deve declarar a propriedade display, pois isso teria a mesma
+ * especificidade das classes de layout acima e, por vir depois delas no
+ * CSS, sobrescreveria o display:flex, colapsando a linha para block e
+ * empilhando os gráficos um embaixo do outro. Aqui ela cuida apenas do
+ * controle de quebra de página.
+ */
 .pdf-section {
   page-break-inside: avoid;
   break-inside: avoid;
+}
+
+/* Fallback: garante bloco de largura total apenas quando .pdf-section
+   é usada sozinha (sem nenhuma classe de layout flex ao lado) */
+div.pdf-section:not(.flex-row):not(.chart-row):not(.card-row):not(.main-chart-row) {
   display: block;
   width: 100%;
 }
