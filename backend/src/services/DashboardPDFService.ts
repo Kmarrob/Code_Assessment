@@ -1,9 +1,9 @@
 // backend/src/services/DashboardPDFService.ts
-// 🔵 REFATORADO:
-// - Estrutura modular com métodos independentes
+// 🔵 REFATORADO COMPLETO - VERSÃO FINAL ESTÁVEL
 // - Mantém 100% do código original
-// - Remove parâmetros mortos
-// - Melhor organização e manutenibilidade
+// - Restaura todos os gráficos faltantes
+// - Estrutura em linhas independentes (sem flex-wrap)
+// - Layout idêntico ao dashboard
 
 import { logger } from '../utils/logger.js';
 import { ChartService } from './ChartService.js';
@@ -48,14 +48,6 @@ interface PreparedData {
   userEmail: string;
   completionRate: number;
   formattedDate: string;
-}
-
-interface ChartImages {
-  pieBase64: string;
-  barBase64: string;
-  conceptBarBase64: string;
-  domainBarBase64: string;
-  radarBase64: string;
 }
 
 export class DashboardPDFService {
@@ -247,12 +239,193 @@ export class DashboardPDFService {
       const radarBase64 =
         radarChartImage.toString('base64');
 
+      /*
+       * =====================================================
+       * GERAÇÃO DOS GRÁFICOS PRINCIPAIS POR SEÇÃO (PIZZA GERAL)
+       * =====================================================
+       */
+
+      // Gráfico principal de pizza para Tipos de Controle
+      const typePieGeneralImage = ChartService.generatePieChart(
+        Object.entries(data.byType || {})
+          .map(([name, value]: [string, any]) => ({
+            name: name,
+            value: value.total || 0,
+            color: this.getColorForIndex(Object.keys(data.byType || {}).indexOf(name))
+          }))
+          .filter(item => item.value > 0)
+      );
+
+      // Gráfico principal de pizza para Conceitos Cibernéticos
+      const conceptPieGeneralImage = ChartService.generatePieChart(
+        Object.entries(data.byCyberConcept || {})
+          .map(([name, value]: [string, any]) => ({
+            name: name,
+            value: value.total || 0,
+            color: this.getColorForIndex(Object.keys(data.byCyberConcept || {}).indexOf(name))
+          }))
+          .filter(item => item.value > 0)
+      );
+
+      // Gráfico principal de pizza para Domínios
+      const domainPieGeneralImage = ChartService.generatePieChart(
+        Object.entries(data.byDomain || {})
+          .map(([name, value]: [string, any]) => ({
+            name: name,
+            value: value.total || 0,
+            color: this.getColorForIndex(Object.keys(data.byDomain || {}).indexOf(name))
+          }))
+          .filter(item => item.value > 0)
+      );
+
+      const typePieGeneralBase64 = typePieGeneralImage ? typePieGeneralImage.toString('base64') : '';
+      const conceptPieGeneralBase64 = conceptPieGeneralImage ? conceptPieGeneralImage.toString('base64') : '';
+      const domainPieGeneralBase64 = domainPieGeneralImage ? domainPieGeneralImage.toString('base64') : '';
+
+      /*
+       * =====================================================
+       * GERAÇÃO DOS GRÁFICOS INDIVIDUAIS POR TIPO
+       * =====================================================
+       */
+
+      const typePieImages: Record<string, string> = {};
+
+      Object.entries(
+        data.byType || {}
+      ).forEach(
+        ([typeName, typeData]: [string, any]) => {
+
+          if (typeData && typeData.total > 0) {
+
+            const typePie =
+              ChartService.generatePieChart([
+                {
+                  name: 'Implementado',
+                  value: typeData.implemented || 0,
+                  color: '#10b981'
+                },
+                {
+                  name: 'Parcialmente',
+                  value: typeData.partial || 0,
+                  color: '#f59e0b'
+                },
+                {
+                  name: 'Não Implementado',
+                  value: typeData.notImpl || 0,
+                  color: '#ef4444'
+                }
+              ]);
+
+            if (typePie && typePie.length > 0) {
+              typePieImages[typeName] =
+                typePie.toString('base64');
+            }
+
+          }
+
+        }
+      );
+
+      /*
+       * =====================================================
+       * GERAÇÃO DOS GRÁFICOS INDIVIDUAIS POR CONCEITO
+       * =====================================================
+       */
+
+      const conceptPieImages: Record<string, string> = {};
+
+      Object.entries(
+        data.byCyberConcept || {}
+      ).forEach(
+        ([conceptName, conceptData]: [string, any]) => {
+
+          if (conceptData && conceptData.total > 0) {
+
+            const conceptPie =
+              ChartService.generatePieChart([
+                {
+                  name: 'Implementado',
+                  value: conceptData.implemented || 0,
+                  color: '#10b981'
+                },
+                {
+                  name: 'Parcialmente',
+                  value: conceptData.partial || 0,
+                  color: '#f59e0b'
+                },
+                {
+                  name: 'Não Implementado',
+                  value: conceptData.notImpl || 0,
+                  color: '#ef4444'
+                }
+              ]);
+
+            if (conceptPie && conceptPie.length > 0) {
+              conceptPieImages[conceptName] =
+                conceptPie.toString('base64');
+            }
+
+          }
+
+        }
+      );
+
+      /*
+       * =====================================================
+       * GERAÇÃO DOS GRÁFICOS INDIVIDUAIS POR DOMÍNIO
+       * =====================================================
+       */
+
+      const domainPieImages: Record<string, string> = {};
+
+      Object.entries(
+        data.byDomain || {}
+      ).forEach(
+        ([domainName, domainData]: [string, any]) => {
+
+          if (domainData && domainData.total > 0) {
+
+            const domainPie =
+              ChartService.generatePieChart([
+                {
+                  name: 'Implementado',
+                  value: domainData.implemented || 0,
+                  color: '#10b981'
+                },
+                {
+                  name: 'Parcialmente',
+                  value: domainData.partial || 0,
+                  color: '#f59e0b'
+                },
+                {
+                  name: 'Não Implementado',
+                  value: domainData.notImpl || 0,
+                  color: '#ef4444'
+                }
+              ]);
+
+            if (domainPie && domainPie.length > 0) {
+              domainPieImages[domainName] =
+                domainPie.toString('base64');
+            }
+
+          }
+
+        }
+      );
+
       // Logs para diagnóstico
       logger.info(`📊 PieChart: ${pieBase64.length} bytes`);
       logger.info(`📊 BarChart: ${barBase64.length} bytes`);
       logger.info(`📊 ConceptBar: ${conceptBarBase64.length} bytes`);
       logger.info(`📊 DomainBar: ${domainBarBase64.length} bytes`);
       logger.info(`📊 RadarChart: ${radarBase64.length} bytes`);
+      logger.info(`📊 TypePies: ${Object.keys(typePieImages).length} gráficos`);
+      logger.info(`📊 ConceptPies: ${Object.keys(conceptPieImages).length} gráficos`);
+      logger.info(`📊 DomainPies: ${Object.keys(domainPieImages).length} gráficos`);
+      logger.info(`📊 TypePieGeneral: ${typePieGeneralBase64.length > 0 ? '✅' : '❌'}`);
+      logger.info(`📊 ConceptPieGeneral: ${conceptPieGeneralBase64.length > 0 ? '✅' : '❌'}`);
+      logger.info(`📊 DomainPieGeneral: ${domainPieGeneralBase64.length > 0 ? '✅' : '❌'}`);
 
       /*
        * =====================================================
@@ -276,9 +449,12 @@ export class DashboardPDFService {
           conceptBarBase64,
           domainBarBase64,
           radarBase64,
-          {},
-          {},
-          {},
+          typePieGeneralBase64,
+          conceptPieGeneralBase64,
+          domainPieGeneralBase64,
+          typePieImages,
+          conceptPieImages,
+          domainPieImages,
           preparedData
         );
 
@@ -304,21 +480,23 @@ export class DashboardPDFService {
           puppeteerCore.default ||
           puppeteerCore;
 
+        // @ts-ignore - Ignorar erros de tipo do chromium em produção
+        const chromiumArgs = (chromium as any).args || [];
+        // @ts-ignore - Ignorar erros de tipo do chromium em produção
+        const chromiumPath = await (chromium as any).executablePath();
+
         browserOptions = {
 
           args: [
-            ...(chromium.args || []),
-
+            ...chromiumArgs,
             '--no-sandbox',
             '--disable-setuid-sandbox',
             '--disable-dev-shm-usage',
             '--disable-gpu',
-
             '--single-process'
           ],
 
-          executablePath:
-            await chromium.executablePath(),
+          executablePath: chromiumPath,
 
           headless: true
         };
@@ -485,6 +663,29 @@ export class DashboardPDFService {
 
     }
 
+  }
+
+  // =====================================================
+  // MÉTODOS PRIVADOS - AUXILIARES
+  // =====================================================
+
+  private static getColorForIndex(index: number): string {
+    const colors: string[] = [
+      '#3b82f6', // azul
+      '#10b981', // verde
+      '#f59e0b', // amarelo
+      '#ef4444', // vermelho
+      '#8b5cf6', // roxo
+      '#ec4899', // rosa
+      '#06b6d4', // ciano
+      '#f97316', // laranja
+      '#14b8a6', // teal
+      '#6366f1', // índigo
+      '#d946ef', // magenta
+      '#84cc16'  // lima
+    ];
+    const safeIndex = Math.abs(index) % colors.length;
+    return colors[safeIndex] || '#64748b'; // fallback seguro
   }
 
   // =====================================================
@@ -666,6 +867,9 @@ export class DashboardPDFService {
     conceptBarBase64: string,
     domainBarBase64: string,
     radarBase64: string,
+    typePieGeneralBase64: string,
+    conceptPieGeneralBase64: string,
+    domainPieGeneralBase64: string,
     typePieImages: Record<string, string>,
     conceptPieImages: Record<string, string>,
     domainPieImages: Record<string, string>,
@@ -734,6 +938,92 @@ export class DashboardPDFService {
 </div>
 `).join('');
 
+    // Função para criar linhas de gráficos (3 por linha)
+    const buildChartRows = (chartEntries: [string, string][], baseClass: string = '') => {
+      const rows = [];
+      for (let i = 0; i < chartEntries.length; i += 3) {
+        const rowItems = chartEntries.slice(i, i + 3);
+        const rowHtml = rowItems.map(([name, base64]) => `
+<div class="flex-item chart-container">
+  <div class="chart-title">${name}</div>
+  <div class="chart-wrapper">
+    <img class="chart-img" src="data:image/png;base64,${base64}" />
+  </div>
+</div>
+`).join('');
+        rows.push(`
+<div class="flex-row pdf-section chart-row ${baseClass}">
+  ${rowHtml}
+</div>
+`);
+      }
+      return rows.join('');
+    };
+
+    // Função para criar linhas de cards (5 por linha)
+    const buildCardRows = (items: string[], itemsPerRow: number = 5) => {
+      const rows = [];
+      for (let i = 0; i < items.length; i += itemsPerRow) {
+        const rowItems = items.slice(i, i + itemsPerRow);
+        rows.push(`
+<div class="flex-row card-row">
+  ${rowItems.join('')}
+</div>
+`);
+      }
+      return rows.join('');
+    };
+
+    // Preparar itens de tipos para cards
+    const typeCardItems = typeData.map(type => `
+<div class="card flex-item">
+  <div class="metric">${type.total}</div>
+  <div class="label">${type.name}</div>
+  <div style="margin-top:8px;font-size:8pt;">
+    <span style="color:#10b981">✔ ${type.implemented}</span>
+    &nbsp;
+    <span style="color:#f59e0b">◐ ${type.partial}</span>
+    &nbsp;
+    <span style="color:#ef4444">✖ ${type.notImpl}</span>
+  </div>
+</div>
+`);
+
+    // Preparar itens de conceitos para cards
+    const conceptCardItems = conceptData.map(concept => `
+<div class="card flex-item">
+  <div class="metric">${concept.total}</div>
+  <div class="label">${concept.name}</div>
+  <div style="margin-top:8px;font-size:8pt;">
+    <span style="color:#10b981">✔ ${concept.implemented}</span>
+    &nbsp;
+    <span style="color:#f59e0b">◐ ${concept.partial}</span>
+    &nbsp;
+    <span style="color:#ef4444">✖ ${concept.notImpl}</span>
+  </div>
+</div>
+`);
+
+    // Preparar itens de domínios para cards
+    const domainCardItems = domainData.map(domain => `
+<div class="card flex-item">
+  <div class="metric">${domain.total}</div>
+  <div class="label">${domain.name}</div>
+</div>
+`);
+
+    // Preparar gráficos de pizza por tipo
+    const typePieEntries = Object.entries(typePieImages);
+    const typePiesHtml = typePieEntries.length > 0 ? buildChartRows(typePieEntries) : '';
+
+    // Preparar gráficos de pizza por conceito
+    const conceptPieEntries = Object.entries(conceptPieImages);
+    const conceptPiesHtml = conceptPieEntries.length > 0 ? buildChartRows(conceptPieEntries) : '';
+
+    // Preparar gráficos de pizza por domínio
+    const domainPieEntries = Object.entries(domainPieImages);
+    const domainPiesHtml = domainPieEntries.length > 0 ? buildChartRows(domainPieEntries) : '';
+
     const capabilityHtml =
       capabilityData.map(cap => `
 <tr>
@@ -756,18 +1046,6 @@ export class DashboardPDFService {
     ${cap.aderente}%
   </td>
 </tr>
-`).join('');
-
-    const domainHtml =
-      domainData.map(domain => `
-<div class="card flex-item">
-  <div class="metric">
-    ${domain.total}
-  </div>
-  <div class="label">
-    ${domain.name}
-  </div>
-</div>
 `).join('');
 
     return `
@@ -816,48 +1094,14 @@ body{
 
 /*
 ======================================================
-CONTROLE DE QUEBRA
-======================================================
-*/
-.pdf-section{
- page-break-inside:avoid;
- break-inside:avoid;
- display:block;
- width:100%;
-}
-
-.chart-container{
- width:100%;
- text-align:center;
- page-break-inside:avoid;
- break-inside:avoid;
- overflow:hidden;
-}
-
-.chart-wrapper{
- display:flex;
- justify-content:center;
- align-items:center;
- width:100%;
- height:280px;
- overflow:hidden;
-}
-
-.chart-img{
- width:100%;
- height:100%;
- object-fit:contain;
-}
-
-/*
-======================================================
-LAYOUT
+LAYOUT - SEM FLEX-WRAP
 ======================================================
 */
 .flex-row{
  display:flex;
- align-items:flex-start;
- justify-content:space-between;
+ flex-direction:row;
+ align-items:stretch;
+ justify-content:flex-start;
  gap:12pt;
  width:100%;
 }
@@ -874,9 +1118,19 @@ LAYOUT
 
 /*
 ======================================================
-CARDS
+CARDS - LINHAS INDEPENDENTES
 ======================================================
 */
+.card-row{
+ display:flex;
+ flex-direction:row;
+ align-items:stretch;
+ justify-content:flex-start;
+ gap:12pt;
+ width:100%;
+ margin-bottom:12pt;
+}
+
 .card{
  background:#f8fafc;
  border:1px solid #e2e8f0;
@@ -885,6 +1139,7 @@ CARDS
  text-align:center;
  page-break-inside:avoid;
  break-inside:avoid;
+ flex:1;
 }
 
 .metric{
@@ -895,6 +1150,62 @@ CARDS
 .label{
  font-size:8pt;
  color:#64748b;
+}
+
+/*
+======================================================
+GRÁFICOS - LINHAS INDEPENDENTES
+======================================================
+*/
+.chart-row{
+ display:flex;
+ flex-direction:row;
+ align-items:stretch;
+ justify-content:flex-start;
+ gap:12pt;
+ width:100%;
+ margin-bottom:12pt;
+}
+
+.chart-container{
+ page-break-inside:avoid;
+ break-inside:avoid;
+ flex:1;
+ text-align:center;
+}
+
+.chart-title{
+ font-size:10pt;
+ font-weight:bold;
+ color:#475569;
+ margin-bottom:4pt;
+}
+
+.chart-wrapper{
+ display:flex;
+ justify-content:center;
+ align-items:center;
+ width:100%;
+ height:200px;
+ overflow:hidden;
+}
+
+.chart-img{
+ width:100%;
+ height:100%;
+ object-fit:contain;
+}
+
+/*
+======================================================
+CONTROLE DE QUEBRA
+======================================================
+*/
+.pdf-section{
+ page-break-inside:avoid;
+ break-inside:avoid;
+ display:block;
+ width:100%;
 }
 
 /*
@@ -923,24 +1234,6 @@ th{
 
 /*
 ======================================================
-GRÁFICOS
-======================================================
-*/
-.chart-title{
- font-size:10pt;
- font-weight:bold;
- color:#475569;
- margin-bottom:4pt;
-}
-
-.chart-subtitle{
- font-size:8pt;
- color:#94a3b8;
- margin-bottom:6pt;
-}
-
-/*
-======================================================
 RADAR
 ======================================================
 */
@@ -950,6 +1243,28 @@ RADAR
  height:320px;
  margin:auto;
  overflow:hidden;
+ page-break-inside:avoid;
+ break-inside:avoid;
+}
+
+/*
+======================================================
+SEÇÃO DE GRÁFICOS PRINCIPAIS
+======================================================
+*/
+.main-chart-row{
+ display:flex;
+ flex-direction:row;
+ align-items:stretch;
+ justify-content:flex-start;
+ gap:12pt;
+ width:100%;
+ margin-bottom:12pt;
+}
+
+.main-chart{
+ flex:1;
+ text-align:center;
  page-break-inside:avoid;
  break-inside:avoid;
 }
@@ -967,6 +1282,18 @@ IMPRESSÃO
 *{
  -webkit-print-color-adjust:exact!important;
  print-color-adjust:exact!important;
+}
+
+/*
+======================================================
+RESPONSIVIDADE PARA PDF
+======================================================
+*/
+@media print {
+  .flex-row, .card-row, .chart-row, .main-chart-row {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
 }
 </style>
 </head>
@@ -1053,9 +1380,26 @@ IMPRESSÃO
 ====================================================== -->
 <div class="page">
   <h2>3. Tipos de Controle</h2>
-  <div class="flex-row pdf-section">
-    ${typeHtml}
+  
+  <!-- GRÁFICO PRINCIPAL - PIZZA GERAL -->
+  ${typePieGeneralBase64 ? `
+  <div class="main-chart-row pdf-section">
+    <div class="main-chart">
+      <div class="chart-title">Distribuição Geral por Tipo</div>
+      <div class="chart-wrapper" style="height:250px;">
+        <img class="chart-img" src="data:image/png;base64,${typePieGeneralBase64}" />
+      </div>
+    </div>
   </div>
+  <br/>
+  ` : ''}
+  
+  <!-- CARDS -->
+  ${buildCardRows(typeCardItems)}
+  <br/>
+  
+  <!-- GRÁFICOS INDIVIDUAIS (3 por linha) -->
+  ${typePiesHtml}
 </div>
 
 <!-- =====================================================
@@ -1063,12 +1407,35 @@ IMPRESSÃO
 ====================================================== -->
 <div class="page">
   <h2>4. Conceitos Cibernéticos</h2>
+  
+  <!-- GRÁFICO PRINCIPAL - PIZZA GERAL -->
+  ${conceptPieGeneralBase64 ? `
+  <div class="main-chart-row pdf-section">
+    <div class="main-chart">
+      <div class="chart-title">Distribuição Geral por Conceito</div>
+      <div class="chart-wrapper" style="height:250px;">
+        <img class="chart-img" src="data:image/png;base64,${conceptPieGeneralBase64}" />
+      </div>
+    </div>
+  </div>
+  <br/>
+  ` : ''}
+  
+  <!-- BAR CHART -->
   <div class="chart-container pdf-section">
-    <div class="chart-title">Identificar | Proteger | Detectar | Responder | Restaurar</div>
-    <div class="chart-wrapper">
+    <div class="chart-title">Quantidade por Conceito</div>
+    <div class="chart-wrapper" style="height:220px;">
       <img class="chart-img" src="data:image/png;base64,${conceptBarBase64}" />
     </div>
   </div>
+  <br/>
+  
+  <!-- CARDS -->
+  ${buildCardRows(conceptCardItems)}
+  <br/>
+  
+  <!-- GRÁFICOS INDIVIDUAIS (3 por linha) -->
+  ${conceptPiesHtml}
 </div>
 
 <!-- =====================================================
@@ -1077,6 +1444,7 @@ IMPRESSÃO
 <div class="page">
   <h2>5. Capacidades Operacionais</h2>
   <div class="radar-container pdf-section">
+    <div class="chart-title">Radar de Capacidades</div>
     <img class="chart-img" src="data:image/png;base64,${radarBase64}" />
   </div>
   <br/>
@@ -1102,16 +1470,35 @@ IMPRESSÃO
 ====================================================== -->
 <div class="page">
   <h2>6. Domínios de Segurança da Informação</h2>
+  
+  <!-- GRÁFICO PRINCIPAL - PIZZA GERAL -->
+  ${domainPieGeneralBase64 ? `
+  <div class="main-chart-row pdf-section">
+    <div class="main-chart">
+      <div class="chart-title">Distribuição Geral por Domínio</div>
+      <div class="chart-wrapper" style="height:250px;">
+        <img class="chart-img" src="data:image/png;base64,${domainPieGeneralBase64}" />
+      </div>
+    </div>
+  </div>
+  <br/>
+  ` : ''}
+  
+  <!-- BAR CHART -->
   <div class="chart-container pdf-section">
     <div class="chart-title">Distribuição por Domínio</div>
-    <div class="chart-wrapper">
+    <div class="chart-wrapper" style="height:220px;">
       <img class="chart-img" src="data:image/png;base64,${domainBarBase64}" />
     </div>
   </div>
   <br/>
-  <div class="flex-row">
-    ${domainHtml}
-  </div>
+  
+  <!-- CARDS -->
+  ${buildCardRows(domainCardItems)}
+  <br/>
+  
+  <!-- GRÁFICOS INDIVIDUAIS (3 por linha) -->
+  ${domainPiesHtml}
 </div>
 
 <!-- =====================================================
