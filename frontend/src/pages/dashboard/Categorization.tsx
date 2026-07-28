@@ -1,5 +1,5 @@
 // frontend/src/pages/dashboard/Categorization.tsx
-import React from 'react';
+import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext.js';
 import { DashboardPageWrapper } from '../../components/dashboard/DashboardPageWrapper.js';
@@ -7,7 +7,9 @@ import { DataTable } from '../../components/dashboard/DataTable.js';
 import { PieChart } from '../../components/dashboard/PieChart.js';
 import { BarChart } from '../../components/dashboard/BarChart.js';
 import { DashboardData } from '../../services/dashboard.service.js';
-import { Info } from 'lucide-react';
+import { Info, FileText, Loader2 } from 'lucide-react';
+import { dashboardService } from '../../services/dashboard.service.js';
+import toast from 'react-hot-toast';
 
 // CORREÇÃO: Categorias com suporte a múltiplos nomes (plural e singular)
 const CATEGORIES = [
@@ -24,7 +26,9 @@ const STATUS_COLORS = {
   'Não se aplica': 'hsl(215,20%,55%)',
 };
 
-const CategorizationContent: React.FC<{ data: DashboardData }> = ({ data }) => {
+const CategorizationContent: React.FC<{ data: DashboardData; companyId: string }> = ({ data, companyId }) => {
+  const [isDownloading, setIsDownloading] = useState(false);
+
   console.log('🔍 CategorizationContent - data recebido:', data);
   console.log('🔍 CategorizationContent - controls:', data?.controls);
 
@@ -120,6 +124,44 @@ const CategorizationContent: React.FC<{ data: DashboardData }> = ({ data }) => {
     { name: 'Não Implementados', value: totals.notImpl, color: STATUS_COLORS['Não implementado'] },
   ].filter(d => d.value > 0);
 
+  // ============================================
+  // 🔴 NOVO: FUNÇÃO PARA BAIXAR PDF
+  // ============================================
+
+  const handleDownloadPDF = async () => {
+    if (!companyId) {
+      toast.error('ID da empresa não disponível');
+      return;
+    }
+
+    setIsDownloading(true);
+    try {
+      const blob = await dashboardService.downloadDashboardPDF(companyId);
+      
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      const companyName = data?.company?.name || 'categorizacao';
+      const sanitizedCompanyName = companyName
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-zA-Z0-9_\-]/g, '_')
+        .replace(/_+/g, '_');
+      link.download = `dashboard_${sanitizedCompanyName}_${new Date().toISOString().split('T')[0]}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      toast.success('PDF baixado com sucesso!');
+    } catch (error: any) {
+      console.error('Erro ao baixar PDF:', error);
+      toast.error(error?.message || 'Erro ao baixar PDF');
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   return (
     <>
       <div className="flex items-start justify-between mb-4">
@@ -127,23 +169,45 @@ const CategorizationContent: React.FC<{ data: DashboardData }> = ({ data }) => {
           <h2 className="text-xl font-semibold text-gray-900">Análise por Categoria</h2>
           <p className="text-sm text-gray-500">Distribuição dos controles por categoria da ISO 27002</p>
         </div>
-        <div className="relative group">
-          <button 
-            className="p-2 text-gray-400 hover:text-gray-600 transition-colors rounded-full hover:bg-gray-100"
-            aria-label="Metodologia de cálculo"
-            title="Clique para ver a metodologia"
+        <div className="flex items-center gap-3">
+          {/* 🔴 NOVO: Botão Baixar PDF */}
+          <button
+            onClick={handleDownloadPDF}
+            disabled={isDownloading}
+            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Info className="w-5 h-5" />
+            {isDownloading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span className="text-sm font-medium">Gerando PDF...</span>
+              </>
+            ) : (
+              <>
+                <FileText className="w-4 h-4" />
+                <span className="text-sm font-medium">📄 Baixar PDF</span>
+              </>
+            )}
           </button>
-          <div className="absolute right-0 top-full mt-2 w-80 p-4 bg-white rounded-lg shadow-lg border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
-            <h4 className="text-sm font-semibold text-gray-900 mb-2">📊 Metodologia de Cálculo</h4>
-            <ul className="text-xs text-gray-600 space-y-1">
-              <li>• <strong>Implementado:</strong> Nível de maturidade <strong>2</strong></li>
-              <li>• <strong>Parcial:</strong> Nível de maturidade <strong>1</strong></li>
-              <li>• <strong>Não Implementado:</strong> Nível de maturidade <strong>0</strong></li>
-              <li>• <strong>Não se Aplica:</strong> Nível <strong>N/A</strong></li>
-              <li>• <strong>Categorias:</strong> Organizacionais, Pessoas, Físicos, Tecnológicos</li>
-            </ul>
+
+          {/* Botão Info existente */}
+          <div className="relative group">
+            <button 
+              className="p-2 text-gray-400 hover:text-gray-600 transition-colors rounded-full hover:bg-gray-100"
+              aria-label="Metodologia de cálculo"
+              title="Clique para ver a metodologia"
+            >
+              <Info className="w-5 h-5" />
+            </button>
+            <div className="absolute right-0 top-full mt-2 w-80 p-4 bg-white rounded-lg shadow-lg border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+              <h4 className="text-sm font-semibold text-gray-900 mb-2">📊 Metodologia de Cálculo</h4>
+              <ul className="text-xs text-gray-600 space-y-1">
+                <li>• <strong>Implementado:</strong> Nível de maturidade <strong>2</strong></li>
+                <li>• <strong>Parcial:</strong> Nível de maturidade <strong>1</strong></li>
+                <li>• <strong>Não Implementado:</strong> Nível de maturidade <strong>0</strong></li>
+                <li>• <strong>Não se Aplica:</strong> Nível <strong>N/A</strong></li>
+                <li>• <strong>Categorias:</strong> Organizacionais, Pessoas, Físicos, Tecnológicos</li>
+              </ul>
+            </div>
           </div>
         </div>
       </div>
@@ -223,7 +287,7 @@ export const Categorization: React.FC = () => {
       subtitle="Análise por tipo de controle da norma ISO/IEC 27002:2022"
       companyId={companyId}
     >
-      {(data) => <CategorizationContent data={data} />}
+      {(data) => <CategorizationContent data={data} companyId={companyId} />}
     </DashboardPageWrapper>
   );
 };

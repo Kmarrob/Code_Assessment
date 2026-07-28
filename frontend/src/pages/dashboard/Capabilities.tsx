@@ -6,11 +6,15 @@ import { DashboardPageWrapper } from '../../components/dashboard/DashboardPageWr
 import { DataTable } from '../../components/dashboard/DataTable.js';
 import { RadarChart } from '../../components/dashboard/RadarChart.js';
 import { DashboardData } from '../../services/dashboard.service.js';
+// 🔴 ADIÇÃO: Adicionados FileText e Loader2
 import { 
   AlertTriangle, CheckCircle, Info, X, Lightbulb, Target, Clock, 
-  ClipboardList, ChevronRight, BookOpen, Printer
+  ClipboardList, ChevronRight, BookOpen, Printer, FileText, Loader2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+// 🔴 ADIÇÃO: Import do dashboardService e toast
+import { dashboardService } from '../../services/dashboard.service.js';
+import toast from 'react-hot-toast';
 
 // ============================================
 // CAPABILITIES GUIDE - DADOS DA CARTILHA
@@ -524,10 +528,13 @@ const RADAR_COLORS = {
 // COMPONENTE PRINCIPAL
 // ============================================
 
-const CapabilitiesContent: React.FC<{ data: DashboardData }> = ({ data }) => {
+// 🔴 MODIFICAÇÃO: Adicionado companyId como parâmetro
+const CapabilitiesContent: React.FC<{ data: DashboardData; companyId: string }> = ({ data, companyId }) => {
   const [selectedCapability, setSelectedCapability] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isGuideOpen, setIsGuideOpen] = useState(false);
+  // 🔴 ADIÇÃO: Estado para controle do download
+  const [isDownloading, setIsDownloading] = useState(false);
   
   const [listModal, setListModal] = useState<{
     isOpen: boolean;
@@ -544,6 +551,41 @@ const CapabilitiesContent: React.FC<{ data: DashboardData }> = ({ data }) => {
   });
 
   const controls = data?.controls || [];
+
+  // 🔴 ADIÇÃO: Função para baixar PDF
+  const handleDownloadPDF = async () => {
+    if (!companyId) {
+      toast.error('ID da empresa não disponível');
+      return;
+    }
+
+    setIsDownloading(true);
+    try {
+      const blob = await dashboardService.downloadDashboardPDF(companyId);
+      
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      const companyName = data?.company?.name || 'capacidades';
+      const sanitizedCompanyName = companyName
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-zA-Z0-9_\-]/g, '_')
+        .replace(/_+/g, '_');
+      link.download = `dashboard_${sanitizedCompanyName}_${new Date().toISOString().split('T')[0]}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      toast.success('PDF baixado com sucesso!');
+    } catch (error: any) {
+      console.error('Erro ao baixar PDF:', error);
+      toast.error(error?.message || 'Erro ao baixar PDF');
+    } finally {
+      setIsDownloading(false);
+    }
+  };
 
   // CORREÇÃO: Usar MAIN_CAPABILITIES em vez de CAPABILITIES
   const capData = MAIN_CAPABILITIES.map(cap => {
@@ -700,6 +742,25 @@ const CapabilitiesContent: React.FC<{ data: DashboardData }> = ({ data }) => {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          {/* 🔴 ADIÇÃO: Botão Baixar PDF */}
+          <button
+            onClick={handleDownloadPDF}
+            disabled={isDownloading}
+            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isDownloading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span className="text-sm font-medium">Gerando PDF...</span>
+              </>
+            ) : (
+              <>
+                <FileText className="w-4 h-4" />
+                <span className="text-sm font-medium">📄 Baixar PDF</span>
+              </>
+            )}
+          </button>
+
           <button
             onClick={() => setIsGuideOpen(true)}
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm hover:shadow-md"
@@ -1132,7 +1193,8 @@ export const Capabilities: React.FC = () => {
       subtitle="Análise das 15 capacidades ISO/IEC 27002:2022 com percentual de aderência"
       companyId={companyId}
     >
-      {(data) => <CapabilitiesContent data={data} />}
+      {/* 🔴 MODIFICAÇÃO: Passando companyId para o componente */}
+      {(data) => <CapabilitiesContent data={data} companyId={companyId} />}
     </DashboardPageWrapper>
   );
 };
