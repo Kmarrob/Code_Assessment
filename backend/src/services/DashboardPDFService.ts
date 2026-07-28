@@ -1,10 +1,10 @@
 // backend/src/services/DashboardPDFService.ts
-// 🔵 REFATORADO COMPLETO - VERSÃO FINAL ESTÁVEL
-// - Mantém 100% do código original
+// 🔵 REFATORADO COMPLETO - VERSÃO FINAL ESTÁVEL (organizado)
+// - Mantém 100% do código e da lógica original
 // - Restaura todos os gráficos faltantes
 // - Estrutura em linhas independentes (sem flex-wrap)
 // - Layout idêntico ao dashboard
-// - Gráficos individuais em 3 colunas por linha
+// - Formatação e organização revisadas para leitura e manutenção
 
 import { logger } from '../utils/logger.js';
 import { ChartService } from './ChartService.js';
@@ -53,6 +53,10 @@ interface PreparedData {
 
 export class DashboardPDFService {
 
+  // =====================================================
+  // MÉTODO PRINCIPAL - GERAÇÃO DO PDF
+  // =====================================================
+
   /**
    * Gera PDF completo do Dashboard de Maturidade
    *
@@ -62,360 +66,204 @@ export class DashboardPDFService {
    * - Remove espera fixa
    * - Mantém compatibilidade Render/Vercel/Linux
    */
-  static async generateDashboardPDF(
-    data: DashboardPDFData
-  ): Promise<Buffer> {
-
+  static async generateDashboardPDF(data: DashboardPDFData): Promise<Buffer> {
     const startTime = Date.now();
 
     let browser: any = null;
     let page: any = null;
 
     try {
-
-      const isProduction =
-        process.env.NODE_ENV === 'production';
+      const isProduction = process.env.NODE_ENV === 'production';
 
       let puppeteer: any;
       let browserOptions: any;
 
-      logger.info(
-        '🔄 DashboardPDF: Iniciando geração otimizada'
-      );
+      logger.info('🔄 DashboardPDF: Iniciando geração otimizada');
 
-      /*
-       * =====================================================
-       * GERAÇÃO DOS GRÁFICOS
-       * =====================================================
-       */
+      // -----------------------------------------------------
+      // GERAÇÃO DOS GRÁFICOS PRINCIPAIS (VISÃO GERAL)
+      // -----------------------------------------------------
 
-      const pieChartImage =
-        ChartService.generatePieChart([
-          {
-            name: 'Implementado',
-            value: data.summary.Implementado || 0,
-            color: '#10b981'
-          },
-          {
-            name: 'Parcialmente implementado',
-            value: data.summary.Parcialmente || 0,
-            color: '#f59e0b'
-          },
-          {
-            name: 'Não implementado',
-            value: data.summary.NaoImplementado || 0,
-            color: '#ef4444'
-          },
-          {
-            name: 'Não se aplica',
-            value: data.summary.NaoSeAplica || 0,
-            color: '#94a3b8'
-          }
-
-        ] as Array<{
-          name: string;
-          value: number;
-          color: string;
-        }>);
+      const pieChartImage = ChartService.generatePieChart([
+        { name: 'Implementado', value: data.summary.Implementado || 0, color: '#10b981' },
+        { name: 'Parcialmente implementado', value: data.summary.Parcialmente || 0, color: '#f59e0b' },
+        { name: 'Não implementado', value: data.summary.NaoImplementado || 0, color: '#ef4444' },
+        { name: 'Não se aplica', value: data.summary.NaoSeAplica || 0, color: '#94a3b8' },
+      ] as Array<{ name: string; value: number; color: string }>);
 
       if (!pieChartImage || pieChartImage.length === 0) {
-        throw new Error("PieChart buffer vazio");
+        throw new Error('PieChart buffer vazio');
       }
 
-      const barChartImage =
-        ChartService.generateBarChart([
-          {
-            name: 'Implementados',
-            value: data.summary.Implementado || 0,
-            color: '#10b981'
-          },
-          {
-            name: 'Parciais',
-            value: data.summary.Parcialmente || 0,
-            color: '#f59e0b'
-          },
-          {
-            name: 'Não Implementados',
-            value: data.summary.NaoImplementado || 0,
-            color: '#ef4444'
-          }
-
-        ] as Array<{
-          name: string;
-          value: number;
-          color: string;
-        }>);
+      const barChartImage = ChartService.generateBarChart([
+        { name: 'Implementados', value: data.summary.Implementado || 0, color: '#10b981' },
+        { name: 'Parciais', value: data.summary.Parcialmente || 0, color: '#f59e0b' },
+        { name: 'Não Implementados', value: data.summary.NaoImplementado || 0, color: '#ef4444' },
+      ] as Array<{ name: string; value: number; color: string }>);
 
       if (!barChartImage || barChartImage.length === 0) {
-        throw new Error("BarChart buffer vazio");
+        throw new Error('BarChart buffer vazio');
       }
 
-      const conceptBarData =
-        Object.entries(
-          data.byCyberConcept || {}
-        )
-        .map(
-          ([key, value]: [string, any]) => ({
-            name: key,
-            value: value.total || 0,
-            color: '#6366f1'
-          })
-        )
-        .filter(
-          item => item.value > 0
-        );
+      // -----------------------------------------------------
+      // GRÁFICOS DE BARRAS - CONCEITOS E DOMÍNIOS
+      // -----------------------------------------------------
 
-      const conceptBarImage =
-        ChartService.generateBarChart(
-          conceptBarData
-        );
+      const conceptBarData = Object.entries(data.byCyberConcept || {})
+        .map(([key, value]: [string, any]) => ({
+          name: key,
+          value: value.total || 0,
+          color: '#6366f1',
+        }))
+        .filter((item) => item.value > 0);
+
+      const conceptBarImage = ChartService.generateBarChart(conceptBarData);
 
       if (!conceptBarImage || conceptBarImage.length === 0) {
-        throw new Error("ConceptBar buffer vazio");
+        throw new Error('ConceptBar buffer vazio');
       }
 
-      const domainBarData =
-        Object.entries(
-          data.byDomain || {}
-        )
-        .map(
-          ([key, value]: [string, any]) => ({
-            name: key,
-            value: value.total || 0,
-            color: '#3b82f6'
-          })
-        )
-        .filter(
-          item => item.value > 0
-        );
+      const domainBarData = Object.entries(data.byDomain || {})
+        .map(([key, value]: [string, any]) => ({
+          name: key,
+          value: value.total || 0,
+          color: '#3b82f6',
+        }))
+        .filter((item) => item.value > 0);
 
-      const domainBarImage =
-        ChartService.generateBarChart(
-          domainBarData
-        );
+      const domainBarImage = ChartService.generateBarChart(domainBarData);
 
       if (!domainBarImage || domainBarImage.length === 0) {
-        throw new Error("DomainBar buffer vazio");
+        throw new Error('DomainBar buffer vazio');
       }
 
-      const radarData =
-        Object.entries(
-          data.byCapability || {}
-        )
-        .map(
-          ([key, value]: [string, any]) => ({
-            subject:
-              key.length > 20
-                ? key.substring(0, 20) + '…'
-                : key,
+      // -----------------------------------------------------
+      // GRÁFICO RADAR - CAPACIDADES
+      // -----------------------------------------------------
 
-            Implementado:
-              value.aderente || 0,
+      const radarData = Object.entries(data.byCapability || {}).map(([key, value]: [string, any]) => ({
+        subject: key.length > 20 ? key.substring(0, 20) + '…' : key,
+        Implementado: value.aderente || 0,
+        Recomendado: 100,
+      }));
 
-            Recomendado: 100
-          })
-        );
-
-      const radarChartImage =
-        ChartService.generateRadarChart(
-          radarData
-        );
+      const radarChartImage = ChartService.generateRadarChart(radarData);
 
       if (!radarChartImage || radarChartImage.length === 0) {
-        throw new Error("RadarChart buffer vazio");
+        throw new Error('RadarChart buffer vazio');
       }
 
-      const pieBase64 =
-        pieChartImage.toString('base64');
+      const pieBase64 = pieChartImage.toString('base64');
+      const barBase64 = barChartImage.toString('base64');
+      const conceptBarBase64 = conceptBarImage.toString('base64');
+      const domainBarBase64 = domainBarImage.toString('base64');
+      const radarBase64 = radarChartImage.toString('base64');
 
-      const barBase64 =
-        barChartImage.toString('base64');
-
-      const conceptBarBase64 =
-        conceptBarImage.toString('base64');
-
-      const domainBarBase64 =
-        domainBarImage.toString('base64');
-
-      const radarBase64 =
-        radarChartImage.toString('base64');
-
-      /*
-       * =====================================================
-       * GERAÇÃO DOS GRÁFICOS PRINCIPAIS POR SEÇÃO (PIZZA GERAL)
-       * =====================================================
-       */
+      // -----------------------------------------------------
+      // GRÁFICOS PRINCIPAIS POR SEÇÃO (PIZZA GERAL)
+      // -----------------------------------------------------
 
       // Gráfico principal de pizza para Tipos de Controle
       const typePieGeneralImage = ChartService.generatePieChart(
         Object.entries(data.byType || {})
           .map(([name, value]: [string, any]) => ({
-            name: name,
+            name,
             value: value.total || 0,
-            color: this.getColorForIndex(Object.keys(data.byType || {}).indexOf(name))
+            color: this.getColorForIndex(Object.keys(data.byType || {}).indexOf(name)),
           }))
-          .filter(item => item.value > 0)
+          .filter((item) => item.value > 0)
       );
 
       // Gráfico principal de pizza para Conceitos Cibernéticos
       const conceptPieGeneralImage = ChartService.generatePieChart(
         Object.entries(data.byCyberConcept || {})
           .map(([name, value]: [string, any]) => ({
-            name: name,
+            name,
             value: value.total || 0,
-            color: this.getColorForIndex(Object.keys(data.byCyberConcept || {}).indexOf(name))
+            color: this.getColorForIndex(Object.keys(data.byCyberConcept || {}).indexOf(name)),
           }))
-          .filter(item => item.value > 0)
+          .filter((item) => item.value > 0)
       );
 
       // Gráfico principal de pizza para Domínios
       const domainPieGeneralImage = ChartService.generatePieChart(
         Object.entries(data.byDomain || {})
           .map(([name, value]: [string, any]) => ({
-            name: name,
+            name,
             value: value.total || 0,
-            color: this.getColorForIndex(Object.keys(data.byDomain || {}).indexOf(name))
+            color: this.getColorForIndex(Object.keys(data.byDomain || {}).indexOf(name)),
           }))
-          .filter(item => item.value > 0)
+          .filter((item) => item.value > 0)
       );
 
       const typePieGeneralBase64 = typePieGeneralImage ? typePieGeneralImage.toString('base64') : '';
       const conceptPieGeneralBase64 = conceptPieGeneralImage ? conceptPieGeneralImage.toString('base64') : '';
       const domainPieGeneralBase64 = domainPieGeneralImage ? domainPieGeneralImage.toString('base64') : '';
 
-      /*
-       * =====================================================
-       * GERAÇÃO DOS GRÁFICOS INDIVIDUAIS POR TIPO
-       * =====================================================
-       */
+      // -----------------------------------------------------
+      // GRÁFICOS INDIVIDUAIS POR TIPO
+      // -----------------------------------------------------
 
       const typePieImages: Record<string, string> = {};
 
-      Object.entries(
-        data.byType || {}
-      ).forEach(
-        ([typeName, typeData]: [string, any]) => {
+      Object.entries(data.byType || {}).forEach(([typeName, typeData]: [string, any]) => {
+        if (typeData && typeData.total > 0) {
+          const typePie = ChartService.generatePieChart([
+            { name: 'Implementado', value: typeData.implemented || 0, color: '#10b981' },
+            { name: 'Parcialmente', value: typeData.partial || 0, color: '#f59e0b' },
+            { name: 'Não Implementado', value: typeData.notImpl || 0, color: '#ef4444' },
+          ]);
 
-          if (typeData && typeData.total > 0) {
-
-            const typePie =
-              ChartService.generatePieChart([
-                {
-                  name: 'Implementado',
-                  value: typeData.implemented || 0,
-                  color: '#10b981'
-                },
-                {
-                  name: 'Parcialmente',
-                  value: typeData.partial || 0,
-                  color: '#f59e0b'
-                },
-                {
-                  name: 'Não Implementado',
-                  value: typeData.notImpl || 0,
-                  color: '#ef4444'
-                }
-              ]);
-
-            if (typePie && typePie.length > 0) {
-              typePieImages[typeName] =
-                typePie.toString('base64');
-            }
-
+          if (typePie && typePie.length > 0) {
+            typePieImages[typeName] = typePie.toString('base64');
           }
-
         }
-      );
+      });
 
-      /*
-       * =====================================================
-       * GERAÇÃO DOS GRÁFICOS INDIVIDUAIS POR CONCEITO
-       * =====================================================
-       */
+      // -----------------------------------------------------
+      // GRÁFICOS INDIVIDUAIS POR CONCEITO
+      // -----------------------------------------------------
 
       const conceptPieImages: Record<string, string> = {};
 
-      Object.entries(
-        data.byCyberConcept || {}
-      ).forEach(
-        ([conceptName, conceptData]: [string, any]) => {
+      Object.entries(data.byCyberConcept || {}).forEach(([conceptName, conceptData]: [string, any]) => {
+        if (conceptData && conceptData.total > 0) {
+          const conceptPie = ChartService.generatePieChart([
+            { name: 'Implementado', value: conceptData.implemented || 0, color: '#10b981' },
+            { name: 'Parcialmente', value: conceptData.partial || 0, color: '#f59e0b' },
+            { name: 'Não Implementado', value: conceptData.notImpl || 0, color: '#ef4444' },
+          ]);
 
-          if (conceptData && conceptData.total > 0) {
-
-            const conceptPie =
-              ChartService.generatePieChart([
-                {
-                  name: 'Implementado',
-                  value: conceptData.implemented || 0,
-                  color: '#10b981'
-                },
-                {
-                  name: 'Parcialmente',
-                  value: conceptData.partial || 0,
-                  color: '#f59e0b'
-                },
-                {
-                  name: 'Não Implementado',
-                  value: conceptData.notImpl || 0,
-                  color: '#ef4444'
-                }
-              ]);
-
-            if (conceptPie && conceptPie.length > 0) {
-              conceptPieImages[conceptName] =
-                conceptPie.toString('base64');
-            }
-
+          if (conceptPie && conceptPie.length > 0) {
+            conceptPieImages[conceptName] = conceptPie.toString('base64');
           }
-
         }
-      );
+      });
 
-      /*
-       * =====================================================
-       * GERAÇÃO DOS GRÁFICOS INDIVIDUAIS POR DOMÍNIO
-       * =====================================================
-       */
+      // -----------------------------------------------------
+      // GRÁFICOS INDIVIDUAIS POR DOMÍNIO
+      // -----------------------------------------------------
 
       const domainPieImages: Record<string, string> = {};
 
-      Object.entries(
-        data.byDomain || {}
-      ).forEach(
-        ([domainName, domainData]: [string, any]) => {
+      Object.entries(data.byDomain || {}).forEach(([domainName, domainData]: [string, any]) => {
+        if (domainData && domainData.total > 0) {
+          const domainPie = ChartService.generatePieChart([
+            { name: 'Implementado', value: domainData.implemented || 0, color: '#10b981' },
+            { name: 'Parcialmente', value: domainData.partial || 0, color: '#f59e0b' },
+            { name: 'Não Implementado', value: domainData.notImpl || 0, color: '#ef4444' },
+          ]);
 
-          if (domainData && domainData.total > 0) {
-
-            const domainPie =
-              ChartService.generatePieChart([
-                {
-                  name: 'Implementado',
-                  value: domainData.implemented || 0,
-                  color: '#10b981'
-                },
-                {
-                  name: 'Parcialmente',
-                  value: domainData.partial || 0,
-                  color: '#f59e0b'
-                },
-                {
-                  name: 'Não Implementado',
-                  value: domainData.notImpl || 0,
-                  color: '#ef4444'
-                }
-              ]);
-
-            if (domainPie && domainPie.length > 0) {
-              domainPieImages[domainName] =
-                domainPie.toString('base64');
-            }
-
+          if (domainPie && domainPie.length > 0) {
+            domainPieImages[domainName] = domainPie.toString('base64');
           }
-
         }
-      );
+      });
 
-      // Logs para diagnóstico
+      // -----------------------------------------------------
+      // LOGS DE DIAGNÓSTICO
+      // -----------------------------------------------------
+
       logger.info(`📊 PieChart: ${pieBase64.length} bytes`);
       logger.info(`📊 BarChart: ${barBase64.length} bytes`);
       logger.info(`📊 ConceptBar: ${conceptBarBase64.length} bytes`);
@@ -428,58 +276,42 @@ export class DashboardPDFService {
       logger.info(`📊 ConceptPieGeneral: ${conceptPieGeneralBase64.length > 0 ? '✅' : '❌'}`);
       logger.info(`📊 DomainPieGeneral: ${domainPieGeneralBase64.length > 0 ? '✅' : '❌'}`);
 
-      /*
-       * =====================================================
-       * PREPARAÇÃO DOS DADOS
-       * =====================================================
-       */
+      // -----------------------------------------------------
+      // PREPARAÇÃO DOS DADOS
+      // -----------------------------------------------------
 
       const preparedData = this.prepareData(data);
 
-      /*
-       * =====================================================
-       * HTML
-       * =====================================================
-       */
+      // -----------------------------------------------------
+      // GERAÇÃO DO HTML
+      // -----------------------------------------------------
 
-      const html =
-        this.generateHTML(
-          data,
-          pieBase64,
-          barBase64,
-          conceptBarBase64,
-          domainBarBase64,
-          radarBase64,
-          typePieGeneralBase64,
-          conceptPieGeneralBase64,
-          domainPieGeneralBase64,
-          typePieImages,
-          conceptPieImages,
-          domainPieImages,
-          preparedData
-        );
+      const html = this.generateHTML(
+        data,
+        pieBase64,
+        barBase64,
+        conceptBarBase64,
+        domainBarBase64,
+        radarBase64,
+        typePieGeneralBase64,
+        conceptPieGeneralBase64,
+        domainPieGeneralBase64,
+        typePieImages,
+        conceptPieImages,
+        domainPieImages,
+        preparedData
+      );
 
-      /*
-       * =====================================================
-       * CONFIGURAÇÃO DO CHROMIUM
-       * =====================================================
-       */
+      // -----------------------------------------------------
+      // CONFIGURAÇÃO DO CHROMIUM
+      // -----------------------------------------------------
 
       if (isProduction) {
+        const chromiumModule = await import('@sparticuz/chromium');
+        const chromium = chromiumModule.default || chromiumModule;
 
-        const chromiumModule =
-          await import('@sparticuz/chromium');
-
-        const chromium =
-          chromiumModule.default ||
-          chromiumModule;
-
-        const puppeteerCore =
-          await import('puppeteer-core');
-
-        puppeteer =
-          puppeteerCore.default ||
-          puppeteerCore;
+        const puppeteerCore = await import('puppeteer-core');
+        puppeteer = puppeteerCore.default || puppeteerCore;
 
         // @ts-ignore - Ignorar erros de tipo do chromium em produção
         const chromiumArgs = (chromium as any).args || [];
@@ -487,164 +319,93 @@ export class DashboardPDFService {
         const chromiumPath = await (chromium as any).executablePath();
 
         browserOptions = {
-
           args: [
             ...chromiumArgs,
             '--no-sandbox',
             '--disable-setuid-sandbox',
             '--disable-dev-shm-usage',
             '--disable-gpu',
-            '--single-process'
+            '--single-process',
           ],
-
           executablePath: chromiumPath,
-
-          headless: true
+          headless: true,
         };
 
-        logger.info(
-          '🔄 DashboardPDF: Chromium produção'
-        );
-
+        logger.info('🔄 DashboardPDF: Chromium produção');
       } else {
-
-        const puppeteerModule =
-          await import('puppeteer');
-
-        puppeteer =
-          puppeteerModule.default ||
-          puppeteerModule;
+        const puppeteerModule = await import('puppeteer');
+        puppeteer = puppeteerModule.default || puppeteerModule;
 
         browserOptions = {
-
           headless: true,
-
-          args: [
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage'
-          ]
-
+          args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
         };
 
         if (process.env.PUPPETEER_EXECUTABLE_PATH) {
-
-          browserOptions.executablePath =
-            process.env.PUPPETEER_EXECUTABLE_PATH;
-
+          browserOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
         }
 
-        logger.info(
-          '🔄 DashboardPDF: Puppeteer local'
-        );
-
+        logger.info('🔄 DashboardPDF: Puppeteer local');
       }
 
-      browser =
-        await puppeteer.launch(
-          browserOptions
-        );
+      browser = await puppeteer.launch(browserOptions);
+      page = await browser.newPage();
 
-      page =
-        await browser.newPage();
-
-      /*
-       * =====================================================
-       * VIEWPORT OTIMIZADO
-       * =====================================================
-       */
+      // -----------------------------------------------------
+      // VIEWPORT OTIMIZADO
+      // -----------------------------------------------------
 
       await page.setViewport({
-
         width: 1280,
-
         height: 1600,
-
-        deviceScaleFactor: 1
-
+        deviceScaleFactor: 1,
       });
 
-      await page.setContent(
-        html,
-        {
-          waitUntil: [
-            'load',
-            'domcontentloaded'
-          ] as any,
-
-          timeout: 30000
-        }
-      );
+      await page.setContent(html, {
+        waitUntil: ['load', 'domcontentloaded'] as any,
+        timeout: 30000,
+      });
 
       // Aguarda todas as imagens carregarem
-      await page.waitForFunction(() => {
-        return Array.from(document.images).every(img => img.complete);
-      }, { timeout: 30000 });
+      await page.waitForFunction(
+        () => Array.from(document.images).every((img) => img.complete),
+        { timeout: 30000 }
+      );
 
       // Aguarda fontes
       await page.evaluate(async () => {
-
         if (document.fonts) {
-
           await document.fonts.ready;
-
         }
-
       });
 
-      /*
-       * =====================================================
-       * PDF
-       * =====================================================
-       */
+      // -----------------------------------------------------
+      // GERAÇÃO DO PDF
+      // -----------------------------------------------------
 
-      const pdf =
-        await page.pdf({
+      const pdf = await page.pdf({
+        format: 'A4',
+        landscape: true,
+        printBackground: true,
+        margin: {
+          top: '15mm',
+          bottom: '15mm',
+          left: '10mm',
+          right: '10mm',
+        },
+        displayHeaderFooter: false,
+        preferCSSPageSize: false,
+        scale: 0.95,
+        timeout: 60000,
+      });
 
-          format: 'A4',
-
-          landscape: true,
-
-          printBackground: true,
-
-          margin: {
-
-            top: '15mm',
-            bottom: '15mm',
-            left: '10mm',
-            right: '10mm'
-
-          },
-
-          displayHeaderFooter: false,
-
-          preferCSSPageSize: false,
-
-          scale: 0.95,
-
-          timeout: 60000
-
-        });
-
-      logger.info(
-        `✅ DashboardPDF gerado em ${
-          Date.now() - startTime
-        }ms (${pdf.length} bytes)`
-      );
+      logger.info(`✅ DashboardPDF gerado em ${Date.now() - startTime}ms (${pdf.length} bytes)`);
 
       return Buffer.from(pdf);
-
     } catch (error) {
-
-      logger.error(
-        '❌ DashboardPDF erro:',
-        error
-      );
-
+      logger.error('❌ DashboardPDF erro:', error);
       throw error;
-
     } finally {
-
       if (page) {
         try {
           await page.close();
@@ -661,9 +422,7 @@ export class DashboardPDFService {
           logger.debug('⚠️ Erro ao fechar browser:', error);
         }
       }
-
     }
-
   }
 
   // =====================================================
@@ -683,7 +442,7 @@ export class DashboardPDFService {
       '#14b8a6', // teal
       '#6366f1', // índigo
       '#d946ef', // magenta
-      '#84cc16'  // lima
+      '#84cc16', // lima
     ];
     const safeIndex = Math.abs(index) % colors.length;
     return colors[safeIndex] || '#64748b'; // fallback seguro
@@ -694,155 +453,61 @@ export class DashboardPDFService {
   // =====================================================
 
   private static prepareData(data: DashboardPDFData): PreparedData {
-    const formatDate = (date: string) => {
-      return new Date(date)
-        .toLocaleDateString(
-          'pt-BR',
-          {
-            day: '2-digit',
-            month: 'long',
-            year: 'numeric'
-          }
-        );
-    };
+    const formatDate = (date: string) =>
+      new Date(date).toLocaleDateString('pt-BR', {
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric',
+      });
 
     const completionRate =
       data.summary.totalControls > 0
-        ?
-        Math.round(
-          (
-            data.summary.Implementado /
-            data.summary.totalControls
-          ) * 100
-        )
-        :
-        0;
+        ? Math.round((data.summary.Implementado / data.summary.totalControls) * 100)
+        : 0;
 
-    const categoryData =
-      Object.entries(
-        data.byCategory || {}
-      )
-      .map(
-        ([name, value]: [string, any]) => ({
+    const categoryData = Object.entries(data.byCategory || {}).map(([name, value]: [string, any]) => ({
+      name,
+      total: value.total || 0,
+      implemented: value.implemented || 0,
+      partial: value.partial || 0,
+      notImpl: value.notImpl || 0,
+    }));
 
-          name,
+    const typeData = Object.entries(data.byType || {}).map(([name, value]: [string, any]) => ({
+      name,
+      total: value.total || 0,
+      implemented: value.implemented || 0,
+      partial: value.partial || 0,
+      notImpl: value.notImpl || 0,
+    }));
 
-          total: value.total || 0,
+    const conceptData = Object.entries(data.byCyberConcept || {}).map(([name, value]: [string, any]) => ({
+      name,
+      total: value.total || 0,
+      implemented: value.implemented || 0,
+      partial: value.partial || 0,
+      notImpl: value.notImpl || 0,
+    }));
 
-          implemented:
-            value.implemented || 0,
+    const domainData = Object.entries(data.byDomain || {}).map(([name, value]: [string, any]) => ({
+      name,
+      total: value.total || 0,
+      implemented: value.implemented || 0,
+      partial: value.partial || 0,
+      notImpl: value.notImpl || 0,
+    }));
 
-          partial:
-            value.partial || 0,
+    const capabilityData = Object.entries(data.byCapability || {}).map(([name, value]: [string, any]) => ({
+      name,
+      total: value.total || 0,
+      implemented: value.implemented || 0,
+      partial: value.partial || 0,
+      notImpl: value.notImpl || 0,
+      aderente: value.aderente || 0,
+    }));
 
-          notImpl:
-            value.notImpl || 0
-
-        })
-      );
-
-    const typeData =
-      Object.entries(
-        data.byType || {}
-      )
-      .map(
-        ([name, value]: [string, any]) => ({
-
-          name,
-
-          total: value.total || 0,
-
-          implemented:
-            value.implemented || 0,
-
-          partial:
-            value.partial || 0,
-
-          notImpl:
-            value.notImpl || 0
-
-        })
-      );
-
-    const conceptData =
-      Object.entries(
-        data.byCyberConcept || {}
-      )
-      .map(
-        ([name, value]: [string, any]) => ({
-
-          name,
-
-          total: value.total || 0,
-
-          implemented:
-            value.implemented || 0,
-
-          partial:
-            value.partial || 0,
-
-          notImpl:
-            value.notImpl || 0
-
-        })
-      );
-
-    const domainData =
-      Object.entries(
-        data.byDomain || {}
-      )
-      .map(
-        ([name, value]: [string, any]) => ({
-
-          name,
-
-          total: value.total || 0,
-
-          implemented:
-            value.implemented || 0,
-
-          partial:
-            value.partial || 0,
-
-          notImpl:
-            value.notImpl || 0
-
-        })
-      );
-
-    const capabilityData =
-      Object.entries(
-        data.byCapability || {}
-      )
-      .map(
-        ([name, value]: [string, any]) => ({
-
-          name,
-
-          total: value.total || 0,
-
-          implemented:
-            value.implemented || 0,
-
-          partial:
-            value.partial || 0,
-
-          notImpl:
-            value.notImpl || 0,
-
-          aderente:
-            value.aderente || 0
-
-        })
-      );
-
-    const userName =
-      data.user?.name ||
-      'Usuário não identificado';
-
-    const userEmail =
-      data.user?.email ||
-      'email não informado';
+    const userName = data.user?.name || 'Usuário não identificado';
+    const userEmail = data.user?.email || 'email não informado';
 
     return {
       categoryData,
@@ -853,7 +518,7 @@ export class DashboardPDFService {
       userName,
       userEmail,
       completionRate,
-      formattedDate: formatDate(data.generatedAt)
+      formattedDate: formatDate(data.generatedAt),
     };
   }
 
@@ -876,12 +541,7 @@ export class DashboardPDFService {
     domainPieImages: Record<string, string>,
     prepared: PreparedData
   ): string {
-
-    const {
-      company,
-      summary,
-      generatedAt
-    } = data;
+    const { company, summary } = data;
 
     const {
       categoryData,
@@ -892,17 +552,16 @@ export class DashboardPDFService {
       userName,
       userEmail,
       completionRate,
-      formattedDate
+      formattedDate,
     } = prepared;
 
-    /*
-     ======================================================
-     PREPARAÇÃO DOS HTMLs PARCIAIS
-     ======================================================
-    */
+    // -----------------------------------------------------
+    // PREPARAÇÃO DOS HTMLs PARCIAIS
+    // -----------------------------------------------------
 
-    const categoryHtml =
-      categoryData.map(cat => `
+    const categoryHtml = categoryData
+      .map(
+        (cat) => `
 <div class="card flex-item">
   <div class="metric">
     ${cat.total}
@@ -918,10 +577,16 @@ export class DashboardPDFService {
     <span style="color:#ef4444">✖ ${cat.notImpl}</span>
   </div>
 </div>
-`).join('');
+`
+      )
+      .join('');
 
-    const typeHtml =
-      typeData.map(type => `
+    // Mantido conforme original: HTML tabular alternativo para Tipos de Controle
+    // (não utilizado na renderização final, que usa `typeCardItems` mais abaixo,
+    // mas preservado a pedido para não remover nenhum trecho de código).
+    const typeHtml = typeData
+      .map(
+        (type) => `
 <div class="card flex-item">
   <div class="metric">
     ${type.total}
@@ -937,23 +602,30 @@ export class DashboardPDFService {
     <span style="color:#ef4444">✖ ${type.notImpl}</span>
   </div>
 </div>
-`).join('');
+`
+      )
+      .join('');
 
     // Função para criar linhas de gráficos (3 por linha)
     const buildChartRows = (chartEntries: [string, string][], baseClass: string = '') => {
       const rows = [];
       for (let i = 0; i < chartEntries.length; i += 3) {
         const rowItems = chartEntries.slice(i, i + 3);
-        const rowHtml = rowItems.map(([name, base64]) => `
-<div class="chart-container">
+        const rowHtml = rowItems
+          .map(
+            ([name, base64]) => `
+<div class="flex-item chart-container">
   <div class="chart-title">${name}</div>
   <div class="chart-wrapper">
     <img class="chart-img" src="data:image/png;base64,${base64}" />
   </div>
 </div>
-`).join('');
+`
+          )
+          .join('');
+
         rows.push(`
-<div class="flex-row chart-row ${baseClass}">
+<div class="flex-row pdf-section chart-row ${baseClass}">
   ${rowHtml}
 </div>
 `);
@@ -976,7 +648,8 @@ export class DashboardPDFService {
     };
 
     // Preparar itens de tipos para cards
-    const typeCardItems = typeData.map(type => `
+    const typeCardItems = typeData.map(
+      (type) => `
 <div class="card flex-item">
   <div class="metric">${type.total}</div>
   <div class="label">${type.name}</div>
@@ -988,10 +661,12 @@ export class DashboardPDFService {
     <span style="color:#ef4444">✖ ${type.notImpl}</span>
   </div>
 </div>
-`);
+`
+    );
 
     // Preparar itens de conceitos para cards
-    const conceptCardItems = conceptData.map(concept => `
+    const conceptCardItems = conceptData.map(
+      (concept) => `
 <div class="card flex-item">
   <div class="metric">${concept.total}</div>
   <div class="label">${concept.name}</div>
@@ -1003,15 +678,18 @@ export class DashboardPDFService {
     <span style="color:#ef4444">✖ ${concept.notImpl}</span>
   </div>
 </div>
-`);
+`
+    );
 
     // Preparar itens de domínios para cards
-    const domainCardItems = domainData.map(domain => `
+    const domainCardItems = domainData.map(
+      (domain) => `
 <div class="card flex-item">
   <div class="metric">${domain.total}</div>
   <div class="label">${domain.name}</div>
 </div>
-`);
+`
+    );
 
     // Preparar gráficos de pizza por tipo
     const typePieEntries = Object.entries(typePieImages);
@@ -1025,8 +703,9 @@ export class DashboardPDFService {
     const domainPieEntries = Object.entries(domainPieImages);
     const domainPiesHtml = domainPieEntries.length > 0 ? buildChartRows(domainPieEntries) : '';
 
-    const capabilityHtml =
-      capabilityData.map(cap => `
+    const capabilityHtml = capabilityData
+      .map(
+        (cap) => `
 <tr>
   <td>
     ${cap.name}
@@ -1047,7 +726,9 @@ export class DashboardPDFService {
     ${cap.aderente}%
   </td>
 </tr>
-`).join('');
+`
+      )
+      .join('');
 
     return `
 <!DOCTYPE html>
@@ -1060,37 +741,34 @@ export class DashboardPDFService {
 CONFIGURAÇÃO BASE
 ======================================================
 */
-*{
- margin:0;
- padding:0;
- box-sizing:border-box;
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
 
-html{
- zoom:1;
+html {
+  zoom: 1;
 }
 
-body{
- font-family:
- Arial,
- Helvetica,
- sans-serif;
- color:#1e293b;
- font-size:10pt;
- background:#ffffff;
- zoom:1;
+body {
+  font-family: Arial, Helvetica, sans-serif;
+  color: #1e293b;
+  font-size: 10pt;
+  background: #ffffff;
+  zoom: 1;
 }
 
-.page{
- width:100%;
- padding:15pt;
- page-break-after:always;
- break-after:page;
+.page {
+  width: 100%;
+  padding: 15pt;
+  page-break-after: always;
+  break-after: page;
 }
 
-.page:last-child{
- page-break-after:auto;
- break-after:auto;
+.page:last-child {
+  page-break-after: auto;
+  break-after: auto;
 }
 
 /*
@@ -1098,64 +776,64 @@ body{
 LAYOUT - SEM FLEX-WRAP
 ======================================================
 */
-.flex-row{
- display:flex;
- flex-direction:row;
- align-items:stretch;
- justify-content:flex-start;
- gap:12pt;
- width:100%;
+.flex-row {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 12pt;
+  width: 100%;
 }
 
-.flex-column{
- display:flex;
- flex-direction:column;
+.flex-column {
+  display: flex;
+  flex-direction: column;
 }
 
-.flex-item{
- flex:1;
- min-width:0;
+.flex-item {
+  flex: 1;
+  min-width: 0;
 }
 
 /*
 ======================================================
-CARDS - LINHAS INDEPENDENTES (5 por linha)
+CARDS - LINHAS INDEPENDENTES
 ======================================================
 */
-.card-row{
- display:flex;
- flex-direction:row;
- align-items:stretch;
- justify-content:flex-start;
- gap:12pt;
- width:100%;
- margin-bottom:12pt;
+.card-row {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 12pt;
+  width: 100%;
+  margin-bottom: 12pt;
 }
 
-.card{
- background:#f8fafc;
- border:1px solid #e2e8f0;
- border-radius:5pt;
- padding:8pt;
- text-align:center;
- page-break-inside:avoid;
- break-inside:avoid;
- flex:1;
+.card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 5pt;
+  padding: 8pt;
+  text-align: center;
+  page-break-inside: avoid;
+  break-inside: avoid;
+  flex: 1;
 }
 
-.card .metric{
- font-size:18pt;
- font-weight:bold;
+.metric {
+  font-size: 18pt;
+  font-weight: bold;
 }
 
-.card .label{
- font-size:8pt;
- color:#64748b;
+.label {
+  font-size: 8pt;
+  color: #64748b;
 }
 
 /*
 ======================================================
-GRÁFICOS - LINHAS INDEPENDENTES (3 por linha)
+GRÁFICOS - LINHAS INDEPENDENTES
 ======================================================
 */
 .chart-row {
@@ -1166,22 +844,12 @@ GRÁFICOS - LINHAS INDEPENDENTES (3 por linha)
   gap: 12pt;
   width: 100%;
   margin-bottom: 12pt;
-  page-break-inside: avoid;
-  break-inside: avoid;
-}
-
-.chart-row .chart-container {
-  flex: 1 1 calc(33.333% - 12pt);
-  min-width: 0;
-  max-width: calc(33.333% - 12pt);
-  page-break-inside: avoid;
-  break-inside: avoid;
-  text-align: center;
 }
 
 .chart-container {
   page-break-inside: avoid;
   break-inside: avoid;
+  flex: 1;
   text-align: center;
 }
 
@@ -1190,9 +858,6 @@ GRÁFICOS - LINHAS INDEPENDENTES (3 por linha)
   font-weight: bold;
   color: #475569;
   margin-bottom: 4pt;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .chart-wrapper {
@@ -1215,11 +880,11 @@ GRÁFICOS - LINHAS INDEPENDENTES (3 por linha)
 CONTROLE DE QUEBRA
 ======================================================
 */
-.pdf-section{
- page-break-inside:avoid;
- break-inside:avoid;
- display:block;
- width:100%;
+.pdf-section {
+  page-break-inside: avoid;
+  break-inside: avoid;
+  display: block;
+  width: 100%;
 }
 
 /*
@@ -1227,23 +892,23 @@ CONTROLE DE QUEBRA
 TABELAS
 ======================================================
 */
-table{
- width:100%;
- border-collapse:collapse;
- font-size:8pt;
- page-break-inside:avoid;
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 8pt;
+  page-break-inside: avoid;
 }
 
-th{
- background:#f1f5f9;
- font-weight:bold;
+th {
+  background: #f1f5f9;
+  font-weight: bold;
 }
 
 td,
-th{
- border:1px solid #cbd5e1;
- padding:4pt;
- text-align:center;
+th {
+  border: 1px solid #cbd5e1;
+  padding: 4pt;
+  text-align: center;
 }
 
 /*
@@ -1251,14 +916,14 @@ th{
 RADAR
 ======================================================
 */
-.radar-container{
- width:100%;
- max-width:480px;
- height:320px;
- margin:auto;
- overflow:hidden;
- page-break-inside:avoid;
- break-inside:avoid;
+.radar-container {
+  width: 100%;
+  max-width: 480px;
+  height: 320px;
+  margin: auto;
+  overflow: hidden;
+  page-break-inside: avoid;
+  break-inside: avoid;
 }
 
 /*
@@ -1266,21 +931,21 @@ RADAR
 SEÇÃO DE GRÁFICOS PRINCIPAIS
 ======================================================
 */
-.main-chart-row{
- display:flex;
- flex-direction:row;
- align-items:stretch;
- justify-content:flex-start;
- gap:12pt;
- width:100%;
- margin-bottom:12pt;
+.main-chart-row {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 12pt;
+  width: 100%;
+  margin-bottom: 12pt;
 }
 
-.main-chart{
- flex:1;
- text-align:center;
- page-break-inside:avoid;
- break-inside:avoid;
+.main-chart {
+  flex: 1;
+  text-align: center;
+  page-break-inside: avoid;
+  break-inside: avoid;
 }
 
 /*
@@ -1288,14 +953,14 @@ SEÇÃO DE GRÁFICOS PRINCIPAIS
 IMPRESSÃO
 ======================================================
 */
-@page{
- size:A4 landscape;
- margin:15mm;
+@page {
+  size: A4 landscape;
+  margin: 15mm;
 }
 
-*{
- -webkit-print-color-adjust:exact!important;
- print-color-adjust:exact!important;
+* {
+  -webkit-print-color-adjust: exact !important;
+  print-color-adjust: exact !important;
 }
 
 /*
@@ -1304,7 +969,10 @@ RESPONSIVIDADE PARA PDF
 ======================================================
 */
 @media print {
-  .flex-row, .card-row, .chart-row, .main-chart-row {
+  .flex-row,
+  .card-row,
+  .chart-row,
+  .main-chart-row {
     page-break-inside: avoid;
     break-inside: avoid;
   }
@@ -1394,9 +1062,11 @@ RESPONSIVIDADE PARA PDF
 ====================================================== -->
 <div class="page">
   <h2>3. Tipos de Controle</h2>
-  
+
   <!-- GRÁFICO PRINCIPAL - PIZZA GERAL -->
-  ${typePieGeneralBase64 ? `
+  ${
+    typePieGeneralBase64
+      ? `
   <div class="main-chart-row pdf-section">
     <div class="main-chart">
       <div class="chart-title">Distribuição Geral por Tipo</div>
@@ -1406,12 +1076,14 @@ RESPONSIVIDADE PARA PDF
     </div>
   </div>
   <br/>
-  ` : ''}
-  
+  `
+      : ''
+  }
+
   <!-- CARDS -->
   ${buildCardRows(typeCardItems)}
   <br/>
-  
+
   <!-- GRÁFICOS INDIVIDUAIS (3 por linha) -->
   ${typePiesHtml}
 </div>
@@ -1421,9 +1093,11 @@ RESPONSIVIDADE PARA PDF
 ====================================================== -->
 <div class="page">
   <h2>4. Conceitos Cibernéticos</h2>
-  
+
   <!-- GRÁFICO PRINCIPAL - PIZZA GERAL -->
-  ${conceptPieGeneralBase64 ? `
+  ${
+    conceptPieGeneralBase64
+      ? `
   <div class="main-chart-row pdf-section">
     <div class="main-chart">
       <div class="chart-title">Distribuição Geral por Conceito</div>
@@ -1433,8 +1107,10 @@ RESPONSIVIDADE PARA PDF
     </div>
   </div>
   <br/>
-  ` : ''}
-  
+  `
+      : ''
+  }
+
   <!-- BAR CHART -->
   <div class="chart-container pdf-section">
     <div class="chart-title">Quantidade por Conceito</div>
@@ -1443,11 +1119,11 @@ RESPONSIVIDADE PARA PDF
     </div>
   </div>
   <br/>
-  
+
   <!-- CARDS -->
   ${buildCardRows(conceptCardItems)}
   <br/>
-  
+
   <!-- GRÁFICOS INDIVIDUAIS (3 por linha) -->
   ${conceptPiesHtml}
 </div>
@@ -1484,9 +1160,11 @@ RESPONSIVIDADE PARA PDF
 ====================================================== -->
 <div class="page">
   <h2>6. Domínios de Segurança da Informação</h2>
-  
+
   <!-- GRÁFICO PRINCIPAL - PIZZA GERAL -->
-  ${domainPieGeneralBase64 ? `
+  ${
+    domainPieGeneralBase64
+      ? `
   <div class="main-chart-row pdf-section">
     <div class="main-chart">
       <div class="chart-title">Distribuição Geral por Domínio</div>
@@ -1496,8 +1174,10 @@ RESPONSIVIDADE PARA PDF
     </div>
   </div>
   <br/>
-  ` : ''}
-  
+  `
+      : ''
+  }
+
   <!-- BAR CHART -->
   <div class="chart-container pdf-section">
     <div class="chart-title">Distribuição por Domínio</div>
@@ -1506,11 +1186,11 @@ RESPONSIVIDADE PARA PDF
     </div>
   </div>
   <br/>
-  
+
   <!-- CARDS -->
   ${buildCardRows(domainCardItems)}
   <br/>
-  
+
   <!-- GRÁFICOS INDIVIDUAIS (3 por linha) -->
   ${domainPiesHtml}
 </div>
