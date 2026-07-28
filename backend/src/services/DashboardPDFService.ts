@@ -4,6 +4,7 @@
 // - Restaura todos os gráficos faltantes
 // - Estrutura em linhas independentes (sem flex-wrap)
 // - Layout idêntico ao dashboard
+// - Gráficos individuais em 3 colunas por linha
 
 import { logger } from '../utils/logger.js';
 import { ChartService } from './ChartService.js';
@@ -944,7 +945,7 @@ export class DashboardPDFService {
       for (let i = 0; i < chartEntries.length; i += 3) {
         const rowItems = chartEntries.slice(i, i + 3);
         const rowHtml = rowItems.map(([name, base64]) => `
-<div class="flex-item chart-container">
+<div class="chart-container">
   <div class="chart-title">${name}</div>
   <div class="chart-wrapper">
     <img class="chart-img" src="data:image/png;base64,${base64}" />
@@ -952,7 +953,7 @@ export class DashboardPDFService {
 </div>
 `).join('');
         rows.push(`
-<div class="flex-row pdf-section chart-row ${baseClass}">
+<div class="flex-row chart-row ${baseClass}">
   ${rowHtml}
 </div>
 `);
@@ -1118,7 +1119,7 @@ LAYOUT - SEM FLEX-WRAP
 
 /*
 ======================================================
-CARDS - LINHAS INDEPENDENTES
+CARDS - LINHAS INDEPENDENTES (5 por linha)
 ======================================================
 */
 .card-row{
@@ -1142,58 +1143,71 @@ CARDS - LINHAS INDEPENDENTES
  flex:1;
 }
 
-.metric{
+.card .metric{
  font-size:18pt;
  font-weight:bold;
 }
 
-.label{
+.card .label{
  font-size:8pt;
  color:#64748b;
 }
 
 /*
 ======================================================
-GRÁFICOS - LINHAS INDEPENDENTES
+GRÁFICOS - LINHAS INDEPENDENTES (3 por linha)
 ======================================================
 */
-.chart-row{
- display:flex;
- flex-direction:row;
- align-items:stretch;
- justify-content:flex-start;
- gap:12pt;
- width:100%;
- margin-bottom:12pt;
+.chart-row {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 12pt;
+  width: 100%;
+  margin-bottom: 12pt;
+  page-break-inside: avoid;
+  break-inside: avoid;
 }
 
-.chart-container{
- page-break-inside:avoid;
- break-inside:avoid;
- flex:1;
- text-align:center;
+.chart-row .chart-container {
+  flex: 1 1 calc(33.333% - 12pt);
+  min-width: 0;
+  max-width: calc(33.333% - 12pt);
+  page-break-inside: avoid;
+  break-inside: avoid;
+  text-align: center;
 }
 
-.chart-title{
- font-size:10pt;
- font-weight:bold;
- color:#475569;
- margin-bottom:4pt;
+.chart-container {
+  page-break-inside: avoid;
+  break-inside: avoid;
+  text-align: center;
 }
 
-.chart-wrapper{
- display:flex;
- justify-content:center;
- align-items:center;
- width:100%;
- height:200px;
- overflow:hidden;
+.chart-title {
+  font-size: 10pt;
+  font-weight: bold;
+  color: #475569;
+  margin-bottom: 4pt;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.chart-img{
- width:100%;
- height:100%;
- object-fit:contain;
+.chart-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 200px;
+  overflow: hidden;
+}
+
+.chart-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 /*
