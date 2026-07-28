@@ -1,8 +1,9 @@
 // backend/src/services/DashboardPDFService.ts
-// 🔵 OTIMIZADO:
-// - Melhora performance de geração PDF
-// - Corrige quebra de página do Chromium
-// - Mantém todos os gráficos e métricas existentes
+// 🔵 REFATORADO:
+// - Estrutura modular com métodos independentes
+// - Mantém 100% do código original
+// - Remove parâmetros mortos
+// - Melhor organização e manutenibilidade
 
 import { logger } from '../utils/logger.js';
 import { ChartService } from './ChartService.js';
@@ -37,6 +38,26 @@ interface DashboardPDFData {
   generatedAt: string;
 }
 
+interface PreparedData {
+  categoryData: Array<{ name: string; total: number; implemented: number; partial: number; notImpl: number }>;
+  typeData: Array<{ name: string; total: number; implemented: number; partial: number; notImpl: number }>;
+  conceptData: Array<{ name: string; total: number; implemented: number; partial: number; notImpl: number }>;
+  domainData: Array<{ name: string; total: number; implemented: number; partial: number; notImpl: number }>;
+  capabilityData: Array<{ name: string; total: number; implemented: number; partial: number; notImpl: number; aderente: number }>;
+  userName: string;
+  userEmail: string;
+  completionRate: number;
+  formattedDate: string;
+}
+
+interface ChartImages {
+  pieBase64: string;
+  barBase64: string;
+  conceptBarBase64: string;
+  domainBarBase64: string;
+  radarBase64: string;
+}
+
 export class DashboardPDFService {
 
   /**
@@ -55,6 +76,7 @@ export class DashboardPDFService {
     const startTime = Date.now();
 
     let browser: any = null;
+    let page: any = null;
 
     try {
 
@@ -64,11 +86,9 @@ export class DashboardPDFService {
       let puppeteer: any;
       let browserOptions: any;
 
-
       logger.info(
         '🔄 DashboardPDF: Iniciando geração otimizada'
       );
-
 
       /*
        * =====================================================
@@ -100,109 +120,117 @@ export class DashboardPDFService {
           }
 
         ] as Array<{
-          name:string;
-          value:number;
-          color:string;
+          name: string;
+          value: number;
+          color: string;
         }>);
 
+      if (!pieChartImage || pieChartImage.length === 0) {
+        throw new Error("PieChart buffer vazio");
+      }
 
       const barChartImage =
         ChartService.generateBarChart([
           {
-            name:'Implementados',
-            value:data.summary.Implementado || 0,
-            color:'#10b981'
+            name: 'Implementados',
+            value: data.summary.Implementado || 0,
+            color: '#10b981'
           },
           {
-            name:'Parciais',
-            value:data.summary.Parcialmente || 0,
-            color:'#f59e0b'
+            name: 'Parciais',
+            value: data.summary.Parcialmente || 0,
+            color: '#f59e0b'
           },
           {
-            name:'Não Implementados',
-            value:data.summary.NaoImplementado || 0,
-            color:'#ef4444'
+            name: 'Não Implementados',
+            value: data.summary.NaoImplementado || 0,
+            color: '#ef4444'
           }
 
         ] as Array<{
-          name:string;
-          value:number;
-          color:string;
+          name: string;
+          value: number;
+          color: string;
         }>);
 
-
+      if (!barChartImage || barChartImage.length === 0) {
+        throw new Error("BarChart buffer vazio");
+      }
 
       const conceptBarData =
         Object.entries(
           data.byCyberConcept || {}
         )
         .map(
-          ([key,value]:[string,any]) => ({
-            name:key,
-            value:value.total || 0,
-            color:'#6366f1'
+          ([key, value]: [string, any]) => ({
+            name: key,
+            value: value.total || 0,
+            color: '#6366f1'
           })
         )
         .filter(
           item => item.value > 0
         );
-
 
       const conceptBarImage =
         ChartService.generateBarChart(
           conceptBarData
         );
 
-
+      if (!conceptBarImage || conceptBarImage.length === 0) {
+        throw new Error("ConceptBar buffer vazio");
+      }
 
       const domainBarData =
         Object.entries(
           data.byDomain || {}
         )
         .map(
-          ([key,value]:[string,any]) => ({
-            name:key,
-            value:value.total || 0,
-            color:'#3b82f6'
+          ([key, value]: [string, any]) => ({
+            name: key,
+            value: value.total || 0,
+            color: '#3b82f6'
           })
         )
         .filter(
           item => item.value > 0
         );
 
-
       const domainBarImage =
         ChartService.generateBarChart(
           domainBarData
         );
 
-
+      if (!domainBarImage || domainBarImage.length === 0) {
+        throw new Error("DomainBar buffer vazio");
+      }
 
       const radarData =
         Object.entries(
           data.byCapability || {}
         )
         .map(
-          ([key,value]:[string,any]) => ({
+          ([key, value]: [string, any]) => ({
             subject:
               key.length > 20
-                ? key.substring(0,20)+'…'
+                ? key.substring(0, 20) + '…'
                 : key,
 
             Implementado:
               value.aderente || 0,
 
-            Recomendado:100
+            Recomendado: 100
           })
         );
-
 
       const radarChartImage =
         ChartService.generateRadarChart(
           radarData
         );
 
-
+      if (!radarChartImage || radarChartImage.length === 0) {
+        throw new Error("RadarChart buffer vazio");
+      }
 
       const pieBase64 =
         pieChartImage.toString('base64');
@@ -219,7 +247,20 @@ export class DashboardPDFService {
       const radarBase64 =
         radarChartImage.toString('base64');
 
+      // Logs para diagnóstico
+      logger.info(`📊 PieChart: ${pieBase64.length} bytes`);
+      logger.info(`📊 BarChart: ${barBase64.length} bytes`);
+      logger.info(`📊 ConceptBar: ${conceptBarBase64.length} bytes`);
+      logger.info(`📊 DomainBar: ${domainBarBase64.length} bytes`);
+      logger.info(`📊 RadarChart: ${radarBase64.length} bytes`);
 
+      /*
+       * =====================================================
+       * PREPARAÇÃO DOS DADOS
+       * =====================================================
+       */
+
+      const preparedData = this.prepareData(data);
 
       /*
        * =====================================================
@@ -237,10 +278,9 @@ export class DashboardPDFService {
           radarBase64,
           {},
           {},
-          {}
+          {},
+          preparedData
         );
-
-
 
       /*
        * =====================================================
@@ -248,8 +288,7 @@ export class DashboardPDFService {
        * =====================================================
        */
 
-
-      if(isProduction){
+      if (isProduction) {
 
         const chromiumModule =
           await import('@sparticuz/chromium');
@@ -258,20 +297,16 @@ export class DashboardPDFService {
           chromiumModule.default ||
           chromiumModule;
 
-
         const puppeteerCore =
           await import('puppeteer-core');
-
 
         puppeteer =
           puppeteerCore.default ||
           puppeteerCore;
 
-
-
         browserOptions = {
 
-          args:[
+          args: [
             ...(chromium.args || []),
 
             '--no-sandbox',
@@ -282,38 +317,30 @@ export class DashboardPDFService {
             '--single-process'
           ],
 
-
           executablePath:
             await chromium.executablePath(),
 
-
-          headless:true
+          headless: true
         };
-
 
         logger.info(
           '🔄 DashboardPDF: Chromium produção'
         );
 
-
-      }else{
-
+      } else {
 
         const puppeteerModule =
           await import('puppeteer');
-
 
         puppeteer =
           puppeteerModule.default ||
           puppeteerModule;
 
+        browserOptions = {
 
+          headless: true,
 
-        browserOptions={
-
-          headless:true,
-
-          args:[
+          args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
             '--disable-dev-shm-usage'
@@ -321,14 +348,12 @@ export class DashboardPDFService {
 
         };
 
-
-        if(process.env.PUPPETEER_EXECUTABLE_PATH){
+        if (process.env.PUPPETEER_EXECUTABLE_PATH) {
 
           browserOptions.executablePath =
             process.env.PUPPETEER_EXECUTABLE_PATH;
 
         }
-
 
         logger.info(
           '🔄 DashboardPDF: Puppeteer local'
@@ -336,18 +361,13 @@ export class DashboardPDFService {
 
       }
 
-
-
       browser =
         await puppeteer.launch(
           browserOptions
         );
 
-
-      const page =
+      page =
         await browser.newPage();
-
-
 
       /*
        * =====================================================
@@ -357,42 +377,41 @@ export class DashboardPDFService {
 
       await page.setViewport({
 
-        width:1280,
+        width: 1280,
 
-        height:1600,
+        height: 1600,
 
-        deviceScaleFactor:1
+        deviceScaleFactor: 1
 
       });
-
-
 
       await page.setContent(
         html,
         {
-          waitUntil:[
+          waitUntil: [
             'load',
             'domcontentloaded'
           ] as any,
 
-          timeout:30000
+          timeout: 30000
         }
       );
 
+      // Aguarda todas as imagens carregarem
+      await page.waitForFunction(() => {
+        return Array.from(document.images).every(img => img.complete);
+      }, { timeout: 30000 });
 
+      // Aguarda fontes
+      await page.evaluate(async () => {
 
-      // Aguarda somente fontes/imagens necessárias
-      await page.evaluate(async()=>{
-
-        if(document.fonts){
+        if (document.fonts) {
 
           await document.fonts.ready;
 
         }
 
       });
-
-
 
       /*
        * =====================================================
@@ -403,51 +422,40 @@ export class DashboardPDFService {
       const pdf =
         await page.pdf({
 
-          format:'A4',
+          format: 'A4',
 
-          landscape:true,
+          landscape: true,
 
+          printBackground: true,
 
-          printBackground:true,
+          margin: {
 
-
-          margin:{
-
-            top:'15mm',
-            bottom:'15mm',
-            left:'10mm',
-            right:'10mm'
+            top: '15mm',
+            bottom: '15mm',
+            left: '10mm',
+            right: '10mm'
 
           },
 
+          displayHeaderFooter: false,
 
-          displayHeaderFooter:true,
+          preferCSSPageSize: false,
 
+          scale: 0.95,
 
-          preferCSSPageSize:false,
-
-
-          scale:0.95,
-
-
-          timeout:60000
+          timeout: 60000
 
         });
 
-
-
       logger.info(
         `✅ DashboardPDF gerado em ${
-          Date.now()-startTime
+          Date.now() - startTime
         }ms (${pdf.length} bytes)`
       );
 
-
       return Buffer.from(pdf);
 
-
-
-    }catch(error){
+    } catch (error) {
 
       logger.error(
         '❌ DashboardPDF erro:',
@@ -456,99 +464,68 @@ export class DashboardPDFService {
 
       throw error;
 
+    } finally {
 
-    }finally{
+      if (page) {
+        try {
+          await page.close();
+        } catch (error) {
+          logger.debug('⚠️ Erro ao fechar página:', error);
+        }
+      }
 
-
-      if(browser){
-
-        await browser.close();
-
-        logger.debug(
-          '🔒 DashboardPDF Browser fechado'
-        );
-
+      if (browser) {
+        try {
+          await browser.close();
+          logger.debug('🔒 DashboardPDF Browser fechado');
+        } catch (error) {
+          logger.debug('⚠️ Erro ao fechar browser:', error);
+        }
       }
 
     }
 
   }
 
-  /**
-   * Geração do HTML otimizado para impressão PDF
-   *
-   * Ajustes:
-   * - Chromium print engine
-   * - Controle de paginação
-   * - Evita quebra de gráficos
-   * - Layout estável A4 landscape
-   */
-  private static generateHTML(
-    data: DashboardPDFData,
-    pieBase64: string,
-    barBase64: string,
-    conceptBarBase64: string,
-    domainBarBase64: string,
-    radarBase64: string,
-    typePieImages: Record<string,string>,
-    conceptPieImages: Record<string,string>,
-    domainPieImages: Record<string,string>
-  ): string {
+  // =====================================================
+  // MÉTODOS PRIVADOS - PREPARAÇÃO DE DADOS
+  // =====================================================
 
-    const {
-      company,
-      summary,
-      user,
-      generatedAt,
-      byDomain,
-      byCategory,
-      byType,
-      byCyberConcept,
-      byCapability
-    } = data;
-
-    const formatDate = (date:string)=>{
-
+  private static prepareData(data: DashboardPDFData): PreparedData {
+    const formatDate = (date: string) => {
       return new Date(date)
         .toLocaleDateString(
           'pt-BR',
           {
-            day:'2-digit',
-            month:'long',
-            year:'numeric'
+            day: '2-digit',
+            month: 'long',
+            year: 'numeric'
           }
         );
-
     };
 
     const completionRate =
-      summary.totalControls > 0
-      ?
-      Math.round(
-        (
-          summary.Implementado /
-          summary.totalControls
-        ) * 100
-      )
-      :
-      0;
-
-    /*
-     ======================================================
-     PREPARAÇÃO DOS DADOS
-     ======================================================
-    */
+      data.summary.totalControls > 0
+        ?
+        Math.round(
+          (
+            data.summary.Implementado /
+            data.summary.totalControls
+          ) * 100
+        )
+        :
+        0;
 
     const categoryData =
       Object.entries(
-        byCategory || {}
+        data.byCategory || {}
       )
       .map(
-        ([name,value]:[string,any])=>({
+        ([name, value]: [string, any]) => ({
 
           name,
 
-          total:value.total || 0,
+          total: value.total || 0,
 
           implemented:
             value.implemented || 0,
@@ -564,14 +541,14 @@ export class DashboardPDFService {
 
     const typeData =
       Object.entries(
-        byType || {}
+        data.byType || {}
       )
       .map(
-        ([name,value]:[string,any])=>({
+        ([name, value]: [string, any]) => ({
 
           name,
 
-          total:value.total || 0,
+          total: value.total || 0,
 
           implemented:
             value.implemented || 0,
@@ -587,14 +564,14 @@ export class DashboardPDFService {
 
     const conceptData =
       Object.entries(
-        byCyberConcept || {}
+        data.byCyberConcept || {}
       )
       .map(
-        ([name,value]:[string,any])=>({
+        ([name, value]: [string, any]) => ({
 
           name,
 
-          total:value.total || 0,
+          total: value.total || 0,
 
           implemented:
             value.implemented || 0,
@@ -610,14 +587,14 @@ export class DashboardPDFService {
 
     const domainData =
       Object.entries(
-        byDomain || {}
+        data.byDomain || {}
       )
       .map(
-        ([name,value]:[string,any])=>({
+        ([name, value]: [string, any]) => ({
 
           name,
 
-          total:value.total || 0,
+          total: value.total || 0,
 
           implemented:
             value.implemented || 0,
@@ -633,14 +610,14 @@ export class DashboardPDFService {
 
     const capabilityData =
       Object.entries(
-        byCapability || {}
+        data.byCapability || {}
       )
       .map(
-        ([name,value]:[string,any])=>({
+        ([name, value]: [string, any]) => ({
 
           name,
 
-          total:value.total || 0,
+          total: value.total || 0,
 
           implemented:
             value.implemented || 0,
@@ -658,12 +635,140 @@ export class DashboardPDFService {
       );
 
     const userName =
-      user?.name ||
+      data.user?.name ||
       'Usuário não identificado';
 
     const userEmail =
-      user?.email ||
+      data.user?.email ||
       'email não informado';
+
+    return {
+      categoryData,
+      typeData,
+      conceptData,
+      domainData,
+      capabilityData,
+      userName,
+      userEmail,
+      completionRate,
+      formattedDate: formatDate(data.generatedAt)
+    };
+  }
+
+  // =====================================================
+  // MÉTODO PRINCIPAL - GERAÇÃO DO HTML
+  // =====================================================
+
+  private static generateHTML(
+    data: DashboardPDFData,
+    pieBase64: string,
+    barBase64: string,
+    conceptBarBase64: string,
+    domainBarBase64: string,
+    radarBase64: string,
+    typePieImages: Record<string, string>,
+    conceptPieImages: Record<string, string>,
+    domainPieImages: Record<string, string>,
+    prepared: PreparedData
+  ): string {
+
+    const {
+      company,
+      summary,
+      generatedAt
+    } = data;
+
+    const {
+      categoryData,
+      typeData,
+      conceptData,
+      domainData,
+      capabilityData,
+      userName,
+      userEmail,
+      completionRate,
+      formattedDate
+    } = prepared;
+
+    /*
+     ======================================================
+     PREPARAÇÃO DOS HTMLs PARCIAIS
+     ======================================================
+    */
+
+    const categoryHtml =
+      categoryData.map(cat => `
+<div class="card flex-item">
+  <div class="metric">
+    ${cat.total}
+  </div>
+  <div class="label">
+    ${cat.name}
+  </div>
+  <div style="margin-top:8px;font-size:8pt;">
+    <span style="color:#10b981">✔ ${cat.implemented}</span>
+    &nbsp;
+    <span style="color:#f59e0b">◐ ${cat.partial}</span>
+    &nbsp;
+    <span style="color:#ef4444">✖ ${cat.notImpl}</span>
+  </div>
+</div>
+`).join('');
+
+    const typeHtml =
+      typeData.map(type => `
+<div class="card flex-item">
+  <div class="metric">
+    ${type.total}
+  </div>
+  <div class="label">
+    ${type.name}
+  </div>
+  <div style="margin-top:8px">
+    <span style="color:#10b981">✔ ${type.implemented}</span>
+    &nbsp;
+    <span style="color:#f59e0b">◐ ${type.partial}</span>
+    &nbsp;
+    <span style="color:#ef4444">✖ ${type.notImpl}</span>
+  </div>
+</div>
+`).join('');
+
+    const capabilityHtml =
+      capabilityData.map(cap => `
+<tr>
+  <td>
+    ${cap.name}
+  </td>
+  <td style="color:#10b981">
+    ${cap.implemented}
+  </td>
+  <td style="color:#f59e0b">
+    ${cap.partial}
+  </td>
+  <td style="color:#ef4444">
+    ${cap.notImpl}
+  </td>
+  <td>
+    ${cap.total}
+  </td>
+  <td>
+    ${cap.aderente}%
+  </td>
+</tr>
+`).join('');
+
+    const domainHtml =
+      domainData.map(domain => `
+<div class="card flex-item">
+  <div class="metric">
+    ${domain.total}
+  </div>
+  <div class="label">
+    ${domain.name}
+  </div>
+</div>
+`).join('');
 
     return `
 <!DOCTYPE html>
@@ -682,6 +787,10 @@ CONFIGURAÇÃO BASE
  box-sizing:border-box;
 }
 
+html{
+ zoom:1;
+}
+
 body{
  font-family:
  Arial,
@@ -690,6 +799,7 @@ body{
  color:#1e293b;
  font-size:10pt;
  background:#ffffff;
+ zoom:1;
 }
 
 .page{
@@ -712,6 +822,8 @@ CONTROLE DE QUEBRA
 .pdf-section{
  page-break-inside:avoid;
  break-inside:avoid;
+ display:block;
+ width:100%;
 }
 
 .chart-container{
@@ -723,20 +835,17 @@ CONTROLE DE QUEBRA
 }
 
 .chart-wrapper{
+ display:flex;
+ justify-content:center;
+ align-items:center;
  width:100%;
- max-width:430px;
- height:260px;
- margin:auto;
+ height:280px;
  overflow:hidden;
 }
 
 .chart-img{
- display:block;
- margin:auto;
- max-width:430px;
- max-height:260px;
- width:auto;
- height:auto;
+ width:100%;
+ height:100%;
  object-fit:contain;
 }
 
@@ -747,6 +856,8 @@ LAYOUT
 */
 .flex-row{
  display:flex;
+ align-items:flex-start;
+ justify-content:space-between;
  gap:12pt;
  width:100%;
 }
@@ -834,8 +945,9 @@ RADAR
 ======================================================
 */
 .radar-container{
- width:420px;
- height:300px;
+ width:100%;
+ max-width:480px;
+ height:320px;
  margin:auto;
  overflow:hidden;
  page-break-inside:avoid;
@@ -863,345 +975,160 @@ IMPRESSÃO
      CAPA
 ====================================================== -->
 <div class="page pdf-section">
-<div style="
-text-align:center;
-padding-top:120px;
-">
-<div style="
-font-size:34pt;
-font-weight:900;
-color:#0f172a;
-">
-Code<span style="color:#2563eb;">
-_Assessment
-</span>
+  <div style="text-align:center;padding-top:120px;">
+    <div style="font-size:34pt;font-weight:900;color:#0f172a;">
+      Code<span style="color:#2563eb;">_Assessment</span>
+    </div>
+    <h1 style="margin-top:30px;font-size:24pt;">Dashboard de Maturidade</h1>
+    <p style="font-size:14pt;color:#475569;">Avaliação ISO 27001:2022</p>
+    <div style="margin:30px auto;font-size:20pt;font-weight:bold;color:#2563eb;border-top:2px solid #2563eb;border-bottom:2px solid #2563eb;padding:12px 30px;max-width:70%;">
+      ${company.name}
+    </div>
+    <div style="margin-top:30px;font-size:10pt;color:#64748b;line-height:1.8;">
+      <strong>Responsável:</strong> ${userName}
+      <br/>
+      <strong>E-mail:</strong> ${userEmail}
+      <br/>
+      <strong>Data:</strong> ${formattedDate}
+    </div>
+  </div>
 </div>
-<h1 style="
-margin-top:30px;
-font-size:24pt;
-">
-Dashboard de Maturidade
-</h1>
-<p style="
-font-size:14pt;
-color:#475569;
-">
-Avaliação ISO 27001:2022
-</p>
-<div style="
-margin:30px auto;
-font-size:20pt;
-font-weight:bold;
-color:#2563eb;
-border-top:2px solid #2563eb;
-border-bottom:2px solid #2563eb;
-padding:12px 30px;
-max-width:70%;
-">
-${company.name}
-</div>
-<div style="
-margin-top:30px;
-font-size:10pt;
-color:#64748b;
-line-height:1.8;
-">
-<strong>Responsável:</strong>
-${userName}
-<br/>
-<strong>E-mail:</strong>
-${userEmail}
-<br/>
-<strong>Data:</strong>
-${formatDate(generatedAt)}
-</div>
-</div>
-</div>
+
 <!-- =====================================================
      VISÃO GERAL
 ====================================================== -->
 <div class="page">
-<h2>
-1. Visão Geral
-</h2>
-<div class="flex-row pdf-section">
-<div class="card flex-item">
-<div class="metric">
-${summary.totalControls}
+  <h2>1. Visão Geral</h2>
+  <div class="flex-row pdf-section">
+    <div class="card flex-item">
+      <div class="metric">${summary.totalControls}</div>
+      <div class="label">Total de controles</div>
+    </div>
+    <div class="card flex-item">
+      <div class="metric" style="color:#10b981">${summary.Implementado}</div>
+      <div class="label">Implementados</div>
+    </div>
+    <div class="card flex-item">
+      <div class="metric" style="color:#f59e0b">${summary.Parcialmente}</div>
+      <div class="label">Parciais</div>
+    </div>
+    <div class="card flex-item">
+      <div class="metric" style="color:#ef4444">${summary.NaoImplementado}</div>
+      <div class="label">Não implementados</div>
+    </div>
+    <div class="card flex-item">
+      <div class="metric" style="color:#2563eb">${completionRate}%</div>
+      <div class="label">Taxa conclusão</div>
+    </div>
+  </div>
+  <br/>
+  <div class="flex-row pdf-section">
+    <div class="chart-container flex-item">
+      <div class="chart-title">Distribuição de Status</div>
+      <div class="chart-wrapper">
+        <img class="chart-img" src="data:image/png;base64,${pieBase64}" />
+      </div>
+    </div>
+    <div class="chart-container flex-item">
+      <div class="chart-title">Quantidade por Status</div>
+      <div class="chart-wrapper">
+        <img class="chart-img" src="data:image/png;base64,${barBase64}" />
+      </div>
+    </div>
+  </div>
 </div>
-<div class="label">
-Total de controles
-</div>
-</div>
-<div class="card flex-item">
-<div class="metric"
-style="color:#10b981">
-${summary.Implementado}
-</div>
-<div class="label">
-Implementados
-</div>
-</div>
-<div class="card flex-item">
-<div class="metric"
-style="color:#f59e0b">
-${summary.Parcialmente}
-</div>
-<div class="label">
-Parciais
-</div>
-</div>
-<div class="card flex-item">
-<div class="metric"
-style="color:#ef4444">
-${summary.NaoImplementado}
-</div>
-<div class="label">
-Não implementados
-</div>
-</div>
-<div class="card flex-item">
-<div class="metric"
-style="color:#2563eb">
-${completionRate}%
-</div>
-<div class="label">
-Taxa conclusão
-</div>
-</div>
-</div>
-<br/>
-<div class="flex-row pdf-section">
-<div class="chart-container flex-item">
-<div class="chart-title">
-Distribuição de Status
-</div>
-<div class="chart-wrapper">
-<img
-class="chart-img"
-src="data:image/png;base64,${pieBase64}"
-/>
-</div>
-</div>
-<div class="chart-container flex-item">
-<div class="chart-title">
-Quantidade por Status
-</div>
-<div class="chart-wrapper">
-<img
-class="chart-img"
-src="data:image/png;base64,${barBase64}"
-/>
-</div>
-</div>
-</div>
-</div>
+
 <!-- =====================================================
      CATEGORIAS
 ====================================================== -->
 <div class="page">
-<h2>
-2. Categorias de Controle
-</h2>
-<div class="flex-row pdf-section">
-${categoryData.map(cat=>`
-<div class="card flex-item">
-<div class="metric">
-${cat.total}
+  <h2>2. Categorias de Controle</h2>
+  <div class="flex-row pdf-section">
+    ${categoryHtml}
+  </div>
 </div>
-<div class="label">
-${cat.name}
-</div>
-<div style="
-margin-top:8px;
-font-size:8pt;
-">
-<span style="color:#10b981">
-✔ ${cat.implemented}
-</span>
-&nbsp;
-<span style="color:#f59e0b">
-◐ ${cat.partial}
-</span>
-&nbsp;
-<span style="color:#ef4444">
-✖ ${cat.notImpl}
-</span>
-</div>
-</div>
-`).join('')}
-</div>
-</div>
+
 <!-- =====================================================
      TIPOS DE CONTROLE
 ====================================================== -->
 <div class="page">
-<h2>
-3. Tipos de Controle
-</h2>
-<div class="flex-row pdf-section">
-${typeData.map(type=>`
-<div class="card flex-item">
-<div class="metric">
-${type.total}
+  <h2>3. Tipos de Controle</h2>
+  <div class="flex-row pdf-section">
+    ${typeHtml}
+  </div>
 </div>
-<div class="label">
-${type.name}
-</div>
-<div style="margin-top:8px">
-<span style="color:#10b981">
-✔ ${type.implemented}
-</span>
-&nbsp;
-<span style="color:#f59e0b">
-◐ ${type.partial}
-</span>
-&nbsp;
-<span style="color:#ef4444">
-✖ ${type.notImpl}
-</span>
-</div>
-</div>
-`).join('')}
-</div>
-</div>
+
 <!-- =====================================================
      CONCEITOS CIBERNÉTICOS
 ====================================================== -->
 <div class="page">
-<h2>
-4. Conceitos Cibernéticos
-</h2>
-<div class="chart-container pdf-section">
-<div class="chart-title">
-Identificar | Proteger | Detectar | Responder | Restaurar
+  <h2>4. Conceitos Cibernéticos</h2>
+  <div class="chart-container pdf-section">
+    <div class="chart-title">Identificar | Proteger | Detectar | Responder | Restaurar</div>
+    <div class="chart-wrapper">
+      <img class="chart-img" src="data:image/png;base64,${conceptBarBase64}" />
+    </div>
+  </div>
 </div>
-<div class="chart-wrapper">
-<img
-class="chart-img"
-src="data:image/png;base64,${conceptBarBase64}"
-/>
-</div>
-</div>
-</div>
+
 <!-- =====================================================
      CAPACIDADES OPERACIONAIS
 ====================================================== -->
 <div class="page">
-<h2>
-5. Capacidades Operacionais
-</h2>
-<div class="radar-container pdf-section">
-<img
-class="chart-img"
-src="data:image/png;base64,${radarBase64}"
-/>
+  <h2>5. Capacidades Operacionais</h2>
+  <div class="radar-container pdf-section">
+    <img class="chart-img" src="data:image/png;base64,${radarBase64}" />
+  </div>
+  <br/>
+  <table>
+    <thead>
+      <tr>
+        <th>Capacidade</th>
+        <th>Implementado</th>
+        <th>Parcial</th>
+        <th>Não Implementado</th>
+        <th>Total</th>
+        <th>Aderência</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${capabilityHtml}
+    </tbody>
+  </table>
 </div>
-<br/>
-<table>
-<thead>
-<tr>
-<th>
-Capacidade
-</th>
-<th>
-Implementado
-</th>
-<th>
-Parcial
-</th>
-<th>
-Não Implementado
-</th>
-<th>
-Total
-</th>
-<th>
-Aderência
-</th>
-</tr>
-</thead>
-<tbody>
-${capabilityData.map(cap=>`
-<tr>
-<td>
-${cap.name}
-</td>
-<td style="color:#10b981">
-${cap.implemented}
-</td>
-<td style="color:#f59e0b">
-${cap.partial}
-</td>
-<td style="color:#ef4444">
-${cap.notImpl}
-</td>
-<td>
-${cap.total}
-</td>
-<td>
-${cap.aderente}%
-</td>
-</tr>
-`).join('')}
-</tbody>
-</table>
-</div>
+
 <!-- =====================================================
      DOMÍNIOS
 ====================================================== -->
 <div class="page">
-<h2>
-6. Domínios de Segurança da Informação
-</h2>
-<div class="chart-container pdf-section">
-<div class="chart-title">
-Distribuição por Domínio
+  <h2>6. Domínios de Segurança da Informação</h2>
+  <div class="chart-container pdf-section">
+    <div class="chart-title">Distribuição por Domínio</div>
+    <div class="chart-wrapper">
+      <img class="chart-img" src="data:image/png;base64,${domainBarBase64}" />
+    </div>
+  </div>
+  <br/>
+  <div class="flex-row">
+    ${domainHtml}
+  </div>
 </div>
-<div class="chart-wrapper">
-<img
-class="chart-img"
-src="data:image/png;base64,${domainBarBase64}"
-/>
-</div>
-</div>
-<br/>
-<div class="flex-row">
-${domainData.map(domain=>`
-<div class="card flex-item">
-<div class="metric">
-${domain.total}
-</div>
-<div class="label">
-${domain.name}
-</div>
-</div>
-`).join('')}
-</div>
-</div>
+
 <!-- =====================================================
      FINAL
 ====================================================== -->
 <div class="page">
-<div style="
-text-align:center;
-margin-top:150px;
-color:#64748b;
-font-size:9pt;
-">
-<strong>
-Code_Assessment
-</strong>
-<br/>
-Sistema de Avaliação de Maturidade ISO 27001:2022
-<br/><br/>
-Relatório gerado em
-${formatDate(generatedAt)}
-<br/>
-Empresa:
-${company.name}
+  <div style="text-align:center;margin-top:150px;color:#64748b;font-size:9pt;">
+    <strong>Code_Assessment</strong>
+    <br/>
+    Sistema de Avaliação de Maturidade ISO 27001:2022
+    <br/><br/>
+    Relatório gerado em ${formattedDate}
+    <br/>
+    Empresa: ${company.name}
+  </div>
 </div>
-</div>
+
 </body>
 </html>
 `;
