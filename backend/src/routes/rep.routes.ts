@@ -1,3 +1,4 @@
+// backend/src/routes/rep.routes.ts
 import { Router } from 'express';
 import { RepController } from '../controllers/RepController.js';
 import { DashboardController } from '../controllers/DashboardController.js';
@@ -103,6 +104,60 @@ router.get(
   '/dashboard/:companyId/pdf',
   authenticatedRateLimiter,
   DashboardController.generateDashboardPDF
+);
+
+// ============================================
+// 🔴 NOVAS ROTAS PARA PDFS ESPECÍFICOS POR SEÇÃO
+// ============================================
+
+/**
+ * 🔴 NOVO: Gerar PDF apenas da seção de Categorização
+ * GET /api/rep/dashboard/:companyId/pdf/categorization
+ */
+router.get(
+  '/dashboard/:companyId/pdf/categorization',
+  authenticatedRateLimiter,
+  DashboardController.generateCategorizationPDF
+);
+
+/**
+ * 🔴 NOVO: Gerar PDF apenas da seção de Tipos de Controle
+ * GET /api/rep/dashboard/:companyId/pdf/control-types
+ */
+router.get(
+  '/dashboard/:companyId/pdf/control-types',
+  authenticatedRateLimiter,
+  DashboardController.generateControlTypesPDF
+);
+
+/**
+ * 🔴 NOVO: Gerar PDF apenas da seção de Conceitos Cibernéticos
+ * GET /api/rep/dashboard/:companyId/pdf/cyber-concepts
+ */
+router.get(
+  '/dashboard/:companyId/pdf/cyber-concepts',
+  authenticatedRateLimiter,
+  DashboardController.generateCyberConceptsPDF
+);
+
+/**
+ * 🔴 NOVO: Gerar PDF apenas da seção de Capacidades Operacionais
+ * GET /api/rep/dashboard/:companyId/pdf/capabilities
+ */
+router.get(
+  '/dashboard/:companyId/pdf/capabilities',
+  authenticatedRateLimiter,
+  DashboardController.generateCapabilitiesPDF
+);
+
+/**
+ * 🔴 NOVO: Gerar PDF apenas da seção de Domínios
+ * GET /api/rep/dashboard/:companyId/pdf/domains
+ */
+router.get(
+  '/dashboard/:companyId/pdf/domains',
+  authenticatedRateLimiter,
+  DashboardController.generateDomainsPDF
 );
 
 // ============================================

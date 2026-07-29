@@ -418,6 +418,554 @@ export class DashboardPDFService {
   }
 
   // =====================================================
+  // 🔴 NOVOS MÉTODOS PARA PDFS ESPECÍFICOS POR SEÇÃO
+  // =====================================================
+
+  /**
+   * 🔴 NOVO: Gera PDF apenas da seção de Categorização
+   */
+  static async generateCategorizationPDF(data: DashboardPDFData): Promise<Buffer> {
+    const startTime = Date.now();
+
+    let browser: any = null;
+    let page: any = null;
+
+    try {
+      const isProduction = process.env.NODE_ENV === 'production';
+
+      let puppeteer: any;
+      let browserOptions: any;
+
+      logger.info('🔄 CategorizationPDF: Iniciando geração');
+
+      // Gerar gráficos
+      const pieChartImage = ChartService.generatePieChart([
+        { name: 'Implementado', value: data.summary.Implementado || 0, color: '#10b981' },
+        { name: 'Parcialmente implementado', value: data.summary.Parcialmente || 0, color: '#f59e0b' },
+        { name: 'Não implementado', value: data.summary.NaoImplementado || 0, color: '#ef4444' },
+        { name: 'Não se aplica', value: data.summary.NaoSeAplica || 0, color: '#94a3b8' },
+      ]);
+
+      const barChartImage = ChartService.generateBarChart([
+        { name: 'Implementados', value: data.summary.Implementado || 0, color: '#10b981' },
+        { name: 'Parciais', value: data.summary.Parcialmente || 0, color: '#f59e0b' },
+        { name: 'Não Implementados', value: data.summary.NaoImplementado || 0, color: '#ef4444' },
+      ]);
+
+      if (!pieChartImage || !barChartImage) {
+        throw new Error('Falha ao gerar gráficos para Categorização');
+      }
+
+      const pieBase64 = pieChartImage.toString('base64');
+      const barBase64 = barChartImage.toString('base64');
+
+      const preparedData = this.prepareData(data);
+
+      // Gerar HTML apenas com a seção de categorização
+      const html = this.generateCategorizationHTML(data, pieBase64, barBase64, preparedData);
+
+      // Configurar Puppeteer
+      if (isProduction) {
+        const chromiumModule = await import('@sparticuz/chromium');
+        const chromium = chromiumModule.default || chromiumModule;
+        const puppeteerCore = await import('puppeteer-core');
+        puppeteer = puppeteerCore.default || puppeteerCore;
+        const chromiumArgs = (chromium as any).args || [];
+        const chromiumPath = await (chromium as any).executablePath();
+        browserOptions = {
+          args: [...chromiumArgs, '--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu', '--single-process'],
+          executablePath: chromiumPath,
+          headless: true,
+        };
+      } else {
+        const puppeteerModule = await import('puppeteer');
+        puppeteer = puppeteerModule.default || puppeteerModule;
+        browserOptions = {
+          headless: true,
+          args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+        };
+        if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+          browserOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+        }
+      }
+
+      browser = await puppeteer.launch(browserOptions);
+      page = await browser.newPage();
+
+      await page.setViewport({ width: 1123, height: 794, deviceScaleFactor: 2 });
+      await page.emulateMediaType('print');
+      await page.setContent(html, { waitUntil: ['load', 'domcontentloaded'] as any, timeout: 30000 });
+
+      await page.waitForFunction(
+        () => Array.from(document.images).every((img) => img.complete),
+        { timeout: 30000 }
+      );
+
+      const pdf = await page.pdf({
+        format: 'A4',
+        landscape: true,
+        printBackground: true,
+        margin: { top: '10mm', bottom: '10mm', left: '10mm', right: '10mm' },
+        displayHeaderFooter: false,
+        preferCSSPageSize: false,
+        scale: 0.9,
+        timeout: 60000,
+      });
+
+      logger.info(`✅ CategorizationPDF gerado em ${Date.now() - startTime}ms`);
+
+      return Buffer.from(pdf);
+    } catch (error) {
+      logger.error('❌ CategorizationPDF erro:', error);
+      throw error;
+    } finally {
+      if (page) { try { await page.close(); } catch (e) {} }
+      if (browser) { try { await browser.close(); } catch (e) {} }
+    }
+  }
+
+  /**
+   * 🔴 NOVO: Gera PDF apenas da seção de Tipos de Controle
+   */
+  static async generateControlTypesPDF(data: DashboardPDFData): Promise<Buffer> {
+    const startTime = Date.now();
+
+    let browser: any = null;
+    let page: any = null;
+
+    try {
+      const isProduction = process.env.NODE_ENV === 'production';
+
+      let puppeteer: any;
+      let browserOptions: any;
+
+      logger.info('🔄 ControlTypesPDF: Iniciando geração');
+
+      // Gerar gráficos
+      const typePieGeneralImage = ChartService.generatePieChart(
+        Object.entries(data.byType || {})
+          .map(([name, value]: [string, any]) => ({
+            name,
+            value: value.total || 0,
+            color: this.getColorForIndex(Object.keys(data.byType || {}).indexOf(name)),
+          }))
+          .filter((item) => item.value > 0)
+      );
+
+      const typePieGeneralBase64 = typePieGeneralImage ? typePieGeneralImage.toString('base64') : '';
+
+      const typePieImages: Record<string, string> = {};
+      Object.entries(data.byType || {}).forEach(([typeName, typeData]: [string, any]) => {
+        if (typeData && typeData.total > 0) {
+          const typePie = ChartService.generatePieChart([
+            { name: 'Implementado', value: typeData.implemented || 0, color: '#10b981' },
+            { name: 'Parcialmente', value: typeData.partial || 0, color: '#f59e0b' },
+            { name: 'Não Implementado', value: typeData.notImpl || 0, color: '#ef4444' },
+          ]);
+          if (typePie && typePie.length > 0) {
+            typePieImages[typeName] = typePie.toString('base64');
+          }
+        }
+      });
+
+      const preparedData = this.prepareData(data);
+
+      // Gerar HTML apenas com a seção de tipos de controle
+      const html = this.generateControlTypesHTML(data, typePieGeneralBase64, typePieImages, preparedData);
+
+      // Configurar Puppeteer
+      if (isProduction) {
+        const chromiumModule = await import('@sparticuz/chromium');
+        const chromium = chromiumModule.default || chromiumModule;
+        const puppeteerCore = await import('puppeteer-core');
+        puppeteer = puppeteerCore.default || puppeteerCore;
+        const chromiumArgs = (chromium as any).args || [];
+        const chromiumPath = await (chromium as any).executablePath();
+        browserOptions = {
+          args: [...chromiumArgs, '--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu', '--single-process'],
+          executablePath: chromiumPath,
+          headless: true,
+        };
+      } else {
+        const puppeteerModule = await import('puppeteer');
+        puppeteer = puppeteerModule.default || puppeteerModule;
+        browserOptions = {
+          headless: true,
+          args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+        };
+        if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+          browserOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+        }
+      }
+
+      browser = await puppeteer.launch(browserOptions);
+      page = await browser.newPage();
+
+      await page.setViewport({ width: 1123, height: 794, deviceScaleFactor: 2 });
+      await page.emulateMediaType('print');
+      await page.setContent(html, { waitUntil: ['load', 'domcontentloaded'] as any, timeout: 30000 });
+
+      await page.waitForFunction(
+        () => Array.from(document.images).every((img) => img.complete),
+        { timeout: 30000 }
+      );
+
+      const pdf = await page.pdf({
+        format: 'A4',
+        landscape: true,
+        printBackground: true,
+        margin: { top: '10mm', bottom: '10mm', left: '10mm', right: '10mm' },
+        displayHeaderFooter: false,
+        preferCSSPageSize: false,
+        scale: 0.9,
+        timeout: 60000,
+      });
+
+      logger.info(`✅ ControlTypesPDF gerado em ${Date.now() - startTime}ms`);
+
+      return Buffer.from(pdf);
+    } catch (error) {
+      logger.error('❌ ControlTypesPDF erro:', error);
+      throw error;
+    } finally {
+      if (page) { try { await page.close(); } catch (e) {} }
+      if (browser) { try { await browser.close(); } catch (e) {} }
+    }
+  }
+
+  /**
+   * 🔴 NOVO: Gera PDF apenas da seção de Conceitos Cibernéticos
+   */
+  static async generateCyberConceptsPDF(data: DashboardPDFData): Promise<Buffer> {
+    const startTime = Date.now();
+
+    let browser: any = null;
+    let page: any = null;
+
+    try {
+      const isProduction = process.env.NODE_ENV === 'production';
+
+      let puppeteer: any;
+      let browserOptions: any;
+
+      logger.info('🔄 CyberConceptsPDF: Iniciando geração');
+
+      // Gerar gráficos
+      const conceptPieGeneralImage = ChartService.generatePieChart(
+        Object.entries(data.byCyberConcept || {})
+          .map(([name, value]: [string, any]) => ({
+            name,
+            value: value.total || 0,
+            color: this.getColorForIndex(Object.keys(data.byCyberConcept || {}).indexOf(name)),
+          }))
+          .filter((item) => item.value > 0)
+      );
+
+      const conceptPieGeneralBase64 = conceptPieGeneralImage ? conceptPieGeneralImage.toString('base64') : '';
+
+      const conceptBarData = Object.entries(data.byCyberConcept || {})
+        .map(([key, value]: [string, any]) => ({
+          name: key,
+          value: value.total || 0,
+          color: '#6366f1',
+        }))
+        .filter((item) => item.value > 0);
+
+      const conceptBarImage = ChartService.generateBarChart(conceptBarData);
+      const conceptBarBase64 = conceptBarImage ? conceptBarImage.toString('base64') : '';
+
+      const conceptPieImages: Record<string, string> = {};
+      Object.entries(data.byCyberConcept || {}).forEach(([conceptName, conceptData]: [string, any]) => {
+        if (conceptData && conceptData.total > 0) {
+          const conceptPie = ChartService.generatePieChart([
+            { name: 'Implementado', value: conceptData.implemented || 0, color: '#10b981' },
+            { name: 'Parcialmente', value: conceptData.partial || 0, color: '#f59e0b' },
+            { name: 'Não Implementado', value: conceptData.notImpl || 0, color: '#ef4444' },
+          ]);
+          if (conceptPie && conceptPie.length > 0) {
+            conceptPieImages[conceptName] = conceptPie.toString('base64');
+          }
+        }
+      });
+
+      const preparedData = this.prepareData(data);
+
+      // Gerar HTML apenas com a seção de conceitos cibernéticos
+      const html = this.generateCyberConceptsHTML(data, conceptPieGeneralBase64, conceptBarBase64, conceptPieImages, preparedData);
+
+      // Configurar Puppeteer
+      if (isProduction) {
+        const chromiumModule = await import('@sparticuz/chromium');
+        const chromium = chromiumModule.default || chromiumModule;
+        const puppeteerCore = await import('puppeteer-core');
+        puppeteer = puppeteerCore.default || puppeteerCore;
+        const chromiumArgs = (chromium as any).args || [];
+        const chromiumPath = await (chromium as any).executablePath();
+        browserOptions = {
+          args: [...chromiumArgs, '--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu', '--single-process'],
+          executablePath: chromiumPath,
+          headless: true,
+        };
+      } else {
+        const puppeteerModule = await import('puppeteer');
+        puppeteer = puppeteerModule.default || puppeteerModule;
+        browserOptions = {
+          headless: true,
+          args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+        };
+        if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+          browserOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+        }
+      }
+
+      browser = await puppeteer.launch(browserOptions);
+      page = await browser.newPage();
+
+      await page.setViewport({ width: 1123, height: 794, deviceScaleFactor: 2 });
+      await page.emulateMediaType('print');
+      await page.setContent(html, { waitUntil: ['load', 'domcontentloaded'] as any, timeout: 30000 });
+
+      await page.waitForFunction(
+        () => Array.from(document.images).every((img) => img.complete),
+        { timeout: 30000 }
+      );
+
+      const pdf = await page.pdf({
+        format: 'A4',
+        landscape: true,
+        printBackground: true,
+        margin: { top: '10mm', bottom: '10mm', left: '10mm', right: '10mm' },
+        displayHeaderFooter: false,
+        preferCSSPageSize: false,
+        scale: 0.9,
+        timeout: 60000,
+      });
+
+      logger.info(`✅ CyberConceptsPDF gerado em ${Date.now() - startTime}ms`);
+
+      return Buffer.from(pdf);
+    } catch (error) {
+      logger.error('❌ CyberConceptsPDF erro:', error);
+      throw error;
+    } finally {
+      if (page) { try { await page.close(); } catch (e) {} }
+      if (browser) { try { await browser.close(); } catch (e) {} }
+    }
+  }
+
+  /**
+   * 🔴 NOVO: Gera PDF apenas da seção de Capacidades Operacionais
+   */
+  static async generateCapabilitiesPDF(data: DashboardPDFData): Promise<Buffer> {
+    const startTime = Date.now();
+
+    let browser: any = null;
+    let page: any = null;
+
+    try {
+      const isProduction = process.env.NODE_ENV === 'production';
+
+      let puppeteer: any;
+      let browserOptions: any;
+
+      logger.info('🔄 CapabilitiesPDF: Iniciando geração');
+
+      // Gerar gráfico radar
+      const radarData = Object.entries(data.byCapability || {}).map(([key, value]: [string, any]) => ({
+        subject: key.length > 20 ? key.substring(0, 20) + '…' : key,
+        Implementado: value.aderente || 0,
+        Recomendado: 100,
+      }));
+
+      const radarChartImage = ChartService.generateRadarChart(radarData);
+      const radarBase64 = radarChartImage ? radarChartImage.toString('base64') : '';
+
+      const preparedData = this.prepareData(data);
+
+      // Gerar HTML apenas com a seção de capacidades operacionais
+      const html = this.generateCapabilitiesHTML(data, radarBase64, preparedData);
+
+      // Configurar Puppeteer
+      if (isProduction) {
+        const chromiumModule = await import('@sparticuz/chromium');
+        const chromium = chromiumModule.default || chromiumModule;
+        const puppeteerCore = await import('puppeteer-core');
+        puppeteer = puppeteerCore.default || puppeteerCore;
+        const chromiumArgs = (chromium as any).args || [];
+        const chromiumPath = await (chromium as any).executablePath();
+        browserOptions = {
+          args: [...chromiumArgs, '--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu', '--single-process'],
+          executablePath: chromiumPath,
+          headless: true,
+        };
+      } else {
+        const puppeteerModule = await import('puppeteer');
+        puppeteer = puppeteerModule.default || puppeteerModule;
+        browserOptions = {
+          headless: true,
+          args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+        };
+        if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+          browserOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+        }
+      }
+
+      browser = await puppeteer.launch(browserOptions);
+      page = await browser.newPage();
+
+      await page.setViewport({ width: 1123, height: 794, deviceScaleFactor: 2 });
+      await page.emulateMediaType('print');
+      await page.setContent(html, { waitUntil: ['load', 'domcontentloaded'] as any, timeout: 30000 });
+
+      await page.waitForFunction(
+        () => Array.from(document.images).every((img) => img.complete),
+        { timeout: 30000 }
+      );
+
+      const pdf = await page.pdf({
+        format: 'A4',
+        landscape: true,
+        printBackground: true,
+        margin: { top: '10mm', bottom: '10mm', left: '10mm', right: '10mm' },
+        displayHeaderFooter: false,
+        preferCSSPageSize: false,
+        scale: 0.9,
+        timeout: 60000,
+      });
+
+      logger.info(`✅ CapabilitiesPDF gerado em ${Date.now() - startTime}ms`);
+
+      return Buffer.from(pdf);
+    } catch (error) {
+      logger.error('❌ CapabilitiesPDF erro:', error);
+      throw error;
+    } finally {
+      if (page) { try { await page.close(); } catch (e) {} }
+      if (browser) { try { await browser.close(); } catch (e) {} }
+    }
+  }
+
+  /**
+   * 🔴 NOVO: Gera PDF apenas da seção de Domínios
+   */
+  static async generateDomainsPDF(data: DashboardPDFData): Promise<Buffer> {
+    const startTime = Date.now();
+
+    let browser: any = null;
+    let page: any = null;
+
+    try {
+      const isProduction = process.env.NODE_ENV === 'production';
+
+      let puppeteer: any;
+      let browserOptions: any;
+
+      logger.info('🔄 DomainsPDF: Iniciando geração');
+
+      // Gerar gráficos
+      const domainPieGeneralImage = ChartService.generatePieChart(
+        Object.entries(data.byDomain || {})
+          .map(([name, value]: [string, any]) => ({
+            name,
+            value: value.total || 0,
+            color: this.getColorForIndex(Object.keys(data.byDomain || {}).indexOf(name)),
+          }))
+          .filter((item) => item.value > 0)
+      );
+
+      const domainPieGeneralBase64 = domainPieGeneralImage ? domainPieGeneralImage.toString('base64') : '';
+
+      const domainBarData = Object.entries(data.byDomain || {})
+        .map(([key, value]: [string, any]) => ({
+          name: key,
+          value: value.total || 0,
+          color: '#3b82f6',
+        }))
+        .filter((item) => item.value > 0);
+
+      const domainBarImage = ChartService.generateBarChart(domainBarData);
+      const domainBarBase64 = domainBarImage ? domainBarImage.toString('base64') : '';
+
+      const domainPieImages: Record<string, string> = {};
+      Object.entries(data.byDomain || {}).forEach(([domainName, domainData]: [string, any]) => {
+        if (domainData && domainData.total > 0) {
+          const domainPie = ChartService.generatePieChart([
+            { name: 'Implementado', value: domainData.implemented || 0, color: '#10b981' },
+            { name: 'Parcialmente', value: domainData.partial || 0, color: '#f59e0b' },
+            { name: 'Não Implementado', value: domainData.notImpl || 0, color: '#ef4444' },
+          ]);
+          if (domainPie && domainPie.length > 0) {
+            domainPieImages[domainName] = domainPie.toString('base64');
+          }
+        }
+      });
+
+      const preparedData = this.prepareData(data);
+
+      // Gerar HTML apenas com a seção de domínios
+      const html = this.generateDomainsHTML(data, domainPieGeneralBase64, domainBarBase64, domainPieImages, preparedData);
+
+      // Configurar Puppeteer
+      if (isProduction) {
+        const chromiumModule = await import('@sparticuz/chromium');
+        const chromium = chromiumModule.default || chromiumModule;
+        const puppeteerCore = await import('puppeteer-core');
+        puppeteer = puppeteerCore.default || puppeteerCore;
+        const chromiumArgs = (chromium as any).args || [];
+        const chromiumPath = await (chromium as any).executablePath();
+        browserOptions = {
+          args: [...chromiumArgs, '--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu', '--single-process'],
+          executablePath: chromiumPath,
+          headless: true,
+        };
+      } else {
+        const puppeteerModule = await import('puppeteer');
+        puppeteer = puppeteerModule.default || puppeteerModule;
+        browserOptions = {
+          headless: true,
+          args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+        };
+        if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+          browserOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+        }
+      }
+
+      browser = await puppeteer.launch(browserOptions);
+      page = await browser.newPage();
+
+      await page.setViewport({ width: 1123, height: 794, deviceScaleFactor: 2 });
+      await page.emulateMediaType('print');
+      await page.setContent(html, { waitUntil: ['load', 'domcontentloaded'] as any, timeout: 30000 });
+
+      await page.waitForFunction(
+        () => Array.from(document.images).every((img) => img.complete),
+        { timeout: 30000 }
+      );
+
+      const pdf = await page.pdf({
+        format: 'A4',
+        landscape: true,
+        printBackground: true,
+        margin: { top: '10mm', bottom: '10mm', left: '10mm', right: '10mm' },
+        displayHeaderFooter: false,
+        preferCSSPageSize: false,
+        scale: 0.9,
+        timeout: 60000,
+      });
+
+      logger.info(`✅ DomainsPDF gerado em ${Date.now() - startTime}ms`);
+
+      return Buffer.from(pdf);
+    } catch (error) {
+      logger.error('❌ DomainsPDF erro:', error);
+      throw error;
+    } finally {
+      if (page) { try { await page.close(); } catch (e) {} }
+      if (browser) { try { await browser.close(); } catch (e) {} }
+    }
+  }
+
+  // =====================================================
   // MÉTODOS PRIVADOS - AUXILIARES
   // =====================================================
 
@@ -1012,6 +1560,701 @@ tbody tr:nth-child(even) { background: #f8fafc; }
     <div>Relatório gerado em ${formattedDate} • Empresa: ${esc(company.name)}</div>
   </div>
 
+</div>
+</body>
+</html>`;
+  }
+
+  // =====================================================
+  // 🔴 NOVOS MÉTODOS PARA GERAÇÃO DE HTML ESPECÍFICO
+  // =====================================================
+
+  /**
+   * 🔴 NOVO: Gera HTML apenas da seção de Categorização
+   */
+  private static generateCategorizationHTML(
+    data: DashboardPDFData,
+    pieBase64: string,
+    barBase64: string,
+    prepared: PreparedData
+  ): string {
+    const { company } = data;
+    const esc = this.escapeHtml;
+    const { categoryData, userName, userEmail, formattedDate } = prepared;
+
+    const categoryHtml = categoryData
+      .map(
+        (cat) => `
+<div class="stat-card">
+  <div class="stat-value">${cat.total}</div>
+  <div class="stat-label">${esc(cat.name)}</div>
+  <div class="stat-legend">
+    <span class="ok">✔ ${cat.implemented}</span>
+    <span class="warn">◐ ${cat.partial}</span>
+    <span class="bad">✖ ${cat.notImpl}</span>
+  </div>
+</div>`
+      )
+      .join('');
+
+    return `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<title>Análise por Categoria - ${esc(company.name)}</title>
+<style>
+@page { size: A4 landscape; margin: 10mm; }
+* { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+html, body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #0f172a; background: #ffffff; font-size: 11px; }
+.page { width: 100%; }
+.section { margin: 0 0 14px 0; page-break-inside: auto; break-inside: auto; }
+.section-title { font-size: 15px; font-weight: 700; color: #0f172a; margin: 0 0 8px 0; padding-bottom: 5px; border-bottom: 2px solid #e2e8f0; page-break-after: avoid; break-after: avoid; }
+.grid { display: grid; gap: 10px; margin-bottom: 10px; align-items: stretch; }
+.grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.avoid-break { page-break-inside: avoid; break-inside: avoid; }
+.stat-card { border: 1px solid #e2e8f0; border-radius: 8px; background: #f8fafc; padding: 8px 6px; text-align: center; page-break-inside: avoid; break-inside: avoid; }
+.stat-value { font-size: 18px; font-weight: 700; color: #1d4ed8; line-height: 1.1; }
+.stat-label { font-size: 9px; color: #475569; margin-top: 2px; line-height: 1.25; }
+.stat-legend { margin-top: 4px; font-size: 8.5px; display: flex; justify-content: center; gap: 6px; }
+.ok { color: #059669; font-weight: 600; }
+.warn { color: #d97706; font-weight: 600; }
+.bad { color: #dc2626; font-weight: 600; }
+.chart-card { border: 1px solid #e2e8f0; border-radius: 8px; background: #ffffff; padding: 8px; display: flex; flex-direction: column; page-break-inside: avoid; break-inside: avoid; }
+.chart-title { font-size: 10.5px; font-weight: 600; color: #334155; text-align: center; margin-bottom: 4px; }
+.chart-body { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 0; }
+.chart-card img { width: 100%; height: auto; max-height: 210px; object-fit: contain; display: block; }
+.chart-card--lg img { max-height: 250px; }
+.header { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 3px solid #1d4ed8; padding-bottom: 10px; margin-bottom: 14px; }
+.brand { font-size: 12px; font-weight: 700; color: #1d4ed8; letter-spacing: 0.5px; }
+.header h1 { font-size: 20px; margin: 4px 0 2px 0; color: #0f172a; }
+.header h2 { font-size: 11px; font-weight: 500; margin: 0 0 4px 0; color: #64748b; }
+.company { font-size: 13px; font-weight: 700; color: #0f172a; }
+.meta { text-align: right; font-size: 9.5px; color: #475569; line-height: 1.5; }
+.footer { margin-top: 14px; padding-top: 8px; border-top: 1px solid #e2e8f0; text-align: center; font-size: 9px; color: #64748b; line-height: 1.5; page-break-inside: avoid; break-inside: avoid; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="header">
+    <div>
+      <div class="brand">Code_Assessment</div>
+      <h1>Análise por Categoria</h1>
+      <h2>Avaliação ISO 27001:2022</h2>
+      <div class="company">${esc(company.name)}</div>
+    </div>
+    <div class="meta">
+      <div>Responsável: ${esc(userName)}</div>
+      <div>E-mail: ${esc(userEmail)}</div>
+      <div>Data: ${formattedDate}</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Categorias de Controle</div>
+    <div class="grid grid-4 avoid-break">
+      ${categoryHtml}
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="grid grid-2 avoid-break">
+      <div class="chart-card chart-card--lg">
+        <div class="chart-title">Distribuição de Status</div>
+        <div class="chart-body">
+          <img src="data:image/png;base64,${pieBase64}" />
+        </div>
+      </div>
+      <div class="chart-card chart-card--lg">
+        <div class="chart-title">Quantidade por Status</div>
+        <div class="chart-body">
+          <img src="data:image/png;base64,${barBase64}" />
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div><strong>Code_Assessment</strong> — Sistema de Avaliação de Maturidade ISO 27001:2022</div>
+    <div>Relatório gerado em ${formattedDate} • Empresa: ${esc(company.name)}</div>
+  </div>
+</div>
+</body>
+</html>`;
+  }
+
+  /**
+   * 🔴 NOVO: Gera HTML apenas da seção de Tipos de Controle
+   */
+  private static generateControlTypesHTML(
+    data: DashboardPDFData,
+    typePieGeneralBase64: string,
+    typePieImages: Record<string, string>,
+    prepared: PreparedData
+  ): string {
+    const { company } = data;
+    const esc = this.escapeHtml;
+    const { typeData, userName, userEmail, formattedDate } = prepared;
+
+    const typeCardItems = typeData.map(
+      (type) => `
+<div class="stat-card">
+  <div class="stat-value">${type.total}</div>
+  <div class="stat-label">${esc(type.name)}</div>
+  <div class="stat-legend">
+    <span class="ok">✔ ${type.implemented}</span>
+    <span class="warn">◐ ${type.partial}</span>
+    <span class="bad">✖ ${type.notImpl}</span>
+  </div>
+</div>`
+    );
+
+    const buildCardGrid = (items: string[], columns = 5) => {
+      if (!items.length) return '';
+      const rows = [];
+      for (let i = 0; i < items.length; i += columns) {
+        const rowItems = items.slice(i, i + columns);
+        rows.push(`
+<div class="grid grid-${columns} avoid-break">
+  ${rowItems.join('')}
+</div>`);
+      }
+      return rows.join('');
+    };
+
+    const typePieEntries = Object.entries(typePieImages);
+    const buildChartGrid = (chartEntries: [string, string][], columns = 3) => {
+      if (!chartEntries.length) return '';
+      const rows = [];
+      for (let i = 0; i < chartEntries.length; i += columns) {
+        const rowItems = chartEntries.slice(i, i + columns);
+        rows.push(`
+<div class="grid grid-${columns} avoid-break">
+  ${rowItems.map(([name, base64]) => `
+  <div class="chart-card chart-card--sm">
+    <div class="chart-title">${esc(name)}</div>
+    <div class="chart-body">
+      <img src="data:image/png;base64,${base64}" />
+    </div>
+  </div>`).join('')}
+</div>`);
+      }
+      return rows.join('');
+    };
+
+    return `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<title>Tipos de Controle - ${esc(company.name)}</title>
+<style>
+@page { size: A4 landscape; margin: 10mm; }
+* { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+html, body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #0f172a; background: #ffffff; font-size: 11px; }
+.page { width: 100%; }
+.section { margin: 0 0 14px 0; page-break-inside: auto; break-inside: auto; }
+.section-title { font-size: 15px; font-weight: 700; color: #0f172a; margin: 0 0 8px 0; padding-bottom: 5px; border-bottom: 2px solid #e2e8f0; page-break-after: avoid; break-after: avoid; }
+.subsection-title { font-size: 12px; font-weight: 600; color: #334155; margin: 10px 0 6px 0; page-break-after: avoid; break-after: avoid; }
+.grid { display: grid; gap: 10px; margin-bottom: 10px; align-items: stretch; }
+.grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.grid-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.avoid-break { page-break-inside: avoid; break-inside: avoid; }
+.stat-card { border: 1px solid #e2e8f0; border-radius: 8px; background: #f8fafc; padding: 8px 6px; text-align: center; page-break-inside: avoid; break-inside: avoid; }
+.stat-value { font-size: 18px; font-weight: 700; color: #1d4ed8; line-height: 1.1; }
+.stat-label { font-size: 9px; color: #475569; margin-top: 2px; line-height: 1.25; }
+.stat-legend { margin-top: 4px; font-size: 8.5px; display: flex; justify-content: center; gap: 6px; }
+.ok { color: #059669; font-weight: 600; }
+.warn { color: #d97706; font-weight: 600; }
+.bad { color: #dc2626; font-weight: 600; }
+.chart-card { border: 1px solid #e2e8f0; border-radius: 8px; background: #ffffff; padding: 8px; display: flex; flex-direction: column; page-break-inside: avoid; break-inside: avoid; }
+.chart-card--sm img { max-height: 150px; }
+.chart-title { font-size: 10.5px; font-weight: 600; color: #334155; text-align: center; margin-bottom: 4px; }
+.chart-body { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 0; }
+.chart-card img { width: 100%; height: auto; max-height: 210px; object-fit: contain; display: block; }
+.header { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 3px solid #1d4ed8; padding-bottom: 10px; margin-bottom: 14px; }
+.brand { font-size: 12px; font-weight: 700; color: #1d4ed8; letter-spacing: 0.5px; }
+.header h1 { font-size: 20px; margin: 4px 0 2px 0; color: #0f172a; }
+.header h2 { font-size: 11px; font-weight: 500; margin: 0 0 4px 0; color: #64748b; }
+.company { font-size: 13px; font-weight: 700; color: #0f172a; }
+.meta { text-align: right; font-size: 9.5px; color: #475569; line-height: 1.5; }
+.footer { margin-top: 14px; padding-top: 8px; border-top: 1px solid #e2e8f0; text-align: center; font-size: 9px; color: #64748b; line-height: 1.5; page-break-inside: avoid; break-inside: avoid; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="header">
+    <div>
+      <div class="brand">Code_Assessment</div>
+      <h1>Tipos de Controle</h1>
+      <h2>Avaliação ISO 27001:2022</h2>
+      <div class="company">${esc(company.name)}</div>
+    </div>
+    <div class="meta">
+      <div>Responsável: ${esc(userName)}</div>
+      <div>E-mail: ${esc(userEmail)}</div>
+      <div>Data: ${formattedDate}</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Tipos de Controle</div>
+    ${
+      typePieGeneralBase64
+        ? `<div class="grid grid-2 avoid-break">
+             <div class="chart-card chart-card--lg">
+               <div class="chart-title">Distribuição Geral por Tipo</div>
+               <div class="chart-body">
+                 <img src="data:image/png;base64,${typePieGeneralBase64}" />
+               </div>
+             </div>
+             <div class="chart-card chart-card--lg">
+               <div class="chart-title">Quantidade por Status</div>
+               <div class="chart-body">
+                 <img src="data:image/png;base64,${typePieGeneralBase64}" />
+               </div>
+             </div>
+           </div>`
+        : ''
+    }
+
+    ${buildCardGrid(typeCardItems, 5)}
+
+    <div class="subsection-title">Detalhamento por Tipo</div>
+    ${buildChartGrid(typePieEntries, 3)}
+  </div>
+
+  <div class="footer">
+    <div><strong>Code_Assessment</strong> — Sistema de Avaliação de Maturidade ISO 27001:2022</div>
+    <div>Relatório gerado em ${formattedDate} • Empresa: ${esc(company.name)}</div>
+  </div>
+</div>
+</body>
+</html>`;
+  }
+
+  /**
+   * 🔴 NOVO: Gera HTML apenas da seção de Conceitos Cibernéticos
+   */
+  private static generateCyberConceptsHTML(
+    data: DashboardPDFData,
+    conceptPieGeneralBase64: string,
+    conceptBarBase64: string,
+    conceptPieImages: Record<string, string>,
+    prepared: PreparedData
+  ): string {
+    const { company } = data;
+    const esc = this.escapeHtml;
+    const { conceptData, userName, userEmail, formattedDate } = prepared;
+
+    const conceptCardItems = conceptData.map(
+      (concept) => `
+<div class="stat-card">
+  <div class="stat-value">${concept.total}</div>
+  <div class="stat-label">${esc(concept.name)}</div>
+  <div class="stat-legend">
+    <span class="ok">✔ ${concept.implemented}</span>
+    <span class="warn">◐ ${concept.partial}</span>
+    <span class="bad">✖ ${concept.notImpl}</span>
+  </div>
+</div>`
+    );
+
+    const buildCardGrid = (items: string[], columns = 5) => {
+      if (!items.length) return '';
+      const rows = [];
+      for (let i = 0; i < items.length; i += columns) {
+        const rowItems = items.slice(i, i + columns);
+        rows.push(`
+<div class="grid grid-${columns} avoid-break">
+  ${rowItems.join('')}
+</div>`);
+      }
+      return rows.join('');
+    };
+
+    const conceptPieEntries = Object.entries(conceptPieImages);
+    const buildChartGrid = (chartEntries: [string, string][], columns = 3) => {
+      if (!chartEntries.length) return '';
+      const rows = [];
+      for (let i = 0; i < chartEntries.length; i += columns) {
+        const rowItems = chartEntries.slice(i, i + columns);
+        rows.push(`
+<div class="grid grid-${columns} avoid-break">
+  ${rowItems.map(([name, base64]) => `
+  <div class="chart-card chart-card--sm">
+    <div class="chart-title">${esc(name)}</div>
+    <div class="chart-body">
+      <img src="data:image/png;base64,${base64}" />
+    </div>
+  </div>`).join('')}
+</div>`);
+      }
+      return rows.join('');
+    };
+
+    return `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<title>Conceitos Cibernéticos - ${esc(company.name)}</title>
+<style>
+@page { size: A4 landscape; margin: 10mm; }
+* { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+html, body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #0f172a; background: #ffffff; font-size: 11px; }
+.page { width: 100%; }
+.section { margin: 0 0 14px 0; page-break-inside: auto; break-inside: auto; }
+.section-title { font-size: 15px; font-weight: 700; color: #0f172a; margin: 0 0 8px 0; padding-bottom: 5px; border-bottom: 2px solid #e2e8f0; page-break-after: avoid; break-after: avoid; }
+.subsection-title { font-size: 12px; font-weight: 600; color: #334155; margin: 10px 0 6px 0; page-break-after: avoid; break-after: avoid; }
+.grid { display: grid; gap: 10px; margin-bottom: 10px; align-items: stretch; }
+.grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.grid-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.avoid-break { page-break-inside: avoid; break-inside: avoid; }
+.stat-card { border: 1px solid #e2e8f0; border-radius: 8px; background: #f8fafc; padding: 8px 6px; text-align: center; page-break-inside: avoid; break-inside: avoid; }
+.stat-value { font-size: 18px; font-weight: 700; color: #1d4ed8; line-height: 1.1; }
+.stat-label { font-size: 9px; color: #475569; margin-top: 2px; line-height: 1.25; }
+.stat-legend { margin-top: 4px; font-size: 8.5px; display: flex; justify-content: center; gap: 6px; }
+.ok { color: #059669; font-weight: 600; }
+.warn { color: #d97706; font-weight: 600; }
+.bad { color: #dc2626; font-weight: 600; }
+.chart-card { border: 1px solid #e2e8f0; border-radius: 8px; background: #ffffff; padding: 8px; display: flex; flex-direction: column; page-break-inside: avoid; break-inside: avoid; }
+.chart-card--sm img { max-height: 150px; }
+.chart-title { font-size: 10.5px; font-weight: 600; color: #334155; text-align: center; margin-bottom: 4px; }
+.chart-body { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 0; }
+.chart-card img { width: 100%; height: auto; max-height: 210px; object-fit: contain; display: block; }
+.header { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 3px solid #1d4ed8; padding-bottom: 10px; margin-bottom: 14px; }
+.brand { font-size: 12px; font-weight: 700; color: #1d4ed8; letter-spacing: 0.5px; }
+.header h1 { font-size: 20px; margin: 4px 0 2px 0; color: #0f172a; }
+.header h2 { font-size: 11px; font-weight: 500; margin: 0 0 4px 0; color: #64748b; }
+.company { font-size: 13px; font-weight: 700; color: #0f172a; }
+.meta { text-align: right; font-size: 9.5px; color: #475569; line-height: 1.5; }
+.footer { margin-top: 14px; padding-top: 8px; border-top: 1px solid #e2e8f0; text-align: center; font-size: 9px; color: #64748b; line-height: 1.5; page-break-inside: avoid; break-inside: avoid; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="header">
+    <div>
+      <div class="brand">Code_Assessment</div>
+      <h1>Conceitos Cibernéticos</h1>
+      <h2>Avaliação ISO 27001:2022</h2>
+      <div class="company">${esc(company.name)}</div>
+    </div>
+    <div class="meta">
+      <div>Responsável: ${esc(userName)}</div>
+      <div>E-mail: ${esc(userEmail)}</div>
+      <div>Data: ${formattedDate}</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Conceitos Cibernéticos</div>
+
+    <div class="grid grid-2 avoid-break">
+      ${
+        conceptPieGeneralBase64
+          ? `<div class="chart-card chart-card--lg">
+               <div class="chart-title">Distribuição Geral por Conceito</div>
+               <div class="chart-body">
+                 <img src="data:image/png;base64,${conceptPieGeneralBase64}" />
+               </div>
+             </div>`
+          : ''
+      }
+      ${
+        conceptBarBase64
+          ? `<div class="chart-card chart-card--lg">
+               <div class="chart-title">Quantidade por Conceito</div>
+               <div class="chart-body">
+                 <img src="data:image/png;base64,${conceptBarBase64}" />
+               </div>
+             </div>`
+          : ''
+      }
+    </div>
+
+    ${buildCardGrid(conceptCardItems, 5)}
+
+    <div class="subsection-title">Detalhamento por Conceito</div>
+    ${buildChartGrid(conceptPieEntries, 3)}
+  </div>
+
+  <div class="footer">
+    <div><strong>Code_Assessment</strong> — Sistema de Avaliação de Maturidade ISO 27001:2022</div>
+    <div>Relatório gerado em ${formattedDate} • Empresa: ${esc(company.name)}</div>
+  </div>
+</div>
+</body>
+</html>`;
+  }
+
+  /**
+   * 🔴 NOVO: Gera HTML apenas da seção de Capacidades Operacionais
+   */
+  private static generateCapabilitiesHTML(
+    data: DashboardPDFData,
+    radarBase64: string,
+    prepared: PreparedData
+  ): string {
+    const { company } = data;
+    const esc = this.escapeHtml;
+    const { capabilityData, userName, userEmail, formattedDate } = prepared;
+
+    const capabilityHtml = capabilityData
+      .map(
+        (cap) => `
+        <tr>
+          <td class="td-name">${esc(cap.name)}</td>
+          <td class="ok">${cap.implemented}</td>
+          <td class="warn">${cap.partial}</td>
+          <td class="bad">${cap.notImpl}</td>
+          <td>${cap.total}</td>
+          <td class="td-strong">${cap.aderente}%</td>
+        </tr>`
+      )
+      .join('');
+
+    return `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<title>Capacidades Operacionais - ${esc(company.name)}</title>
+<style>
+@page { size: A4 landscape; margin: 10mm; }
+* { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+html, body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #0f172a; background: #ffffff; font-size: 11px; }
+.page { width: 100%; }
+.section { margin: 0 0 14px 0; page-break-inside: auto; break-inside: auto; }
+.section-title { font-size: 15px; font-weight: 700; color: #0f172a; margin: 0 0 8px 0; padding-bottom: 5px; border-bottom: 2px solid #e2e8f0; page-break-after: avoid; break-after: avoid; }
+.grid { display: grid; gap: 10px; margin-bottom: 10px; align-items: stretch; }
+.grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.avoid-break { page-break-inside: avoid; break-inside: avoid; }
+.chart-card { border: 1px solid #e2e8f0; border-radius: 8px; background: #ffffff; padding: 8px; display: flex; flex-direction: column; page-break-inside: avoid; break-inside: avoid; }
+.chart-title { font-size: 10.5px; font-weight: 600; color: #334155; text-align: center; margin-bottom: 4px; }
+.chart-body { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 0; }
+.chart-card img { width: 100%; height: auto; max-height: 210px; object-fit: contain; display: block; }
+.table-card { border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; page-break-inside: avoid; break-inside: avoid; }
+table { width: 100%; border-collapse: collapse; font-size: 9.5px; }
+thead th { background: #1e293b; color: #ffffff; font-weight: 600; padding: 6px 6px; text-align: center; }
+thead th:first-child { text-align: left; }
+tbody td { padding: 5px 6px; text-align: center; border-bottom: 1px solid #e2e8f0; }
+tbody tr:nth-child(even) { background: #f8fafc; }
+.td-name { text-align: left; font-weight: 500; color: #334155; }
+.td-strong { font-weight: 700; color: #1d4ed8; }
+.ok { color: #059669; font-weight: 600; }
+.warn { color: #d97706; font-weight: 600; }
+.bad { color: #dc2626; font-weight: 600; }
+.header { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 3px solid #1d4ed8; padding-bottom: 10px; margin-bottom: 14px; }
+.brand { font-size: 12px; font-weight: 700; color: #1d4ed8; letter-spacing: 0.5px; }
+.header h1 { font-size: 20px; margin: 4px 0 2px 0; color: #0f172a; }
+.header h2 { font-size: 11px; font-weight: 500; margin: 0 0 4px 0; color: #64748b; }
+.company { font-size: 13px; font-weight: 700; color: #0f172a; }
+.meta { text-align: right; font-size: 9.5px; color: #475569; line-height: 1.5; }
+.footer { margin-top: 14px; padding-top: 8px; border-top: 1px solid #e2e8f0; text-align: center; font-size: 9px; color: #64748b; line-height: 1.5; page-break-inside: avoid; break-inside: avoid; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="header">
+    <div>
+      <div class="brand">Code_Assessment</div>
+      <h1>Capacidades Operacionais</h1>
+      <h2>Avaliação ISO 27001:2022</h2>
+      <div class="company">${esc(company.name)}</div>
+    </div>
+    <div class="meta">
+      <div>Responsável: ${esc(userName)}</div>
+      <div>E-mail: ${esc(userEmail)}</div>
+      <div>Data: ${formattedDate}</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Capacidades Operacionais</div>
+
+    <div class="grid grid-2 avoid-break">
+      ${
+        radarBase64
+          ? `<div class="chart-card chart-card--lg">
+               <div class="chart-title">Radar de Capacidades</div>
+               <div class="chart-body">
+                 <img src="data:image/png;base64,${radarBase64}" />
+               </div>
+             </div>`
+          : ''
+      }
+      <div class="table-card">
+        <table>
+          <thead>
+            <tr>
+              <th>Capacidade</th>
+              <th>Implementado</th>
+              <th>Parcial</th>
+              <th>Não Implementado</th>
+              <th>Total</th>
+              <th>Aderência</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${capabilityHtml}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div><strong>Code_Assessment</strong> — Sistema de Avaliação de Maturidade ISO 27001:2022</div>
+    <div>Relatório gerado em ${formattedDate} • Empresa: ${esc(company.name)}</div>
+  </div>
+</div>
+</body>
+</html>`;
+  }
+
+  /**
+   * 🔴 NOVO: Gera HTML apenas da seção de Domínios
+   */
+  private static generateDomainsHTML(
+    data: DashboardPDFData,
+    domainPieGeneralBase64: string,
+    domainBarBase64: string,
+    domainPieImages: Record<string, string>,
+    prepared: PreparedData
+  ): string {
+    const { company } = data;
+    const esc = this.escapeHtml;
+    const { domainData, userName, userEmail, formattedDate } = prepared;
+
+    const domainCardItems = domainData.map(
+      (domain) => `
+<div class="stat-card">
+  <div class="stat-value">${domain.total}</div>
+  <div class="stat-label">${esc(domain.name)}</div>
+</div>`
+    );
+
+    const buildCardGrid = (items: string[], columns = 5) => {
+      if (!items.length) return '';
+      const rows = [];
+      for (let i = 0; i < items.length; i += columns) {
+        const rowItems = items.slice(i, i + columns);
+        rows.push(`
+<div class="grid grid-${columns} avoid-break">
+  ${rowItems.join('')}
+</div>`);
+      }
+      return rows.join('');
+    };
+
+    const domainPieEntries = Object.entries(domainPieImages);
+    const buildChartGrid = (chartEntries: [string, string][], columns = 3) => {
+      if (!chartEntries.length) return '';
+      const rows = [];
+      for (let i = 0; i < chartEntries.length; i += columns) {
+        const rowItems = chartEntries.slice(i, i + columns);
+        rows.push(`
+<div class="grid grid-${columns} avoid-break">
+  ${rowItems.map(([name, base64]) => `
+  <div class="chart-card chart-card--sm">
+    <div class="chart-title">${esc(name)}</div>
+    <div class="chart-body">
+      <img src="data:image/png;base64,${base64}" />
+    </div>
+  </div>`).join('')}
+</div>`);
+      }
+      return rows.join('');
+    };
+
+    return `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<title>Domínios de SI - ${esc(company.name)}</title>
+<style>
+@page { size: A4 landscape; margin: 10mm; }
+* { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+html, body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #0f172a; background: #ffffff; font-size: 11px; }
+.page { width: 100%; }
+.section { margin: 0 0 14px 0; page-break-inside: auto; break-inside: auto; }
+.section-title { font-size: 15px; font-weight: 700; color: #0f172a; margin: 0 0 8px 0; padding-bottom: 5px; border-bottom: 2px solid #e2e8f0; page-break-after: avoid; break-after: avoid; }
+.subsection-title { font-size: 12px; font-weight: 600; color: #334155; margin: 10px 0 6px 0; page-break-after: avoid; break-after: avoid; }
+.grid { display: grid; gap: 10px; margin-bottom: 10px; align-items: stretch; }
+.grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.grid-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.avoid-break { page-break-inside: avoid; break-inside: avoid; }
+.stat-card { border: 1px solid #e2e8f0; border-radius: 8px; background: #f8fafc; padding: 8px 6px; text-align: center; page-break-inside: avoid; break-inside: avoid; }
+.stat-value { font-size: 18px; font-weight: 700; color: #1d4ed8; line-height: 1.1; }
+.stat-label { font-size: 9px; color: #475569; margin-top: 2px; line-height: 1.25; }
+.chart-card { border: 1px solid #e2e8f0; border-radius: 8px; background: #ffffff; padding: 8px; display: flex; flex-direction: column; page-break-inside: avoid; break-inside: avoid; }
+.chart-card--sm img { max-height: 150px; }
+.chart-title { font-size: 10.5px; font-weight: 600; color: #334155; text-align: center; margin-bottom: 4px; }
+.chart-body { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 0; }
+.chart-card img { width: 100%; height: auto; max-height: 210px; object-fit: contain; display: block; }
+.header { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 3px solid #1d4ed8; padding-bottom: 10px; margin-bottom: 14px; }
+.brand { font-size: 12px; font-weight: 700; color: #1d4ed8; letter-spacing: 0.5px; }
+.header h1 { font-size: 20px; margin: 4px 0 2px 0; color: #0f172a; }
+.header h2 { font-size: 11px; font-weight: 500; margin: 0 0 4px 0; color: #64748b; }
+.company { font-size: 13px; font-weight: 700; color: #0f172a; }
+.meta { text-align: right; font-size: 9.5px; color: #475569; line-height: 1.5; }
+.footer { margin-top: 14px; padding-top: 8px; border-top: 1px solid #e2e8f0; text-align: center; font-size: 9px; color: #64748b; line-height: 1.5; page-break-inside: avoid; break-inside: avoid; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="header">
+    <div>
+      <div class="brand">Code_Assessment</div>
+      <h1>Domínios de Segurança da Informação</h1>
+      <h2>Avaliação ISO 27001:2022</h2>
+      <div class="company">${esc(company.name)}</div>
+    </div>
+    <div class="meta">
+      <div>Responsável: ${esc(userName)}</div>
+      <div>E-mail: ${esc(userEmail)}</div>
+      <div>Data: ${formattedDate}</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Domínios de SI</div>
+
+    <div class="grid grid-2 avoid-break">
+      ${
+        domainPieGeneralBase64
+          ? `<div class="chart-card chart-card--lg">
+               <div class="chart-title">Distribuição Geral por Domínio</div>
+               <div class="chart-body">
+                 <img src="data:image/png;base64,${domainPieGeneralBase64}" />
+               </div>
+             </div>`
+          : ''
+      }
+      ${
+        domainBarBase64
+          ? `<div class="chart-card chart-card--lg">
+               <div class="chart-title">Distribuição por Domínio</div>
+               <div class="chart-body">
+                 <img src="data:image/png;base64,${domainBarBase64}" />
+               </div>
+             </div>`
+          : ''
+      }
+    </div>
+
+    ${buildCardGrid(domainCardItems, 5)}
+
+    <div class="subsection-title">Detalhamento por Domínio</div>
+    ${buildChartGrid(domainPieEntries, 3)}
+  </div>
+
+  <div class="footer">
+    <div><strong>Code_Assessment</strong> — Sistema de Avaliação de Maturidade ISO 27001:2022</div>
+    <div>Relatório gerado em ${formattedDate} • Empresa: ${esc(company.name)}</div>
+  </div>
 </div>
 </body>
 </html>`;
