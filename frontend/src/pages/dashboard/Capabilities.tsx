@@ -561,7 +561,8 @@ const CapabilitiesContent: React.FC<{ data: DashboardData; companyId: string }> 
 
     setIsDownloading(true);
     try {
-      const blob = await dashboardService.downloadDashboardPDF(companyId);
+      const blob = await dashboardService.downloadCapabilitiesPDF(companyId);
+
       
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
