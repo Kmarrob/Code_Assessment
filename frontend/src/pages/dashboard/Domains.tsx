@@ -413,7 +413,7 @@ const DomainsContent: React.FC<{ data: DashboardData; companyId: string }> = ({ 
 
     setIsDownloading(true);
     try {
-const blob = await dashboardService.downloadDomainsPDF(companyId);
+      const blob = await dashboardService.downloadDomainsPDF(companyId);
       
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -649,11 +649,13 @@ const blob = await dashboardService.downloadDomainsPDF(companyId);
               data={pieData}
               title={`Gráficos — ${row.name}`}
               subtitle={`${row.total} controles · ${row.pImpl}% implementados · ${row.pPartial}% parciais · ${row.pNot}% não implementados`}
+              height={240}
             />
             <BarChart
               data={barData}
               title="Quantidade por Status"
               subtitle={`Distribuição dos controles ${row.name}`}
+              height={240}
             />
           </div>
         );
