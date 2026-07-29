@@ -74,11 +74,75 @@ export const dashboardService = {
   // ============================================
 
   /**
-   * 🔴 NOVO: Baixar PDF do dashboard de maturidade
+   * 🔴 NOVO: Baixar PDF do dashboard de maturidade (COMPLETO)
    * GET /api/rep/dashboard/:companyId/pdf
    */
   async downloadDashboardPDF(companyId: string): Promise<Blob> {
     const response = await api.get(`/rep/dashboard/${companyId}/pdf`, {
+      responseType: 'blob',
+      timeout: 60000,
+    });
+    return response.data;
+  },
+
+  // ============================================
+  // 🔴 NOVOS MÉTODOS PARA PDFS ESPECÍFICOS POR SEÇÃO
+  // ============================================
+
+  /**
+   * 🔴 NOVO: Baixar PDF apenas da seção de Categorização
+   * GET /api/rep/dashboard/:companyId/pdf/categorization
+   */
+  async downloadCategorizationPDF(companyId: string): Promise<Blob> {
+    const response = await api.get(`/rep/dashboard/${companyId}/pdf/categorization`, {
+      responseType: 'blob',
+      timeout: 60000,
+    });
+    return response.data;
+  },
+
+  /**
+   * 🔴 NOVO: Baixar PDF apenas da seção de Tipos de Controle
+   * GET /api/rep/dashboard/:companyId/pdf/control-types
+   */
+  async downloadControlTypesPDF(companyId: string): Promise<Blob> {
+    const response = await api.get(`/rep/dashboard/${companyId}/pdf/control-types`, {
+      responseType: 'blob',
+      timeout: 60000,
+    });
+    return response.data;
+  },
+
+  /**
+   * 🔴 NOVO: Baixar PDF apenas da seção de Conceitos Cibernéticos
+   * GET /api/rep/dashboard/:companyId/pdf/cyber-concepts
+   */
+  async downloadCyberConceptsPDF(companyId: string): Promise<Blob> {
+    const response = await api.get(`/rep/dashboard/${companyId}/pdf/cyber-concepts`, {
+      responseType: 'blob',
+      timeout: 60000,
+    });
+    return response.data;
+  },
+
+  /**
+   * 🔴 NOVO: Baixar PDF apenas da seção de Capacidades Operacionais
+   * GET /api/rep/dashboard/:companyId/pdf/capabilities
+   */
+  async downloadCapabilitiesPDF(companyId: string): Promise<Blob> {
+    const response = await api.get(`/rep/dashboard/${companyId}/pdf/capabilities`, {
+      responseType: 'blob',
+      timeout: 60000,
+    });
+    return response.data;
+  },
+
+  /**
+   * 🔴 NOVO: Baixar PDF apenas da seção de Domínios
+   * GET /api/rep/dashboard/:companyId/pdf/domains
+   */
+  async downloadDomainsPDF(companyId: string): Promise<Blob> {
+    const response = await api.get(`/rep/dashboard/${companyId}/pdf/domains`, {
       responseType: 'blob',
       timeout: 60000,
     });
