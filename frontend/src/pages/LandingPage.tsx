@@ -9,7 +9,8 @@ import {
   Building2, CheckCircle, Clock, 
   Package, Box, HardDrive, FileCheck,
   ShieldCheck, Lock, CreditCard, FileSearch,
-  Boxes, Crown, Sparkles, Star, Minus
+  Boxes, Crown, Sparkles, Star, Minus,
+  ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { FadeTransition } from '../components/ui/Transition.js';
 import { Typewriter } from '../components/ui/MicroInteractions.js';
@@ -30,6 +31,45 @@ const MRS_COLORS = {
 
 // Logo da MRS Consultoria (caminho fixo - imagem local - FALLBACK)
 const MRS_LOGO_FALLBACK = '/images/brand/logo-mrs.png';
+
+// 🔴 NOVO: Dados do carrossel de resultados
+const carouselSlides = [
+  {
+    id: 1,
+    image: '/images/dashboard/visao-geral.png',
+    title: 'Visão Geral da Maturidade',
+    description: 'Acompanhe o progresso da sua organização com métricas claras e objetivas.',
+    alt: 'Dashboard com visão geral da maturidade em segurança da informação'
+  },
+  {
+    id: 2,
+    image: '/images/dashboard/capacidades-radar.png',
+    title: 'Radar de Capacidades Operacionais',
+    description: 'Compare seu nível de implementação com o recomendado em 15 capacidades essenciais.',
+    alt: 'Gráfico radar das capacidades operacionais'
+  },
+  {
+    id: 3,
+    image: '/images/dashboard/categorizacao.png',
+    title: 'Análise por Categoria',
+    description: 'Entenda o desempenho em controles Organizacionais, de Pessoas, Físicos e Tecnológicos.',
+    alt: 'Tabela e gráficos de categorização por tipo de controle'
+  },
+  {
+    id: 4,
+    image: '/images/dashboard/tipos-controle.png',
+    title: 'Distribuição por Tipos de Controle',
+    description: 'Saiba como sua organização se protege com controles Preventivos, Detectivos e Corretivos.',
+    alt: 'Gráficos de distribuição por tipos de controle'
+  },
+  {
+    id: 5,
+    image: '/images/dashboard/dominios-si.png',
+    title: 'Domínios de Segurança da Informação',
+    description: 'Visualize a saúde da sua segurança em Governança, Proteção, Defesa e Resiliência.',
+    alt: 'Gráficos de distribuição por domínios de SI'
+  }
+];
 
 const features = [
   {
@@ -195,6 +235,23 @@ const plans = [
 export const LandingPage: React.FC = () => {
   const [branding, setBranding] = useState<PublicBrandingData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  // 🔴 NOVO: Estado para controle do carrossel
+  const [currentSlide, setCurrentSlide] = useState(0);
+
+  // ============================================
+  // 🔴 NOVO: Funções de navegação do carrossel
+  // ============================================
+  const nextSlide = () => {
+    setCurrentSlide((prev) => (prev + 1) % carouselSlides.length);
+  };
+
+  const prevSlide = () => {
+    setCurrentSlide((prev) => (prev - 1 + carouselSlides.length) % carouselSlides.length);
+  };
+
+  const goToSlide = (index: number) => {
+    setCurrentSlide(index);
+  };
 
   // ============================================
   // 🔴 CORRIGIDO: Carregar branding sem requisições autenticadas
@@ -540,6 +597,111 @@ export const LandingPage: React.FC = () => {
                     </div>
                   );
                 })}
+              </div>
+            </div>
+          </section>
+
+          {/* ============================================
+              🔴 NOVA SEÇÃO: RESULTADOS DO SISTEMA (CARROSSEL)
+              ============================================ */}
+          <section 
+            className="py-16"
+            style={{ backgroundColor: '#FFFFFF' }}
+            aria-labelledby="carousel-title"
+          >
+            <div className="container mx-auto px-4">
+              <div className="text-center mb-12">
+                <h2 id="carousel-title" className="text-3xl font-bold mb-4" style={{ color: colors.primary }}>
+                  Veja o Sistema em Ação
+                </h2>
+                <p className="max-w-2xl mx-auto" style={{ color: colors.secondary }}>
+                  Conheça os dashboards e relatórios que sua organização terá acesso
+                </p>
+              </div>
+
+              <div className="relative max-w-7xl mx-auto">
+                {/* Container do Carrossel */}
+                <div className="overflow-hidden rounded-2xl shadow-2xl border border-gray-100">
+                  <div 
+                    className="flex transition-transform duration-500 ease-in-out"
+                    style={{ transform: `translateX(-${currentSlide * 100}%)` }}
+                  >
+                    {carouselSlides.map((slide) => (
+                      <div 
+                        key={slide.id}
+                        className="min-w-full flex-shrink-0"
+                      >
+                        <div className="relative bg-gray-50">
+                          {/* Imagem */}
+                          <div className="aspect-[16/9] overflow-hidden bg-gray-100">
+                            <img
+                              src={slide.image}
+                              alt={slide.alt}
+                              className="w-full h-full object-contain p-4"
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                                const fallback = document.createElement('div');
+                                fallback.className = 'w-full h-full flex items-center justify-center bg-gray-100';
+                                fallback.innerHTML = `
+                                  <div class="text-center">
+                                    <div class="w-20 h-20 mx-auto rounded-full flex items-center justify-center" 
+                                         style="background-color: ${colors.accent}20; color: ${colors.accent};">
+                                      <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                      </svg>
+                                    </div>
+                                    <p class="text-sm text-gray-500 mt-2">Imagem não disponível</p>
+                                  </div>
+                                `;
+                                e.currentTarget.parentNode?.appendChild(fallback);
+                              }}
+                            />
+                          </div>
+                          {/* Legenda sobreposta na imagem */}
+                          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-6">
+                            <h3 className="text-xl font-bold text-white mb-1">{slide.title}</h3>
+                            <p className="text-white/90 text-sm">{slide.description}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Botões de navegação */}
+                <button
+                  onClick={prevSlide}
+                  className="absolute left-0 top-1/2 -translate-y-1/2 -ml-4 p-2 bg-white rounded-full shadow-lg hover:shadow-xl transition-shadow border border-gray-200 hover:bg-gray-50"
+                  aria-label="Slide anterior"
+                >
+                  <ChevronLeft className="w-6 h-6 text-gray-600" />
+                </button>
+                <button
+                  onClick={nextSlide}
+                  className="absolute right-0 top-1/2 -translate-y-1/2 -mr-4 p-2 bg-white rounded-full shadow-lg hover:shadow-xl transition-shadow border border-gray-200 hover:bg-gray-50"
+                  aria-label="Próximo slide"
+                >
+                  <ChevronRight className="w-6 h-6 text-gray-600" />
+                </button>
+
+                {/* Indicadores (dots) */}
+                <div className="flex justify-center gap-2 mt-6">
+                  {carouselSlides.map((_, index) => (
+                    <button
+                      key={index}
+                      onClick={() => goToSlide(index)}
+                      className={`w-3 h-3 rounded-full transition-all duration-300 ${
+                        currentSlide === index 
+                          ? 'w-8' 
+                          : 'bg-gray-300 hover:bg-gray-400'
+                      }`}
+                      style={{
+                        backgroundColor: currentSlide === index ? colors.accent : undefined,
+                      }}
+                      aria-label={`Ir para slide ${index + 1}`}
+                    />
+                  ))}
+                </div>
               </div>
             </div>
           </section>
