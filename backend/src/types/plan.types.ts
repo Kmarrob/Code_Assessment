@@ -1,10 +1,5 @@
-// backend/src/types/plan.types.ts
+import { Document, Types } from 'mongoose';
 
-import { Types } from 'mongoose';
-
-/**
- * Features disponíveis para cada plano
- */
 export interface IPlanFeatures {
   maxUsers: number;
   maxControls: number;
@@ -23,13 +18,10 @@ export interface IPlanFeatures {
   canAddCustomControls: boolean;
   canIntegrateAPI: boolean;
   canIntegrateSSO: boolean;
+  governance: boolean; // 🆕 NOVO (v39) - Acesso ao módulo de governança
 }
 
-/**
- * Interface do Plano (sem dependências circulares)
- */
-export interface IPlan {
-  _id: Types.ObjectId;
+export interface IPlan extends Document {
   name: 'basic' | 'pro' | 'enterprise' | 'trial';
   displayName: string;
   description: string;
@@ -45,8 +37,8 @@ export interface IPlan {
   customPriceAnnual?: number;
   sortOrder: number;
   badge?: string;
-  createdAt: Date;
-  updatedAt: Date;
   createdBy?: Types.ObjectId;
   updatedBy?: Types.ObjectId;
+  createdAt: Date;
+  updatedAt: Date;
 }

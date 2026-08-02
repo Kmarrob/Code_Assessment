@@ -22,14 +22,22 @@ export class GovernanceController {
         });
       }
 
-      const userId = req.user?.id;
-      const companyId = req.user?.companyId;
+      const user = (req as any).user;
+      const userId = user?.id;
+      const companyId = user?.companyId;
 
       if (!userId || !companyId) {
         return res.status(401).json({ error: 'Usuário não autenticado' });
       }
 
-      const doc = await governanceService.create(validation.data, userId, companyId);
+      // Converter datas de string para Date
+      const data = {
+        ...validation.data,
+        effectiveDate: new Date(validation.data.effectiveDate),
+        reviewDate: new Date(validation.data.reviewDate),
+      };
+
+      const doc = await governanceService.create(data, userId, companyId);
       return res.status(201).json(doc);
     } catch (error) {
       console.error('Erro ao criar documento:', error);
@@ -39,8 +47,8 @@ export class GovernanceController {
 
   async findAll(req: Request, res: Response) {
     try {
-      const companyId = req.user?.companyId;
-      const user = req.user;
+      const user = (req as any).user;
+      const companyId = user?.companyId;
 
       if (!companyId) {
         return res.status(401).json({ error: 'Usuário não autenticado' });
@@ -71,8 +79,8 @@ export class GovernanceController {
   async findById(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      const companyId = req.user?.companyId;
-      const user = req.user;
+      const user = (req as any).user;
+      const companyId = user?.companyId;
 
       if (!companyId) {
         return res.status(401).json({ error: 'Usuário não autenticado' });
@@ -105,9 +113,9 @@ export class GovernanceController {
   async update(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      const companyId = req.user?.companyId;
-      const userId = req.user?.id;
-      const user = req.user;
+      const user = (req as any).user;
+      const companyId = user?.companyId;
+      const userId = user?.id;
 
       if (!companyId || !userId) {
         return res.status(401).json({ error: 'Usuário não autenticado' });
@@ -133,7 +141,12 @@ export class GovernanceController {
         });
       }
 
-      const doc = await governanceService.update(id, validation.data, userId, companyId);
+      // Converter datas de string para Date se existirem
+      const data: any = { ...validation.data };
+      if (data.effectiveDate) data.effectiveDate = new Date(data.effectiveDate);
+      if (data.reviewDate) data.reviewDate = new Date(data.reviewDate);
+
+      const doc = await governanceService.update(id, data, userId, companyId);
       if (!doc) {
         return res.status(404).json({ error: 'Documento não encontrado' });
       }
@@ -148,8 +161,8 @@ export class GovernanceController {
   async delete(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      const companyId = req.user?.companyId;
-      const user = req.user;
+      const user = (req as any).user;
+      const companyId = user?.companyId;
 
       if (!companyId) {
         return res.status(401).json({ error: 'Usuário não autenticado' });
@@ -182,9 +195,9 @@ export class GovernanceController {
   async approve(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      const companyId = req.user?.companyId;
-      const userId = req.user?.id;
-      const user = req.user;
+      const user = (req as any).user;
+      const companyId = user?.companyId;
+      const userId = user?.id;
 
       if (!companyId || !userId) {
         return res.status(401).json({ error: 'Usuário não autenticado' });
@@ -217,8 +230,8 @@ export class GovernanceController {
   async getByLevel(req: Request, res: Response) {
     try {
       const { level } = req.params;
-      const companyId = req.user?.companyId;
-      const user = req.user;
+      const user = (req as any).user;
+      const companyId = user?.companyId;
 
       if (!companyId) {
         return res.status(401).json({ error: 'Usuário não autenticado' });
@@ -246,8 +259,8 @@ export class GovernanceController {
 
   async getTree(req: Request, res: Response) {
     try {
-      const companyId = req.user?.companyId;
-      const user = req.user;
+      const user = (req as any).user;
+      const companyId = user?.companyId;
 
       if (!companyId) {
         return res.status(401).json({ error: 'Usuário não autenticado' });
@@ -280,11 +293,11 @@ export class GovernanceController {
   /**
    * Download de documento em formato DOC
    */
-  async downloadDoc(req: Request, res: Response) {
+  async downloadDoc(req: Request, res: Response): Promise<Response | void> {
     try {
       const { id } = req.params;
-      const companyId = req.user?.companyId;
-      const user = req.user;
+      const user = (req as any).user;
+      const companyId = user?.companyId;
 
       if (!companyId) {
         return res.status(401).json({ error: 'Usuário não autenticado' });
@@ -319,7 +332,7 @@ export class GovernanceController {
 
       res.setHeader('Content-Type', 'application/msword');
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-      res.send(content);
+      return res.send(content);
     } catch (error) {
       console.error('Erro ao baixar DOC:', error);
       return res.status(500).json({ error: 'Erro interno ao baixar documento' });
@@ -329,11 +342,11 @@ export class GovernanceController {
   /**
    * Download de documento em formato PDF
    */
-  async downloadPdf(req: Request, res: Response) {
+  async downloadPdf(req: Request, res: Response): Promise<Response | void> {
     try {
       const { id } = req.params;
-      const companyId = req.user?.companyId;
-      const user = req.user;
+      const user = (req as any).user;
+      const companyId = user?.companyId;
 
       if (!companyId) {
         return res.status(401).json({ error: 'Usuário não autenticado' });
@@ -372,7 +385,7 @@ export class GovernanceController {
 
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-      res.send(pdfBuffer);
+      return res.send(pdfBuffer);
     } catch (error) {
       console.error('Erro ao baixar PDF:', error);
       return res.status(500).json({ error: 'Erro interno ao baixar documento' });

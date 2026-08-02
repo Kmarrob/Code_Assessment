@@ -1,4 +1,4 @@
-import { PlanFeature } from '../models/PlanFeature.js';
+import { PlanFeature, IPlanFeature } from '../models/PlanFeature.js';
 import { logger } from '../../../utils/logger.js';
 
 /**

@@ -3,7 +3,6 @@ import mongoose, { Schema, Document } from 'mongoose';
 export interface IPlanFeature extends Document {
   planName: 'basic' | 'pro' | 'enterprise' | 'trial';
   governance: boolean;
-  // Futuras features podem ser adicionadas aqui
   customFeatures?: Record<string, any>;
   createdAt: Date;
   updatedAt: Date;
