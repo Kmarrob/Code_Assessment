@@ -2063,11 +2063,16 @@ async function seedGovernance() {
     console.log('✅ Conectado ao MongoDB');
 
     // Buscar primeiro admin para ser o criador dos documentos
-    const adminUser = await mongoose.connection.db
-      .collection('users')
-      .findOne({ role: 'ADMIN' });
-
-    const adminId = adminUser?._id?.toString() || ADMIN_USER_ID;
+    // 🔧 CORREÇÃO: Verificar se mongoose.connection.db existe antes de acessar
+    let adminId = ADMIN_USER_ID;
+    if (mongoose.connection.db) {
+      const adminUser = await mongoose.connection.db
+        .collection('users')
+        .findOne({ role: 'ADMIN' });
+      adminId = adminUser?._id?.toString() || ADMIN_USER_ID;
+    } else {
+      console.warn('⚠️ Conexão com o banco não disponível, usando admin ID padrão');
+    }
     console.log(`👤 Usando admin ID: ${adminId}`);
 
     // Limpar documentos existentes (apenas para o seed)

@@ -82,6 +82,10 @@ export class GovernanceController {
       const user = (req as any).user;
       const companyId = user?.companyId;
 
+      if (!id) {
+        return res.status(400).json({ error: 'ID do documento é obrigatório' });
+      }
+
       if (!companyId) {
         return res.status(401).json({ error: 'Usuário não autenticado' });
       }
@@ -116,6 +120,10 @@ export class GovernanceController {
       const user = (req as any).user;
       const companyId = user?.companyId;
       const userId = user?.id;
+
+      if (!id) {
+        return res.status(400).json({ error: 'ID do documento é obrigatório' });
+      }
 
       if (!companyId || !userId) {
         return res.status(401).json({ error: 'Usuário não autenticado' });
@@ -164,6 +172,10 @@ export class GovernanceController {
       const user = (req as any).user;
       const companyId = user?.companyId;
 
+      if (!id) {
+        return res.status(400).json({ error: 'ID do documento é obrigatório' });
+      }
+
       if (!companyId) {
         return res.status(401).json({ error: 'Usuário não autenticado' });
       }
@@ -198,6 +210,10 @@ export class GovernanceController {
       const user = (req as any).user;
       const companyId = user?.companyId;
       const userId = user?.id;
+
+      if (!id) {
+        return res.status(400).json({ error: 'ID do documento é obrigatório' });
+      }
 
       if (!companyId || !userId) {
         return res.status(401).json({ error: 'Usuário não autenticado' });
@@ -299,6 +315,10 @@ export class GovernanceController {
       const user = (req as any).user;
       const companyId = user?.companyId;
 
+      if (!id) {
+        return res.status(400).json({ error: 'ID do documento é obrigatório' });
+      }
+
       if (!companyId) {
         return res.status(401).json({ error: 'Usuário não autenticado' });
       }
@@ -347,6 +367,10 @@ export class GovernanceController {
       const { id } = req.params;
       const user = (req as any).user;
       const companyId = user?.companyId;
+
+      if (!id) {
+        return res.status(400).json({ error: 'ID do documento é obrigatório' });
+      }
 
       if (!companyId) {
         return res.status(401).json({ error: 'Usuário não autenticado' });
