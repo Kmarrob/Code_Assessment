@@ -8,10 +8,23 @@ import {
   UpdateGovernanceDocumentDTO,
 } from '../types/governance.types';
 
-export function useGovernanceDocuments(filters?: GovernanceFilters) {
+// Extender os filtros para incluir isAdmin
+interface GovernanceQueryFilters extends GovernanceFilters {
+  isAdmin?: boolean;
+}
+
+export function useGovernanceDocuments(filters?: GovernanceQueryFilters) {
+  const { isAdmin, ...restFilters } = filters || {};
+  
   return useQuery({
     queryKey: ['governance', 'documents', filters],
-    queryFn: () => governanceService.listDocuments(filters),
+    queryFn: () => {
+      if (isAdmin) {
+        return governanceService.listDocuments(restFilters);
+      } else {
+        return governanceService.repListDocuments(restFilters);
+      }
+    },
   });
 }
 

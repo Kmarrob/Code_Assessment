@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { useGovernanceDocuments, useDeleteGovernanceDocument } from '../../hooks/useGovernance';
 import { GovernanceDocument, DocumentLevel, DocumentStatus } from '../../types/governance.types';
+import { useAuth } from '../../../contexts/AuthContext.js';
 
 const levelLabels: Record<DocumentLevel, string> = {
   1: 'Política',
@@ -52,15 +53,21 @@ const levelColors: Record<DocumentLevel, string> = {
 
 export default function AdminGovernance() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedLevel, setSelectedLevel] = useState<DocumentLevel | 'all'>('all');
   const [selectedStatus, setSelectedStatus] = useState<DocumentStatus | 'all'>('all');
   const [expandedDocs, setExpandedDocs] = useState<Set<string>>(new Set());
 
+  // Determinar se o usuário é Admin ou Rep
+  const isAdmin = user?.role === 'ADMIN';
+
+  // Usar o hook com a função correta baseada no perfil
   const { data: documents = [], isLoading, error } = useGovernanceDocuments({
     search: searchTerm || undefined,
     level: selectedLevel !== 'all' ? selectedLevel : undefined,
     status: selectedStatus !== 'all' ? selectedStatus : undefined,
+    isAdmin,
   });
 
   const deleteMutation = useDeleteGovernanceDocument();
@@ -122,31 +129,37 @@ export default function AdminGovernance() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Governança</h1>
-          <p className="text-gray-500 mt-1">Gerencie políticas, normas, procedimentos e instruções</p>
+          <p className="text-gray-500 mt-1">
+            {isAdmin 
+              ? 'Gerencie políticas, normas, procedimentos e instruções' 
+              : 'Visualize os documentos da biblioteca de governança'}
+          </p>
         </div>
-        <div className="flex gap-3 mt-4 md:mt-0">
-          <button
-            onClick={() => navigate('/admin/governance/policy/new')}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            Nova Política
-          </button>
-          <button
-            onClick={() => navigate('/admin/governance/standard/new')}
-            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            Nova Norma
-          </button>
-          <button
-            onClick={() => navigate('/admin/governance/procedure/new')}
-            className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            Novo Procedimento
-          </button>
-        </div>
+        {isAdmin && (
+          <div className="flex gap-3 mt-4 md:mt-0">
+            <button
+              onClick={() => navigate('/admin/governance/policy/new')}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Nova Política
+            </button>
+            <button
+              onClick={() => navigate('/admin/governance/standard/new')}
+              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Nova Norma
+            </button>
+            <button
+              onClick={() => navigate('/admin/governance/procedure/new')}
+              className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Novo Procedimento
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Filters */}
@@ -194,7 +207,11 @@ export default function AdminGovernance() {
           <div className="text-center py-12">
             <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-gray-600">Nenhum documento encontrado</h3>
-            <p className="text-gray-400 mt-2">Comece criando uma nova política, norma ou procedimento</p>
+            <p className="text-gray-400 mt-2">
+              {isAdmin 
+                ? 'Comece criando uma nova política, norma ou procedimento'
+                : 'Não há documentos disponíveis no momento'}
+            </p>
           </div>
         ) : (
           <div className="divide-y divide-gray-200">
@@ -236,26 +253,30 @@ export default function AdminGovernance() {
                   </div>
                   <div className="flex items-center gap-2 ml-4">
                     <button
-                      onClick={() => navigate(`/admin/governance/document/${doc.id}`)}
+                      onClick={() => navigate(isAdmin ? `/admin/governance/document/${doc.id}` : `/rep/governance/document/${doc.id}`)}
                       className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                       title="Visualizar"
                     >
                       <Eye className="w-4 h-4" />
                     </button>
-                    <button
-                      onClick={() => navigate(`/admin/governance/document/${doc.id}/edit`)}
-                      className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                      title="Editar"
-                    >
-                      <Edit className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(doc.id, doc.title)}
-                      className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                      title="Excluir"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    {isAdmin && (
+                      <>
+                        <button
+                          onClick={() => navigate(`/admin/governance/document/${doc.id}/edit`)}
+                          className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                          title="Editar"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(doc.id, doc.title)}
+                          className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Excluir"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </>
+                    )}
                     <button
                       onClick={() => toggleExpand(doc.id)}
                       className="p-2 text-gray-400 hover:text-gray-600 rounded-lg transition-colors"
