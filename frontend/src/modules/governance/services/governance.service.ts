@@ -11,10 +11,10 @@ import {
   CreateRecordDTO,
 } from '../types/governance.types';
 
-const BASE_URL = '/api/governance';
+const BASE_URL = '/governance';
 
 /**
- * Serviço para o módulo de governança (Admin)
+ * Serviço para o módulo de governança
  */
 export const governanceService = {
   // ============================================
@@ -57,6 +57,24 @@ export const governanceService = {
 
   async getDocumentTree(): Promise<any> {
     const response = await api.get(`${BASE_URL}/admin/documents/tree`);
+    return response.data;
+  },
+
+  // ============================================
+  // ADMIN - Download
+  // ============================================
+
+  async downloadDocumentDoc(id: string): Promise<Blob> {
+    const response = await api.get(`${BASE_URL}/admin/documents/${id}/download/doc`, {
+      responseType: 'blob',
+    });
+    return response.data;
+  },
+
+  async downloadDocumentPdf(id: string): Promise<Blob> {
+    const response = await api.get(`${BASE_URL}/admin/documents/${id}/download/pdf`, {
+      responseType: 'blob',
+    });
     return response.data;
   },
 
@@ -161,6 +179,24 @@ export const governanceService = {
 
   async repGetDocumentTree(): Promise<any> {
     const response = await api.get(`${BASE_URL}/rep/documents/tree`);
+    return response.data;
+  },
+
+  // ============================================
+  // REP (Enterprise) - Download
+  // ============================================
+
+  async repDownloadDocumentDoc(id: string): Promise<Blob> {
+    const response = await api.get(`${BASE_URL}/rep/documents/${id}/download/doc`, {
+      responseType: 'blob',
+    });
+    return response.data;
+  },
+
+  async repDownloadDocumentPdf(id: string): Promise<Blob> {
+    const response = await api.get(`${BASE_URL}/rep/documents/${id}/download/pdf`, {
+      responseType: 'blob',
+    });
     return response.data;
   },
 };
