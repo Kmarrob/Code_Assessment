@@ -1,5 +1,6 @@
 import { GovernanceDocument, IGovernanceDocument } from '../models/GovernanceDocument';
 import { CreateGovernanceDocumentDTO, UpdateGovernanceDocumentDTO, GovernanceFilters } from '../types/governance.types';
+import { logger } from '../../../utils/logger.js';
 
 export class GovernanceService {
   async create(data: CreateGovernanceDocumentDTO, userId: string, companyId: string): Promise<IGovernanceDocument> {
@@ -25,7 +26,7 @@ export class GovernanceService {
   }
 
   async findById(id: string, companyId: string): Promise<IGovernanceDocument | null> {
-    return GovernanceDocument.findOne({ _id: id, companyId, deletedAt: null });
+    return GovernanceDocument.findOne({ _id: id, companyId, deletedAt: null }).exec();
   }
 
   async findAll(companyId: string, filters: GovernanceFilters = {}): Promise<IGovernanceDocument[]> {
@@ -46,19 +47,24 @@ export class GovernanceService {
       query[`frameworks.${filters.framework}`] = { $exists: true, $not: { $size: 0 } };
     }
 
-    return GovernanceDocument.find(query)
+    const docs = await GovernanceDocument.find(query)
       .sort({ code: 1 })
-      .lean();
+      .exec();
+
+    return docs;
   }
 
   async update(id: string, data: UpdateGovernanceDocumentDTO, userId: string, companyId: string): Promise<IGovernanceDocument | null> {
-    const doc = await GovernanceDocument.findOne({ _id: id, companyId, deletedAt: null });
+    const doc = await GovernanceDocument.findOne({ _id: id, companyId, deletedAt: null }).exec();
     if (!doc) return null;
 
     const updateData: any = { ...data, updatedBy: userId };
 
     // Se houver mudança de versão, adicionar ao histórico
     if (data.version && data.versionChanges) {
+      if (!doc.versionHistory) {
+        doc.versionHistory = [];
+      }
       doc.versionHistory.push({
         version: data.version,
         date: new Date(),
@@ -74,7 +80,7 @@ export class GovernanceService {
   }
 
   async delete(id: string, companyId: string): Promise<boolean> {
-    const doc = await GovernanceDocument.findOne({ _id: id, companyId, deletedAt: null });
+    const doc = await GovernanceDocument.findOne({ _id: id, companyId, deletedAt: null }).exec();
     if (!doc) return false;
 
     doc.deletedAt = new Date();
@@ -84,7 +90,7 @@ export class GovernanceService {
   }
 
   async approve(id: string, userId: string, companyId: string): Promise<IGovernanceDocument | null> {
-    const doc = await GovernanceDocument.findOne({ _id: id, companyId, deletedAt: null });
+    const doc = await GovernanceDocument.findOne({ _id: id, companyId, deletedAt: null }).exec();
     if (!doc) return null;
 
     doc.status = 'approved';
@@ -95,25 +101,29 @@ export class GovernanceService {
   }
 
   async getByLevel(companyId: string, level: 1 | 2 | 3 | 4 | 5): Promise<IGovernanceDocument[]> {
-    return GovernanceDocument.find({
+    const docs = await GovernanceDocument.find({
       companyId,
       level,
       status: 'approved',
       deletedAt: null,
     })
     .sort({ code: 1 })
-    .lean();
+    .exec();
+
+    return docs;
   }
 
   async getByCategory(companyId: string, category: string): Promise<IGovernanceDocument[]> {
-    return GovernanceDocument.find({
+    const docs = await GovernanceDocument.find({
       companyId,
       category,
       status: 'approved',
       deletedAt: null,
     })
     .sort({ code: 1 })
-    .lean();
+    .exec();
+
+    return docs;
   }
 
   async getTree(companyId: string): Promise<any> {
@@ -124,14 +134,18 @@ export class GovernanceService {
     const levelMap: Record<number, any[]> = { 1: [], 2: [], 3: [], 4: [], 5: [] };
 
     allDocs.forEach(doc => {
-      if (!levelMap[doc.level]) levelMap[doc.level] = [];
-      levelMap[doc.level].push(doc);
+      const level = doc.level as keyof typeof levelMap;
+      if (!levelMap[level]) {
+        levelMap[level] = [];
+      }
+      levelMap[level].push(doc);
     });
 
     // Organizar por hierarquia
     Object.keys(levelMap).forEach(level => {
-      const docs = levelMap[Number(level)];
-      docs.forEach(doc => {
+      const levelNum = Number(level);
+      const docs = levelMap[levelNum] || [];
+      docs.forEach((doc: any) => {
         if (doc.parentId) {
           // Encontrar pai e adicionar como filho
         }
@@ -142,13 +156,15 @@ export class GovernanceService {
   }
 
   async searchByKeyword(companyId: string, keyword: string): Promise<IGovernanceDocument[]> {
-    return GovernanceDocument.find({
+    const docs = await GovernanceDocument.find({
       companyId,
       keywords: { $in: [new RegExp(keyword, 'i')] },
       status: 'approved',
       deletedAt: null,
     })
     .sort({ code: 1 })
-    .lean();
+    .exec();
+
+    return docs;
   }
 }
