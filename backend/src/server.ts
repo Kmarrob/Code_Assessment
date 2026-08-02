@@ -1,4 +1,3 @@
-//backend/src/server.ts
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -32,6 +31,9 @@ import { UserRole } from './types/index.js';
 import { AdminController } from './controllers/AdminController.js';
 import brandingRoutes from './routes/branding.routes.js';
 import analyticsRoutes from './routes/analytics.routes.js';
+
+// 🆕 NOVO (v39) - Importação do módulo de governança
+import governanceRoutes from './models/governance/routes/governance.routes.js';
 
 const app = express();
 
@@ -154,6 +156,9 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/branding', brandingRoutes);
 app.use('/api/admin/analytics', analyticsRoutes);
 
+// 🆕 NOVO (v39) - Rotas de Governança
+app.use('/api/governance', governanceRoutes);
+
 app.get('/health', noCache, (_req, res) => {
   res.json({
     status: 'ok',
@@ -232,6 +237,8 @@ async function startServer() {
       logger.info(`📋 Payment Routes: http://localhost:${PORT}/api/payments`);
       logger.info(`🏷️ Branding Routes: http://localhost:${PORT}/api/branding`);
       logger.info(`📊 Analytics Routes: http://localhost:${PORT}/api/admin/analytics`);
+      // 🆕 NOVO (v39) - Governance Routes
+      logger.info(`📋 Governance Routes: http://localhost:${PORT}/api/governance`);
       logger.info(`📁 Uploads servidos em: http://localhost:${PORT}/uploads`);
     });
 

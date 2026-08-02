@@ -8,7 +8,7 @@ import {
   Search, ChevronLeft, ChevronRight, Plus, Loader2,
   LayoutDashboard, MessageSquare, Edit, Trash2, 
   X, RefreshCw, AlertTriangle, ChevronDown, FileText,
-  Palette, UserCheck
+  Palette, UserCheck, BookOpen
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card.js';
 import { Button } from '../components/ui/Button.js';
@@ -222,6 +222,10 @@ export const RepDashboard: React.FC = () => {
 
   const handleManageBranding = () => {
     navigate('/rep/branding');
+  };
+
+  const handleManageGovernance = () => {
+    navigate('/rep/governance');
   };
 
   const handleSearch = (e: React.FormEvent) => {
@@ -449,22 +453,23 @@ export const RepDashboard: React.FC = () => {
             </div>
             <ChevronRight className="w-4 h-4 text-purple-400 mt-2" />
           </div>
-		  {/* 🔴 NOVO: Card "Meus Controles" - para o preposto ver e responder seus controles */}
-<div
-  onClick={() => navigate('/rep/my-controls')}
-  className="bg-white border-2 border-indigo-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
->
-  <div className="flex items-center justify-between">
-    <div>
-      <p className="text-sm font-medium text-indigo-600">Meus</p>
-      <p className="text-lg font-bold text-indigo-900">Controles</p>
-    </div>
-    <div className="p-3 bg-indigo-100 rounded-full">
-      <ClipboardList className="w-6 h-6 text-indigo-600" />
-    </div>
-  </div>
-  <ChevronRight className="w-4 h-4 text-indigo-400 mt-2" />
-</div>
+
+          {/* 🔴 NOVO: Card "Meus Controles" - para o preposto ver e responder seus controles */}
+          <div
+            onClick={() => navigate('/rep/my-controls')}
+            className="bg-white border-2 border-indigo-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-indigo-600">Meus</p>
+                <p className="text-lg font-bold text-indigo-900">Controles</p>
+              </div>
+              <div className="p-3 bg-indigo-100 rounded-full">
+                <ClipboardList className="w-6 h-6 text-indigo-600" />
+              </div>
+            </div>
+            <ChevronRight className="w-4 h-4 text-indigo-400 mt-2" />
+          </div>
 
           <div
             onClick={handleManageDocuments}
@@ -496,6 +501,23 @@ export const RepDashboard: React.FC = () => {
               </div>
             </div>
             <ChevronRight className="w-4 h-4 text-gray-400 mt-2" />
+          </div>
+
+          {/* 🆕 NOVO (v39): Card "Governança" - Biblioteca de documentos */}
+          <div
+            onClick={handleManageGovernance}
+            className="bg-white border-2 border-emerald-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-emerald-600">Acessar</p>
+                <p className="text-lg font-bold text-emerald-900">Governança</p>
+              </div>
+              <div className="p-3 bg-emerald-100 rounded-full">
+                <BookOpen className="w-6 h-6 text-emerald-600" />
+              </div>
+            </div>
+            <ChevronRight className="w-4 h-4 text-emerald-400 mt-2" />
           </div>
 
           {/* 🔴 NOVO: Card "Personalizar Identidade Visual" (apenas Enterprise) */}

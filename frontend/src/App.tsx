@@ -1,4 +1,3 @@
-// frontend/src/App.tsx
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
@@ -26,6 +25,15 @@ import AdminCompanyDetail from './pages/AdminCompanyDetail.js';
 import AdminBranding from './pages/AdminBranding.js';
 // 🔴 NOVO: Import da página de controles do preposto
 import RepMyControls from './pages/RepMyControls.js';
+
+// ============================================
+// 🆕 NOVO (v39) - IMPORTAÇÕES DO MÓDULO DE GOVERNANÇA
+// ============================================
+import AdminGovernance from './modules/governance/pages/admin/AdminGovernance.js';
+import AdminPolicyEditor from './modules/governance/pages/admin/AdminPolicyEditor.js';
+import AdminStandardEditor from './modules/governance/pages/admin/AdminStandardEditor.js';
+import AdminProcedureEditor from './modules/governance/pages/admin/AdminProcedureEditor.js';
+import AdminWorkInstructionEditor from './modules/governance/pages/admin/AdminWorkInstructionEditor.js';
 
 // ============================================
 // IMPORTAÇÕES DO DASHBOARD (DIRETAS - CORRIGIDO)
@@ -278,6 +286,45 @@ function App() {
                         <Domains />
                       </Layout>
                     } />
+
+                    {/* ============================================
+                        🆕 NOVO (v39) - ROTAS ADMIN - GOVERNANÇA
+                        ============================================ */}
+                    <Route path="/admin/governance" element={
+                      <Layout>
+                        <AdminGovernance />
+                      </Layout>
+                    } />
+                    <Route path="/admin/governance/policy/new" element={
+                      <Layout>
+                        <AdminPolicyEditor />
+                      </Layout>
+                    } />
+                    <Route path="/admin/governance/standard/new" element={
+                      <Layout>
+                        <AdminStandardEditor />
+                      </Layout>
+                    } />
+                    <Route path="/admin/governance/procedure/new" element={
+                      <Layout>
+                        <AdminProcedureEditor />
+                      </Layout>
+                    } />
+                    <Route path="/admin/governance/instruction/new" element={
+                      <Layout>
+                        <AdminWorkInstructionEditor />
+                      </Layout>
+                    } />
+                    <Route path="/admin/governance/document/:id" element={
+                      <Layout>
+                        <AdminGovernance />
+                      </Layout>
+                    } />
+                    <Route path="/admin/governance/document/:id/edit" element={
+                      <Layout>
+                        <AdminPolicyEditor />
+                      </Layout>
+                    } />
                   </Route>
 
                   { /* ============================================
@@ -329,6 +376,15 @@ function App() {
                     <Route path="/rep/my-controls" element={
                       <Layout>
                         <RepMyControls />
+                      </Layout>
+                    } />
+
+                    {/* ============================================
+                        🆕 NOVO (v39) - ROTA REP - GOVERNANÇA
+                        ============================================ */}
+                    <Route path="/rep/governance" element={
+                      <Layout>
+                        <AdminGovernance />
                       </Layout>
                     } />
                     
