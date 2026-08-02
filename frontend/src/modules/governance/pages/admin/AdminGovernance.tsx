@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { useGovernanceDocuments, useDeleteGovernanceDocument } from '../../hooks/useGovernance';
 import { GovernanceDocument, DocumentLevel, DocumentStatus } from '../../types/governance.types';
-import { useAuth } from '../../../contexts/AuthContext.js';
+import { useAuth } from '../../../../contexts/AuthContext.js';
 
 const levelLabels: Record<DocumentLevel, string> = {
   1: 'Política',
