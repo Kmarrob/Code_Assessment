@@ -36,7 +36,10 @@ export interface IGovernanceDocument extends Document {
   };
   
   // Empresa
-  companyId: string;
+  companyId: string | null;  // 🆕 Permitir null para documentos globais
+  
+  // 🆕 NOVO (v40) - Documento global (acessível a todas as empresas Enterprise)
+  isGlobal: boolean;
   
   // Controle de versão
   versionHistory: Array<{
@@ -101,7 +104,15 @@ const GovernanceDocumentSchema = new Schema<IGovernanceDocument>(
       bacen: { type: [String], default: [] },
     },
     
-    companyId: { type: String, ref: 'Company', required: true },
+    // 🆕 CORRIGIDO (v40) - Removido required para permitir documentos globais
+    companyId: { type: String, ref: 'Company', default: null },
+    
+    // 🆕 NOVO (v40) - Documento global acessível a todas as empresas Enterprise
+    isGlobal: { 
+      type: Boolean, 
+      default: false,
+      description: 'Documento global acessível a todas as empresas com plano Enterprise'
+    },
     
     versionHistory: [
       {
@@ -131,11 +142,13 @@ const GovernanceDocumentSchema = new Schema<IGovernanceDocument>(
 );
 
 // Índices para performance
-GovernanceDocumentSchema.index({ code: 1, companyId: 1 }, { unique: true });
+GovernanceDocumentSchema.index({ code: 1, companyId: 1 }, { unique: true, partialFilterExpression: { companyId: { $ne: null } } });
 GovernanceDocumentSchema.index({ companyId: 1, level: 1 });
 GovernanceDocumentSchema.index({ companyId: 1, status: 1 });
 GovernanceDocumentSchema.index({ companyId: 1, category: 1 });
 GovernanceDocumentSchema.index({ keywords: 1 });
+// 🆕 NOVO (v40) - Índice para documentos globais
+GovernanceDocumentSchema.index({ isGlobal: 1 });
 
 export const GovernanceDocument = mongoose.model<IGovernanceDocument>(
   'GovernanceDocument',

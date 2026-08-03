@@ -36,6 +36,20 @@ export function useGovernanceDocument(id: string) {
   });
 }
 
+export function useGovernanceViewDocument(id: string, isAdmin?: boolean) {
+  return useQuery({
+    queryKey: ['governance', 'document', 'view', id],
+    queryFn: () => {
+      if (isAdmin) {
+        return governanceService.viewDocument(id);
+      } else {
+        return governanceService.repViewDocument(id);
+      }
+    },
+    enabled: !!id,
+  });
+}
+
 export function useGovernanceTree() {
   return useQuery({
     queryKey: ['governance', 'tree'],

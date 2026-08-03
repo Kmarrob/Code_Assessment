@@ -216,4 +216,38 @@ router.get(
   governanceController.downloadPdf.bind(governanceController)
 );
 
+// ============================================
+// 🆕 NOVO (v40) - ROTAS DE VISUALIZAÇÃO COM SUBSTITUIÇÃO
+// ============================================
+
+// Admin - Visualizar documento com substituição
+router.get(
+  '/admin/documents/:id/view',
+  authorize(UserRole.ADMIN),
+  governanceController.viewDocument.bind(governanceController)
+);
+
+// Rep - Visualizar documento com substituição (Enterprise)
+router.get(
+  '/rep/documents/:id/view',
+  async (req, res, next) => {
+    try {
+      const user = (req as any).user;
+      if (user?.role === 'ADMIN') return next();
+      
+      const hasAccess = await FeatureService.hasGovernanceAccess(user?.plan || 'basic');
+      if (!hasAccess) {
+        return res.status(403).json({
+          error: 'Plano Enterprise necessário para acessar o módulo de governança',
+          code: 'PLAN_FEATURE_NOT_AVAILABLE',
+        });
+      }
+      next();
+    } catch (error) {
+      return res.status(500).json({ error: 'Erro ao verificar permissões' });
+    }
+  },
+  governanceController.viewDocument.bind(governanceController)
+);
+
 export default router;

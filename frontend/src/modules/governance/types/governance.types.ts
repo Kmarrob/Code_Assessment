@@ -28,6 +28,7 @@ export interface Attachment {
 }
 
 export interface GovernanceDocument {
+  _id: string; // 🆕 NOVO (v40) - ID do MongoDB
   id: string;
   code: string;
   title: string;
@@ -47,6 +48,7 @@ export interface GovernanceDocument {
   reviewDate: Date;
   frameworks: FrameworkReference;
   companyId: string;
+  isGlobal?: boolean; // 🆕 NOVO (v40) - Documento global
   versionHistory: VersionHistoryEntry[];
   attachments: Attachment[];
   createdAt: Date;

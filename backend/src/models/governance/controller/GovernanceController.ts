@@ -415,4 +415,61 @@ export class GovernanceController {
       return res.status(500).json({ error: 'Erro interno ao baixar documento' });
     }
   }
+
+  // ============================================
+  // 🆕 NOVO (v40) - ENDPOINT DE VISUALIZAÇÃO COM SUBSTITUIÇÃO
+  // ============================================
+
+  /**
+   * Visualizar documento com placeholders substituídos pelo nome da empresa
+   */
+  async viewDocument(req: Request, res: Response): Promise<Response | void> {
+    try {
+      const { id } = req.params;
+      const user = (req as any).user;
+      const companyId = user?.companyId;
+
+      if (!id) {
+        return res.status(400).json({ error: 'ID do documento é obrigatório' });
+      }
+
+      if (!companyId) {
+        return res.status(401).json({ error: 'Usuário não autenticado' });
+      }
+
+      // Verificar acesso (apenas Enterprise para REP)
+      if (user?.role !== 'ADMIN') {
+        const hasAccess = await FeatureService.hasGovernanceAccess(user?.plan || 'basic');
+        if (!hasAccess) {
+          return res.status(403).json({
+            error: 'Plano Enterprise necessário para acessar o módulo de governança',
+            code: 'PLAN_FEATURE_NOT_AVAILABLE',
+          });
+        }
+      }
+
+      const doc = await governanceService.findById(id, companyId);
+      if (!doc) {
+        return res.status(404).json({ error: 'Documento não encontrado' });
+      }
+
+      // Buscar nome da empresa
+      const company = await Company.findById(companyId);
+      const companyName = company?.name || 'Empresa';
+
+      // Substituir placeholders no conteúdo
+      const exportService = new DocumentExportService();
+      const contentWithCompany = exportService.replacePlaceholders(doc.content, companyName);
+
+      // Retornar documento com o conteúdo substituído
+      const docObj = doc.toObject ? doc.toObject() : doc;
+      return res.json({
+        ...docObj,
+        content: contentWithCompany,
+      });
+    } catch (error) {
+      console.error('Erro ao visualizar documento:', error);
+      return res.status(500).json({ error: 'Erro interno ao visualizar documento' });
+    }
+  }
 }

@@ -4,7 +4,16 @@ import { z } from 'zod';
 export const governanceDocumentBaseSchema = z.object({
   code: z.string().min(3).max(20),
   title: z.string().min(3).max(200),
-  level: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5)]),
+  level: z.union([
+    z.literal(1),
+    z.literal(2),
+    z.literal(3),
+    z.literal(4),
+    z.literal(5),
+    z.string().transform((val) => Number(val)).refine((val) => [1, 2, 3, 4, 5].includes(val), {
+      message: 'Level must be 1, 2, 3, 4, or 5',
+    }),
+  ]),
   category: z.string().min(3).max(100),
   content: z.string().min(10),
   summary: z.string().min(10).max(500),
@@ -45,9 +54,18 @@ export const updateGovernanceDocumentSchema = z.object({
   versionChanges: z.string().optional(),
 });
 
-// Filter Schema
+// Filter Schema - Aceita string ou número
 export const governanceFiltersSchema = z.object({
-  level: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5)]).optional(),
+  level: z.union([
+    z.literal(1),
+    z.literal(2),
+    z.literal(3),
+    z.literal(4),
+    z.literal(5),
+    z.string().transform((val) => Number(val)).refine((val) => [1, 2, 3, 4, 5].includes(val), {
+      message: 'Level must be 1, 2, 3, 4, or 5',
+    }),
+  ]).optional(),
   status: z.enum(['draft', 'review', 'approved', 'archived']).optional(),
   category: z.string().optional(),
   search: z.string().optional(),

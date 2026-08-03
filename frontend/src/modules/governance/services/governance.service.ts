@@ -79,6 +79,15 @@ export const governanceService = {
   },
 
   // ============================================
+  // ADMIN - Visualização com substituição
+  // ============================================
+
+  async viewDocument(id: string): Promise<GovernanceDocument> {
+    const response = await api.get(`${BASE_URL}/admin/documents/${id}/view`);
+    return response.data;
+  },
+
+  // ============================================
   // ADMIN - Políticas (Nível 1)
   // ============================================
 
@@ -179,6 +188,15 @@ export const governanceService = {
 
   async repGetDocumentTree(): Promise<any> {
     const response = await api.get(`${BASE_URL}/rep/documents/tree`);
+    return response.data;
+  },
+
+  // ============================================
+  // REP (Enterprise) - Visualização com substituição
+  // ============================================
+
+  async repViewDocument(id: string): Promise<GovernanceDocument> {
+    const response = await api.get(`${BASE_URL}/rep/documents/${id}/view`);
     return response.data;
   },
 

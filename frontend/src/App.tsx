@@ -35,6 +35,9 @@ import AdminStandardEditor from './modules/governance/pages/admin/AdminStandardE
 import AdminProcedureEditor from './modules/governance/pages/admin/AdminProcedureEditor.js';
 import AdminWorkInstructionEditor from './modules/governance/pages/admin/AdminWorkInstructionEditor.js';
 
+// 🆕 NOVO (v40) - Import da página de visualização do Rep
+import RepPolicyView from './modules/governance/pages/rep/RepPolicyView.js';
+
 // ============================================
 // IMPORTAÇÕES DO DASHBOARD (DIRETAS - CORRIGIDO)
 // ============================================
@@ -385,6 +388,15 @@ function App() {
                     <Route path="/rep/governance" element={
                       <Layout>
                         <AdminGovernance />
+                      </Layout>
+                    } />
+
+                    {/* ============================================
+                        🆕 NOVO (v40) - ROTA REP - VISUALIZAR DOCUMENTO
+                        ============================================ */}
+                    <Route path="/rep/governance/document/:id" element={
+                      <Layout>
+                        <RepPolicyView />
                       </Layout>
                     } />
                     

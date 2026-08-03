@@ -77,6 +77,12 @@ export default function RepGovernance() {
         if (selectedLevel !== 'all') filters.level = selectedLevel;
         
         const data = await governanceService.repListDocuments(filters);
+        
+        // 🔧 LOG DE DIAGNÓSTICO
+        console.log('📋 Documentos recebidos:', JSON.stringify(data, null, 2));
+        console.log('📋 Primeiro documento:', data[0]);
+        console.log('📋 Campos do primeiro:', Object.keys(data[0] || {}));
+        
         setDocuments(data);
         setError(null);
       } catch (err) {
@@ -106,6 +112,25 @@ export default function RepGovernance() {
     alert(`Download ${format} para ${doc.code} - ${doc.title}`);
   };
 
+  // 🔧 Função para obter o identificador único do documento
+  // Prioridade: code > _id > id > fallback vazio
+  const getDocumentIdentifier = (doc: GovernanceDocument): string => {
+  const identifier =
+    (doc as any)._id ||
+    (doc as any).id ||
+    '';
+
+  console.log('🔎 Identificador encontrado:', {
+    identifier,
+    code: doc.code,
+    id: (doc as any).id,
+    _id: (doc as any)._id,
+    title: doc.title
+  });
+
+  return identifier;
+};
+ 
   // Estatísticas
   const totalDocs = documents.length;
   const approvedDocs = documents.filter(d => d.status === 'approved').length;
@@ -201,127 +226,147 @@ export default function RepGovernance() {
           </div>
         ) : (
           <div className="divide-y divide-gray-200">
-            {documents.map((doc) => (
-              <div key={doc.id} className="hover:bg-gray-50 transition-colors">
-                {/* Document Row */}
-                <div className="flex items-center justify-between px-6 py-4">
-                  <div className="flex items-center gap-4 flex-1 cursor-pointer" onClick={() => toggleExpand(doc.id)}>
-                    <div className={`p-2 rounded-lg border-2 ${levelColors[doc.level]}`}>
-                      {levelIcons[doc.level]}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-3">
-                        <span className="font-mono text-sm font-semibold text-gray-600">{doc.code}</span>
-                        <span className="text-sm font-medium text-gray-900 truncate">{doc.title}</span>
+            {documents.map((doc) => {
+              const docId = getDocumentIdentifier(doc);
+              
+              // 🔧 Log de diagnóstico para cada documento
+              console.log(`📄 Documento ${docId}:`, { 
+                code: doc.code, 
+                _id: (doc as any)._id, 
+                id: (doc as any).id,
+                title: doc.title 
+              });
+              
+              return (
+                <div key={docId} className="hover:bg-gray-50 transition-colors">
+                  {/* Document Row */}
+                  <div className="flex items-center justify-between px-6 py-4">
+                    <div className="flex items-center gap-4 flex-1 cursor-pointer" onClick={() => toggleExpand(docId)}>
+                      <div className={`p-2 rounded-lg border-2 ${levelColors[doc.level]}`}>
+                        {levelIcons[doc.level]}
                       </div>
-                      <div className="flex items-center gap-4 mt-1 text-sm text-gray-500 flex-wrap">
-                        <span>{levelLabels[doc.level]}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-3">
+                          <span className="font-mono text-sm font-semibold text-gray-600">{doc.code}</span>
+                          <span className="text-sm font-medium text-gray-900 truncate">{doc.title}</span>
+                        </div>
+                        <div className="flex items-center gap-4 mt-1 text-sm text-gray-500 flex-wrap">
+                          <span>{levelLabels[doc.level]}</span>
+                          <span>•</span>
+                          <span>Versão {doc.version}</span>
+                          <span>•</span>
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColors[doc.status]}`}>
+                            {statusLabels[doc.status]}
+                          </span>
+                          {doc.status === 'approved' && doc.approvedBy && (
+                            <>
+                              <span>•</span>
+                              <span className="flex items-center gap-1">
+                                <CheckCircle className="w-3 h-3 text-green-500" />
+                                Aprovado
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      <div className="text-sm text-gray-400">
+                        {new Date(doc.updatedAt).toLocaleDateString('pt-BR')}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 ml-4">
+                      {/* 🔧 CORREÇÃO: Usar getDocumentIdentifier no botão de navegação */}
+                      <button
+                        onClick={() => {
+                          const identifier = getDocumentIdentifier(doc);
+                          if (!identifier) {
+                            console.error('❌ Documento inválido - sem identificador:', doc);
+                            return;
+                          }
+                          navigate(`/rep/governance/document/${identifier}`);
+                        }}
+                        className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        title="Visualizar"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDownload(doc, 'pdf')}
+                        className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                        title="Baixar PDF"
+                      >
+                        <Download className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDownload(doc, 'doc')}
+                        className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                        title="Baixar DOC"
+                      >
+                        <FileText className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => toggleExpand(docId)}
+                        className="p-2 text-gray-400 hover:text-gray-600 rounded-lg transition-colors"
+                      >
+                        {expandedDocs.has(docId) ? (
+                          <ChevronDown className="w-4 h-4" />
+                        ) : (
+                          <ChevronRight className="w-4 h-4" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Expanded Content */}
+                  {expandedDocs.has(docId) && (
+                    <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <h4 className="text-sm font-medium text-gray-700 mb-1">Resumo</h4>
+                          <p className="text-sm text-gray-600">{doc.summary}</p>
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-medium text-gray-700 mb-1">Frameworks</h4>
+                          <div className="flex flex-wrap gap-2">
+                            {doc.frameworks?.iso27001?.map((f) => (
+                              <span key={f} className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full">
+                                ISO 27001: {f}
+                              </span>
+                            ))}
+                            {doc.frameworks?.nist?.map((f) => (
+                              <span key={f} className="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full">
+                                NIST: {f}
+                              </span>
+                            ))}
+                            {doc.frameworks?.lgpd?.map((f) => (
+                              <span key={f} className="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs rounded-full">
+                                LGPD: {f}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="mt-4 flex items-center gap-4 text-sm text-gray-500">
+                        <span>Data de Efetivação: {new Date(doc.effectiveDate).toLocaleDateString('pt-BR')}</span>
                         <span>•</span>
-                        <span>Versão {doc.version}</span>
-                        <span>•</span>
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColors[doc.status]}`}>
-                          {statusLabels[doc.status]}
-                        </span>
-                        {doc.status === 'approved' && doc.approvedBy && (
+                        <span>Revisão: {new Date(doc.reviewDate).toLocaleDateString('pt-BR')}</span>
+                        {doc.attachments.length > 0 && (
                           <>
                             <span>•</span>
-                            <span className="flex items-center gap-1">
-                              <CheckCircle className="w-3 h-3 text-green-500" />
-                              Aprovado
-                            </span>
+                            <span>{doc.attachments.length} anexo(s)</span>
+                          </>
+                        )}
+                        {doc.versionHistory.length > 1 && (
+                          <>
+                            <span>•</span>
+                            <span>{doc.versionHistory.length} versões</span>
                           </>
                         )}
                       </div>
                     </div>
-                    <div className="text-sm text-gray-400">
-                      {new Date(doc.updatedAt).toLocaleDateString('pt-BR')}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 ml-4">
-                    <button
-                      onClick={() => navigate(`/rep/governance/document/${doc.id}`)}
-                      className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                      title="Visualizar"
-                    >
-                      <Eye className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDownload(doc, 'pdf')}
-                      className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                      title="Baixar PDF"
-                    >
-                      <Download className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDownload(doc, 'doc')}
-                      className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                      title="Baixar DOC"
-                    >
-                      <FileText className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => toggleExpand(doc.id)}
-                      className="p-2 text-gray-400 hover:text-gray-600 rounded-lg transition-colors"
-                    >
-                      {expandedDocs.has(doc.id) ? (
-                        <ChevronDown className="w-4 h-4" />
-                      ) : (
-                        <ChevronRight className="w-4 h-4" />
-                      )}
-                    </button>
-                  </div>
+                  )}
                 </div>
-
-                {/* Expanded Content */}
-                {expandedDocs.has(doc.id) && (
-                  <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <h4 className="text-sm font-medium text-gray-700 mb-1">Resumo</h4>
-                        <p className="text-sm text-gray-600">{doc.summary}</p>
-                      </div>
-                      <div>
-                        <h4 className="text-sm font-medium text-gray-700 mb-1">Frameworks</h4>
-                        <div className="flex flex-wrap gap-2">
-                          {doc.frameworks?.iso27001?.map((f) => (
-                            <span key={f} className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full">
-                              ISO 27001: {f}
-                            </span>
-                          ))}
-                          {doc.frameworks?.nist?.map((f) => (
-                            <span key={f} className="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full">
-                              NIST: {f}
-                            </span>
-                          ))}
-                          {doc.frameworks?.lgpd?.map((f) => (
-                            <span key={f} className="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs rounded-full">
-                              LGPD: {f}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="mt-4 flex items-center gap-4 text-sm text-gray-500">
-                      <span>Data de Efetivação: {new Date(doc.effectiveDate).toLocaleDateString('pt-BR')}</span>
-                      <span>•</span>
-                      <span>Revisão: {new Date(doc.reviewDate).toLocaleDateString('pt-BR')}</span>
-                      {doc.attachments.length > 0 && (
-                        <>
-                          <span>•</span>
-                          <span>{doc.attachments.length} anexo(s)</span>
-                        </>
-                      )}
-                      {doc.versionHistory.length > 1 && (
-                        <>
-                          <span>•</span>
-                          <span>{doc.versionHistory.length} versões</span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

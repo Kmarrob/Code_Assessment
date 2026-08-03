@@ -2088,7 +2088,8 @@ async function seedGovernance() {
       ...p,
       createdBy: adminId,
       updatedBy: adminId,
-      companyId: '000000000000000000000000', // Seed para todas as empresas
+      companyId: null, // 🆕 NULO para documentos globais
+      isGlobal: true, // 🆕 DOCUMENTO GLOBAL
       version: 'v1.0',
       status: 'approved',
       versionHistory: [
@@ -2127,7 +2128,8 @@ async function seedGovernance() {
         policyId: policyId,
         createdBy: adminId,
         updatedBy: adminId,
-        companyId: '000000000000000000000000',
+        companyId: null, // 🆕 NULO para documentos globais
+        isGlobal: true, // 🆕 DOCUMENTO GLOBAL
         version: 'v1.0',
         status: 'approved',
         versionHistory: [
@@ -2171,7 +2173,8 @@ async function seedGovernance() {
         standardId: standardId,
         createdBy: adminId,
         updatedBy: adminId,
-        companyId: '000000000000000000000000',
+        companyId: null, // 🆕 NULO para documentos globais
+        isGlobal: true, // 🆕 DOCUMENTO GLOBAL
         version: 'v1.0',
         status: 'approved',
         versionHistory: [
@@ -2215,7 +2218,8 @@ async function seedGovernance() {
         procedureId: procedureId,
         createdBy: adminId,
         updatedBy: adminId,
-        companyId: '000000000000000000000000',
+        companyId: null, // 🆕 NULO para documentos globais
+        isGlobal: true, // 🆕 DOCUMENTO GLOBAL
         version: 'v1.0',
         status: 'approved',
         versionHistory: [

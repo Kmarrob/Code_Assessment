@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Download, FileText, Calendar, User, Tag, AlertCircle } from 'lucide-react';
 import { governanceService } from '../../services/governance.service';
+import { useGovernanceViewDocument } from '../../hooks/useGovernance';
+import { useAuth } from '../../../../contexts/AuthContext.js';
 import { GovernanceDocument } from '../../types/governance.types';
 
 const levelLabels = {
@@ -15,37 +17,46 @@ const levelLabels = {
 export default function RepPolicyView() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
-  const [document, setDocument] = useState<GovernanceDocument | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { user } = useAuth();
   const [isDownloading, setIsDownloading] = useState(false);
 
-  useEffect(() => {
-    const fetchDocument = async () => {
-      if (!id) return;
-      try {
-        setIsLoading(true);
-        const data = await governanceService.repGetDocument(id);
-        setDocument(data);
-        setError(null);
-      } catch (err) {
-        setError((err as Error).message);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  // Determinar se o usuário é Admin ou Rep
+  const isAdmin = user?.role === 'ADMIN';
 
-    fetchDocument();
-  }, [id]);
+  // Usar o hook de visualização com substituição
+  const { data: document, isLoading, error } = useGovernanceViewDocument(id || '', isAdmin);
 
   const handleDownload = async (format: 'doc' | 'pdf') => {
     if (!document) return;
     setIsDownloading(true);
     try {
-      // TODO: Implementar download real
-      alert(`Download ${format} para ${document.code} - ${document.title}`);
+      if (isAdmin) {
+        if (format === 'pdf') {
+          await governanceService.downloadDocumentPdf(document.id);
+        } else {
+          await governanceService.downloadDocumentDoc(document.id);
+        }
+      } else {
+        if (format === 'pdf') {
+          await governanceService.repDownloadDocumentPdf(document.id);
+        } else {
+          await governanceService.repDownloadDocumentDoc(document.id);
+        }
+      }
+      
+      // Criar link para download
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(await (format === 'pdf' 
+        ? (isAdmin ? governanceService.downloadDocumentPdf(document.id) : governanceService.repDownloadDocumentPdf(document.id))
+        : (isAdmin ? governanceService.downloadDocumentDoc(document.id) : governanceService.repDownloadDocumentDoc(document.id))
+      ));
+      link.download = `${document.code}_${document.title.replace(/\s+/g, '_')}.${format}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     } catch (err) {
       alert('Erro ao baixar documento');
+      console.error('Erro no download:', err);
     } finally {
       setIsDownloading(false);
     }
@@ -64,9 +75,9 @@ export default function RepPolicyView() {
       <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
         <AlertCircle className="w-12 h-12 text-red-600 mx-auto mb-4" />
         <h3 className="text-lg font-semibold text-red-800">Documento não encontrado</h3>
-        <p className="text-red-600 mt-2">{error || 'O documento solicitado não está disponível'}</p>
+        <p className="text-red-600 mt-2">{error?.message || 'O documento solicitado não está disponível'}</p>
         <button
-          onClick={() => navigate('/rep/governance')}
+          onClick={() => navigate(isAdmin ? '/admin/governance' : '/rep/governance')}
           className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
         >
           Voltar para biblioteca
@@ -75,16 +86,12 @@ export default function RepPolicyView() {
     );
   }
 
-  // Substituir [NOME DA EMPRESA] pelo nome real
-  const companyName = 'Empresa'; // TODO: Buscar do contexto
-  const displayContent = document.content.replace(/\[NOME DA EMPRESA\]/g, companyName);
-
   return (
     <div className="container mx-auto px-4 py-8">
       {/* Header */}
       <div className="flex items-center gap-4 mb-6">
         <button
-          onClick={() => navigate('/rep/governance')}
+          onClick={() => navigate(isAdmin ? '/admin/governance' : '/rep/governance')}
           className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
@@ -162,9 +169,9 @@ export default function RepPolicyView() {
         <p className="text-gray-600">{document.summary}</p>
       </div>
 
-      {/* Content */}
+      {/* Content - o conteúdo já vem com os placeholders substituídos pelo backend */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 prose prose-sm max-w-none">
-        <div dangerouslySetInnerHTML={{ __html: displayContent }} />
+        <div dangerouslySetInnerHTML={{ __html: document.content }} />
       </div>
     </div>
   );

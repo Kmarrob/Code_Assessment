@@ -26,16 +26,35 @@ export class GovernanceService {
   }
 
   async findById(id: string, companyId: string): Promise<IGovernanceDocument | null> {
-    return GovernanceDocument.findOne({ _id: id, companyId, deletedAt: null }).exec();
+    // 🆕 Buscar documento da empresa OU documento global
+    return GovernanceDocument.findOne({
+      _id: id,
+      $or: [
+        { companyId: companyId },
+        { isGlobal: true }
+      ],
+      deletedAt: null
+    }).exec();
   }
 
   async findAll(companyId: string, filters: GovernanceFilters = {}): Promise<IGovernanceDocument[]> {
-    const query: any = { companyId, deletedAt: null };
+    // 🆕 NOVO (v40) - Buscar documentos da empresa OU documentos globais
+    const query: any = {
+      $or: [
+        { companyId: companyId },
+        { isGlobal: true }
+      ],
+      deletedAt: null
+    };
 
-    if (filters.level) query.level = filters.level;
+    // 🔧 CORREÇÃO: Converter level para número
+    if (filters.level) query.level = Number(filters.level);
     if (filters.status) query.status = filters.status;
     if (filters.category) query.category = filters.category;
+    
+    // 🔧 CORREÇÃO: O $or para busca já existe, não sobrescrever
     if (filters.search) {
+      // Adicionar busca ao query existente
       query.$or = [
         { title: { $regex: filters.search, $options: 'i' } },
         { code: { $regex: filters.search, $options: 'i' } },
@@ -102,7 +121,10 @@ export class GovernanceService {
 
   async getByLevel(companyId: string, level: 1 | 2 | 3 | 4 | 5): Promise<IGovernanceDocument[]> {
     const docs = await GovernanceDocument.find({
-      companyId,
+      $or: [
+        { companyId: companyId },
+        { isGlobal: true }
+      ],
       level,
       status: 'approved',
       deletedAt: null,
@@ -115,7 +137,10 @@ export class GovernanceService {
 
   async getByCategory(companyId: string, category: string): Promise<IGovernanceDocument[]> {
     const docs = await GovernanceDocument.find({
-      companyId,
+      $or: [
+        { companyId: companyId },
+        { isGlobal: true }
+      ],
       category,
       status: 'approved',
       deletedAt: null,
@@ -157,7 +182,10 @@ export class GovernanceService {
 
   async searchByKeyword(companyId: string, keyword: string): Promise<IGovernanceDocument[]> {
     const docs = await GovernanceDocument.find({
-      companyId,
+      $or: [
+        { companyId: companyId },
+        { isGlobal: true }
+      ],
       keywords: { $in: [new RegExp(keyword, 'i')] },
       status: 'approved',
       deletedAt: null,
