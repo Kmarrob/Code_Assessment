@@ -5,6 +5,9 @@ import { config } from '../config/env.js';
 import { logger } from '../utils/logger.js';
 import { IJWTPayload, AuthenticatedRequest, UserRole } from '../types/index.js';
 
+// 🆕 NOVO (v40) - Importar Company para buscar o plano
+import { Company } from '../models/Company.js';
+
 export async function authenticate(
   req: Request,
   res: Response,
@@ -50,7 +53,24 @@ export async function authenticate(
       return;
     }
 
-    (req as AuthenticatedRequest).user = user;
+    // 🆕 NOVO (v40) - Buscar o plano da empresa do usuário
+    let plan = 'basic';
+    if (user.companyId) {
+      try {
+        const company = await Company.findById(user.companyId);
+        if (company) {
+          plan = company.plan || 'basic';
+        }
+      } catch (error) {
+        logger.warn(`⚠️ Não foi possível buscar plano para empresa ${user.companyId}:`, error);
+      }
+    }
+
+    // Adicionar o plano ao objeto user para uso posterior
+    (req as AuthenticatedRequest).user = {
+      ...user.toObject(),
+      plan: plan,
+    };
     (req as AuthenticatedRequest).userId = user._id.toString();
     
     next();
