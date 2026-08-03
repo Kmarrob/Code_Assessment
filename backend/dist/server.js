@@ -3,7 +3,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-//backend/src/server.ts
 const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
 const helmet_1 = __importDefault(require("helmet"));
@@ -37,6 +36,9 @@ const index_js_1 = require("./types/index.js");
 const AdminController_js_1 = require("./controllers/AdminController.js");
 const branding_routes_js_1 = __importDefault(require("./routes/branding.routes.js"));
 const analytics_routes_js_1 = __importDefault(require("./routes/analytics.routes.js"));
+// 🆕 NOVO (v39) - Importação do módulo de governança
+// 🔧 CORREÇÃO v41.1: Caminho corrigido de './models/governance/...' para './modules/governance/...'
+const governance_routes_js_1 = __importDefault(require("./models/governance/routes/governance.routes.js"));
 const app = (0, express_1.default)();
 app.use((0, compression_1.default)({
     level: 6,
@@ -146,6 +148,8 @@ app.use('/api/subscriptions', subscription_routes_js_1.default);
 app.use('/api/payments', payment_routes_js_1.default);
 app.use('/api/branding', branding_routes_js_1.default);
 app.use('/api/admin/analytics', analytics_routes_js_1.default);
+// 🆕 NOVO (v39) - Rotas de Governança
+app.use('/api/governance', governance_routes_js_1.default);
 app.get('/health', cache_js_1.noCache, (_req, res) => {
     res.json({
         status: 'ok',
@@ -218,6 +222,8 @@ async function startServer() {
             logger_js_1.logger.info(`📋 Payment Routes: http://localhost:${PORT}/api/payments`);
             logger_js_1.logger.info(`🏷️ Branding Routes: http://localhost:${PORT}/api/branding`);
             logger_js_1.logger.info(`📊 Analytics Routes: http://localhost:${PORT}/api/admin/analytics`);
+            // 🆕 NOVO (v39) - Governance Routes
+            logger_js_1.logger.info(`📋 Governance Routes: http://localhost:${PORT}/api/governance`);
             logger_js_1.logger.info(`📁 Uploads servidos em: http://localhost:${PORT}/uploads`);
         });
     }

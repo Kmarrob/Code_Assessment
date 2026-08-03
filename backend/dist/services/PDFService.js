@@ -694,15 +694,15 @@ class PDFService {
       <!-- METODOLOGIA DE AVALIAÇÃO -->
       <div class="page print-section">
         <h2>4. Metodologia de Avaliação</h2>
-        
+
         <p class="text-justify mb-4">
           Com estrutura mais simples e controles contemporâneos, a ABNT NBR ISO/IEC 27002:2022, tem uma visão holística e coordenada dos riscos de segurança da informação das organizações (SGSI), a fim de determinar e implementar um conjunto abrangente de controles na estrutura geral de um sistema de gestão coerente. Deste modo, é possível direcionar a análise/avaliação de riscos, gerenciamento, especificação, reavaliação e implementação de segurança na <strong>${companyName}</strong>.
         </p>
-        
+
         <p class="text-justify mb-4">
           É composta por 93 controles agrupados em 4 temas:
         </p>
-        
+
         <div class="grid-2" style="margin-bottom: 8pt;">
           <div style="background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 4pt; padding: 8pt 12pt;">
             <div style="display: flex; align-items: center; gap: 4pt; margin-bottom: 2pt;">
@@ -769,7 +769,7 @@ class PDFService {
       <!-- ATRIBUTOS -->
       <div class="page print-section">
         <h2>5. Atributos</h2>
-        
+
         <p class="text-justify mb-4">
           De forma complementar, a ABNT NBR ISO/IEC 27002:2022 possibilitou a análise dos controles à luz de 05 (cinco) atributos: 1) tipo de controle; 2) propriedades de segurança da informação; 3) conceitos de segurança cibernética; 4) capacidades operacionais; 5) domínios de segurança.
         </p>
@@ -883,15 +883,15 @@ class PDFService {
       <!-- RECOMENDAÇÕES -->
       <div class="page print-section">
         <h2>6. Recomendações</h2>
-        
+
         <p class="text-justify mb-3">
           As recomendações propostas neste relatório são oriundas da norma <strong>ISO/IEC 27002:2022</strong> que fornecem um conjunto abrangente de controles de segurança da informação comumente utilizados, incluindo orientação para implementação desses controles em uma organização.
         </p>
-        
+
         <p class="text-justify mb-3">
           A norma <strong>ISO/IEC 27002:2022</strong> é complementar à norma <strong>ISO/IEC 27001</strong> e totalmente indispensável à sua aplicação. Enquanto a norma ISO/IEC 27001 estabelece os requisitos para implementação de um Sistema de Gestão da Segurança da Informação (SGSI), a norma fornece um conjunto de controles genéricos de segurança da informação, além da ISO/IEC 27002:2022 fornecer orientação para implementação de controles de segurança da informação.
         </p>
-        
+
         <p class="text-justify">
           A norma <strong>ISO/IEC 27002:2022</strong> foi concebida para ser usada pelas organizações:
         </p>
@@ -1068,7 +1068,7 @@ class PDFService {
       <!-- MATRIZ DE PRIORIZAÇÃO -->
       <div class="page print-section landscape-page">
         <h2>9. Matriz de Priorização</h2>
-        
+
         <p style="font-size: 10pt; text-align: justify;">
           Eventual plano de ação para adequação, em razão do resultado deste assessment, deve considerar estratégias de SI e esforços. Para subsidiar as decisões inerentes, elaboramos a <strong>${companyName}</strong> - Matriz de Priorização 27001:2022, documento anexo que contém sugestão de priorização, analisando-se probabilidade e impacto de riscos se materializarem perante das vulnerabilidades identificadas no ambiente da organização.
         </p>
@@ -1118,8 +1118,8 @@ class PDFService {
           </p>
 
           <p style="font-size: 9pt; color: #4b5563; margin-bottom: 8pt; text-align: justify;">
-            <strong>Resumo:</strong> Total de ${roadmap.summary?.totalItems || 0} itens distribuídos entre 
-            Crítico (${roadmap.summary?.byPriority?.critico || 0}), Muito Alto (${roadmap.summary?.byPriority?.muitoAlto || 0}), 
+            <strong>Resumo:</strong> Total de ${roadmap.summary?.totalItems || 0} itens distribuídos entre
+            Crítico (${roadmap.summary?.byPriority?.critico || 0}), Muito Alto (${roadmap.summary?.byPriority?.muitoAlto || 0}),
             Alto (${roadmap.summary?.byPriority?.alto || 0}) e Médio (${roadmap.summary?.byPriority?.medio || 0}).
           </p>
 
@@ -1236,8 +1236,8 @@ class PDFService {
 
           <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 4pt; padding: 8pt 12pt; margin-top: 8pt;">
             <p style="font-size: 9pt; text-align: justify;">
-              <strong>Legenda:</strong> Os itens listados acima representam um conjunto de recomendações organizadas por nível de priorização, 
-              baseadas nos controles da ISO/IEC 27001:2022. A implementação deve seguir a ordem de criticidade para garantir a conformidade 
+              <strong>Legenda:</strong> Os itens listados acima representam um conjunto de recomendações organizadas por nível de priorização,
+              baseadas nos controles da ISO/IEC 27001:2022. A implementação deve seguir a ordem de criticidade para garantir a conformidade
               e a melhoria contínua da segurança da informação.
             </p>
           </div>
@@ -1249,6 +1249,101 @@ class PDFService {
     </body>
     </html>
     `;
+    }
+    // ============================================
+    // 🆕 NOVO (v39) - MÉTODO PARA GERAR PDF A PARTIR DE HTML
+    // ============================================
+    /**
+     * Gera um PDF a partir de conteúdo HTML genérico
+     * @param html - Conteúdo HTML para renderizar
+     * @param options - Opções adicionais (formato, margens, etc.)
+     * @returns Buffer do PDF
+     */
+    static async generateFromHtml(html, options) {
+        const startTime = Date.now();
+        let browser = null;
+        try {
+            const isProduction = process.env.NODE_ENV === 'production';
+            let puppeteer;
+            let browserOptions;
+            if (isProduction) {
+                const chromiumModule = await import('@sparticuz/chromium');
+                const chromium = chromiumModule.default || chromiumModule;
+                const puppeteerCore = await import('puppeteer-core');
+                puppeteer = puppeteerCore.default || puppeteerCore;
+                browserOptions = {
+                    args: chromium.args || [],
+                    executablePath: await chromium.executablePath(),
+                    headless: true,
+                };
+                logger_js_1.logger.info('🔄 [generateFromHtml] Usando Chromium do @sparticuz v149.0.0 em produção');
+            }
+            else {
+                const puppeteerModule = await import('puppeteer');
+                puppeteer = puppeteerModule.default || puppeteerModule;
+                browserOptions = {
+                    headless: true,
+                    args: [
+                        '--no-sandbox',
+                        '--disable-setuid-sandbox',
+                        '--disable-dev-shm-usage',
+                        '--disable-accelerated-2d-canvas',
+                        '--disable-gpu',
+                        '--disable-web-security',
+                        '--disable-features=IsolateOrigins,site-per-process'
+                    ]
+                };
+                logger_js_1.logger.info('🔄 [generateFromHtml] Usando Puppeteer local em desenvolvimento');
+            }
+            browser = await puppeteer.launch(browserOptions);
+            const page = await browser.newPage();
+            await page.setViewport({
+                width: 1200,
+                height: 1600,
+                deviceScaleFactor: 1,
+            });
+            // Configurar opções
+            const format = options?.format || 'A4';
+            const landscape = options?.landscape || false;
+            const margin = options?.margin || { top: '20px', bottom: '20px', left: '20px', right: '20px' };
+            const displayHeaderFooter = options?.displayHeaderFooter || false;
+            const headerTemplate = options?.headerTemplate || '';
+            const footerTemplate = options?.footerTemplate || '';
+            await page.setContent(html, {
+                waitUntil: ['load', 'domcontentloaded', 'networkidle0']
+            });
+            // Aguardar renderização
+            await page.evaluate(() => {
+                return new Promise((resolve) => {
+                    setTimeout(resolve, 1500);
+                });
+            });
+            const pdf = await page.pdf({
+                format,
+                landscape,
+                margin,
+                printBackground: true,
+                displayHeaderFooter,
+                headerTemplate,
+                footerTemplate,
+                preferCSSPageSize: true,
+                scale: 1,
+                timeout: 60000,
+            });
+            const endTime = Date.now();
+            logger_js_1.logger.info(`✅ [generateFromHtml] PDF gerado com sucesso em ${endTime - startTime}ms (${pdf.length} bytes)`);
+            return Buffer.from(pdf);
+        }
+        catch (error) {
+            logger_js_1.logger.error('❌ [generateFromHtml] Erro ao gerar PDF:', error);
+            throw error;
+        }
+        finally {
+            if (browser) {
+                await browser.close();
+                logger_js_1.logger.debug('🔒 [generateFromHtml] Browser fechado');
+            }
+        }
     }
 }
 exports.PDFService = PDFService;

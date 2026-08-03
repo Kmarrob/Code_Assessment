@@ -1,2033 +1,1971 @@
 "use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-`` `typescript
 // backend/src/services/DashboardPDFService.ts
-// 🔴 CORRIGIDO: Agora renderiza gráficos Recharts no PDF usando React
-
-import { logger } from '../utils/logger.js';
-
-interface DashboardPDFData {
-  company: {
-    id: string;
-    name: string;
-  };
-  summary: {
-    totalControls: number;
-    Implementado: number;
-    Parcialmente: number;
-    NaoImplementado: number;
-    NaoSeAplica: number;
-    percentages: {
-      Implementado: number;
-      Parcialmente: number;
-      NaoImplementado: number;
-      NaoSeAplica: number;
-    };
-  };
-  byDomain: Record<string, any>;
-  byCategory: Record<string, any>;
-  byType: Record<string, any>;
-  byCyberConcept: Record<string, any>;
-  byCapability: Record<string, any>;
-  user: {
-    name: string;
-    email: string;
-  };
-  generatedAt: string;
-}
-
-/**
- * Opções de inicialização do Puppeteer/Puppeteer Core.
- *
- * A propriedade executablePath é utilizada somente quando:
- * - o caminho do Chromium é fornecido explicitamente em desenvolvimento; ou
- * - o Chromium do @sparticuz/chromium é utilizado em produção.
- *
- * A declaração explícita evita que o TypeScript infira o tipo de
- * browserOptions somente a partir do primeiro objeto atribuído.
- */
-interface BrowserLaunchOptions {
-  headless: boolean;
-  args?: string[];
-  executablePath?: string;
-}
-
-export class DashboardPDFService {
-  /**
-   * Gera o PDF do Dashboard de Maturidade usando Puppeteer com React + Recharts
-   */
-  static async generateDashboardPDF(data: DashboardPDFData): Promise<Buffer> {
-    const startTime = Date.now();
-    let browser = null;
-
-    try {
-      const isProduction = process.env.NODE_ENV === 'production';
-      let puppeteer;
-      let browserOptions: BrowserLaunchOptions;
-
-      if (isProduction) {
-        const chromiumModule = await import('@sparticuz/chromium');
-        const chromium = chromiumModule.default || chromiumModule;
-        const puppeteerCore = await import('puppeteer-core');
-        puppeteer = puppeteerCore.default || puppeteerCore;
-
-        browserOptions = {
-          args: chromium.args || [],
-          executablePath: await chromium.executablePath(),
-          headless: true,
-        };
-
-        logger.info('🔄 DashboardPDF: Usando Chromium do @sparticuz em produção');
-      } else {
-        const puppeteerModule = await import('puppeteer');
-        puppeteer = puppeteerModule.default || puppeteerModule;
-
-        let executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
-
-        browserOptions = {
-          headless: true,
-          args: [
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage',
-            '--disable-accelerated-2d-canvas',
-            '--disable-gpu',
-            '--disable-web-security',
-            '--disable-features=IsolateOrigins,site-per-process'
-          ]
-        };
-
-        if (executablePath) {
-          browserOptions.executablePath = executablePath;
-        }
-
-        logger.info('🔄 DashboardPDF: Usando Puppeteer local em desenvolvimento');
-      }
-
-      browser = await puppeteer.launch(browserOptions);
-      const page = await browser.newPage();
-
-      await page.setViewport({
-        width: 1280,
-        height: 2000,
-        deviceScaleFactor: 2,
-      });
-
-      // 🔴 Gerar HTML com React + Recharts
-      const html = this.generateReactHTML(data);
-
-      await page.setContent(html, {
-        waitUntil: ['load', 'domcontentloaded', 'networkidle0'] as any
-      });
-
-      // 🔴 Aguardar a renderização dos gráficos Recharts
-      logger.info('🔄 DashboardPDF: Aguardando renderização dos gráficos...');
-
-      try {
-        await page.waitForFunction(
-          () => {
-            const wrappers = document.querySelectorAll('.recharts-wrapper');
-            return wrappers.length > 0;
-          },
-          { timeout: 60000 }
-        );
-
-        logger.info('✅ DashboardPDF: Gráficos Recharts encontrados');
-      } catch (error) {
-        logger.warn('⚠️ DashboardPDF: Nenhum gráfico Recharts encontrado, continuando...');
-      }
-
-      // 🔴 Espera adicional para renderização completa
-      await page.evaluate(() => {
-        return new Promise((resolve) => {
-          setTimeout(resolve, 5000);
-        });
-      });
-
-      // 🔴 Verificar quantos gráficos foram renderizados
-      const chartCount = await page.evaluate(() => {
-        return document.querySelectorAll('.recharts-wrapper').length;
-      });
-
-      logger.info(`;
-DashboardPDF: $;
-{
-    chartCount;
-}
-gráficos;
-encontrados;
-na;
-página `);
-
-      // Gerar PDF
-      const pdf = await page.pdf({
-        format: 'A4',
-        landscape: true,
-        printBackground: true,
-        margin: {
-          top: '15mm',
-          bottom: '15mm',
-          left: '10mm',
-          right: '10mm'
-        },
-        displayHeaderFooter: true,
-        headerTemplate: `
-    < div;
-style = "font-size: 8pt; color: #475569; border-bottom: 1px solid #e2e8f0; padding: 4mm 10mm; width: 100%; font-family: Arial, Helvetica, sans-serif;" >
-    style;
-"float: left; font-weight: bold;" >
-    style;
-"color: #2563eb;" > Code < /span><span style="color: #475569;">_Assessment</span >
-    /span>
-    < span;
-style = "float: right; color: #64748b; font-size: 7pt;" >
-    $;
-{
-    data.company.name;
-}
-/strong> | Dashboard de Maturidade
-    < /span>
-    < /div> `,
-        footerTemplate: `
-    < div;
-style = "font-size: 7pt; color: #64748b; border-top: 1px solid #e2e8f0; padding: 3mm 10mm; width: 100%; font-family: Arial, Helvetica, sans-serif;" >
-    style;
-"float: left;" > Gerado;
-em;
-$;
-{
-    new Date(data.generatedAt).toLocaleDateString('pt-BR');
-}
-/span>
-    < span;
-style = "float: right;" > Página < span;
-class {
-}
-"pageNumber" > /span> de <span class="totalPages"></span > /span>
-    < /div> `,
-        preferCSSPageSize: true,
-        scale: 1.0,
-        timeout: 120000,
-      });
-
-      const endTime = Date.now();
-
-      logger.info(
-        `;
-DashboardPDF;
-gerado;
-em;
-$;
-{
-    endTime - startTime;
-}
-ms($, { pdf, : .length }, bytes) `
-      );
-
-      return Buffer.from(pdf);
-
-    } catch (error) {
-      logger.error('❌ DashboardPDF: Erro ao gerar PDF:', error);
-      throw error;
-    } finally {
-      if (browser) {
-        await browser.close();
-        logger.debug('🔒 DashboardPDF: Browser fechado');
-      }
-    }
-  }
-
-  /**
-   * 🔴 NOVO: Gera HTML com React + Recharts para renderização no Puppeteer
-   */
-  private static generateReactHTML(data: DashboardPDFData): string {
-    const {
-      company,
-      summary,
-      byDomain,
-      byCategory,
-      byType,
-      byCyberConcept,
-      byCapability,
-      user,
-      generatedAt
-    } = data;
-
-    const formatDate = (date: string) => {
-      return new Date(date).toLocaleDateString('pt-BR', {
-        day: '2-digit',
-        month: 'long',
-        year: 'numeric',
-      });
-    };
-
-    const completionRate = summary.totalControls > 0
-      ? Math.round((summary.Implementado / summary.totalControls) * 100)
-      : 0;
-
-    // 🔴 Preparar dados para os gráficos (mesmo formato do frontend)
-    const pieData = [
-      {
-        name: 'Implementado',
-        value: summary.Implementado || 0,
-        color: '#10b981'
-      },
-      {
-        name: 'Parcialmente implementado',
-        value: summary.Parcialmente || 0,
-        color: '#f59e0b'
-      },
-      {
-        name: 'Não implementado',
-        value: summary.NaoImplementado || 0,
-        color: '#ef4444'
-      },
-      {
-        name: 'Não se aplica',
-        value: summary.NaoSeAplica || 0,
-        color: '#94a3b8'
-      },
-    ].filter(d => d.value > 0);
-
-    const barData = [
-      {
-        name: 'Implementados',
-        value: summary.Implementado || 0,
-        color: '#10b981'
-      },
-      {
-        name: 'Parciais',
-        value: summary.Parcialmente || 0,
-        color: '#f59e0b'
-      },
-      {
-        name: 'Não Implementados',
-        value: summary.NaoImplementado || 0,
-        color: '#ef4444'
-      },
-    ].filter(d => d.value > 0);
-
-    // 🔴 Dados por categoria
-    const categoryData = Object.entries(byCategory || {}).map(
-      ([key, value]: [string, any]) => ({
-        name: key.replace('Controles ', ''),
-        total: value.total || 0,
-        implemented: value.implemented || 0,
-        partial: value.partial || 0,
-        notImpl: value.notImpl || 0,
-      })
-    );
-
-    // 🔴 Dados por conceito cibernético
-    const conceptData = Object.entries(byCyberConcept || {}).map(
-      ([key, value]: [string, any]) => ({
-        name: key,
-        total: value.total || 0,
-        implemented: value.implemented || 0,
-        partial: value.partial || 0,
-        notImpl: value.notImpl || 0,
-      })
-    );
-
-    // 🔴 Dados por domínio
-    const domainData = Object.entries(byDomain || {}).map(
-      ([key, value]: [string, any]) => ({
-        name: key,
-        total: value.total || 0,
-        implemented: value.implemented || 0,
-        partial: value.partial || 0,
-        notImpl: value.notImpl || 0,
-      })
-    );
-
-    // 🔴 Dados por tipo
-    const typeData = Object.entries(byType || {}).map(
-      ([key, value]: [string, any]) => ({
-        name: key,
-        total: value.total || 0,
-        implemented: value.implemented || 0,
-        partial: value.partial || 0,
-        notImpl: value.notImpl || 0,
-      })
-    );
-
-    // 🔴 Dados por capacidade
-    const capabilityData = Object.entries(byCapability || {}).map(
-      ([key, value]: [string, any]) => ({
-        name: key,
-        total: value.total || 0,
-        implemented: value.implemented || 0,
-        partial: value.partial || 0,
-        notImpl: value.notImpl || 0,
-        aderente: value.aderente || 0,
-      })
-    );
-
-    // 🔴 Dados para o gráfico de radar
-    const capabilities = [
-      'Governança',
-      'Gestão de ativos',
-      'Proteção da informação',
-      'Gestão de identidade e acesso',
-      'Relações com fornecedores',
-      'Eventos de SI',
-      'Ameaças e vulnerabilidades',
-      'Continuidade',
-      'Segurança física',
-      'Desenvolvimento seguro',
-      'Gestão de redes',
-      'Monitoramento e análise',
-      'Gestão de pessoas',
-      'Criptografia',
-      'Garantia de SI'
-    ];
-
-    const radarData = capabilities.map(cap => {
-      const capData = byCapability?.[cap];
-      const aderente = capData?.aderente || 0;
-
-      return {
-        subject: cap.length > 20
-          ? cap.substring(0, 20) + '…'
-          : cap,
-        fullLabel: cap,
-        Implementado: aderente,
-        Recomendado: 100,
-      };
-    });
-
-    const hasRadarData = radarData.some(
-      d => d.Implementado > 0
-    );
-
-    // 🔴 Escapar os dados para JSON
-    const escapeJson = (obj: any) => {
-      return JSON.stringify(obj)
-        .replace(/<\/script/g, '<\\/script');
-    };
-
-    return ` < !DOCTYPE;
-html >
-    charset;
-"UTF-8" >
-    name;
-"viewport";
-content = "width=device-width, initial-scale=1.0" >
-    Dashboard;
-de;
-Maturidade - $;
-{
-    company.name;
-}
-/title>
-    < !--React;
-e;
-ReactDOM;
-via;
-CDN-- >
-    crossorigin;
-src = "https://unpkg.com/react@18/umd/react.production.min.js" > /script>
-    < script;
-crossorigin;
-src = "https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" > /script>
-    < !--Recharts;
-via;
-CDN-- >
-    src;
-"https://unpkg.com/recharts@2.8.0/umd/Recharts.js" > /script>
-    < !--Babel;
-Standalone;
-para;
-JSX-- >
-    src;
-"https://unpkg.com/@babel/standalone/babel.min.js" > (/script>)
-    * { margin: 0, padding: 0, box } - sizing;
-border - box;
-body;
-{
-    font - family;
-    Arial, Helvetica, sans - serif;
-    font - size;
-    10;
-    pt;
-    color: #;
-    1e293;
-    b;
-    background: #ffffff;
-    padding: 0;
-    margin: 0;
-}
-page;
-{
-    width: 100 % ;
-    min - height;
-    100;
-    vh;
-    padding: 15;
-    pt;
-    12;
-    pt;
-    page - ;
-    break ;
-    -after;
-    always;
-}
-page: last - child;
-{
-    page - ;
-    break ;
-    -after;
-    auto;
-}
-h1;
-{
-    font - size;
-    18;
-    pt;
-    font - weight;
-    bold;
-    color: #;
-    0;
-    f172a;
-    text - align;
-    center;
-    margin - bottom;
-    8;
-    pt;
-}
-h2;
-{
-    font - size;
-    14;
-    pt;
-    font - weight;
-    bold;
-    color: #;
-    1e3;
-    a8a;
-    margin - top;
-    10;
-    pt;
-    margin - bottom;
-    6;
-    pt;
-    border - bottom;
-    1;
-    px;
-    solid;
-    #e2e8f0;
-    padding - bottom;
-    3;
-    pt;
-}
-h3;
-{
-    font - size;
-    11;
-    pt;
-    font - weight;
-    bold;
-    color: #;
-    0;
-    f172a;
-    margin - top;
-    8;
-    pt;
-    margin - bottom;
-    4;
-    pt;
-}
-p;
-{
-    text - align;
-    justify;
-    margin: 3;
-    pt;
-    0;
-    line - height;
-    1.4;
-    font - size;
-    9;
-    pt;
-}
-text - center;
-{
-    text - align;
-    center;
-}
-font - bold;
-{
-    font - weight;
-    bold;
-}
-text - gray - 500;
-{
-    color: #;
-    6;
-    b7280;
-}
-text - gray - 600;
-{
-    color: #;
-    4;
-    b5563;
-}
-text - gray - 700;
-{
-    color: #;
-    374151;
-}
-text - gray - 900;
-{
-    color: #;
-    111827;
-}
-text - blue - 600;
-{
-    color: #;
-    2563e;
-    b;
-}
-text - emerald - 600;
-{
-    color: #;
-    59669;
-}
-text - amber - 600;
-{
-    color: #d97706;
-}
-text - red - 600;
-{
-    color: #dc2626;
-}
-bg - gray - 50;
-{
-    background - color;
-    #f9fafb;
-}
-bg - gray - 100;
-{
-    background - color;
-    #f3f4f6;
-}
-bg - blue - 50;
-{
-    background - color;
-    #eff6ff;
-}
-bg - green - 50;
-{
-    background - color;
-    #f0fdf4;
-}
-bg - yellow - 50;
-{
-    background - color;
-    #fffbeb;
-}
-bg - red - 50;
-{
-    background - color;
-    #fef2f2;
-}
-border;
-{
-    border: 1;
-    px;
-    solid;
-    #e5e7eb;
-}
-border - gray - 200;
-{
-    border - color;
-    #e5e7eb;
-}
-rounded - lg;
-{
-    border - radius;
-    4;
-    pt;
-}
-p - 3;
-{
-    padding: 6;
-    pt;
-}
-p - 4;
-{
-    padding: 8;
-    pt;
-}
-p - 6;
-{
-    padding: 12;
-    pt;
-}
-mt - 2;
-{
-    margin - top;
-    4;
-    pt;
-}
-mt - 3;
-{
-    margin - top;
-    6;
-    pt;
-}
-mt - 4;
-{
-    margin - top;
-    8;
-    pt;
-}
-mb - 2;
-{
-    margin - bottom;
-    4;
-    pt;
-}
-mb - 3;
-{
-    margin - bottom;
-    6;
-    pt;
-}
-mb - 4;
-{
-    margin - bottom;
-    8;
-    pt;
-}
-grid - 2;
-{
-    display: grid;
-    grid - template - columns;
-    1;
-    fr;
-    1;
-    fr;
-    gap: 6;
-    pt;
-}
-grid - 3;
-{
-    display: grid;
-    grid - template - columns;
-    1;
-    fr;
-    1;
-    fr;
-    1;
-    fr;
-    gap: 6;
-    pt;
-}
-grid - 4;
-{
-    display: grid;
-    grid - template - columns;
-    1;
-    fr;
-    1;
-    fr;
-    1;
-    fr;
-    1;
-    fr;
-    gap: 6;
-    pt;
-}
-grid - 5;
-{
-    display: grid;
-    grid - template - columns;
-    repeat(5, 1, fr);
-    gap: 4;
-    pt;
-}
-table;
-{
-    width: 100 % ;
-    border - collapse;
-    collapse;
-    font - size;
-    8;
-    pt;
-    margin: 4;
-    pt;
-    0;
-    page - ;
-    break ;
-    -inside;
-    avoid;
-}
-th,
-    td;
-{
-    border: 1;
-    px;
-    solid;
-    #cbd5e1;
-    padding: 3;
-    pt;
-    4;
-    pt;
-    text - align;
-    left;
-    vertical - align;
-    middle;
-}
-th;
-{
-    font - weight;
-    bold;
-    background - color;
-    #f1f5f9;
-    text - align;
-    center;
-}
-metric - card;
-{
-    background - color;
-    #f8fafc;
-    border: 1;
-    px;
-    solid;
-    #e2e8f0;
-    border - radius;
-    4;
-    pt;
-    padding: 6;
-    pt;
-    8;
-    pt;
-    text - align;
-    center;
-}
-metric - card.value;
-{
-    font - size;
-    18;
-    pt;
-    font - weight;
-    bold;
-}
-metric - card.label;
-{
-    font - size;
-    8;
-    pt;
-    color: #;
-    64748;
-    b;
-}
-progress - bar;
-{
-    width: 100 % ;
-    height: 6;
-    pt;
-    background - color;
-    #e2e8f0;
-    border - radius;
-    3;
-    pt;
-    overflow: hidden;
-    margin - top;
-    2;
-    pt;
-}
-progress - bar.fill;
-{
-    height: 100 % ;
-    border - radius;
-    3;
-    pt;
-}
-section - ;
-break ;
-{
-    page - ;
-    break ;
-    -before;
-    always;
-}
-page - ;
-break ;
--avoid;
-{
-    page - ;
-    break ;
-    -inside;
-    avoid;
-}
-recharts - wrapper;
-{
-    max - width;
-    100 % ;
-    margin: 0;
-    auto;
-    display: block;
-}
-recharts - text;
-{
-    fill: #;
-    334155;
-    important;
-    font - size;
-    7;
-    pt;
-    important;
-}
-recharts - legend - item - text;
-{
-    font - size;
-    7;
-    pt;
-    important;
-}
-    * {}
-    - webkit - print - color - adjust;
-exact;
-important;
-print - color - adjust;
-exact;
-important;
-cover - page;
-{
-    min - height;
-    100;
-    vh;
-    display: flex;
-    flex - direction;
-    column;
-    justify - content;
-    center;
-    align - items;
-    center;
-    text - align;
-    center;
-}
-cover - page;
-h1;
-{
-    font - size;
-    24;
-    pt;
-    border - bottom;
-    none;
-}
-cover - page.subtitle;
-{
-    font - size;
-    14;
-    pt;
-    color: #;
-    475569;
-    margin - top;
-    4;
-    pt;
-}
-cover - page.company - name;
-{
-    font - size;
-    20;
-    pt;
-    font - weight;
-    600;
-    color: #;
-    2563e;
-    b;
-    margin - top;
-    12;
-    pt;
-    padding: 6;
-    pt;
-    24;
-    pt;
-    border - top;
-    2;
-    px;
-    solid;
-    #;
-    2563e;
-    b;
-    border - bottom;
-    2;
-    px;
-    solid;
-    #;
-    2563e;
-    b;
-}
-cover - page.meta - info;
-{
-    font - size;
-    10;
-    pt;
-    color: #;
-    64748;
-    b;
-    margin - top;
-    16;
-    pt;
-    line - height;
-    1.8;
-}
-cover - page.footer - text;
-{
-    font - size;
-    8;
-    pt;
-    color: #;
-    94;
-    a3b8;
-    margin - top;
-    24;
-    pt;
-    border - top;
-    1;
-    px;
-    solid;
-    #e2e8f0;
-    padding - top;
-    8;
-    pt;
-    width: 60 % ;
-}
-print - only;
-{
-    display: block;
-}
-screen - only;
-{
-    display: none;
-}
-chart - container;
-{
-    background: #ffffff;
-    border: 1;
-    px;
-    solid;
-    #e5e7eb;
-    border - radius;
-    4;
-    pt;
-    padding: 6;
-    pt;
-    margin - bottom;
-    4;
-    pt;
-    width: 100 % ;
-}
-chart - title;
-{
-    font - size;
-    9;
-    pt;
-    font - weight;
-    bold;
-    color: #;
-    475569;
-    text - align;
-    center;
-    margin - bottom;
-    2;
-    pt;
-}
-chart - subtitle;
-{
-    font - size;
-    7;
-    pt;
-    color: #;
-    94;
-    a3b8;
-    text - align;
-    center;
-    margin - bottom;
-    4;
-    pt;
-}
-radar - container;
-{
-    background: #ffffff;
-    border: 1;
-    px;
-    solid;
-    #e5e7eb;
-    border - radius;
-    4;
-    pt;
-    padding: 6;
-    pt;
-    margin - bottom;
-    4;
-    pt;
-    width: 100 % ;
-    max - width;
-    600;
-    px;
-    margin - left;
-    auto;
-    margin - right;
-    auto;
-}
-recharts - wrapper;
-{
-    width: 100 % !important;
-    height: auto;
-    important;
-}
-recharts - surface;
-{
-    width: 100 % !important;
-    height: auto;
-    important;
-}
-/style>
-    < /head>
-    < body >
-    --CAPA;
--- >
-    class {
-    };
-"page cover-page" >
-    style;
-"font-size: 36pt; font-weight: 900; color: #0f172a; letter-spacing: -2px;" >
-    Code < span;
-style = "color: #2563eb;" > _Assessment < /span>
-    < /div>
-    < h1 > Dashboard;
-de;
-Maturidade < /h1>
-    < p;
-class {
-}
-"subtitle" > Avaliação;
-ISO;
-27001;
-2022 < /p>
-    < div;
-class {
-}
-"company-name" > $;
-{
-    company.name;
-}
-/div>
-    < div;
-class {
-}
-"meta-info" >
-    Responsável;
-/strong> ${user.name}</div >
-    E - mail;
-/strong> ${user.email}</div >
-    Data;
-de;
-emissão: /strong> ${formatDate(generatedAt)}</div >
-    /div>
-    < div;
-class {
-}
-"footer-text" >
-    Este;
-dashboard;
-consolida;
-todas;
-de;
-maturidade;
-da;
-empresa < br /  >
-    com;
-base;
-nos;
-93;
-controles;
-da;
-norma;
-ISO;
-27001;
-2022
-    < /div>
-    < /div>
-    < !--SEÇÃO;
-1;
-VISÃO;
-GERAL-- >
-    class {
-    };
-"page" >
-    1.;
-Visão;
-Geral < /h2>
-    < div;
-class {
-}
-"grid-5";
-style = "margin-bottom: 6pt;" >
-    class {
-    };
-"metric-card" >
-    class {
-    };
-"value";
-style = "color: #2563eb;" >
-    $;
-{
-    summary.totalControls;
-}
-/div>
-    < div;
-class {
-}
-"label" > Total;
-Controles < /div>
-    < /div>
-    < div;
-class {
-}
-"metric-card" >
-    class {
-    };
-"value";
-style = "color: #10b981;" >
-    $;
-{
-    summary.Implementado;
-}
-/div>
-    < div;
-class {
-}
-"label" > Implementados < /div>
-    < /div>
-    < div;
-class {
-}
-"metric-card" >
-    class {
-    };
-"value";
-style = "color: #f59e0b;" >
-    $;
-{
-    summary.Parcialmente;
-}
-/div>
-    < div;
-class {
-}
-"label" > Parciais < /div>
-    < /div>
-    < div;
-class {
-}
-"metric-card" >
-    class {
-    };
-"value";
-style = "color: #ef4444;" >
-    $;
-{
-    summary.NaoImplementado;
-}
-/div>
-    < div;
-class {
-}
-"label" > Não;
-Implementados < /div>
-    < /div>
-    < div;
-class {
-}
-"metric-card" >
-    class {
-    };
-"value";
-style = "color: #2563eb;" >
-    $;
-{
-    completionRate;
-}
- %
-    /div>
-    < div;
-class {
-}
-"label" > Taxa;
-de;
-Conclusão < /div>
-    < /div>
-    < /div>
-    < div;
-class {
-}
-"grid-2" >
-    style;
-"background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4pt; padding: 8pt; text-align: center;" >
-    style;
-"font-size: 9pt; font-weight: bold; color: #475569;" >
-    Distribuição;
-de;
-Status
-    < /p>;
-$;
-{
-    pieData.map(d => `
-          <div style="display: flex; align-items: center; justify-content: space-between; padding: 2pt 0; border-bottom: 1px solid #f1f5f9;">
-            <div style="display: flex; align-items: center; gap: 4pt;">
-              <span style="display: inline-block; width: 8pt; height: 8pt; border-radius: 50%; background-color: ${d.color};"></span>
-              <span style="font-size: 8pt;">${d.name}</span>
-            </div>
-            <span style="font-size: 8pt; font-weight: bold;">
-              ${d.value}
-            </span>
-          </div>
-        `).join('');
-}
-style;
-"margin-top: 4pt; padding-top: 4pt; border-top: 1px solid #e2e8f0;" >
-    style;
-"font-size: 8pt; color: #64748b;" >
-    Total;
-$;
-{
-    summary.totalControls;
-}
-controles
-    < /span>
-    < /div>
-    < /div>
-    < div;
-style = "background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4pt; padding: 8pt;" >
-    style;
-"font-size: 9pt; font-weight: bold; color: #475569; text-align: center;" >
-    Taxa;
-de;
-Conclusão
-    < /p>
-    < div;
-style = "text-align: center; margin: 4pt 0;" >
-    style;
-"font-size: 28pt; font-weight: bold; color: ${completionRate >= 67 ? '#10b981' : completionRate >= 34 ? '#f59e0b' : '#ef4444'};" >
-    $;
-{
-    completionRate;
-}
- %
-    /span>
-    < /div>
-    < div;
-class {
-}
-"progress-bar" >
-    class {
-    };
-"fill";
-style = "width: ${completionRate}%; background-color: ${completionRate >= 67 ? '#10b981' : completionRate >= 34 ? '#f59e0b' : '#ef4444'};" > /div>
-    < /div>
-    < p;
-style = "font-size: 7pt; color: #94a3b8; text-align: center; margin-top: 2pt;" >
-    $;
-{
-    summary.Implementado;
-}
-de;
-$;
-{
-    summary.totalControls;
-}
-controles;
-implementados
-    < /p>
-    < /div>
-    < /div>
-    < !--;
-GRÁFICOS;
-REACT - PIE;
-E;
-BAR-- >
-    class {
-    };
-"grid-2";
-style = "margin-top: 8pt;" >
-    class {
-    };
-"chart-container" >
-    id;
-"pie-chart-root";
-style = "width: 100%; height: 260px;" > /div>
-    < /div>
-    < div;
-class {
-}
-"chart-container" >
-    id;
-"bar-chart-root";
-style = "width: 100%; height: 260px;" > /div>
-    < /div>
-    < /div>
-    < /div>
-    < !--SEÇÃO;
-2;
-CATEGORIZAÇÃO-- >
-    $;
-{
-    categoryData.length > 0 ? `
-  <div class="page section-break">
-    <h2>2. Categorização</h2>
-
-    <div class="grid-4">
-      ${categoryData.map(cat => `
-        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4pt; padding: 6pt; text-align: center;">
-          <div style="font-size: 11pt; font-weight: bold; color: #1e293b;">
-            ${cat.total}
-          </div>
-
-          <div style="font-size: 7pt; color: #64748b;">
-            ${cat.name}
-          </div>
-
-          <div style="display: flex; justify-content: center; gap: 4pt; margin-top: 2pt;">
-            <span style="font-size: 6pt; color: #10b981;">
-              ✅ ${cat.implemented}
-            </span>
-
-            <span style="font-size: 6pt; color: #f59e0b;">
-              🔄 ${cat.partial}
-            </span>
-
-            <span style="font-size: 6pt; color: #ef4444;">
-              ❌ ${cat.notImpl}
-            </span>
-          </div>
-
-          <div class="progress-bar" style="margin-top: 2pt;">
-            <div class="fill" style="width: ${cat.total > 0 ? Math.round((cat.implemented / cat.total) * 100) : 0}%; background-color: #8b5cf6;"></div>
-          </div>
-
-          <div style="font-size: 6pt; color: #94a3b8; margin-top: 1pt;">
-            ${cat.total > 0 ? Math.round((cat.implemented / cat.total) * 100) : 0}%
-          </div>
-        </div>
-      `).join('')}
-    </div>
-  </div>
-  ` : '';
-}
---SEÇÃO;
-3;
-CONCEITOS;
-CIBERNÉTICOS-- >
-    $;
-{
-    conceptData.length > 0 ? `
-  <div class="page section-break">
-    <h2>3. Conceitos Cibernéticos</h2>
-
-    <div class="grid-5">
-      ${conceptData.map(concept => `
-        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4pt; padding: 6pt; text-align: center;">
-          <div style="font-size: 8pt; font-weight: 600; color: #475569;">
-            ${concept.name}
-          </div>
-
-          <div style="font-size: 14pt; font-weight: bold; color: ${concept.implemented > 0 ? '#10b981' : '#94a3b8'};">
-            ${concept.implemented}
-          </div>
-
-          <div style="font-size: 6pt; color: #94a3b8;">
-            de ${concept.total}
-          </div>
-
-          <div class="progress-bar" style="margin-top: 2pt;">
-            <div class="fill" style="width: ${concept.total > 0 ? Math.round((concept.implemented / concept.total) * 100) : 0}%; background-color: #8b5cf6;"></div>
-          </div>
-
-          <div style="font-size: 6pt; color: #94a3b8; margin-top: 1pt;">
-            ${concept.total > 0 ? Math.round((concept.implemented / concept.total) * 100) : 0}%
-          </div>
-        </div>
-      `).join('')}
-    </div>
-
-    <!-- 🔴 GRÁFICO DE BARRAS PARA CONCEITOS -->
-    <div class="chart-container" style="margin-top: 8pt;">
-      <div id="concept-bar-chart-root" style="width: 100%; height: 260px;"></div>
-    </div>
-
-    <div style="margin-top: 8pt; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4pt; padding: 6pt;">
-      <p style="font-size: 7pt; color: #94a3b8; text-align: center;">
-        Distribuição dos controles por conceito cibernético (NIST):
-        Identificar, Proteger, Detectar, Responder, Restaurar
-      </p>
-    </div>
-  </div>
-  ` : '';
-}
---SEÇÃO;
-4;
-DOMÍNIOS;
-DE;
-SI-- >
-    $;
-{
-    domainData.length > 0 ? `
-  <div class="page section-break">
-    <h2>4. Domínios de SI</h2>
-
-    <div class="grid-4">
-      ${domainData.map(domain => `
-        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4pt; padding: 6pt; text-align: center;">
-          <div style="font-size: 10pt; font-weight: bold; color: #1e293b;">
-            ${domain.total}
-          </div>
-
-          <div style="font-size: 7pt; color: #64748b;">
-            ${domain.name}
-          </div>
-
-          <div style="display: flex; justify-content: center; gap: 4pt; margin-top: 2pt;">
-            <span style="font-size: 6pt; color: #10b981;">
-              ✅ ${domain.implemented}
-            </span>
-
-            <span style="font-size: 6pt; color: #f59e0b;">
-              🔄 ${domain.partial}
-            </span>
-
-            <span style="font-size: 6pt; color: #ef4444;">
-              ❌ ${domain.notImpl}
-            </span>
-          </div>
-
-          <div class="progress-bar" style="margin-top: 2pt;">
-            <div class="fill" style="width: ${domain.total > 0 ? Math.round((domain.implemented / domain.total) * 100) : 0}%; background-color: #3b82f6;"></div>
-          </div>
-
-          <div style="font-size: 6pt; color: #94a3b8; margin-top: 1pt;">
-            ${domain.total > 0 ? Math.round((domain.implemented / domain.total) * 100) : 0}%
-          </div>
-        </div>
-      `).join('')}
-    </div>
-
-    <!-- 🔴 GRÁFICO DE BARRAS PARA DOMÍNIOS -->
-    <div class="chart-container" style="margin-top: 8pt;">
-      <div id="domain-bar-chart-root" style="width: 100%; height: 260px;"></div>
-    </div>
-  </div>
-  ` : '';
-}
---SEÇÃO;
-5;
-TIPOS;
-DE;
-CONTROLE-- >
-    $;
-{
-    typeData.length > 0 ? `
-  <div class="page section-break">
-    <h2>5. Tipos de Controle</h2>
-
-    <div class="grid-3">
-      ${typeData.map(type => `
-        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4pt; padding: 6pt; text-align: center;">
-          <div style="font-size: 10pt; font-weight: bold; color: #1e293b;">
-            ${type.total}
-          </div>
-
-          <div style="font-size: 7pt; color: #64748b;">
-            ${type.name}
-          </div>
-
-          <div style="display: flex; justify-content: center; gap: 4pt; margin-top: 2pt;">
-            <span style="font-size: 6pt; color: #10b981;">
-              ✅ ${type.implemented}
-            </span>
-
-            <span style="font-size: 6pt; color: #f59e0b;">
-              🔄 ${type.partial}
-            </span>
-
-            <span style="font-size: 6pt; color: #ef4444;">
-              ❌ ${type.notImpl}
-            </span>
-          </div>
-
-          <div class="progress-bar" style="margin-top: 2pt;">
-            <div class="fill" style="width: ${type.total > 0 ? Math.round((type.implemented / type.total) * 100) : 0}%; background-color: #6366f1;"></div>
-          </div>
-
-          <div style="font-size: 6pt; color: #94a3b8; margin-top: 1pt;">
-            ${type.total > 0 ? Math.round((type.implemented / type.total) * 100) : 0}%
-          </div>
-        </div>
-      `).join('')}
-    </div>
-  </div>
-  ` : '';
-}
---SEÇÃO;
-6;
-CAPACIDADES;
-OPERACIONAIS-- >
-    $;
-{
-    capabilityData.length > 0 ? `
-  <div class="page section-break">
-    <h2>6. Capacidades Operacionais</h2>
-
-    <!-- 🔴 GRÁFICO RADAR -->
-    ${hasRadarData ? `
-    <div class="radar-container" style="margin-bottom: 8pt;">
-      <div id="radar-chart-root" style="width: 100%; height: 350px;"></div>
-    </div>
-    ` : ''}
-
-    <table style="font-size: 7pt;">
-      <thead>
-        <tr>
-          <th style="font-size: 7pt;">Capacidade</th>
-          <th style="text-align: center; font-size: 7pt;">✅ Imp.</th>
-          <th style="text-align: center; font-size: 7pt;">🔄 Parc.</th>
-          <th style="text-align: center; font-size: 7pt;">❌ N.I.</th>
-          <th style="text-align: center; font-size: 7pt;">Total</th>
-          <th style="text-align: center; font-size: 7pt;">Aderência</th>
-        </tr>
-      </thead>
-
-      <tbody>
-        ${capabilityData.map(cap => `
-          <tr>
-            <td style="font-size: 7pt;">
-              ${cap.name}
-            </td>
-
-            <td style="text-align: center; font-size: 7pt; color: #10b981;">
-              ${cap.implemented}
-            </td>
-
-            <td style="text-align: center; font-size: 7pt; color: #f59e0b;">
-              ${cap.partial}
-            </td>
-
-            <td style="text-align: center; font-size: 7pt; color: #ef4444;">
-              ${cap.notImpl}
-            </td>
-
-            <td style="text-align: center; font-size: 7pt; font-weight: bold;">
-              ${cap.total}
-            </td>
-
-            <td style="text-align: center; font-size: 7pt; font-weight: bold; color: ${cap.aderente >= 70 ? '#10b981' : cap.aderente >= 40 ? '#f59e0b' : '#ef4444'};">
-              ${cap.aderente}%
-            </td>
-          </tr>
-        `).join('')}
-      </tbody>
-    </table>
-  </div>
-  ` : '';
-}
---RODAPÉ;
--- >
-    class {
-    };
-"page";
-style = "page-break-after: auto;" >
-    style;
-"text-align: center; padding: 20pt 0; border-top: 1px solid #e2e8f0; margin-top: 12pt;" >
-    style;
-"font-size: 7pt; color: #94a3b8;" >
-;
-$;
-{
-    new Date().getFullYear();
-}
-Code_Assessment -
-    Sistema;
-de;
-Avaliação;
-de;
-Maturidade;
-ISO;
-27001;
-Relatório;
-gerado;
-em;
-$;
-{
-    formatDate(generatedAt);
-}
-para;
-$;
-{
-    company.name;
-}
-/p>
-    < /div>
-    < /div>
-    < !--;
-SCRIPTS;
-REACT;
-PARA;
-RENDERIZAR;
-OS;
-GRÁFICOS-- >
-    type;
-"text/babel" >
-    (function () {
-        const { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis } = Recharts;
-        // Dados
-        const pieData = $, { escapeJson };
-        (pieData);
-    });
-const barData = $, { escapeJson };
-(barData);
-;
-const conceptData = $, { escapeJson };
-(conceptData);
-;
-const domainData = $, { escapeJson };
-(domainData);
-;
-const radarData = $, { escapeJson };
-(radarData);
-;
-const typeData = $, { escapeJson };
-(typeData);
-;
-// Cores para os gráficos
-const COLORS = [
-    '#6366f1',
-    '#8b5cf6',
-    '#a855f7',
-    '#d946ef',
-    '#ec4899'
-];
-const DOMAIN_COLORS = [
-    '#ef4444',
-    '#f59e0b',
-    '#3b82f6',
-    '#10b981'
-];
-// Renderizar Pie Chart
-const pieRoot = document.getElementById('pie-chart-root');
-if (pieRoot && pieData.length > 0) {
-    const PieApp = () => {
-        const data = pieData;
-        return React.createElement(ResponsiveContainer, {
-            width: '100%',
-            height: 260
-        }, React.createElement(PieChart, {}, React.createElement(Pie, {
-            data: data,
-            cx: '50%',
-            cy: '50%',
-            outerRadius: 90,
-            dataKey: 'value',
-            label: ({ cx, cy, midAngle, innerRadius, outerRadius, percent }) => {
-                const RADIAN = Math.PI / 180;
-                const radius = innerRadius +
-                    (outerRadius - innerRadius) * 0.6;
-                const x = cx +
-                    radius *
-                        Math.cos(-midAngle * RADIAN);
-                const y = cy +
-                    radius *
-                        Math.sin(-midAngle * RADIAN);
-                if (percent < 0.03) {
-                    return null;
+// 🔵 REFATORADO COMPLETO - VERSÃO FINAL ESTÁVEL (layout em grid)
+// - Mantém 100% do código e da lógica original
+// - Todos os gráficos preservados
+// - Layout em CSS Grid: gráficos lado a lado, igual à tela do sistema
+// - Sem quebras de página forçadas por seção (elimina páginas em branco)
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.DashboardPDFService = void 0;
+const logger_js_1 = require("../utils/logger.js");
+const ChartService_js_1 = require("./ChartService.js");
+class DashboardPDFService {
+    // =====================================================
+    // MÉTODO PRINCIPAL - GERAÇÃO DO PDF
+    // =====================================================
+    /**
+     * Gera PDF completo do Dashboard de Maturidade
+     */
+    static async generateDashboardPDF(data) {
+        const startTime = Date.now();
+        let browser = null;
+        let page = null;
+        try {
+            const isProduction = process.env.NODE_ENV === 'production';
+            let puppeteer;
+            let browserOptions;
+            logger_js_1.logger.info('🔄 DashboardPDF: Iniciando geração otimizada');
+            // -----------------------------------------------------
+            // GERAÇÃO DOS GRÁFICOS PRINCIPAIS (VISÃO GERAL)
+            // -----------------------------------------------------
+            const pieChartImage = ChartService_js_1.ChartService.generatePieChart([
+                { name: 'Implementado', value: data.summary.Implementado || 0, color: '#10b981' },
+                { name: 'Parcialmente implementado', value: data.summary.Parcialmente || 0, color: '#f59e0b' },
+                { name: 'Não implementado', value: data.summary.NaoImplementado || 0, color: '#ef4444' },
+                { name: 'Não se aplica', value: data.summary.NaoSeAplica || 0, color: '#94a3b8' },
+            ]);
+            if (!pieChartImage || pieChartImage.length === 0) {
+                throw new Error('PieChart buffer vazio');
+            }
+            const barChartImage = ChartService_js_1.ChartService.generateBarChart([
+                { name: 'Implementados', value: data.summary.Implementado || 0, color: '#10b981' },
+                { name: 'Parciais', value: data.summary.Parcialmente || 0, color: '#f59e0b' },
+                { name: 'Não Implementados', value: data.summary.NaoImplementado || 0, color: '#ef4444' },
+            ]);
+            if (!barChartImage || barChartImage.length === 0) {
+                throw new Error('BarChart buffer vazio');
+            }
+            // -----------------------------------------------------
+            // GRÁFICOS DE BARRAS - CONCEITOS E DOMÍNIOS
+            // -----------------------------------------------------
+            const conceptBarData = Object.entries(data.byCyberConcept || {})
+                .map(([key, value]) => ({
+                name: key,
+                value: value.total || 0,
+                color: '#6366f1',
+            }))
+                .filter((item) => item.value > 0);
+            const conceptBarImage = ChartService_js_1.ChartService.generateBarChart(conceptBarData);
+            if (!conceptBarImage || conceptBarImage.length === 0) {
+                throw new Error('ConceptBar buffer vazio');
+            }
+            const domainBarData = Object.entries(data.byDomain || {})
+                .map(([key, value]) => ({
+                name: key,
+                value: value.total || 0,
+                color: '#3b82f6',
+            }))
+                .filter((item) => item.value > 0);
+            const domainBarImage = ChartService_js_1.ChartService.generateBarChart(domainBarData);
+            if (!domainBarImage || domainBarImage.length === 0) {
+                throw new Error('DomainBar buffer vazio');
+            }
+            // -----------------------------------------------------
+            // GRÁFICO RADAR - CAPACIDADES
+            // -----------------------------------------------------
+            const radarData = Object.entries(data.byCapability || {}).map(([key, value]) => ({
+                subject: key.length > 20 ? key.substring(0, 20) + '…' : key,
+                Implementado: value.aderente || 0,
+                Recomendado: 100,
+            }));
+            const radarChartImage = ChartService_js_1.ChartService.generateRadarChart(radarData);
+            if (!radarChartImage || radarChartImage.length === 0) {
+                throw new Error('RadarChart buffer vazio');
+            }
+            const pieBase64 = pieChartImage.toString('base64');
+            const barBase64 = barChartImage.toString('base64');
+            const conceptBarBase64 = conceptBarImage.toString('base64');
+            const domainBarBase64 = domainBarImage.toString('base64');
+            const radarBase64 = radarChartImage.toString('base64');
+            // -----------------------------------------------------
+            // GRÁFICOS PRINCIPAIS POR SEÇÃO (PIZZA GERAL)
+            // -----------------------------------------------------
+            const typePieGeneralImage = ChartService_js_1.ChartService.generatePieChart(Object.entries(data.byType || {})
+                .map(([name, value]) => ({
+                name,
+                value: value.total || 0,
+                color: this.getColorForIndex(Object.keys(data.byType || {}).indexOf(name)),
+            }))
+                .filter((item) => item.value > 0));
+            const conceptPieGeneralImage = ChartService_js_1.ChartService.generatePieChart(Object.entries(data.byCyberConcept || {})
+                .map(([name, value]) => ({
+                name,
+                value: value.total || 0,
+                color: this.getColorForIndex(Object.keys(data.byCyberConcept || {}).indexOf(name)),
+            }))
+                .filter((item) => item.value > 0));
+            const domainPieGeneralImage = ChartService_js_1.ChartService.generatePieChart(Object.entries(data.byDomain || {})
+                .map(([name, value]) => ({
+                name,
+                value: value.total || 0,
+                color: this.getColorForIndex(Object.keys(data.byDomain || {}).indexOf(name)),
+            }))
+                .filter((item) => item.value > 0));
+            const typePieGeneralBase64 = typePieGeneralImage ? typePieGeneralImage.toString('base64') : '';
+            const conceptPieGeneralBase64 = conceptPieGeneralImage ? conceptPieGeneralImage.toString('base64') : '';
+            const domainPieGeneralBase64 = domainPieGeneralImage ? domainPieGeneralImage.toString('base64') : '';
+            // -----------------------------------------------------
+            // GRÁFICOS INDIVIDUAIS POR TIPO
+            // -----------------------------------------------------
+            const typePieImages = {};
+            Object.entries(data.byType || {}).forEach(([typeName, typeData]) => {
+                if (typeData && typeData.total > 0) {
+                    const typePie = ChartService_js_1.ChartService.generatePieChart([
+                        { name: 'Implementado', value: typeData.implemented || 0, color: '#10b981' },
+                        { name: 'Parcialmente', value: typeData.partial || 0, color: '#f59e0b' },
+                        { name: 'Não Implementado', value: typeData.notImpl || 0, color: '#ef4444' },
+                    ]);
+                    if (typePie && typePie.length > 0) {
+                        typePieImages[typeName] = typePie.toString('base64');
+                    }
                 }
-                return React.createElement('text', {
-                    x,
-                    y,
-                    fill: '#fff',
-                    textAnchor: 'middle',
-                    dominantBaseline: 'central',
-                    fontSize: 10,
-                    fontWeight: 'bold'
-                }, Math.round(percent * 100) + '%');
+            });
+            // -----------------------------------------------------
+            // GRÁFICOS INDIVIDUAIS POR CONCEITO
+            // -----------------------------------------------------
+            const conceptPieImages = {};
+            Object.entries(data.byCyberConcept || {}).forEach(([conceptName, conceptData]) => {
+                if (conceptData && conceptData.total > 0) {
+                    const conceptPie = ChartService_js_1.ChartService.generatePieChart([
+                        { name: 'Implementado', value: conceptData.implemented || 0, color: '#10b981' },
+                        { name: 'Parcialmente', value: conceptData.partial || 0, color: '#f59e0b' },
+                        { name: 'Não Implementado', value: conceptData.notImpl || 0, color: '#ef4444' },
+                    ]);
+                    if (conceptPie && conceptPie.length > 0) {
+                        conceptPieImages[conceptName] = conceptPie.toString('base64');
+                    }
+                }
+            });
+            // -----------------------------------------------------
+            // GRÁFICOS INDIVIDUAIS POR DOMÍNIO
+            // -----------------------------------------------------
+            const domainPieImages = {};
+            Object.entries(data.byDomain || {}).forEach(([domainName, domainData]) => {
+                if (domainData && domainData.total > 0) {
+                    const domainPie = ChartService_js_1.ChartService.generatePieChart([
+                        { name: 'Implementado', value: domainData.implemented || 0, color: '#10b981' },
+                        { name: 'Parcialmente', value: domainData.partial || 0, color: '#f59e0b' },
+                        { name: 'Não Implementado', value: domainData.notImpl || 0, color: '#ef4444' },
+                    ]);
+                    if (domainPie && domainPie.length > 0) {
+                        domainPieImages[domainName] = domainPie.toString('base64');
+                    }
+                }
+            });
+            // -----------------------------------------------------
+            // LOGS DE DIAGNÓSTICO
+            // -----------------------------------------------------
+            logger_js_1.logger.info(`📊 PieChart: ${pieBase64.length} bytes`);
+            logger_js_1.logger.info(`📊 BarChart: ${barBase64.length} bytes`);
+            logger_js_1.logger.info(`📊 ConceptBar: ${conceptBarBase64.length} bytes`);
+            logger_js_1.logger.info(`📊 DomainBar: ${domainBarBase64.length} bytes`);
+            logger_js_1.logger.info(`📊 RadarChart: ${radarBase64.length} bytes`);
+            logger_js_1.logger.info(`📊 TypePies: ${Object.keys(typePieImages).length} gráficos`);
+            logger_js_1.logger.info(`📊 ConceptPies: ${Object.keys(conceptPieImages).length} gráficos`);
+            logger_js_1.logger.info(`📊 DomainPies: ${Object.keys(domainPieImages).length} gráficos`);
+            logger_js_1.logger.info(`📊 TypePieGeneral: ${typePieGeneralBase64.length > 0 ? '✅' : '❌'}`);
+            logger_js_1.logger.info(`📊 ConceptPieGeneral: ${conceptPieGeneralBase64.length > 0 ? '✅' : '❌'}`);
+            logger_js_1.logger.info(`📊 DomainPieGeneral: ${domainPieGeneralBase64.length > 0 ? '✅' : '❌'}`);
+            // -----------------------------------------------------
+            // PREPARAÇÃO DOS DADOS
+            // -----------------------------------------------------
+            const preparedData = this.prepareData(data);
+            // -----------------------------------------------------
+            // GERAÇÃO DO HTML
+            // -----------------------------------------------------
+            const html = this.generateHTML(data, pieBase64, barBase64, conceptBarBase64, domainBarBase64, radarBase64, typePieGeneralBase64, conceptPieGeneralBase64, domainPieGeneralBase64, typePieImages, conceptPieImages, domainPieImages, preparedData);
+            // -----------------------------------------------------
+            // CONFIGURAÇÃO DO CHROMIUM
+            // -----------------------------------------------------
+            if (isProduction) {
+                const chromiumModule = await import('@sparticuz/chromium');
+                const chromium = chromiumModule.default || chromiumModule;
+                const puppeteerCore = await import('puppeteer-core');
+                puppeteer = puppeteerCore.default || puppeteerCore;
+                // @ts-ignore - Ignorar erros de tipo do chromium em produção
+                const chromiumArgs = chromium.args || [];
+                // @ts-ignore - Ignorar erros de tipo do chromium em produção
+                const chromiumPath = await chromium.executablePath();
+                browserOptions = {
+                    args: [
+                        ...chromiumArgs,
+                        '--no-sandbox',
+                        '--disable-setuid-sandbox',
+                        '--disable-dev-shm-usage',
+                        '--disable-gpu',
+                        '--single-process',
+                    ],
+                    executablePath: chromiumPath,
+                    headless: true,
+                };
+                logger_js_1.logger.info('🔄 DashboardPDF: Chromium produção');
             }
-        }, data.map((entry, index) => React.createElement(Cell, {
-            key: 'cell-' + index,
-            fill: entry.color
-        }))), React.createElement(Legend, {
-            wrapperStyle: {
-                fontSize: '9px',
-                paddingTop: '4px'
-            },
-            iconSize: 8
-        }), React.createElement(Tooltip, {
-            contentStyle: {
-                background: '#1e293b',
-                border: 'none',
-                borderRadius: '4px',
-                color: '#fff',
-                fontSize: '10px'
-            },
-            formatter: (v) => [v, 'Controles']
-        })));
-    };
-    ReactDOM
-        .createRoot(pieRoot)
-        .render(React.createElement(PieApp));
+            else {
+                const puppeteerModule = await import('puppeteer');
+                puppeteer = puppeteerModule.default || puppeteerModule;
+                browserOptions = {
+                    headless: true,
+                    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+                };
+                if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+                    browserOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+                }
+                logger_js_1.logger.info('🔄 DashboardPDF: Puppeteer local');
+            }
+            browser = await puppeteer.launch(browserOptions);
+            page = await browser.newPage();
+            // -----------------------------------------------------
+            // VIEWPORT OTIMIZADO (proporção A4 paisagem)
+            // -----------------------------------------------------
+            await page.setViewport({
+                width: 1123,
+                height: 794,
+                deviceScaleFactor: 2,
+            });
+            await page.emulateMediaType('print');
+            await page.setContent(html, {
+                waitUntil: ['load', 'domcontentloaded'],
+                timeout: 30000,
+            });
+            // Aguarda todas as imagens carregarem
+            await page.waitForFunction(() => Array.from(document.images).every((img) => img.complete), { timeout: 30000 });
+            // Aguarda fontes
+            await page.evaluate(async () => {
+                if (document.fonts) {
+                    await document.fonts.ready;
+                }
+            });
+            // -----------------------------------------------------
+            // GERAÇÃO DO PDF
+            // -----------------------------------------------------
+            const pdf = await page.pdf({
+                format: 'A4',
+                landscape: true,
+                printBackground: true,
+                margin: {
+                    top: '10mm',
+                    bottom: '10mm',
+                    left: '10mm',
+                    right: '10mm',
+                },
+                displayHeaderFooter: false,
+                preferCSSPageSize: false,
+                scale: 0.9,
+                timeout: 60000,
+            });
+            logger_js_1.logger.info(`✅ DashboardPDF gerado em ${Date.now() - startTime}ms (${pdf.length} bytes)`);
+            return Buffer.from(pdf);
+        }
+        catch (error) {
+            logger_js_1.logger.error('❌ DashboardPDF erro:', error);
+            throw error;
+        }
+        finally {
+            if (page) {
+                try {
+                    await page.close();
+                }
+                catch (error) {
+                    logger_js_1.logger.debug('⚠️ Erro ao fechar página:', error);
+                }
+            }
+            if (browser) {
+                try {
+                    await browser.close();
+                    logger_js_1.logger.debug('🔒 DashboardPDF Browser fechado');
+                }
+                catch (error) {
+                    logger_js_1.logger.debug('⚠️ Erro ao fechar browser:', error);
+                }
+            }
+        }
+    }
+    // =====================================================
+    // 🔴 NOVOS MÉTODOS PARA PDFS ESPECÍFICOS POR SEÇÃO
+    // =====================================================
+    /**
+     * 🔴 NOVO: Gera PDF apenas da seção de Categorização
+     */
+    static async generateCategorizationPDF(data) {
+        const startTime = Date.now();
+        let browser = null;
+        let page = null;
+        try {
+            const isProduction = process.env.NODE_ENV === 'production';
+            let puppeteer;
+            let browserOptions;
+            logger_js_1.logger.info('🔄 CategorizationPDF: Iniciando geração');
+            // Gerar gráficos
+            const pieChartImage = ChartService_js_1.ChartService.generatePieChart([
+                { name: 'Implementado', value: data.summary.Implementado || 0, color: '#10b981' },
+                { name: 'Parcialmente implementado', value: data.summary.Parcialmente || 0, color: '#f59e0b' },
+                { name: 'Não implementado', value: data.summary.NaoImplementado || 0, color: '#ef4444' },
+                { name: 'Não se aplica', value: data.summary.NaoSeAplica || 0, color: '#94a3b8' },
+            ]);
+            const barChartImage = ChartService_js_1.ChartService.generateBarChart([
+                { name: 'Implementados', value: data.summary.Implementado || 0, color: '#10b981' },
+                { name: 'Parciais', value: data.summary.Parcialmente || 0, color: '#f59e0b' },
+                { name: 'Não Implementados', value: data.summary.NaoImplementado || 0, color: '#ef4444' },
+            ]);
+            if (!pieChartImage || !barChartImage) {
+                throw new Error('Falha ao gerar gráficos para Categorização');
+            }
+            const pieBase64 = pieChartImage.toString('base64');
+            const barBase64 = barChartImage.toString('base64');
+            const preparedData = this.prepareData(data);
+            // Gerar HTML apenas com a seção de categorização
+            const html = this.generateCategorizationHTML(data, pieBase64, barBase64, preparedData);
+            // Configurar Puppeteer
+            if (isProduction) {
+                const chromiumModule = await import('@sparticuz/chromium');
+                const chromium = chromiumModule.default || chromiumModule;
+                const puppeteerCore = await import('puppeteer-core');
+                puppeteer = puppeteerCore.default || puppeteerCore;
+                const chromiumArgs = chromium.args || [];
+                const chromiumPath = await chromium.executablePath();
+                browserOptions = {
+                    args: [...chromiumArgs, '--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu', '--single-process'],
+                    executablePath: chromiumPath,
+                    headless: true,
+                };
+            }
+            else {
+                const puppeteerModule = await import('puppeteer');
+                puppeteer = puppeteerModule.default || puppeteerModule;
+                browserOptions = {
+                    headless: true,
+                    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+                };
+                if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+                    browserOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+                }
+            }
+            browser = await puppeteer.launch(browserOptions);
+            page = await browser.newPage();
+            await page.setViewport({ width: 1123, height: 794, deviceScaleFactor: 2 });
+            await page.emulateMediaType('print');
+            await page.setContent(html, { waitUntil: ['load', 'domcontentloaded'], timeout: 30000 });
+            await page.waitForFunction(() => Array.from(document.images).every((img) => img.complete), { timeout: 30000 });
+            const pdf = await page.pdf({
+                format: 'A4',
+                landscape: true,
+                printBackground: true,
+                margin: { top: '10mm', bottom: '10mm', left: '10mm', right: '10mm' },
+                displayHeaderFooter: false,
+                preferCSSPageSize: false,
+                scale: 0.9,
+                timeout: 60000,
+            });
+            logger_js_1.logger.info(`✅ CategorizationPDF gerado em ${Date.now() - startTime}ms`);
+            return Buffer.from(pdf);
+        }
+        catch (error) {
+            logger_js_1.logger.error('❌ CategorizationPDF erro:', error);
+            throw error;
+        }
+        finally {
+            if (page) {
+                try {
+                    await page.close();
+                }
+                catch (e) { }
+            }
+            if (browser) {
+                try {
+                    await browser.close();
+                }
+                catch (e) { }
+            }
+        }
+    }
+    /**
+     * 🔴 NOVO: Gera PDF apenas da seção de Tipos de Controle
+     */
+    static async generateControlTypesPDF(data) {
+        const startTime = Date.now();
+        let browser = null;
+        let page = null;
+        try {
+            const isProduction = process.env.NODE_ENV === 'production';
+            let puppeteer;
+            let browserOptions;
+            logger_js_1.logger.info('🔄 ControlTypesPDF: Iniciando geração');
+            // Gerar gráficos
+            const typePieGeneralImage = ChartService_js_1.ChartService.generatePieChart(Object.entries(data.byType || {})
+                .map(([name, value]) => ({
+                name,
+                value: value.total || 0,
+                color: this.getColorForIndex(Object.keys(data.byType || {}).indexOf(name)),
+            }))
+                .filter((item) => item.value > 0));
+            const typePieGeneralBase64 = typePieGeneralImage ? typePieGeneralImage.toString('base64') : '';
+            const typePieImages = {};
+            Object.entries(data.byType || {}).forEach(([typeName, typeData]) => {
+                if (typeData && typeData.total > 0) {
+                    const typePie = ChartService_js_1.ChartService.generatePieChart([
+                        { name: 'Implementado', value: typeData.implemented || 0, color: '#10b981' },
+                        { name: 'Parcialmente', value: typeData.partial || 0, color: '#f59e0b' },
+                        { name: 'Não Implementado', value: typeData.notImpl || 0, color: '#ef4444' },
+                    ]);
+                    if (typePie && typePie.length > 0) {
+                        typePieImages[typeName] = typePie.toString('base64');
+                    }
+                }
+            });
+            const preparedData = this.prepareData(data);
+            // Gerar HTML apenas com a seção de tipos de controle
+            const html = this.generateControlTypesHTML(data, typePieGeneralBase64, typePieImages, preparedData);
+            // Configurar Puppeteer
+            if (isProduction) {
+                const chromiumModule = await import('@sparticuz/chromium');
+                const chromium = chromiumModule.default || chromiumModule;
+                const puppeteerCore = await import('puppeteer-core');
+                puppeteer = puppeteerCore.default || puppeteerCore;
+                const chromiumArgs = chromium.args || [];
+                const chromiumPath = await chromium.executablePath();
+                browserOptions = {
+                    args: [...chromiumArgs, '--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu', '--single-process'],
+                    executablePath: chromiumPath,
+                    headless: true,
+                };
+            }
+            else {
+                const puppeteerModule = await import('puppeteer');
+                puppeteer = puppeteerModule.default || puppeteerModule;
+                browserOptions = {
+                    headless: true,
+                    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+                };
+                if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+                    browserOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+                }
+            }
+            browser = await puppeteer.launch(browserOptions);
+            page = await browser.newPage();
+            await page.setViewport({ width: 1123, height: 794, deviceScaleFactor: 2 });
+            await page.emulateMediaType('print');
+            await page.setContent(html, { waitUntil: ['load', 'domcontentloaded'], timeout: 30000 });
+            await page.waitForFunction(() => Array.from(document.images).every((img) => img.complete), { timeout: 30000 });
+            const pdf = await page.pdf({
+                format: 'A4',
+                landscape: true,
+                printBackground: true,
+                margin: { top: '10mm', bottom: '10mm', left: '10mm', right: '10mm' },
+                displayHeaderFooter: false,
+                preferCSSPageSize: false,
+                scale: 0.9,
+                timeout: 60000,
+            });
+            logger_js_1.logger.info(`✅ ControlTypesPDF gerado em ${Date.now() - startTime}ms`);
+            return Buffer.from(pdf);
+        }
+        catch (error) {
+            logger_js_1.logger.error('❌ ControlTypesPDF erro:', error);
+            throw error;
+        }
+        finally {
+            if (page) {
+                try {
+                    await page.close();
+                }
+                catch (e) { }
+            }
+            if (browser) {
+                try {
+                    await browser.close();
+                }
+                catch (e) { }
+            }
+        }
+    }
+    /**
+     * 🔴 NOVO: Gera PDF apenas da seção de Conceitos Cibernéticos
+     */
+    static async generateCyberConceptsPDF(data) {
+        const startTime = Date.now();
+        let browser = null;
+        let page = null;
+        try {
+            const isProduction = process.env.NODE_ENV === 'production';
+            let puppeteer;
+            let browserOptions;
+            logger_js_1.logger.info('🔄 CyberConceptsPDF: Iniciando geração');
+            // Gerar gráficos
+            const conceptPieGeneralImage = ChartService_js_1.ChartService.generatePieChart(Object.entries(data.byCyberConcept || {})
+                .map(([name, value]) => ({
+                name,
+                value: value.total || 0,
+                color: this.getColorForIndex(Object.keys(data.byCyberConcept || {}).indexOf(name)),
+            }))
+                .filter((item) => item.value > 0));
+            const conceptPieGeneralBase64 = conceptPieGeneralImage ? conceptPieGeneralImage.toString('base64') : '';
+            const conceptBarData = Object.entries(data.byCyberConcept || {})
+                .map(([key, value]) => ({
+                name: key,
+                value: value.total || 0,
+                color: '#6366f1',
+            }))
+                .filter((item) => item.value > 0);
+            const conceptBarImage = ChartService_js_1.ChartService.generateBarChart(conceptBarData);
+            const conceptBarBase64 = conceptBarImage ? conceptBarImage.toString('base64') : '';
+            const conceptPieImages = {};
+            Object.entries(data.byCyberConcept || {}).forEach(([conceptName, conceptData]) => {
+                if (conceptData && conceptData.total > 0) {
+                    const conceptPie = ChartService_js_1.ChartService.generatePieChart([
+                        { name: 'Implementado', value: conceptData.implemented || 0, color: '#10b981' },
+                        { name: 'Parcialmente', value: conceptData.partial || 0, color: '#f59e0b' },
+                        { name: 'Não Implementado', value: conceptData.notImpl || 0, color: '#ef4444' },
+                    ]);
+                    if (conceptPie && conceptPie.length > 0) {
+                        conceptPieImages[conceptName] = conceptPie.toString('base64');
+                    }
+                }
+            });
+            const preparedData = this.prepareData(data);
+            // Gerar HTML apenas com a seção de conceitos cibernéticos
+            const html = this.generateCyberConceptsHTML(data, conceptPieGeneralBase64, conceptBarBase64, conceptPieImages, preparedData);
+            // Configurar Puppeteer
+            if (isProduction) {
+                const chromiumModule = await import('@sparticuz/chromium');
+                const chromium = chromiumModule.default || chromiumModule;
+                const puppeteerCore = await import('puppeteer-core');
+                puppeteer = puppeteerCore.default || puppeteerCore;
+                const chromiumArgs = chromium.args || [];
+                const chromiumPath = await chromium.executablePath();
+                browserOptions = {
+                    args: [...chromiumArgs, '--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu', '--single-process'],
+                    executablePath: chromiumPath,
+                    headless: true,
+                };
+            }
+            else {
+                const puppeteerModule = await import('puppeteer');
+                puppeteer = puppeteerModule.default || puppeteerModule;
+                browserOptions = {
+                    headless: true,
+                    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+                };
+                if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+                    browserOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+                }
+            }
+            browser = await puppeteer.launch(browserOptions);
+            page = await browser.newPage();
+            await page.setViewport({ width: 1123, height: 794, deviceScaleFactor: 2 });
+            await page.emulateMediaType('print');
+            await page.setContent(html, { waitUntil: ['load', 'domcontentloaded'], timeout: 30000 });
+            await page.waitForFunction(() => Array.from(document.images).every((img) => img.complete), { timeout: 30000 });
+            const pdf = await page.pdf({
+                format: 'A4',
+                landscape: true,
+                printBackground: true,
+                margin: { top: '10mm', bottom: '10mm', left: '10mm', right: '10mm' },
+                displayHeaderFooter: false,
+                preferCSSPageSize: false,
+                scale: 0.9,
+                timeout: 60000,
+            });
+            logger_js_1.logger.info(`✅ CyberConceptsPDF gerado em ${Date.now() - startTime}ms`);
+            return Buffer.from(pdf);
+        }
+        catch (error) {
+            logger_js_1.logger.error('❌ CyberConceptsPDF erro:', error);
+            throw error;
+        }
+        finally {
+            if (page) {
+                try {
+                    await page.close();
+                }
+                catch (e) { }
+            }
+            if (browser) {
+                try {
+                    await browser.close();
+                }
+                catch (e) { }
+            }
+        }
+    }
+    /**
+     * 🔴 NOVO: Gera PDF apenas da seção de Capacidades Operacionais
+     */
+    static async generateCapabilitiesPDF(data) {
+        const startTime = Date.now();
+        let browser = null;
+        let page = null;
+        try {
+            const isProduction = process.env.NODE_ENV === 'production';
+            let puppeteer;
+            let browserOptions;
+            logger_js_1.logger.info('🔄 CapabilitiesPDF: Iniciando geração');
+            // Gerar gráfico radar
+            const radarData = Object.entries(data.byCapability || {}).map(([key, value]) => ({
+                subject: key.length > 20 ? key.substring(0, 20) + '…' : key,
+                Implementado: value.aderente || 0,
+                Recomendado: 100,
+            }));
+            const radarChartImage = ChartService_js_1.ChartService.generateRadarChart(radarData);
+            const radarBase64 = radarChartImage ? radarChartImage.toString('base64') : '';
+            const preparedData = this.prepareData(data);
+            // Gerar HTML apenas com a seção de capacidades operacionais
+            const html = this.generateCapabilitiesHTML(data, radarBase64, preparedData);
+            // Configurar Puppeteer
+            if (isProduction) {
+                const chromiumModule = await import('@sparticuz/chromium');
+                const chromium = chromiumModule.default || chromiumModule;
+                const puppeteerCore = await import('puppeteer-core');
+                puppeteer = puppeteerCore.default || puppeteerCore;
+                const chromiumArgs = chromium.args || [];
+                const chromiumPath = await chromium.executablePath();
+                browserOptions = {
+                    args: [...chromiumArgs, '--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu', '--single-process'],
+                    executablePath: chromiumPath,
+                    headless: true,
+                };
+            }
+            else {
+                const puppeteerModule = await import('puppeteer');
+                puppeteer = puppeteerModule.default || puppeteerModule;
+                browserOptions = {
+                    headless: true,
+                    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+                };
+                if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+                    browserOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+                }
+            }
+            browser = await puppeteer.launch(browserOptions);
+            page = await browser.newPage();
+            await page.setViewport({ width: 1123, height: 794, deviceScaleFactor: 2 });
+            await page.emulateMediaType('print');
+            await page.setContent(html, { waitUntil: ['load', 'domcontentloaded'], timeout: 30000 });
+            await page.waitForFunction(() => Array.from(document.images).every((img) => img.complete), { timeout: 30000 });
+            const pdf = await page.pdf({
+                format: 'A4',
+                landscape: true,
+                printBackground: true,
+                margin: { top: '10mm', bottom: '10mm', left: '10mm', right: '10mm' },
+                displayHeaderFooter: false,
+                preferCSSPageSize: false,
+                scale: 0.9,
+                timeout: 60000,
+            });
+            logger_js_1.logger.info(`✅ CapabilitiesPDF gerado em ${Date.now() - startTime}ms`);
+            return Buffer.from(pdf);
+        }
+        catch (error) {
+            logger_js_1.logger.error('❌ CapabilitiesPDF erro:', error);
+            throw error;
+        }
+        finally {
+            if (page) {
+                try {
+                    await page.close();
+                }
+                catch (e) { }
+            }
+            if (browser) {
+                try {
+                    await browser.close();
+                }
+                catch (e) { }
+            }
+        }
+    }
+    /**
+     * 🔴 NOVO: Gera PDF apenas da seção de Domínios
+     */
+    static async generateDomainsPDF(data) {
+        const startTime = Date.now();
+        let browser = null;
+        let page = null;
+        try {
+            const isProduction = process.env.NODE_ENV === 'production';
+            let puppeteer;
+            let browserOptions;
+            logger_js_1.logger.info('🔄 DomainsPDF: Iniciando geração');
+            // Gerar gráficos
+            const domainPieGeneralImage = ChartService_js_1.ChartService.generatePieChart(Object.entries(data.byDomain || {})
+                .map(([name, value]) => ({
+                name,
+                value: value.total || 0,
+                color: this.getColorForIndex(Object.keys(data.byDomain || {}).indexOf(name)),
+            }))
+                .filter((item) => item.value > 0));
+            const domainPieGeneralBase64 = domainPieGeneralImage ? domainPieGeneralImage.toString('base64') : '';
+            const domainBarData = Object.entries(data.byDomain || {})
+                .map(([key, value]) => ({
+                name: key,
+                value: value.total || 0,
+                color: '#3b82f6',
+            }))
+                .filter((item) => item.value > 0);
+            const domainBarImage = ChartService_js_1.ChartService.generateBarChart(domainBarData);
+            const domainBarBase64 = domainBarImage ? domainBarImage.toString('base64') : '';
+            const domainPieImages = {};
+            Object.entries(data.byDomain || {}).forEach(([domainName, domainData]) => {
+                if (domainData && domainData.total > 0) {
+                    const domainPie = ChartService_js_1.ChartService.generatePieChart([
+                        { name: 'Implementado', value: domainData.implemented || 0, color: '#10b981' },
+                        { name: 'Parcialmente', value: domainData.partial || 0, color: '#f59e0b' },
+                        { name: 'Não Implementado', value: domainData.notImpl || 0, color: '#ef4444' },
+                    ]);
+                    if (domainPie && domainPie.length > 0) {
+                        domainPieImages[domainName] = domainPie.toString('base64');
+                    }
+                }
+            });
+            const preparedData = this.prepareData(data);
+            // Gerar HTML apenas com a seção de domínios
+            const html = this.generateDomainsHTML(data, domainPieGeneralBase64, domainBarBase64, domainPieImages, preparedData);
+            // Configurar Puppeteer
+            if (isProduction) {
+                const chromiumModule = await import('@sparticuz/chromium');
+                const chromium = chromiumModule.default || chromiumModule;
+                const puppeteerCore = await import('puppeteer-core');
+                puppeteer = puppeteerCore.default || puppeteerCore;
+                const chromiumArgs = chromium.args || [];
+                const chromiumPath = await chromium.executablePath();
+                browserOptions = {
+                    args: [...chromiumArgs, '--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu', '--single-process'],
+                    executablePath: chromiumPath,
+                    headless: true,
+                };
+            }
+            else {
+                const puppeteerModule = await import('puppeteer');
+                puppeteer = puppeteerModule.default || puppeteerModule;
+                browserOptions = {
+                    headless: true,
+                    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+                };
+                if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+                    browserOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+                }
+            }
+            browser = await puppeteer.launch(browserOptions);
+            page = await browser.newPage();
+            await page.setViewport({ width: 1123, height: 794, deviceScaleFactor: 2 });
+            await page.emulateMediaType('print');
+            await page.setContent(html, { waitUntil: ['load', 'domcontentloaded'], timeout: 30000 });
+            await page.waitForFunction(() => Array.from(document.images).every((img) => img.complete), { timeout: 30000 });
+            const pdf = await page.pdf({
+                format: 'A4',
+                landscape: true,
+                printBackground: true,
+                margin: { top: '10mm', bottom: '10mm', left: '10mm', right: '10mm' },
+                displayHeaderFooter: false,
+                preferCSSPageSize: false,
+                scale: 0.9,
+                timeout: 60000,
+            });
+            logger_js_1.logger.info(`✅ DomainsPDF gerado em ${Date.now() - startTime}ms`);
+            return Buffer.from(pdf);
+        }
+        catch (error) {
+            logger_js_1.logger.error('❌ DomainsPDF erro:', error);
+            throw error;
+        }
+        finally {
+            if (page) {
+                try {
+                    await page.close();
+                }
+                catch (e) { }
+            }
+            if (browser) {
+                try {
+                    await browser.close();
+                }
+                catch (e) { }
+            }
+        }
+    }
+    // =====================================================
+    // MÉTODOS PRIVADOS - AUXILIARES
+    // =====================================================
+    static getColorForIndex(index) {
+        const colors = [
+            '#3b82f6', // azul
+            '#10b981', // verde
+            '#f59e0b', // amarelo
+            '#ef4444', // vermelho
+            '#8b5cf6', // roxo
+            '#ec4899', // rosa
+            '#06b6d4', // ciano
+            '#f97316', // laranja
+            '#14b8a6', // teal
+            '#6366f1', // índigo
+            '#d946ef', // magenta
+            '#84cc16', // lima
+        ];
+        const safeIndex = Math.abs(index) % colors.length;
+        return colors[safeIndex] || '#64748b'; // fallback seguro
+    }
+    static escapeHtml(value) {
+        return String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+    }
+    // =====================================================
+    // MÉTODOS PRIVADOS - PREPARAÇÃO DE DADOS
+    // =====================================================
+    static prepareData(data) {
+        const formatDate = (date) => new Date(date).toLocaleDateString('pt-BR', {
+            day: '2-digit',
+            month: 'long',
+            year: 'numeric',
+        });
+        const completionRate = data.summary.totalControls > 0
+            ? Math.round((data.summary.Implementado / data.summary.totalControls) * 100)
+            : 0;
+        const categoryData = Object.entries(data.byCategory || {}).map(([name, value]) => ({
+            name,
+            total: value.total || 0,
+            implemented: value.implemented || 0,
+            partial: value.partial || 0,
+            notImpl: value.notImpl || 0,
+        }));
+        const typeData = Object.entries(data.byType || {}).map(([name, value]) => ({
+            name,
+            total: value.total || 0,
+            implemented: value.implemented || 0,
+            partial: value.partial || 0,
+            notImpl: value.notImpl || 0,
+        }));
+        const conceptData = Object.entries(data.byCyberConcept || {}).map(([name, value]) => ({
+            name,
+            total: value.total || 0,
+            implemented: value.implemented || 0,
+            partial: value.partial || 0,
+            notImpl: value.notImpl || 0,
+        }));
+        const domainData = Object.entries(data.byDomain || {}).map(([name, value]) => ({
+            name,
+            total: value.total || 0,
+            implemented: value.implemented || 0,
+            partial: value.partial || 0,
+            notImpl: value.notImpl || 0,
+        }));
+        const capabilityData = Object.entries(data.byCapability || {}).map(([name, value]) => ({
+            name,
+            total: value.total || 0,
+            implemented: value.implemented || 0,
+            partial: value.partial || 0,
+            notImpl: value.notImpl || 0,
+            aderente: value.aderente || 0,
+        }));
+        const userName = data.user?.name || 'Usuário não identificado';
+        const userEmail = data.user?.email || 'email não informado';
+        return {
+            categoryData,
+            typeData,
+            conceptData,
+            domainData,
+            capabilityData,
+            userName,
+            userEmail,
+            completionRate,
+            formattedDate: formatDate(data.generatedAt),
+        };
+    }
+    // =====================================================
+    // MÉTODO PRINCIPAL - GERAÇÃO DO HTML
+    // =====================================================
+    static generateHTML(data, pieBase64, barBase64, conceptBarBase64, domainBarBase64, radarBase64, typePieGeneralBase64, conceptPieGeneralBase64, domainPieGeneralBase64, typePieImages, conceptPieImages, domainPieImages, prepared) {
+        const { company, summary } = data;
+        const esc = this.escapeHtml;
+        const { categoryData, typeData, conceptData, domainData, capabilityData, userName, userEmail, completionRate, formattedDate, } = prepared;
+        // -----------------------------------------------------
+        // HELPERS DE MONTAGEM
+        // -----------------------------------------------------
+        /** Card de métrica padrão (número + rótulo + mini legenda) */
+        const statCard = (item) => `
+      <div class="stat-card">
+        <div class="stat-value">${item.total}</div>
+        <div class="stat-label">${esc(item.name)}</div>
+        <div class="stat-legend">
+          <span class="ok">✔ ${item.implemented}</span>
+          <span class="warn">◐ ${item.partial}</span>
+          <span class="bad">✖ ${item.notImpl}</span>
+        </div>
+      </div>`;
+        /** Card de gráfico (título + imagem) */
+        const chartCard = (title, base64, extraClass = '') => `
+      <div class="chart-card ${extraClass}">
+        <div class="chart-title">${esc(title)}</div>
+        <div class="chart-body">
+          <img src="data:image/png;base64,${base64}" alt="${esc(title)}" />
+        </div>
+      </div>`;
+        /** Grid de gráficos lado a lado — 3 colunas por padrão */
+        const buildChartGrid = (chartEntries, columns = 3) => {
+            if (!chartEntries.length)
+                return '';
+            return `
+      <div class="grid grid-${columns} avoid-break">
+        ${chartEntries.map(([name, base64]) => chartCard(name, base64, 'chart-card--sm')).join('')}
+      </div>`;
+        };
+        /** Grid de cards lado a lado */
+        const buildCardGrid = (items, columns = 5) => {
+            if (!items.length)
+                return '';
+            return `
+      <div class="grid grid-${columns} avoid-break">
+        ${items.join('')}
+      </div>`;
+        };
+        // -----------------------------------------------------
+        // BLOCOS DE CONTEÚDO
+        // -----------------------------------------------------
+        const categoryHtml = categoryData.map(statCard).join('');
+        // Preservado do original: variação tabular de Tipos de Controle
+        const typeHtml = typeData.map(statCard).join('');
+        void typeHtml; // preservado do código original (não renderizado)
+        const typeCardItems = typeData.map(statCard);
+        const conceptCardItems = conceptData.map(statCard);
+        const domainCardItems = domainData.map(statCard);
+        const typePieEntries = Object.entries(typePieImages);
+        const conceptPieEntries = Object.entries(conceptPieImages);
+        const domainPieEntries = Object.entries(domainPieImages);
+        const typePiesHtml = buildChartGrid(typePieEntries, 3);
+        const conceptPiesHtml = buildChartGrid(conceptPieEntries, 3);
+        const domainPiesHtml = buildChartGrid(domainPieEntries, 3);
+        const capabilityHtml = capabilityData
+            .map((cap) => `
+        <tr>
+          <td class="td-name">${esc(cap.name)}</td>
+          <td class="ok">${cap.implemented}</td>
+          <td class="warn">${cap.partial}</td>
+          <td class="bad">${cap.notImpl}</td>
+          <td>${cap.total}</td>
+          <td class="td-strong">${cap.aderente}%</td>
+        </tr>`)
+            .join('');
+        return `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<title>Dashboard de Maturidade - ${esc(company.name)}</title>
+<style>
+@page {
+  size: A4 landscape;
+  margin: 10mm;
 }
-// Renderizar Bar Chart (Status)
-const barRoot = document.getElementById('bar-chart-root');
-if (barRoot && barData.length > 0) {
-    const BarApp = () => {
-        const data = barData;
-        return React.createElement(ResponsiveContainer, {
-            width: '100%',
-            height: 260
-        }, React.createElement(BarChart, {
-            data: data,
-            margin: {
-                top: 10,
-                right: 10,
-                left: 0,
-                bottom: 10
-            }
-        }, React.createElement(CartesianGrid, {
-            strokeDasharray: '3 3',
-            stroke: '#e2e8f0'
-        }), React.createElement(XAxis, {
-            dataKey: 'name',
-            tick: {
-                fill: '#475569',
-                fontSize: 9
-            }
-        }), React.createElement(YAxis, {
-            tick: {
-                fill: '#94a3b8',
-                fontSize: 9
-            },
-            allowDecimals: false
-        }), React.createElement(Tooltip, {
-            contentStyle: {
-                background: '#1e293b',
-                border: 'none',
-                borderRadius: '4px',
-                color: '#fff',
-                fontSize: '10px'
-            },
-            formatter: (v) => [v, 'Controles']
-        }), React.createElement(Legend, {
-            wrapperStyle: {
-                fontSize: '9px'
-            },
-            iconSize: 8
-        }), React.createElement(Bar, {
-            dataKey: 'value',
-            name: 'Controles',
-            radius: [4, 4, 0, 0]
-        }, data.map((entry, index) => React.createElement(Cell, {
-            key: 'cell-' + index,
-            fill: entry.color
-        })))));
-    };
-    ReactDOM
-        .createRoot(barRoot)
-        .render(React.createElement(BarApp));
+
+* {
+  box-sizing: border-box;
+  -webkit-print-color-adjust: exact !important;
+  print-color-adjust: exact !important;
 }
-// Renderizar Bar Chart (Conceitos)
-const conceptBarRoot = document.getElementById('concept-bar-chart-root');
-if (conceptBarRoot && conceptData.length > 0) {
-    const conceptBarData = conceptData.map((item, index) => ({
-        name: item.name,
-        value: item.total || 0,
-        color: COLORS[index % COLORS.length]
-    }));
-    const ConceptBarApp = () => {
-        return React.createElement(ResponsiveContainer, {
-            width: '100%',
-            height: 260
-        }, React.createElement(BarChart, {
-            data: conceptBarData,
-            margin: {
-                top: 10,
-                right: 10,
-                left: 0,
-                bottom: 10
-            }
-        }, React.createElement(CartesianGrid, {
-            strokeDasharray: '3 3',
-            stroke: '#e2e8f0'
-        }), React.createElement(XAxis, {
-            dataKey: 'name',
-            tick: {
-                fill: '#475569',
-                fontSize: 9
-            }
-        }), React.createElement(YAxis, {
-            tick: {
-                fill: '#94a3b8',
-                fontSize: 9
-            },
-            allowDecimals: false
-        }), React.createElement(Tooltip, {
-            contentStyle: {
-                background: '#1e293b',
-                border: 'none',
-                borderRadius: '4px',
-                color: '#fff',
-                fontSize: '10px'
-            },
-            formatter: (v) => [v, 'Controles']
-        }), React.createElement(Bar, {
-            dataKey: 'value',
-            name: 'Controles',
-            radius: [4, 4, 0, 0]
-        }, conceptBarData.map((entry, index) => React.createElement(Cell, {
-            key: 'cell-' + index,
-            fill: entry.color
-        })))));
-    };
-    ReactDOM
-        .createRoot(conceptBarRoot)
-        .render(React.createElement(ConceptBarApp));
+
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  color: #0f172a;
+  background: #ffffff;
+  font-size: 11px;
 }
-// Renderizar Bar Chart (Domínios)
-const domainBarRoot = document.getElementById('domain-bar-chart-root');
-if (domainBarRoot && domainData.length > 0) {
-    const domainBarData = domainData.map((item, index) => ({
-        name: item.name,
-        value: item.total || 0,
-        color: DOMAIN_COLORS[index % DOMAIN_COLORS.length]
-    }));
-    const DomainBarApp = () => {
-        return React.createElement(ResponsiveContainer, {
-            width: '100%',
-            height: 260
-        }, React.createElement(BarChart, {
-            data: domainBarData,
-            margin: {
-                top: 10,
-                right: 10,
-                left: 0,
-                bottom: 10
-            }
-        }, React.createElement(CartesianGrid, {
-            strokeDasharray: '3 3',
-            stroke: '#e2e8f0'
-        }), React.createElement(XAxis, {
-            dataKey: 'name',
-            tick: {
-                fill: '#475569',
-                fontSize: 9
-            }
-        }), React.createElement(YAxis, {
-            tick: {
-                fill: '#94a3b8',
-                fontSize: 9
-            },
-            allowDecimals: false
-        }), React.createElement(Tooltip, {
-            contentStyle: {
-                background: '#1e293b',
-                border: 'none',
-                borderRadius: '4px',
-                color: '#fff',
-                fontSize: '10px'
-            },
-            formatter: (v) => [v, 'Controles']
-        }), React.createElement(Bar, {
-            dataKey: 'value',
-            name: 'Controles',
-            radius: [4, 4, 0, 0]
-        }, domainBarData.map((entry, index) => React.createElement(Cell, {
-            key: 'cell-' + index,
-            fill: entry.color
-        })))));
-    };
-    ReactDOM
-        .createRoot(domainBarRoot)
-        .render(React.createElement(DomainBarApp));
+
+/* ==================================================
+   ESTRUTURA
+   ================================================== */
+.page { width: 100%; }
+
+.section {
+  margin: 0 0 14px 0;
+  page-break-inside: auto;
+  break-inside: auto;
 }
-// Renderizar Radar Chart
-const radarRoot = document.getElementById('radar-chart-root');
-if (radarRoot &&
-    radarData.length > 0 &&
-    radarData.some(d => d.Implementado > 0)) {
-    const radarChartData = radarData.map(item => ({
-        subject: item.subject,
-        Implementado: item.Implementado,
-        Recomendado: 100
-    }));
-    const RadarApp = () => {
-        return React.createElement(ResponsiveContainer, {
-            width: '100%',
-            height: 350
-        }, React.createElement(RadarChart, {
-            data: radarChartData,
-            margin: {
-                top: 10,
-                right: 20,
-                bottom: 10,
-                left: 20
-            }
-        }, React.createElement(PolarGrid, {
-            stroke: '#94a3b8'
-        }), React.createElement(PolarAngleAxis, {
-            dataKey: 'subject',
-            tick: {
-                fill: '#334155',
-                fontSize: 9,
-                fontWeight: 500
-            }
-        }), React.createElement(PolarRadiusAxis, {
-            angle: 90,
-            domain: [0, 100],
-            tick: {
-                fill: '#94a3b8',
-                fontSize: 8
-            }
-        }), React.createElement(Radar, {
-            name: 'Implementado',
-            dataKey: 'Implementado',
-            stroke: '#10b981',
-            fill: '#10b981',
-            fillOpacity: 0.15,
-            strokeWidth: 2
-        }), React.createElement(Radar, {
-            name: 'Recomendado',
-            dataKey: 'Recomendado',
-            stroke: '#94a3b8',
-            fill: '#94a3b8',
-            fillOpacity: 0.05,
-            strokeWidth: 1.5,
-            strokeDasharray: '6 4'
-        }), React.createElement(Legend, {
-            wrapperStyle: {
-                fontSize: '9px',
-                paddingTop: '4px'
-            },
-            iconSize: 8
-        }), React.createElement(Tooltip, {
-            contentStyle: {
-                background: '#1e293b',
-                border: 'none',
-                borderRadius: '4px',
-                color: '#fff',
-                fontSize: '10px'
-            },
-            formatter: (v) => [v + '%', '']
-        })));
-    };
-    ReactDOM
-        .createRoot(radarRoot)
-        .render(React.createElement(RadarApp));
+
+.section-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 8px 0;
+  padding-bottom: 5px;
+  border-bottom: 2px solid #e2e8f0;
+  page-break-after: avoid;
+  break-after: avoid;
 }
-console.log('✅ Todos os gráficos foram renderizados!');
-();
-/script>
-    < /body>
-    < /html>`;
-`` `
-;
+
+.subsection-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #334155;
+  margin: 10px 0 6px 0;
+  page-break-after: avoid;
+  break-after: avoid;
+}
+
+/* ==================================================
+   GRID — GRÁFICOS E CARDS LADO A LADO
+   ================================================== */
+.grid {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 10px;
+  align-items: stretch;
+}
+
+.grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.grid-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+
+.avoid-break {
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
+/* ==================================================
+   CARDS
+   ================================================== */
+.stat-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f8fafc;
+  padding: 8px 6px;
+  text-align: center;
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
+.stat-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1d4ed8;
+  line-height: 1.1;
+}
+
+.stat-label {
+  font-size: 9px;
+  color: #475569;
+  margin-top: 2px;
+  line-height: 1.25;
+}
+
+.stat-legend {
+  margin-top: 4px;
+  font-size: 8.5px;
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+}
+
+.ok   { color: #059669; font-weight: 600; }
+.warn { color: #d97706; font-weight: 600; }
+.bad  { color: #dc2626; font-weight: 600; }
+
+/* ==================================================
+   GRÁFICOS
+   ================================================== */
+.chart-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
+.chart-title {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: #334155;
+  text-align: center;
+  margin-bottom: 4px;
+}
+
+.chart-body {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+}
+
+.chart-card img {
+  width: 100%;
+  height: auto;
+  max-height: 210px;
+  object-fit: contain;
+  display: block;
+}
+
+.chart-card--sm img { max-height: 150px; }
+.chart-card--lg img { max-height: 250px; }
+
+/* ==================================================
+   TABELA DE CAPACIDADES
+   ================================================== */
+.table-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  overflow: hidden;
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 9.5px;
+}
+
+thead th {
+  background: #1e293b;
+  color: #ffffff;
+  font-weight: 600;
+  padding: 6px 6px;
+  text-align: center;
+}
+
+thead th:first-child { text-align: left; }
+
+tbody td {
+  padding: 5px 6px;
+  text-align: center;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+tbody tr:nth-child(even) { background: #f8fafc; }
+
+.td-name { text-align: left; font-weight: 500; color: #334155; }
+.td-strong { font-weight: 700; color: #1d4ed8; }
+
+/* ==================================================
+   CABEÇALHO E RODAPÉ
+   ================================================== */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  border-bottom: 3px solid #1d4ed8;
+  padding-bottom: 10px;
+  margin-bottom: 14px;
+}
+
+.brand {
+  font-size: 12px;
+  font-weight: 700;
+  color: #1d4ed8;
+  letter-spacing: 0.5px;
+}
+
+.header h1 {
+  font-size: 20px;
+  margin: 4px 0 2px 0;
+  color: #0f172a;
+}
+
+.header h2 {
+  font-size: 11px;
+  font-weight: 500;
+  margin: 0 0 4px 0;
+  color: #64748b;
+}
+
+.company {
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.meta {
+  text-align: right;
+  font-size: 9.5px;
+  color: #475569;
+  line-height: 1.5;
+}
+
+.footer {
+  margin-top: 14px;
+  padding-top: 8px;
+  border-top: 1px solid #e2e8f0;
+  text-align: center;
+  font-size: 9px;
+  color: #64748b;
+  line-height: 1.5;
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- ============ CABEÇALHO ============ -->
+  <div class="header">
+    <div>
+      <div class="brand">Code_Assessment</div>
+      <h1>Dashboard de Maturidade</h1>
+      <h2>Avaliação ISO 27001:2022</h2>
+      <div class="company">${esc(company.name)}</div>
+    </div>
+    <div class="meta">
+      <div>Responsável: ${esc(userName)}</div>
+      <div>E-mail: ${esc(userEmail)}</div>
+      <div>Data: ${formattedDate}</div>
+    </div>
+  </div>
+
+  <!-- ============ 1. VISÃO GERAL ============ -->
+  <div class="section">
+    <div class="section-title">1. Visão Geral</div>
+
+    <div class="grid grid-5 avoid-break">
+      <div class="stat-card"><div class="stat-value">${summary.totalControls}</div><div class="stat-label">Total de controles</div></div>
+      <div class="stat-card"><div class="stat-value ok">${summary.Implementado}</div><div class="stat-label">Implementados</div></div>
+      <div class="stat-card"><div class="stat-value warn">${summary.Parcialmente}</div><div class="stat-label">Parciais</div></div>
+      <div class="stat-card"><div class="stat-value bad">${summary.NaoImplementado}</div><div class="stat-label">Não implementados</div></div>
+      <div class="stat-card"><div class="stat-value">${completionRate}%</div><div class="stat-label">Taxa conclusão</div></div>
+    </div>
+
+    <div class="grid grid-2 avoid-break">
+      ${chartCard('Distribuição de Status', pieBase64, 'chart-card--lg')}
+      ${chartCard('Quantidade por Status', barBase64, 'chart-card--lg')}
+    </div>
+  </div>
+
+  <!-- ============ 2. CATEGORIAS ============ -->
+  <div class="section">
+    <div class="section-title">2. Categorias de Controle</div>
+    <div class="grid grid-4 avoid-break">
+      ${categoryHtml}
+    </div>
+  </div>
+
+  <!-- ============ 3. TIPOS DE CONTROLE ============ -->
+  <div class="section">
+    <div class="section-title">3. Tipos de Controle</div>
+
+    ${typePieGeneralBase64
+            ? `<div class="grid grid-2 avoid-break">
+             ${chartCard('Distribuição Geral por Tipo', typePieGeneralBase64)}
+             ${chartCard('Quantidade por Status', barBase64)}
+           </div>`
+            : ''}
+
+    ${buildCardGrid(typeCardItems, 5)}
+
+    <div class="subsection-title">Detalhamento por Tipo</div>
+    ${typePiesHtml}
+  </div>
+
+  <!-- ============ 4. CONCEITOS CIBERNÉTICOS ============ -->
+  <div class="section">
+    <div class="section-title">4. Conceitos Cibernéticos</div>
+
+    <div class="grid grid-2 avoid-break">
+      ${conceptPieGeneralBase64 ? chartCard('Distribuição Geral por Conceito', conceptPieGeneralBase64) : ''}
+      ${chartCard('Quantidade por Conceito', conceptBarBase64)}
+    </div>
+
+    ${buildCardGrid(conceptCardItems, 5)}
+
+    <div class="subsection-title">Detalhamento por Conceito</div>
+    ${conceptPiesHtml}
+  </div>
+
+  <!-- ============ 5. CAPACIDADES OPERACIONAIS ============ -->
+  <div class="section">
+    <div class="section-title">5. Capacidades Operacionais</div>
+
+    <div class="grid grid-2 avoid-break">
+      ${chartCard('Radar de Capacidades', radarBase64, 'chart-card--lg')}
+      <div class="table-card">
+        <table>
+          <thead>
+            <tr>
+              <th>Capacidade</th>
+              <th>Implementado</th>
+              <th>Parcial</th>
+              <th>Não Implementado</th>
+              <th>Total</th>
+              <th>Aderência</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${capabilityHtml}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 6. DOMÍNIOS ============ -->
+  <div class="section">
+    <div class="section-title">6. Domínios de Segurança da Informação</div>
+
+    <div class="grid grid-2 avoid-break">
+      ${domainPieGeneralBase64 ? chartCard('Distribuição Geral por Domínio', domainPieGeneralBase64) : ''}
+      ${chartCard('Distribuição por Domínio', domainBarBase64)}
+    </div>
+
+    ${buildCardGrid(domainCardItems, 5)}
+
+    <div class="subsection-title">Detalhamento por Domínio</div>
+    ${domainPiesHtml}
+  </div>
+
+  <!-- ============ RODAPÉ ============ -->
+  <div class="footer">
+    <div><strong>Code_Assessment</strong> — Sistema de Avaliação de Maturidade ISO 27001:2022</div>
+    <div>Relatório gerado em ${formattedDate} • Empresa: ${esc(company.name)}</div>
+  </div>
+
+</div>
+</body>
+</html>`;
+    }
+    // =====================================================
+    // 🔴 NOVOS MÉTODOS PARA GERAÇÃO DE HTML ESPECÍFICO
+    // =====================================================
+    /**
+     * 🔴 NOVO: Gera HTML apenas da seção de Categorização
+     */
+    static generateCategorizationHTML(data, pieBase64, barBase64, prepared) {
+        const { company } = data;
+        const esc = this.escapeHtml;
+        const { categoryData, userName, userEmail, formattedDate } = prepared;
+        const categoryHtml = categoryData
+            .map((cat) => `
+<div class="stat-card">
+  <div class="stat-value">${cat.total}</div>
+  <div class="stat-label">${esc(cat.name)}</div>
+  <div class="stat-legend">
+    <span class="ok">✔ ${cat.implemented}</span>
+    <span class="warn">◐ ${cat.partial}</span>
+    <span class="bad">✖ ${cat.notImpl}</span>
+  </div>
+</div>`)
+            .join('');
+        return `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<title>Análise por Categoria - ${esc(company.name)}</title>
+<style>
+@page { size: A4 landscape; margin: 10mm; }
+* { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+html, body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #0f172a; background: #ffffff; font-size: 11px; }
+.page { width: 100%; }
+.section { margin: 0 0 14px 0; page-break-inside: auto; break-inside: auto; }
+.section-title { font-size: 15px; font-weight: 700; color: #0f172a; margin: 0 0 8px 0; padding-bottom: 5px; border-bottom: 2px solid #e2e8f0; page-break-after: avoid; break-after: avoid; }
+.grid { display: grid; gap: 10px; margin-bottom: 10px; align-items: stretch; }
+.grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.avoid-break { page-break-inside: avoid; break-inside: avoid; }
+.stat-card { border: 1px solid #e2e8f0; border-radius: 8px; background: #f8fafc; padding: 8px 6px; text-align: center; page-break-inside: avoid; break-inside: avoid; }
+.stat-value { font-size: 18px; font-weight: 700; color: #1d4ed8; line-height: 1.1; }
+.stat-label { font-size: 9px; color: #475569; margin-top: 2px; line-height: 1.25; }
+.stat-legend { margin-top: 4px; font-size: 8.5px; display: flex; justify-content: center; gap: 6px; }
+.ok { color: #059669; font-weight: 600; }
+.warn { color: #d97706; font-weight: 600; }
+.bad { color: #dc2626; font-weight: 600; }
+.chart-card { border: 1px solid #e2e8f0; border-radius: 8px; background: #ffffff; padding: 8px; display: flex; flex-direction: column; page-break-inside: avoid; break-inside: avoid; }
+.chart-title { font-size: 10.5px; font-weight: 600; color: #334155; text-align: center; margin-bottom: 4px; }
+.chart-body { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 0; }
+.chart-card img { width: 100%; height: auto; max-height: 210px; object-fit: contain; display: block; }
+.chart-card--lg img { max-height: 250px; }
+.header { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 3px solid #1d4ed8; padding-bottom: 10px; margin-bottom: 14px; }
+.brand { font-size: 12px; font-weight: 700; color: #1d4ed8; letter-spacing: 0.5px; }
+.header h1 { font-size: 20px; margin: 4px 0 2px 0; color: #0f172a; }
+.header h2 { font-size: 11px; font-weight: 500; margin: 0 0 4px 0; color: #64748b; }
+.company { font-size: 13px; font-weight: 700; color: #0f172a; }
+.meta { text-align: right; font-size: 9.5px; color: #475569; line-height: 1.5; }
+.footer { margin-top: 14px; padding-top: 8px; border-top: 1px solid #e2e8f0; text-align: center; font-size: 9px; color: #64748b; line-height: 1.5; page-break-inside: avoid; break-inside: avoid; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="header">
+    <div>
+      <div class="brand">Code_Assessment</div>
+      <h1>Análise por Categoria</h1>
+      <h2>Avaliação ISO 27001:2022</h2>
+      <div class="company">${esc(company.name)}</div>
+    </div>
+    <div class="meta">
+      <div>Responsável: ${esc(userName)}</div>
+      <div>E-mail: ${esc(userEmail)}</div>
+      <div>Data: ${formattedDate}</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Categorias de Controle</div>
+    <div class="grid grid-4 avoid-break">
+      ${categoryHtml}
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="grid grid-2 avoid-break">
+      <div class="chart-card chart-card--lg">
+        <div class="chart-title">Distribuição de Status</div>
+        <div class="chart-body">
+          <img src="data:image/png;base64,${pieBase64}" />
+        </div>
+      </div>
+      <div class="chart-card chart-card--lg">
+        <div class="chart-title">Quantidade por Status</div>
+        <div class="chart-body">
+          <img src="data:image/png;base64,${barBase64}" />
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div><strong>Code_Assessment</strong> — Sistema de Avaliação de Maturidade ISO 27001:2022</div>
+    <div>Relatório gerado em ${formattedDate} • Empresa: ${esc(company.name)}</div>
+  </div>
+</div>
+</body>
+</html>`;
+    }
+    /**
+     * 🔴 NOVO: Gera HTML apenas da seção de Tipos de Controle
+     */
+    static generateControlTypesHTML(data, typePieGeneralBase64, typePieImages, prepared) {
+        const { company } = data;
+        const esc = this.escapeHtml;
+        const { typeData, userName, userEmail, formattedDate } = prepared;
+        const typeCardItems = typeData.map((type) => `
+<div class="stat-card">
+  <div class="stat-value">${type.total}</div>
+  <div class="stat-label">${esc(type.name)}</div>
+  <div class="stat-legend">
+    <span class="ok">✔ ${type.implemented}</span>
+    <span class="warn">◐ ${type.partial}</span>
+    <span class="bad">✖ ${type.notImpl}</span>
+  </div>
+</div>`);
+        const buildCardGrid = (items, columns = 5) => {
+            if (!items.length)
+                return '';
+            const rows = [];
+            for (let i = 0; i < items.length; i += columns) {
+                const rowItems = items.slice(i, i + columns);
+                rows.push(`
+<div class="grid grid-${columns} avoid-break">
+  ${rowItems.join('')}
+</div>`);
+            }
+            return rows.join('');
+        };
+        const typePieEntries = Object.entries(typePieImages);
+        const buildChartGrid = (chartEntries, columns = 3) => {
+            if (!chartEntries.length)
+                return '';
+            const rows = [];
+            for (let i = 0; i < chartEntries.length; i += columns) {
+                const rowItems = chartEntries.slice(i, i + columns);
+                rows.push(`
+<div class="grid grid-${columns} avoid-break">
+  ${rowItems.map(([name, base64]) => `
+  <div class="chart-card chart-card--sm">
+    <div class="chart-title">${esc(name)}</div>
+    <div class="chart-body">
+      <img src="data:image/png;base64,${base64}" />
+    </div>
+  </div>`).join('')}
+</div>`);
+            }
+            return rows.join('');
+        };
+        return `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<title>Tipos de Controle - ${esc(company.name)}</title>
+<style>
+@page { size: A4 landscape; margin: 10mm; }
+* { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+html, body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #0f172a; background: #ffffff; font-size: 11px; }
+.page { width: 100%; }
+.section { margin: 0 0 14px 0; page-break-inside: auto; break-inside: auto; }
+.section-title { font-size: 15px; font-weight: 700; color: #0f172a; margin: 0 0 8px 0; padding-bottom: 5px; border-bottom: 2px solid #e2e8f0; page-break-after: avoid; break-after: avoid; }
+.subsection-title { font-size: 12px; font-weight: 600; color: #334155; margin: 10px 0 6px 0; page-break-after: avoid; break-after: avoid; }
+.grid { display: grid; gap: 10px; margin-bottom: 10px; align-items: stretch; }
+.grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.grid-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.avoid-break { page-break-inside: avoid; break-inside: avoid; }
+.stat-card { border: 1px solid #e2e8f0; border-radius: 8px; background: #f8fafc; padding: 8px 6px; text-align: center; page-break-inside: avoid; break-inside: avoid; }
+.stat-value { font-size: 18px; font-weight: 700; color: #1d4ed8; line-height: 1.1; }
+.stat-label { font-size: 9px; color: #475569; margin-top: 2px; line-height: 1.25; }
+.stat-legend { margin-top: 4px; font-size: 8.5px; display: flex; justify-content: center; gap: 6px; }
+.ok { color: #059669; font-weight: 600; }
+.warn { color: #d97706; font-weight: 600; }
+.bad { color: #dc2626; font-weight: 600; }
+.chart-card { border: 1px solid #e2e8f0; border-radius: 8px; background: #ffffff; padding: 8px; display: flex; flex-direction: column; page-break-inside: avoid; break-inside: avoid; }
+.chart-card--sm img { max-height: 150px; }
+.chart-title { font-size: 10.5px; font-weight: 600; color: #334155; text-align: center; margin-bottom: 4px; }
+.chart-body { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 0; }
+.chart-card img { width: 100%; height: auto; max-height: 210px; object-fit: contain; display: block; }
+.header { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 3px solid #1d4ed8; padding-bottom: 10px; margin-bottom: 14px; }
+.brand { font-size: 12px; font-weight: 700; color: #1d4ed8; letter-spacing: 0.5px; }
+.header h1 { font-size: 20px; margin: 4px 0 2px 0; color: #0f172a; }
+.header h2 { font-size: 11px; font-weight: 500; margin: 0 0 4px 0; color: #64748b; }
+.company { font-size: 13px; font-weight: 700; color: #0f172a; }
+.meta { text-align: right; font-size: 9.5px; color: #475569; line-height: 1.5; }
+.footer { margin-top: 14px; padding-top: 8px; border-top: 1px solid #e2e8f0; text-align: center; font-size: 9px; color: #64748b; line-height: 1.5; page-break-inside: avoid; break-inside: avoid; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="header">
+    <div>
+      <div class="brand">Code_Assessment</div>
+      <h1>Tipos de Controle</h1>
+      <h2>Avaliação ISO 27001:2022</h2>
+      <div class="company">${esc(company.name)}</div>
+    </div>
+    <div class="meta">
+      <div>Responsável: ${esc(userName)}</div>
+      <div>E-mail: ${esc(userEmail)}</div>
+      <div>Data: ${formattedDate}</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Tipos de Controle</div>
+    ${typePieGeneralBase64
+            ? `<div class="grid grid-2 avoid-break">
+             <div class="chart-card chart-card--lg">
+               <div class="chart-title">Distribuição Geral por Tipo</div>
+               <div class="chart-body">
+                 <img src="data:image/png;base64,${typePieGeneralBase64}" />
+               </div>
+             </div>
+             <div class="chart-card chart-card--lg">
+               <div class="chart-title">Quantidade por Status</div>
+               <div class="chart-body">
+                 <img src="data:image/png;base64,${typePieGeneralBase64}" />
+               </div>
+             </div>
+           </div>`
+            : ''}
+
+    ${buildCardGrid(typeCardItems, 5)}
+
+    <div class="subsection-title">Detalhamento por Tipo</div>
+    ${buildChartGrid(typePieEntries, 3)}
+  </div>
+
+  <div class="footer">
+    <div><strong>Code_Assessment</strong> — Sistema de Avaliação de Maturidade ISO 27001:2022</div>
+    <div>Relatório gerado em ${formattedDate} • Empresa: ${esc(company.name)}</div>
+  </div>
+</div>
+</body>
+</html>`;
+    }
+    /**
+     * 🔴 NOVO: Gera HTML apenas da seção de Conceitos Cibernéticos
+     */
+    static generateCyberConceptsHTML(data, conceptPieGeneralBase64, conceptBarBase64, conceptPieImages, prepared) {
+        const { company } = data;
+        const esc = this.escapeHtml;
+        const { conceptData, userName, userEmail, formattedDate } = prepared;
+        const conceptCardItems = conceptData.map((concept) => `
+<div class="stat-card">
+  <div class="stat-value">${concept.total}</div>
+  <div class="stat-label">${esc(concept.name)}</div>
+  <div class="stat-legend">
+    <span class="ok">✔ ${concept.implemented}</span>
+    <span class="warn">◐ ${concept.partial}</span>
+    <span class="bad">✖ ${concept.notImpl}</span>
+  </div>
+</div>`);
+        const buildCardGrid = (items, columns = 5) => {
+            if (!items.length)
+                return '';
+            const rows = [];
+            for (let i = 0; i < items.length; i += columns) {
+                const rowItems = items.slice(i, i + columns);
+                rows.push(`
+<div class="grid grid-${columns} avoid-break">
+  ${rowItems.join('')}
+</div>`);
+            }
+            return rows.join('');
+        };
+        const conceptPieEntries = Object.entries(conceptPieImages);
+        const buildChartGrid = (chartEntries, columns = 3) => {
+            if (!chartEntries.length)
+                return '';
+            const rows = [];
+            for (let i = 0; i < chartEntries.length; i += columns) {
+                const rowItems = chartEntries.slice(i, i + columns);
+                rows.push(`
+<div class="grid grid-${columns} avoid-break">
+  ${rowItems.map(([name, base64]) => `
+  <div class="chart-card chart-card--sm">
+    <div class="chart-title">${esc(name)}</div>
+    <div class="chart-body">
+      <img src="data:image/png;base64,${base64}" />
+    </div>
+  </div>`).join('')}
+</div>`);
+            }
+            return rows.join('');
+        };
+        return `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<title>Conceitos Cibernéticos - ${esc(company.name)}</title>
+<style>
+@page { size: A4 landscape; margin: 10mm; }
+* { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+html, body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #0f172a; background: #ffffff; font-size: 11px; }
+.page { width: 100%; }
+.section { margin: 0 0 14px 0; page-break-inside: auto; break-inside: auto; }
+.section-title { font-size: 15px; font-weight: 700; color: #0f172a; margin: 0 0 8px 0; padding-bottom: 5px; border-bottom: 2px solid #e2e8f0; page-break-after: avoid; break-after: avoid; }
+.subsection-title { font-size: 12px; font-weight: 600; color: #334155; margin: 10px 0 6px 0; page-break-after: avoid; break-after: avoid; }
+.grid { display: grid; gap: 10px; margin-bottom: 10px; align-items: stretch; }
+.grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.grid-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.avoid-break { page-break-inside: avoid; break-inside: avoid; }
+.stat-card { border: 1px solid #e2e8f0; border-radius: 8px; background: #f8fafc; padding: 8px 6px; text-align: center; page-break-inside: avoid; break-inside: avoid; }
+.stat-value { font-size: 18px; font-weight: 700; color: #1d4ed8; line-height: 1.1; }
+.stat-label { font-size: 9px; color: #475569; margin-top: 2px; line-height: 1.25; }
+.stat-legend { margin-top: 4px; font-size: 8.5px; display: flex; justify-content: center; gap: 6px; }
+.ok { color: #059669; font-weight: 600; }
+.warn { color: #d97706; font-weight: 600; }
+.bad { color: #dc2626; font-weight: 600; }
+.chart-card { border: 1px solid #e2e8f0; border-radius: 8px; background: #ffffff; padding: 8px; display: flex; flex-direction: column; page-break-inside: avoid; break-inside: avoid; }
+.chart-card--sm img { max-height: 150px; }
+.chart-title { font-size: 10.5px; font-weight: 600; color: #334155; text-align: center; margin-bottom: 4px; }
+.chart-body { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 0; }
+.chart-card img { width: 100%; height: auto; max-height: 210px; object-fit: contain; display: block; }
+.header { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 3px solid #1d4ed8; padding-bottom: 10px; margin-bottom: 14px; }
+.brand { font-size: 12px; font-weight: 700; color: #1d4ed8; letter-spacing: 0.5px; }
+.header h1 { font-size: 20px; margin: 4px 0 2px 0; color: #0f172a; }
+.header h2 { font-size: 11px; font-weight: 500; margin: 0 0 4px 0; color: #64748b; }
+.company { font-size: 13px; font-weight: 700; color: #0f172a; }
+.meta { text-align: right; font-size: 9.5px; color: #475569; line-height: 1.5; }
+.footer { margin-top: 14px; padding-top: 8px; border-top: 1px solid #e2e8f0; text-align: center; font-size: 9px; color: #64748b; line-height: 1.5; page-break-inside: avoid; break-inside: avoid; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="header">
+    <div>
+      <div class="brand">Code_Assessment</div>
+      <h1>Conceitos Cibernéticos</h1>
+      <h2>Avaliação ISO 27001:2022</h2>
+      <div class="company">${esc(company.name)}</div>
+    </div>
+    <div class="meta">
+      <div>Responsável: ${esc(userName)}</div>
+      <div>E-mail: ${esc(userEmail)}</div>
+      <div>Data: ${formattedDate}</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Conceitos Cibernéticos</div>
+
+    <div class="grid grid-2 avoid-break">
+      ${conceptPieGeneralBase64
+            ? `<div class="chart-card chart-card--lg">
+               <div class="chart-title">Distribuição Geral por Conceito</div>
+               <div class="chart-body">
+                 <img src="data:image/png;base64,${conceptPieGeneralBase64}" />
+               </div>
+             </div>`
+            : ''}
+      ${conceptBarBase64
+            ? `<div class="chart-card chart-card--lg">
+               <div class="chart-title">Quantidade por Conceito</div>
+               <div class="chart-body">
+                 <img src="data:image/png;base64,${conceptBarBase64}" />
+               </div>
+             </div>`
+            : ''}
+    </div>
+
+    ${buildCardGrid(conceptCardItems, 5)}
+
+    <div class="subsection-title">Detalhamento por Conceito</div>
+    ${buildChartGrid(conceptPieEntries, 3)}
+  </div>
+
+  <div class="footer">
+    <div><strong>Code_Assessment</strong> — Sistema de Avaliação de Maturidade ISO 27001:2022</div>
+    <div>Relatório gerado em ${formattedDate} • Empresa: ${esc(company.name)}</div>
+  </div>
+</div>
+</body>
+</html>`;
+    }
+    /**
+     * 🔴 NOVO: Gera HTML apenas da seção de Capacidades Operacionais
+     */
+    static generateCapabilitiesHTML(data, radarBase64, prepared) {
+        const { company } = data;
+        const esc = this.escapeHtml;
+        const { capabilityData, userName, userEmail, formattedDate } = prepared;
+        const capabilityHtml = capabilityData
+            .map((cap) => `
+        <tr>
+          <td class="td-name">${esc(cap.name)}</td>
+          <td class="ok">${cap.implemented}</td>
+          <td class="warn">${cap.partial}</td>
+          <td class="bad">${cap.notImpl}</td>
+          <td>${cap.total}</td>
+          <td class="td-strong">${cap.aderente}%</td>
+        </tr>`)
+            .join('');
+        return `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<title>Capacidades Operacionais - ${esc(company.name)}</title>
+<style>
+@page { size: A4 landscape; margin: 10mm; }
+* { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+html, body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #0f172a; background: #ffffff; font-size: 11px; }
+.page { width: 100%; }
+.section { margin: 0 0 14px 0; page-break-inside: auto; break-inside: auto; }
+.section-title { font-size: 15px; font-weight: 700; color: #0f172a; margin: 0 0 8px 0; padding-bottom: 5px; border-bottom: 2px solid #e2e8f0; page-break-after: avoid; break-after: avoid; }
+.grid { display: grid; gap: 10px; margin-bottom: 10px; align-items: stretch; }
+.grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.avoid-break { page-break-inside: avoid; break-inside: avoid; }
+.chart-card { border: 1px solid #e2e8f0; border-radius: 8px; background: #ffffff; padding: 8px; display: flex; flex-direction: column; page-break-inside: avoid; break-inside: avoid; }
+.chart-title { font-size: 10.5px; font-weight: 600; color: #334155; text-align: center; margin-bottom: 4px; }
+.chart-body { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 0; }
+.chart-card img { width: 100%; height: auto; max-height: 210px; object-fit: contain; display: block; }
+.table-card { border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; page-break-inside: avoid; break-inside: avoid; }
+table { width: 100%; border-collapse: collapse; font-size: 9.5px; }
+thead th { background: #1e293b; color: #ffffff; font-weight: 600; padding: 6px 6px; text-align: center; }
+thead th:first-child { text-align: left; }
+tbody td { padding: 5px 6px; text-align: center; border-bottom: 1px solid #e2e8f0; }
+tbody tr:nth-child(even) { background: #f8fafc; }
+.td-name { text-align: left; font-weight: 500; color: #334155; }
+.td-strong { font-weight: 700; color: #1d4ed8; }
+.ok { color: #059669; font-weight: 600; }
+.warn { color: #d97706; font-weight: 600; }
+.bad { color: #dc2626; font-weight: 600; }
+.header { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 3px solid #1d4ed8; padding-bottom: 10px; margin-bottom: 14px; }
+.brand { font-size: 12px; font-weight: 700; color: #1d4ed8; letter-spacing: 0.5px; }
+.header h1 { font-size: 20px; margin: 4px 0 2px 0; color: #0f172a; }
+.header h2 { font-size: 11px; font-weight: 500; margin: 0 0 4px 0; color: #64748b; }
+.company { font-size: 13px; font-weight: 700; color: #0f172a; }
+.meta { text-align: right; font-size: 9.5px; color: #475569; line-height: 1.5; }
+.footer { margin-top: 14px; padding-top: 8px; border-top: 1px solid #e2e8f0; text-align: center; font-size: 9px; color: #64748b; line-height: 1.5; page-break-inside: avoid; break-inside: avoid; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="header">
+    <div>
+      <div class="brand">Code_Assessment</div>
+      <h1>Capacidades Operacionais</h1>
+      <h2>Avaliação ISO 27001:2022</h2>
+      <div class="company">${esc(company.name)}</div>
+    </div>
+    <div class="meta">
+      <div>Responsável: ${esc(userName)}</div>
+      <div>E-mail: ${esc(userEmail)}</div>
+      <div>Data: ${formattedDate}</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Capacidades Operacionais</div>
+
+    <div class="grid grid-2 avoid-break">
+      ${radarBase64
+            ? `<div class="chart-card chart-card--lg">
+               <div class="chart-title">Radar de Capacidades</div>
+               <div class="chart-body">
+                 <img src="data:image/png;base64,${radarBase64}" />
+               </div>
+             </div>`
+            : ''}
+      <div class="table-card">
+        <table>
+          <thead>
+            <tr>
+              <th>Capacidade</th>
+              <th>Implementado</th>
+              <th>Parcial</th>
+              <th>Não Implementado</th>
+              <th>Total</th>
+              <th>Aderência</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${capabilityHtml}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div><strong>Code_Assessment</strong> — Sistema de Avaliação de Maturidade ISO 27001:2022</div>
+    <div>Relatório gerado em ${formattedDate} • Empresa: ${esc(company.name)}</div>
+  </div>
+</div>
+</body>
+</html>`;
+    }
+    /**
+     * 🔴 NOVO: Gera HTML apenas da seção de Domínios
+     */
+    static generateDomainsHTML(data, domainPieGeneralBase64, domainBarBase64, domainPieImages, prepared) {
+        const { company } = data;
+        const esc = this.escapeHtml;
+        const { domainData, userName, userEmail, formattedDate } = prepared;
+        const domainCardItems = domainData.map((domain) => `
+<div class="stat-card">
+  <div class="stat-value">${domain.total}</div>
+  <div class="stat-label">${esc(domain.name)}</div>
+</div>`);
+        const buildCardGrid = (items, columns = 5) => {
+            if (!items.length)
+                return '';
+            const rows = [];
+            for (let i = 0; i < items.length; i += columns) {
+                const rowItems = items.slice(i, i + columns);
+                rows.push(`
+<div class="grid grid-${columns} avoid-break">
+  ${rowItems.join('')}
+</div>`);
+            }
+            return rows.join('');
+        };
+        const domainPieEntries = Object.entries(domainPieImages);
+        const buildChartGrid = (chartEntries, columns = 3) => {
+            if (!chartEntries.length)
+                return '';
+            const rows = [];
+            for (let i = 0; i < chartEntries.length; i += columns) {
+                const rowItems = chartEntries.slice(i, i + columns);
+                rows.push(`
+<div class="grid grid-${columns} avoid-break">
+  ${rowItems.map(([name, base64]) => `
+  <div class="chart-card chart-card--sm">
+    <div class="chart-title">${esc(name)}</div>
+    <div class="chart-body">
+      <img src="data:image/png;base64,${base64}" />
+    </div>
+  </div>`).join('')}
+</div>`);
+            }
+            return rows.join('');
+        };
+        return `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<title>Domínios de SI - ${esc(company.name)}</title>
+<style>
+@page { size: A4 landscape; margin: 10mm; }
+* { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+html, body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #0f172a; background: #ffffff; font-size: 11px; }
+.page { width: 100%; }
+.section { margin: 0 0 14px 0; page-break-inside: auto; break-inside: auto; }
+.section-title { font-size: 15px; font-weight: 700; color: #0f172a; margin: 0 0 8px 0; padding-bottom: 5px; border-bottom: 2px solid #e2e8f0; page-break-after: avoid; break-after: avoid; }
+.subsection-title { font-size: 12px; font-weight: 600; color: #334155; margin: 10px 0 6px 0; page-break-after: avoid; break-after: avoid; }
+.grid { display: grid; gap: 10px; margin-bottom: 10px; align-items: stretch; }
+.grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.grid-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.avoid-break { page-break-inside: avoid; break-inside: avoid; }
+.stat-card { border: 1px solid #e2e8f0; border-radius: 8px; background: #f8fafc; padding: 8px 6px; text-align: center; page-break-inside: avoid; break-inside: avoid; }
+.stat-value { font-size: 18px; font-weight: 700; color: #1d4ed8; line-height: 1.1; }
+.stat-label { font-size: 9px; color: #475569; margin-top: 2px; line-height: 1.25; }
+.chart-card { border: 1px solid #e2e8f0; border-radius: 8px; background: #ffffff; padding: 8px; display: flex; flex-direction: column; page-break-inside: avoid; break-inside: avoid; }
+.chart-card--sm img { max-height: 150px; }
+.chart-title { font-size: 10.5px; font-weight: 600; color: #334155; text-align: center; margin-bottom: 4px; }
+.chart-body { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 0; }
+.chart-card img { width: 100%; height: auto; max-height: 210px; object-fit: contain; display: block; }
+.header { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 3px solid #1d4ed8; padding-bottom: 10px; margin-bottom: 14px; }
+.brand { font-size: 12px; font-weight: 700; color: #1d4ed8; letter-spacing: 0.5px; }
+.header h1 { font-size: 20px; margin: 4px 0 2px 0; color: #0f172a; }
+.header h2 { font-size: 11px; font-weight: 500; margin: 0 0 4px 0; color: #64748b; }
+.company { font-size: 13px; font-weight: 700; color: #0f172a; }
+.meta { text-align: right; font-size: 9.5px; color: #475569; line-height: 1.5; }
+.footer { margin-top: 14px; padding-top: 8px; border-top: 1px solid #e2e8f0; text-align: center; font-size: 9px; color: #64748b; line-height: 1.5; page-break-inside: avoid; break-inside: avoid; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="header">
+    <div>
+      <div class="brand">Code_Assessment</div>
+      <h1>Domínios de Segurança da Informação</h1>
+      <h2>Avaliação ISO 27001:2022</h2>
+      <div class="company">${esc(company.name)}</div>
+    </div>
+    <div class="meta">
+      <div>Responsável: ${esc(userName)}</div>
+      <div>E-mail: ${esc(userEmail)}</div>
+      <div>Data: ${formattedDate}</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Domínios de SI</div>
+
+    <div class="grid grid-2 avoid-break">
+      ${domainPieGeneralBase64
+            ? `<div class="chart-card chart-card--lg">
+               <div class="chart-title">Distribuição Geral por Domínio</div>
+               <div class="chart-body">
+                 <img src="data:image/png;base64,${domainPieGeneralBase64}" />
+               </div>
+             </div>`
+            : ''}
+      ${domainBarBase64
+            ? `<div class="chart-card chart-card--lg">
+               <div class="chart-title">Distribuição por Domínio</div>
+               <div class="chart-body">
+                 <img src="data:image/png;base64,${domainBarBase64}" />
+               </div>
+             </div>`
+            : ''}
+    </div>
+
+    ${buildCardGrid(domainCardItems, 5)}
+
+    <div class="subsection-title">Detalhamento por Domínio</div>
+    ${buildChartGrid(domainPieEntries, 3)}
+  </div>
+
+  <div class="footer">
+    <div><strong>Code_Assessment</strong> — Sistema de Avaliação de Maturidade ISO 27001:2022</div>
+    <div>Relatório gerado em ${formattedDate} • Empresa: ${esc(company.name)}</div>
+  </div>
+</div>
+</body>
+</html>`;
+    }
+}
+exports.DashboardPDFService = DashboardPDFService;
 //# sourceMappingURL=DashboardPDFService.js.map

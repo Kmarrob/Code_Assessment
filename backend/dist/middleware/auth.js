@@ -10,7 +10,8 @@ const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const User_js_1 = require("../models/User.js");
 const env_js_1 = require("../config/env.js");
 const logger_js_1 = require("../utils/logger.js");
-const index_js_1 = require("../types/index.js");
+// 🆕 NOVO (v40) - Importar Company para buscar o plano
+const Company_js_1 = require("../models/Company.js");
 async function authenticate(req, res, next) {
     try {
         const authHeader = req.headers.authorization;
@@ -25,8 +26,18 @@ async function authenticate(req, res, next) {
         }
         const token = authHeader.split(' ')[1];
         const decoded = jsonwebtoken_1.default.verify(token, env_js_1.config.JWT_SECRET);
-        // Usar 'id' em vez de 'userId' (corresponde ao IJWTPayload)
-        const user = await User_js_1.User.findById(decoded.id).select('+refreshToken');
+        // 🔧 CORREÇÃO RESILIENTE: Suporta 'id', 'userId' ou '_id' no payload do JWT
+        const targetUserId = decoded.id || decoded.userId || decoded._id;
+        if (!targetUserId) {
+            res.status(401).json({
+                success: false,
+                message: 'Payload do token inválido',
+                statusCode: 401,
+                timestamp: new Date().toISOString(),
+            });
+            return;
+        }
+        const user = await User_js_1.User.findById(targetUserId).select('+refreshToken');
         if (!user) {
             res.status(401).json({
                 success: false,
@@ -45,7 +56,26 @@ async function authenticate(req, res, next) {
             });
             return;
         }
-        req.user = user;
+        // 🆕 NOVO (v40) - Buscar o plano da empresa do usuário
+        let plan = 'basic';
+        if (user.companyId) {
+            try {
+                const company = await Company_js_1.Company.findById(user.companyId);
+                if (company) {
+                    plan = company.plan || 'basic';
+                }
+            }
+            catch (error) {
+                logger_js_1.logger.warn(`⚠️ Não foi possível buscar plano para empresa ${user.companyId}:`, error);
+            }
+        }
+        // 🆕 CORREÇÃO (v41.1) - Adicionar 'id' explicitamente ao objeto user
+        // para garantir que o campo id esteja disponível em todo o sistema
+        req.user = {
+            ...user.toObject(),
+            id: user._id.toString(), // 🔧 CORREÇÃO: Mapear _id para id
+            plan: plan,
+        };
         req.userId = user._id.toString();
         next();
     }
@@ -89,7 +119,7 @@ function authorize(...allowedRoles) {
             });
             return;
         }
-        // 🔴 CORREÇÃO RESILIENTE: Garante que "rep" e "REP" correspondam perfeitamente na comparação por caixa baixa
+        // 🔴 CORREÇÃO RESILIENTE: Garante que "rep", "REP", "admin" e "ADMIN" correspondam perfeitamente
         const userRoleLower = user.role ? user.role.toLowerCase() : '';
         const isAllowed = allowedRoles.some(role => role && role.toLowerCase() === userRoleLower);
         if (!isAllowed) {
@@ -116,7 +146,8 @@ function authorizeSelfOrAdmin(req, res, next) {
         });
         return;
     }
-    if (user.role === index_js_1.UserRole.ADMIN || user._id.toString() === targetUserId) {
+    const userRoleLower = user.role ? user.role.toLowerCase() : '';
+    if (userRoleLower === 'admin' || user._id.toString() === targetUserId) {
         next();
         return;
     }

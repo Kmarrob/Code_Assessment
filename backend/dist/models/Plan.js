@@ -111,6 +111,12 @@ const planFeaturesSchema = new mongoose_1.Schema({
         type: Boolean,
         default: false,
     },
+    // 🆕 NOVO (v39) - Módulo de Governança
+    governance: {
+        type: Boolean,
+        default: false,
+        description: 'Acesso ao módulo de governança (políticas, normas, procedimentos)',
+    },
 }, {
     _id: false,
 });

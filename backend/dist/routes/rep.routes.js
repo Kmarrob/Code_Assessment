@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+// backend/src/routes/rep.routes.ts
 const express_1 = require("express");
 const RepController_js_1 = require("../controllers/RepController.js");
 const DashboardController_js_1 = require("../controllers/DashboardController.js");
@@ -38,6 +39,34 @@ router.get('/stats', rateLimit_js_1.adminRateLimiter, RepController_js_1.RepCont
 router.get('/dashboard/:companyId', rateLimit_js_1.authenticatedRateLimiter, DashboardController_js_1.DashboardController.getRepDashboard);
 // 🔴 NOVO: Gerar PDF do dashboard da empresa
 router.get('/dashboard/:companyId/pdf', rateLimit_js_1.authenticatedRateLimiter, DashboardController_js_1.DashboardController.generateDashboardPDF);
+// ============================================
+// 🔴 NOVAS ROTAS PARA PDFS ESPECÍFICOS POR SEÇÃO
+// ============================================
+/**
+ * 🔴 NOVO: Gerar PDF apenas da seção de Categorização
+ * GET /api/rep/dashboard/:companyId/pdf/categorization
+ */
+router.get('/dashboard/:companyId/pdf/categorization', rateLimit_js_1.authenticatedRateLimiter, DashboardController_js_1.DashboardController.generateCategorizationPDF);
+/**
+ * 🔴 NOVO: Gerar PDF apenas da seção de Tipos de Controle
+ * GET /api/rep/dashboard/:companyId/pdf/control-types
+ */
+router.get('/dashboard/:companyId/pdf/control-types', rateLimit_js_1.authenticatedRateLimiter, DashboardController_js_1.DashboardController.generateControlTypesPDF);
+/**
+ * 🔴 NOVO: Gerar PDF apenas da seção de Conceitos Cibernéticos
+ * GET /api/rep/dashboard/:companyId/pdf/cyber-concepts
+ */
+router.get('/dashboard/:companyId/pdf/cyber-concepts', rateLimit_js_1.authenticatedRateLimiter, DashboardController_js_1.DashboardController.generateCyberConceptsPDF);
+/**
+ * 🔴 NOVO: Gerar PDF apenas da seção de Capacidades Operacionais
+ * GET /api/rep/dashboard/:companyId/pdf/capabilities
+ */
+router.get('/dashboard/:companyId/pdf/capabilities', rateLimit_js_1.authenticatedRateLimiter, DashboardController_js_1.DashboardController.generateCapabilitiesPDF);
+/**
+ * 🔴 NOVO: Gerar PDF apenas da seção de Domínios
+ * GET /api/rep/dashboard/:companyId/pdf/domains
+ */
+router.get('/dashboard/:companyId/pdf/domains', rateLimit_js_1.authenticatedRateLimiter, DashboardController_js_1.DashboardController.generateDomainsPDF);
 // ============================================
 // ROTA: Obter controles da empresa do preposto
 // ============================================
