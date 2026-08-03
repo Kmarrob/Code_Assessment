@@ -34,7 +34,7 @@ import analyticsRoutes from './routes/analytics.routes.js';
 
 // 🆕 NOVO (v39) - Importação do módulo de governança
 // 🔧 CORREÇÃO v41.1: Caminho corrigido de './models/governance/...' para './modules/governance/...'
-import governanceRoutes from './modules/governance/routes/governance.routes.js';
+import governanceRoutes from './models/governance/routes/governance.routes.js';
 
 const app = express();
 
