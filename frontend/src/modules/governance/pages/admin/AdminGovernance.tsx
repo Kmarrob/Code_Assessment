@@ -59,8 +59,8 @@ export default function AdminGovernance() {
   const [selectedStatus, setSelectedStatus] = useState<DocumentStatus | 'all'>('all');
   const [expandedDocs, setExpandedDocs] = useState<Set<string>>(new Set());
 
-  // Determinar se o usuário é Admin ou Rep
-  const isAdmin = user?.role === 'ADMIN';
+  // 🔧 CORREÇÃO: Verificar tanto 'ADMIN' quanto 'admin'
+  const isAdmin = user?.role === 'ADMIN' || user?.role === 'admin';
 
   // Usar o hook com a função correta baseada no perfil
   const { data: documents = [], isLoading, error } = useGovernanceDocuments({
@@ -253,7 +253,13 @@ export default function AdminGovernance() {
                   </div>
                   <div className="flex items-center gap-2 ml-4">
                     <button
-                      onClick={() => navigate(isAdmin ? `/admin/governance/document/${doc.id}` : `/rep/governance/document/${doc.id}`)}
+                      onClick={() => {
+                        if (isAdmin) {
+                          navigate(`/admin/governance/document/${doc.id}`);
+                        } else {
+                          navigate(`/rep/governance/document/${doc.id}`);
+                        }
+                      }}
                       className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                       title="Visualizar"
                     >
