@@ -59,10 +59,6 @@ const statusLabels: Record<DocumentStatus, string> = {
 };
 
 export default function RepGovernance() {
-  // 🔴 TESTE VISÍVEL - Se aparecer no console, o código está rodando
-  console.log('🔴🔴🔴 REPGOVERNANCE ESTÁ RODANDO! 🔴🔴🔴');
-  alert('🔴 SE ESTE ALERT APARECER, O CÓDIGO ESTÁ RODANDO!');
-
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedLevel, setSelectedLevel] = useState<DocumentLevel | 'all'>('all');
