@@ -222,143 +222,155 @@ export default function AdminGovernance() {
           </div>
         ) : (
           <div className="divide-y divide-gray-200">
-            {documents.map((doc) => (
-              <div key={doc.id} className="hover:bg-gray-50 transition-colors">
-                {/* Document Row */}
-                <div className="flex items-center justify-between px-6 py-4">
-                  <div className="flex items-center gap-4 flex-1 cursor-pointer" onClick={() => toggleExpand(doc.id)}>
-                    <div className={`p-2 rounded-lg border-2 ${levelColors[doc.level]}`}>
-                      {getLevelIcon(doc.level)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-3">
-                        <span className="font-mono text-sm font-semibold text-gray-600">{doc.code}</span>
-                        <span className="text-sm font-medium text-gray-900 truncate">{doc.title}</span>
+            {documents.map((doc) => {
+              // 🔧 CORREÇÃO: Obter o ID correto (prioridade para _id)
+              const docId = (doc as any)._id || doc.id;
+              
+              return (
+                <div key={docId} className="hover:bg-gray-50 transition-colors">
+                  {/* Document Row */}
+                  <div className="flex items-center justify-between px-6 py-4">
+                    <div className="flex items-center gap-4 flex-1 cursor-pointer" onClick={() => toggleExpand(docId)}>
+                      <div className={`p-2 rounded-lg border-2 ${levelColors[doc.level]}`}>
+                        {getLevelIcon(doc.level)}
                       </div>
-                      <div className="flex items-center gap-4 mt-1 text-sm text-gray-500">
-                        <span>{levelLabels[doc.level]}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-3">
+                          <span className="font-mono text-sm font-semibold text-gray-600">{doc.code}</span>
+                          <span className="text-sm font-medium text-gray-900 truncate">{doc.title}</span>
+                        </div>
+                        <div className="flex items-center gap-4 mt-1 text-sm text-gray-500">
+                          <span>{levelLabels[doc.level]}</span>
+                          <span>•</span>
+                          <span>Versão {doc.version}</span>
+                          <span>•</span>
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColors[doc.status]}`}>
+                            {statusLabels[doc.status]}
+                          </span>
+                          {doc.status === 'approved' && doc.approvedBy && (
+                            <>
+                              <span>•</span>
+                              <span className="flex items-center gap-1">
+                                <CheckCircle className="w-3 h-3 text-green-500" />
+                                Aprovado
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      <div className="text-sm text-gray-400">
+                        {new Date(doc.updatedAt).toLocaleDateString('pt-BR')}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 ml-4">
+                      <button
+                        onClick={() => {
+                          if (isAdmin) {
+                            navigate(`/admin/governance/document/${docId}`);
+                          } else {
+                            navigate(`/rep/governance/document/${docId}`);
+                          }
+                        }}
+                        className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        title="Visualizar"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </button>
+                      {isAdmin && (
+                        <>
+                          <button
+                            onClick={() => {
+                              if (!docId) {
+                                console.error('❌ Documento sem ID:', doc);
+                                alert('Erro: Documento sem identificador');
+                                return;
+                              }
+                              navigate(`/admin/governance/document/${docId}/edit`);
+                            }}
+                            className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                            title="Editar"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(docId, doc.title)}
+                            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Excluir"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </>
+                      )}
+                      <button
+                        onClick={() => toggleExpand(docId)}
+                        className="p-2 text-gray-400 hover:text-gray-600 rounded-lg transition-colors"
+                      >
+                        {expandedDocs.has(docId) ? (
+                          <ChevronDown className="w-4 h-4" />
+                        ) : (
+                          <ChevronRight className="w-4 h-4" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Expanded Content */}
+                  {expandedDocs.has(docId) && (
+                    <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <h4 className="text-sm font-medium text-gray-700 mb-1">Resumo</h4>
+                          <p className="text-sm text-gray-600">{doc.summary}</p>
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-medium text-gray-700 mb-1">Frameworks</h4>
+                          <div className="flex flex-wrap gap-2">
+                            {doc.frameworks?.iso27001?.map((f) => (
+                              <span key={f} className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full">
+                                ISO 27001: {f}
+                              </span>
+                            ))}
+                            {doc.frameworks?.nist?.map((f) => (
+                              <span key={f} className="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full">
+                                NIST: {f}
+                              </span>
+                            ))}
+                            {doc.frameworks?.lgpd?.map((f) => (
+                              <span key={f} className="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs rounded-full">
+                                LGPD: {f}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="mt-4 flex items-center gap-4 text-sm text-gray-500">
+                        <span>Data de Efetivação: {new Date(doc.effectiveDate).toLocaleDateString('pt-BR')}</span>
                         <span>•</span>
-                        <span>Versão {doc.version}</span>
-                        <span>•</span>
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColors[doc.status]}`}>
-                          {statusLabels[doc.status]}
-                        </span>
-                        {doc.status === 'approved' && doc.approvedBy && (
+                        <span>Revisão: {new Date(doc.reviewDate).toLocaleDateString('pt-BR')}</span>
+                        {doc.attachments.length > 0 && (
                           <>
                             <span>•</span>
                             <span className="flex items-center gap-1">
-                              <CheckCircle className="w-3 h-3 text-green-500" />
-                              Aprovado
+                              <Upload className="w-3 h-3" />
+                              {doc.attachments.length} anexo(s)
+                            </span>
+                          </>
+                        )}
+                        {doc.versionHistory.length > 1 && (
+                          <>
+                            <span>•</span>
+                            <span className="flex items-center gap-1">
+                              <Clock className="w-3 h-3" />
+                              {doc.versionHistory.length} versões
                             </span>
                           </>
                         )}
                       </div>
                     </div>
-                    <div className="text-sm text-gray-400">
-                      {new Date(doc.updatedAt).toLocaleDateString('pt-BR')}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 ml-4">
-                    <button
-                      onClick={() => {
-                        if (isAdmin) {
-                          navigate(`/admin/governance/document/${doc.id}`);
-                        } else {
-                          navigate(`/rep/governance/document/${doc.id}`);
-                        }
-                      }}
-                      className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                      title="Visualizar"
-                    >
-                      <Eye className="w-4 h-4" />
-                    </button>
-                    {isAdmin && (
-                      <>
-                        <button
-                          onClick={() => navigate(`/admin/governance/document/${doc.id}/edit`)}
-                          className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                          title="Editar"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(doc.id, doc.title)}
-                          className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                          title="Excluir"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </>
-                    )}
-                    <button
-                      onClick={() => toggleExpand(doc.id)}
-                      className="p-2 text-gray-400 hover:text-gray-600 rounded-lg transition-colors"
-                    >
-                      {expandedDocs.has(doc.id) ? (
-                        <ChevronDown className="w-4 h-4" />
-                      ) : (
-                        <ChevronRight className="w-4 h-4" />
-                      )}
-                    </button>
-                  </div>
+                  )}
                 </div>
-
-                {/* Expanded Content */}
-                {expandedDocs.has(doc.id) && (
-                  <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <h4 className="text-sm font-medium text-gray-700 mb-1">Resumo</h4>
-                        <p className="text-sm text-gray-600">{doc.summary}</p>
-                      </div>
-                      <div>
-                        <h4 className="text-sm font-medium text-gray-700 mb-1">Frameworks</h4>
-                        <div className="flex flex-wrap gap-2">
-                          {doc.frameworks?.iso27001?.map((f) => (
-                            <span key={f} className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full">
-                              ISO 27001: {f}
-                            </span>
-                          ))}
-                          {doc.frameworks?.nist?.map((f) => (
-                            <span key={f} className="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full">
-                              NIST: {f}
-                            </span>
-                          ))}
-                          {doc.frameworks?.lgpd?.map((f) => (
-                            <span key={f} className="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs rounded-full">
-                              LGPD: {f}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="mt-4 flex items-center gap-4 text-sm text-gray-500">
-                      <span>Data de Efetivação: {new Date(doc.effectiveDate).toLocaleDateString('pt-BR')}</span>
-                      <span>•</span>
-                      <span>Revisão: {new Date(doc.reviewDate).toLocaleDateString('pt-BR')}</span>
-                      {doc.attachments.length > 0 && (
-                        <>
-                          <span>•</span>
-                          <span className="flex items-center gap-1">
-                            <Upload className="w-3 h-3" />
-                            {doc.attachments.length} anexo(s)
-                          </span>
-                        </>
-                      )}
-                      {doc.versionHistory.length > 1 && (
-                        <>
-                          <span>•</span>
-                          <span className="flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
-                            {doc.versionHistory.length} versões
-                          </span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

@@ -337,7 +337,7 @@ function App() {
                     } />
                     <Route path="/admin/governance/document/:id/edit" element={
                       <Layout>
-                        <AdminPolicyEditor />
+                        <AdminPolicyEditorV2 />
                       </Layout>
                     } />
                   </Route>
