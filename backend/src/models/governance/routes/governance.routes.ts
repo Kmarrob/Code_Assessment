@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { GovernanceController } from '../controller/GovernanceController';
 import { authenticate, authorize } from '../../../middleware/auth';
 import { UserRole } from '../../../types/index.js';
@@ -9,6 +9,16 @@ const governanceController = new GovernanceController();
 
 // Middleware de autenticação para todas as rotas
 router.use(authenticate);
+
+// 🆕 BYPASS TOTAL PARA ADMIN - Verifica ANTES de qualquer outra coisa
+router.use((req: Request, res: Response, next: NextFunction) => {
+  const user = (req as any).user;
+  // Se for admin, passa direto sem verificar nada
+  if (user?.role === 'ADMIN' || user?.role === 'admin') {
+    return next();
+  }
+  next();
+});
 
 // ============================================
 // ROTAS ADMIN (controle total)
@@ -66,10 +76,11 @@ router.get(
 // ============================================
 router.get(
   '/rep/documents',
-  async (req, res, next) => {
+  async (req: Request, res: Response, next: NextFunction) => {
     try {
       const user = (req as any).user;
-      if (user?.role === 'ADMIN') return next();
+      // 🔧 BYPASS: Admin sempre tem acesso
+      if (user?.role === 'ADMIN' || user?.role === 'admin') return next();
       
       const hasAccess = await FeatureService.hasGovernanceAccess(user?.plan || 'basic');
       if (!hasAccess) {
@@ -88,10 +99,11 @@ router.get(
 
 router.get(
   '/rep/documents/:id',
-  async (req, res, next) => {
+  async (req: Request, res: Response, next: NextFunction) => {
     try {
       const user = (req as any).user;
-      if (user?.role === 'ADMIN') return next();
+      // 🔧 BYPASS: Admin sempre tem acesso
+      if (user?.role === 'ADMIN' || user?.role === 'admin') return next();
       
       const hasAccess = await FeatureService.hasGovernanceAccess(user?.plan || 'basic');
       if (!hasAccess) {
@@ -110,10 +122,11 @@ router.get(
 
 router.get(
   '/rep/documents/level/:level',
-  async (req, res, next) => {
+  async (req: Request, res: Response, next: NextFunction) => {
     try {
       const user = (req as any).user;
-      if (user?.role === 'ADMIN') return next();
+      // 🔧 BYPASS: Admin sempre tem acesso
+      if (user?.role === 'ADMIN' || user?.role === 'admin') return next();
       
       const hasAccess = await FeatureService.hasGovernanceAccess(user?.plan || 'basic');
       if (!hasAccess) {
@@ -132,10 +145,11 @@ router.get(
 
 router.get(
   '/rep/documents/tree',
-  async (req, res, next) => {
+  async (req: Request, res: Response, next: NextFunction) => {
     try {
       const user = (req as any).user;
-      if (user?.role === 'ADMIN') return next();
+      // 🔧 BYPASS: Admin sempre tem acesso
+      if (user?.role === 'ADMIN' || user?.role === 'admin') return next();
       
       const hasAccess = await FeatureService.hasGovernanceAccess(user?.plan || 'basic');
       if (!hasAccess) {
@@ -173,10 +187,11 @@ router.get(
 // Rep - Download DOC (Enterprise)
 router.get(
   '/rep/documents/:id/download/doc',
-  async (req, res, next) => {
+  async (req: Request, res: Response, next: NextFunction) => {
     try {
       const user = (req as any).user;
-      if (user?.role === 'ADMIN') return next();
+      // 🔧 BYPASS: Admin sempre tem acesso
+      if (user?.role === 'ADMIN' || user?.role === 'admin') return next();
       
       const hasAccess = await FeatureService.hasGovernanceAccess(user?.plan || 'basic');
       if (!hasAccess) {
@@ -196,10 +211,11 @@ router.get(
 // Rep - Download PDF (Enterprise)
 router.get(
   '/rep/documents/:id/download/pdf',
-  async (req, res, next) => {
+  async (req: Request, res: Response, next: NextFunction) => {
     try {
       const user = (req as any).user;
-      if (user?.role === 'ADMIN') return next();
+      // 🔧 BYPASS: Admin sempre tem acesso
+      if (user?.role === 'ADMIN' || user?.role === 'admin') return next();
       
       const hasAccess = await FeatureService.hasGovernanceAccess(user?.plan || 'basic');
       if (!hasAccess) {
@@ -230,10 +246,11 @@ router.get(
 // Rep - Visualizar documento com substituição (Enterprise)
 router.get(
   '/rep/documents/:id/view',
-  async (req, res, next) => {
+  async (req: Request, res: Response, next: NextFunction) => {
     try {
       const user = (req as any).user;
-      if (user?.role === 'ADMIN') return next();
+      // 🔧 BYPASS: Admin sempre tem acesso
+      if (user?.role === 'ADMIN' || user?.role === 'admin') return next();
       
       const hasAccess = await FeatureService.hasGovernanceAccess(user?.plan || 'basic');
       if (!hasAccess) {

@@ -8,7 +8,8 @@ import {
   BarChart3, Database, Activity,
   LogOut, Building2, ClipboardList, UserCog, LayoutDashboard, FileText, Lightbulb,
   Download, Palette,
-  TrendingUp  // 🔴 NOVO - Funil de Conversão
+  TrendingUp,  // 🔴 NOVO - Funil de Conversão
+  BookOpen     // 🆕 NOVO - Governança
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card.js';
 import { AdminBreadcrumbs } from '../components/admin/AdminBreadcrumbs.js';
@@ -70,6 +71,11 @@ export const AdminDashboard: React.FC = () => {
   // 🔴 NOVO - Handler para Funil de Conversão
   const handleNavigateToAnalytics = useCallback(() => {
     navigate('/admin/analytics');
+  }, [navigate]);
+
+  // 🆕 NOVO - Handler para Governança
+  const handleNavigateToGovernance = useCallback(() => {
+    navigate('/admin/governance');
   }, [navigate]);
 
   const handleLogout = useCallback(async () => {
@@ -312,6 +318,24 @@ export const AdminDashboard: React.FC = () => {
                   <div>
                     <h3 className="font-semibold text-gray-900">Recomendações</h3>
                     <p className="text-sm text-gray-500">Gerenciar recomendações por controle</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 🆕 NOVO: Card de Governança */}
+            <Card 
+              className="hover:shadow-lg transition-shadow cursor-pointer"
+              onClick={handleNavigateToGovernance}
+            >
+              <CardContent className="p-6">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-blue-100 rounded-lg">
+                    <BookOpen className="h-6 w-6 text-blue-600" aria-hidden="true" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-gray-900">Governança</h3>
+                    <p className="text-sm text-gray-500">Políticas, normas e procedimentos</p>
                   </div>
                 </div>
               </CardContent>

@@ -27,8 +27,30 @@ export class GovernanceController {
       const userId = user?.id;
       const companyId = user?.companyId;
 
+      // 🔍 LOG DE DIAGNÓSTICO - create
+      console.log('🔍 [create] user:', {
+        id: user?.id,
+        role: user?.role,
+        plan: user?.plan,
+        companyId: user?.companyId,
+        email: user?.email
+      });
+
       if (!userId || !companyId) {
         return res.status(401).json({ error: 'Usuário não autenticado' });
+      }
+
+      // 🔧 CORREÇÃO: Admin sempre tem acesso (verifica tanto 'ADMIN' quanto 'admin')
+      if (user?.role !== 'ADMIN' && user?.role !== 'admin') {
+        const hasAccess = await FeatureService.hasGovernanceAccess(user?.plan || 'basic');
+        if (!hasAccess) {
+          return res.status(403).json({
+            error: 'Plano Enterprise necessário para acessar o módulo de governança',
+            code: 'PLAN_FEATURE_NOT_AVAILABLE',
+            requiredPlan: 'enterprise',
+            currentPlan: user?.plan || 'basic',
+          });
+        }
       }
 
       // Converter datas de string para Date e garantir que level seja DocumentLevel
@@ -52,12 +74,21 @@ export class GovernanceController {
       const user = (req as any).user;
       const companyId = user?.companyId;
 
+      // 🔍 LOG DE DIAGNÓSTICO - findAll
+      console.log('🔍 [findAll] user:', {
+        id: user?.id,
+        role: user?.role,
+        plan: user?.plan,
+        companyId: user?.companyId,
+        email: user?.email
+      });
+
       if (!companyId) {
         return res.status(401).json({ error: 'Usuário não autenticado' });
       }
 
-      // Verificar acesso ao módulo de governança (apenas Enterprise)
-      if (user?.role !== 'ADMIN') {
+      // 🔧 CORREÇÃO: Admin sempre tem acesso (verifica tanto 'ADMIN' quanto 'admin')
+      if (user?.role !== 'ADMIN' && user?.role !== 'admin') {
         const hasAccess = await FeatureService.hasGovernanceAccess(user?.plan || 'basic');
         if (!hasAccess) {
           return res.status(403).json({
@@ -91,6 +122,16 @@ export class GovernanceController {
       const user = (req as any).user;
       const companyId = user?.companyId;
 
+      // 🔍 LOG DE DIAGNÓSTICO - findById
+      console.log('🔍 [findById] user:', {
+        id: user?.id,
+        role: user?.role,
+        plan: user?.plan,
+        companyId: user?.companyId,
+        email: user?.email,
+        documentId: id
+      });
+
       if (!id) {
         return res.status(400).json({ error: 'ID do documento é obrigatório' });
       }
@@ -99,7 +140,8 @@ export class GovernanceController {
         return res.status(401).json({ error: 'Usuário não autenticado' });
       }
 
-      if (user?.role !== 'ADMIN') {
+      // 🔧 CORREÇÃO: Admin sempre tem acesso (verifica tanto 'ADMIN' quanto 'admin')
+      if (user?.role !== 'ADMIN' && user?.role !== 'admin') {
         const hasAccess = await FeatureService.hasGovernanceAccess(user?.plan || 'basic');
         if (!hasAccess) {
           return res.status(403).json({
@@ -130,6 +172,16 @@ export class GovernanceController {
       const companyId = user?.companyId;
       const userId = user?.id;
 
+      // 🔍 LOG DE DIAGNÓSTICO - update
+      console.log('🔍 [update] user:', {
+        id: user?.id,
+        role: user?.role,
+        plan: user?.plan,
+        companyId: user?.companyId,
+        email: user?.email,
+        documentId: id
+      });
+
       if (!id) {
         return res.status(400).json({ error: 'ID do documento é obrigatório' });
       }
@@ -138,7 +190,8 @@ export class GovernanceController {
         return res.status(401).json({ error: 'Usuário não autenticado' });
       }
 
-      if (user?.role !== 'ADMIN') {
+      // 🔧 CORREÇÃO: Admin sempre tem acesso (verifica tanto 'ADMIN' quanto 'admin')
+      if (user?.role !== 'ADMIN' && user?.role !== 'admin') {
         const hasAccess = await FeatureService.hasGovernanceAccess(user?.plan || 'basic');
         if (!hasAccess) {
           return res.status(403).json({
@@ -181,6 +234,16 @@ export class GovernanceController {
       const user = (req as any).user;
       const companyId = user?.companyId;
 
+      // 🔍 LOG DE DIAGNÓSTICO - delete
+      console.log('🔍 [delete] user:', {
+        id: user?.id,
+        role: user?.role,
+        plan: user?.plan,
+        companyId: user?.companyId,
+        email: user?.email,
+        documentId: id
+      });
+
       if (!id) {
         return res.status(400).json({ error: 'ID do documento é obrigatório' });
       }
@@ -189,7 +252,8 @@ export class GovernanceController {
         return res.status(401).json({ error: 'Usuário não autenticado' });
       }
 
-      if (user?.role !== 'ADMIN') {
+      // 🔧 CORREÇÃO: Admin sempre tem acesso (verifica tanto 'ADMIN' quanto 'admin')
+      if (user?.role !== 'ADMIN' && user?.role !== 'admin') {
         const hasAccess = await FeatureService.hasGovernanceAccess(user?.plan || 'basic');
         if (!hasAccess) {
           return res.status(403).json({
@@ -220,6 +284,16 @@ export class GovernanceController {
       const companyId = user?.companyId;
       const userId = user?.id;
 
+      // 🔍 LOG DE DIAGNÓSTICO - approve
+      console.log('🔍 [approve] user:', {
+        id: user?.id,
+        role: user?.role,
+        plan: user?.plan,
+        companyId: user?.companyId,
+        email: user?.email,
+        documentId: id
+      });
+
       if (!id) {
         return res.status(400).json({ error: 'ID do documento é obrigatório' });
       }
@@ -228,7 +302,8 @@ export class GovernanceController {
         return res.status(401).json({ error: 'Usuário não autenticado' });
       }
 
-      if (user?.role !== 'ADMIN') {
+      // 🔧 CORREÇÃO: Admin sempre tem acesso (verifica tanto 'ADMIN' quanto 'admin')
+      if (user?.role !== 'ADMIN' && user?.role !== 'admin') {
         const hasAccess = await FeatureService.hasGovernanceAccess(user?.plan || 'basic');
         if (!hasAccess) {
           return res.status(403).json({
@@ -258,11 +333,22 @@ export class GovernanceController {
       const user = (req as any).user;
       const companyId = user?.companyId;
 
+      // 🔍 LOG DE DIAGNÓSTICO - getByLevel
+      console.log('🔍 [getByLevel] user:', {
+        id: user?.id,
+        role: user?.role,
+        plan: user?.plan,
+        companyId: user?.companyId,
+        email: user?.email,
+        level: level
+      });
+
       if (!companyId) {
         return res.status(401).json({ error: 'Usuário não autenticado' });
       }
 
-      if (user?.role !== 'ADMIN') {
+      // 🔧 CORREÇÃO: Admin sempre tem acesso (verifica tanto 'ADMIN' quanto 'admin')
+      if (user?.role !== 'ADMIN' && user?.role !== 'admin') {
         const hasAccess = await FeatureService.hasGovernanceAccess(user?.plan || 'basic');
         if (!hasAccess) {
           return res.status(403).json({
@@ -287,11 +373,21 @@ export class GovernanceController {
       const user = (req as any).user;
       const companyId = user?.companyId;
 
+      // 🔍 LOG DE DIAGNÓSTICO - getTree
+      console.log('🔍 [getTree] user:', {
+        id: user?.id,
+        role: user?.role,
+        plan: user?.plan,
+        companyId: user?.companyId,
+        email: user?.email
+      });
+
       if (!companyId) {
         return res.status(401).json({ error: 'Usuário não autenticado' });
       }
 
-      if (user?.role !== 'ADMIN') {
+      // 🔧 CORREÇÃO: Admin sempre tem acesso (verifica tanto 'ADMIN' quanto 'admin')
+      if (user?.role !== 'ADMIN' && user?.role !== 'admin') {
         const hasAccess = await FeatureService.hasGovernanceAccess(user?.plan || 'basic');
         if (!hasAccess) {
           return res.status(403).json({
@@ -324,6 +420,16 @@ export class GovernanceController {
       const user = (req as any).user;
       const companyId = user?.companyId;
 
+      // 🔍 LOG DE DIAGNÓSTICO - downloadDoc
+      console.log('🔍 [downloadDoc] user:', {
+        id: user?.id,
+        role: user?.role,
+        plan: user?.plan,
+        companyId: user?.companyId,
+        email: user?.email,
+        documentId: id
+      });
+
       if (!id) {
         return res.status(400).json({ error: 'ID do documento é obrigatório' });
       }
@@ -332,13 +438,15 @@ export class GovernanceController {
         return res.status(401).json({ error: 'Usuário não autenticado' });
       }
 
-      // Verificar acesso (apenas Enterprise para REP)
-      if (user?.role !== 'ADMIN') {
+      // 🔧 CORREÇÃO: Admin sempre tem acesso (verifica tanto 'ADMIN' quanto 'admin')
+      if (user?.role !== 'ADMIN' && user?.role !== 'admin') {
         const hasAccess = await FeatureService.hasGovernanceAccess(user?.plan || 'basic');
         if (!hasAccess) {
           return res.status(403).json({
             error: 'Plano Enterprise necessário para acessar o módulo de governança',
             code: 'PLAN_FEATURE_NOT_AVAILABLE',
+            requiredPlan: 'enterprise',
+            currentPlan: user?.plan || 'basic',
           });
         }
       }
@@ -377,6 +485,16 @@ export class GovernanceController {
       const user = (req as any).user;
       const companyId = user?.companyId;
 
+      // 🔍 LOG DE DIAGNÓSTICO - downloadPdf
+      console.log('🔍 [downloadPdf] user:', {
+        id: user?.id,
+        role: user?.role,
+        plan: user?.plan,
+        companyId: user?.companyId,
+        email: user?.email,
+        documentId: id
+      });
+
       if (!id) {
         return res.status(400).json({ error: 'ID do documento é obrigatório' });
       }
@@ -385,13 +503,15 @@ export class GovernanceController {
         return res.status(401).json({ error: 'Usuário não autenticado' });
       }
 
-      // Verificar acesso (apenas Enterprise para REP)
-      if (user?.role !== 'ADMIN') {
+      // 🔧 CORREÇÃO: Admin sempre tem acesso (verifica tanto 'ADMIN' quanto 'admin')
+      if (user?.role !== 'ADMIN' && user?.role !== 'admin') {
         const hasAccess = await FeatureService.hasGovernanceAccess(user?.plan || 'basic');
         if (!hasAccess) {
           return res.status(403).json({
             error: 'Plano Enterprise necessário para acessar o módulo de governança',
             code: 'PLAN_FEATURE_NOT_AVAILABLE',
+            requiredPlan: 'enterprise',
+            currentPlan: user?.plan || 'basic',
           });
         }
       }
@@ -439,6 +559,16 @@ export class GovernanceController {
       const user = (req as any).user;
       const companyId = user?.companyId;
 
+      // 🔍 LOG DE DIAGNÓSTICO - viewDocument
+      console.log('🔍 [viewDocument] user:', {
+        id: user?.id,
+        role: user?.role,
+        plan: user?.plan,
+        companyId: user?.companyId,
+        email: user?.email,
+        documentId: id
+      });
+
       if (!id || id === 'undefined' || id === 'null') {
         return res.status(400).json({ 
           success: false,
@@ -451,13 +581,15 @@ export class GovernanceController {
         return res.status(401).json({ error: 'Usuário não autenticado' });
       }
 
-      // Verificar acesso (apenas Enterprise para REP)
-      if (user?.role !== 'ADMIN') {
+      // 🔧 CORREÇÃO: Admin sempre tem acesso (verifica tanto 'ADMIN' quanto 'admin')
+      if (user?.role !== 'ADMIN' && user?.role !== 'admin') {
         const hasAccess = await FeatureService.hasGovernanceAccess(user?.plan || 'basic');
         if (!hasAccess) {
           return res.status(403).json({
             error: 'Plano Enterprise necessário para acessar o módulo de governança',
             code: 'PLAN_FEATURE_NOT_AVAILABLE',
+            requiredPlan: 'enterprise',
+            currentPlan: user?.plan || 'basic',
           });
         }
       }
