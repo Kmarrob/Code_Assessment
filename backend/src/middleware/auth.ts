@@ -66,11 +66,11 @@ export async function authenticate(
       }
     }
 
-    // Adicionar o plano ao objeto user para uso posterior
+    // Adicionar o plano ao objeto user para uso posterior (como any para evitar erro de tipagem)
     (req as AuthenticatedRequest).user = {
       ...user.toObject(),
       plan: plan,
-    };
+    } as any;
     (req as AuthenticatedRequest).userId = user._id.toString();
     
     next();
