@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { 
   ArrowLeft, Save, X, CheckCircle, AlertCircle, 
@@ -368,6 +368,27 @@ export default function AdminPolicyEditorV2() {
   };
 
   // ============================================================
+  // 🆕 FUNÇÃO DE GERAÇÃO DE RESUMO AUTOMÁTICO (NOVO - v41.0)
+  // ============================================================
+  const generateAutoSummary = useCallback(() => {
+    // 1. Tentar usar o conteúdo da seção "objective"
+    const objectiveContent = sections.objective || '';
+    const plainText = objectiveContent.replace(/<[^>]*>/g, '').trim();
+    
+    if (plainText.length >= 10) {
+      return plainText.substring(0, 150) + '...';
+    }
+    
+    // 2. Tentar usar o título como fallback
+    if (formData.title && formData.title.length >= 10) {
+      return formData.title;
+    }
+    
+    // 3. Fallback final com mais de 10 caracteres
+    return 'Política de Segurança da Informação - Documento estratégico para proteção dos ativos de informação da empresa, estabelecendo diretrizes e controles essenciais para a segurança organizacional.';
+  }, [sections.objective, formData.title]);
+
+  // ============================================================
   // SUBMISSÃO
   // ============================================================
   const handleSubmit = async (e: React.FormEvent) => {
@@ -385,13 +406,24 @@ export default function AdminPolicyEditorV2() {
       console.log('📝 [AdminPolicyEditorV2] isEditing:', isEditing);
       console.log('📝 [AdminPolicyEditorV2] Conteúdo gerado (primeiros 200 chars):', fullContent.substring(0, 200) + '...');
 
+      // 🆕 CORREÇÃO: Garantir que o summary tenha pelo menos 10 caracteres
+      const originalSummary = formData.summary || '';
+      const autoSummary = generateAutoSummary();
+      const finalSummary = originalSummary.trim() || autoSummary;
+
+      // 🆕 LOG DA CORREÇÃO
+      console.log('📝 [AdminPolicyEditorV2] Summary original:', originalSummary);
+      console.log('📝 [AdminPolicyEditorV2] Summary automático:', autoSummary);
+      console.log('📝 [AdminPolicyEditorV2] Summary final:', finalSummary);
+      console.log('📝 [AdminPolicyEditorV2] Summary length:', finalSummary.length);
+
       const data: CreatePolicyDTO = {
         code: formData.code,
         title: formData.title,
         level: 1,
         category: formData.category,
         content: fullContent,
-        summary: formData.summary || sections.objective?.substring(0, 200) || '',
+        summary: finalSummary,
         keywords: formData.keywords,
         effectiveDate: new Date(formData.effectiveDate),
         reviewDate: new Date(formData.reviewDate),
@@ -402,6 +434,7 @@ export default function AdminPolicyEditorV2() {
       };
 
       if (isEditing && id) {
+        // 🆕 CORREÇÃO v41.1: Adicionar todos os campos no update
         const updateData: UpdateGovernanceDocumentDTO = {
           title: data.title,
           content: data.content,
@@ -412,6 +445,11 @@ export default function AdminPolicyEditorV2() {
           frameworks: data.frameworks,
           version: formData.version,
           versionChanges: 'Atualização via editor estruturado',
+          // 🆕 CAMPOS ADICIONADOS PARA PERMITIR ATUALIZAÇÃO COMPLETA
+          category: formData.category,
+          responsible: formData.responsible,
+          strategicObjective: formData.strategicObjective,
+          scope: data.scope,
         };
         console.log('📝 [AdminPolicyEditorV2] Atualizando documento:', updateData);
         await updateMutation.mutateAsync({ id, data: updateData });

@@ -28,10 +28,22 @@ export async function authenticate(
 
     const token = authHeader.split(' ')[1] as string;
     
-    const decoded = jwt.verify(token, config.JWT_SECRET) as IJWTPayload;
+    const decoded = jwt.verify(token, config.JWT_SECRET) as any;
     
-    // Usar 'id' em vez de 'userId' (corresponde ao IJWTPayload)
-    const user = await User.findById(decoded.id).select('+refreshToken');
+    // 🔧 CORREÇÃO RESILIENTE: Suporta 'id', 'userId' ou '_id' no payload do JWT
+    const targetUserId = decoded.id || decoded.userId || decoded._id;
+
+    if (!targetUserId) {
+      res.status(401).json({
+        success: false,
+        message: 'Payload do token inválido',
+        statusCode: 401,
+        timestamp: new Date().toISOString(),
+      });
+      return;
+    }
+
+    const user = await User.findById(targetUserId).select('+refreshToken');
     
     if (!user) {
       res.status(401).json({
@@ -66,9 +78,11 @@ export async function authenticate(
       }
     }
 
-    // Adicionar o plano ao objeto user para uso posterior (como any para evitar erro de tipagem)
+    // 🆕 CORREÇÃO (v41.1) - Adicionar 'id' explicitamente ao objeto user
+    // para garantir que o campo id esteja disponível em todo o sistema
     (req as AuthenticatedRequest).user = {
       ...user.toObject(),
+      id: user._id.toString(),  // 🔧 CORREÇÃO: Mapear _id para id
       plan: plan,
     } as any;
     (req as AuthenticatedRequest).userId = user._id.toString();
@@ -119,7 +133,7 @@ export function authorize(...allowedRoles: UserRole[]) {
       return;
     }
 
-    // 🔴 CORREÇÃO RESILIENTE: Garante que "rep" e "REP" correspondam perfeitamente na comparação por caixa baixa
+    // 🔴 CORREÇÃO RESILIENTE: Garante que "rep", "REP", "admin" e "ADMIN" correspondam perfeitamente
     const userRoleLower = user.role ? user.role.toLowerCase() : '';
     const isAllowed = allowedRoles.some(role => role && role.toLowerCase() === userRoleLower);
 
@@ -155,7 +169,8 @@ export function authorizeSelfOrAdmin(
     return;
   }
 
-  if (user.role === UserRole.ADMIN || user._id.toString() === targetUserId) {
+  const userRoleLower = user.role ? user.role.toLowerCase() : '';
+  if (userRoleLower === 'admin' || user._id.toString() === targetUserId) {
     next();
     return;
   }

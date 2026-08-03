@@ -1,5 +1,14 @@
 import { z } from 'zod';
 
+// Helper flexível para validação de datas (aceita string ISO, YYYY-MM-DD ou objetos Date)
+const flexibleDateSchema = z.union([
+  z.string(),
+  z.date(),
+]).transform((val) => {
+  if (val instanceof Date) return val.toISOString();
+  return new Date(val).toISOString();
+});
+
 // Base Schema
 export const governanceDocumentBaseSchema = z.object({
   code: z.string().min(3).max(20),
@@ -18,8 +27,8 @@ export const governanceDocumentBaseSchema = z.object({
   content: z.string().min(10),
   summary: z.string().min(10).max(500),
   keywords: z.array(z.string()).optional(),
-  effectiveDate: z.string().datetime(),
-  reviewDate: z.string().datetime(),
+  effectiveDate: flexibleDateSchema,
+  reviewDate: flexibleDateSchema,
   frameworks: z.object({
     iso27001: z.array(z.string()).optional(),
     nist: z.array(z.string()).optional(),
@@ -34,14 +43,15 @@ export const governanceDocumentBaseSchema = z.object({
 export const createGovernanceDocumentSchema = governanceDocumentBaseSchema;
 
 // Update DTO
+// 🆕 CORREÇÃO v41.1: Adicionados campos faltantes no update
 export const updateGovernanceDocumentSchema = z.object({
   title: z.string().min(3).max(200).optional(),
   content: z.string().min(10).optional(),
   summary: z.string().min(10).max(500).optional(),
   keywords: z.array(z.string()).optional(),
   status: z.enum(['draft', 'review', 'approved', 'archived']).optional(),
-  effectiveDate: z.string().datetime().optional(),
-  reviewDate: z.string().datetime().optional(),
+  effectiveDate: flexibleDateSchema.optional(),
+  reviewDate: flexibleDateSchema.optional(),
   frameworks: z.object({
     iso27001: z.array(z.string()).optional(),
     nist: z.array(z.string()).optional(),
@@ -52,6 +62,11 @@ export const updateGovernanceDocumentSchema = z.object({
   }).optional(),
   version: z.string().optional(),
   versionChanges: z.string().optional(),
+  // 🆕 Campos adicionados para permitir atualização
+  category: z.string().min(3).max(100).optional(),
+  scope: z.enum(['all', 'it', 'security', 'privacy']).optional(),
+  strategicObjective: z.string().min(10).optional(),
+  responsible: z.string().min(3).optional(),
 });
 
 // Filter Schema - Aceita string ou número

@@ -28,7 +28,7 @@ export interface Attachment {
 }
 
 export interface GovernanceDocument {
-  _id: string; // 🆕 NOVO (v40) - ID do MongoDB
+  _id: string;
   id: string;
   code: string;
   title: string;
@@ -48,7 +48,7 @@ export interface GovernanceDocument {
   reviewDate: Date;
   frameworks: FrameworkReference;
   companyId: string;
-  isGlobal?: boolean; // 🆕 NOVO (v40) - Documento global
+  isGlobal?: boolean;
   versionHistory: VersionHistoryEntry[];
   attachments: Attachment[];
   createdAt: Date;
@@ -115,6 +115,7 @@ export interface CreateGovernanceDocumentDTO {
   frameworks?: FrameworkReference;
 }
 
+// 🆕 CORREÇÃO v41.1 - Adicionados campos faltantes no update
 export interface UpdateGovernanceDocumentDTO {
   title?: string;
   content?: string;
@@ -126,6 +127,11 @@ export interface UpdateGovernanceDocumentDTO {
   frameworks?: FrameworkReference;
   version?: string;
   versionChanges?: string;
+  // 🆕 Campos adicionados para permitir atualização
+  category?: string;
+  scope?: PolicyScope;
+  strategicObjective?: string;
+  responsible?: string;
 }
 
 export interface GovernanceFilters {
