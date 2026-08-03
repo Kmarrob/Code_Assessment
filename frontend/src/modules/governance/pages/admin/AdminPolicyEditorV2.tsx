@@ -105,6 +105,10 @@ export default function AdminPolicyEditorV2() {
   const { user } = useAuth();
   const isEditing = !!id && id !== 'new';
 
+  // 🔍 LOG DE DIAGNÓSTICO
+  console.log('🔍 [AdminPolicyEditorV2] ID:', id);
+  console.log('🔍 [AdminPolicyEditorV2] isEditing:', isEditing);
+
   const { data: existingDoc, isLoading: isLoadingDoc } = useGovernanceDocument(id || '');
   const createMutation = useCreateGovernanceDocument();
   const updateMutation = useUpdateGovernanceDocument();
@@ -166,6 +170,8 @@ export default function AdminPolicyEditorV2() {
   // Carregar documento existente
   useEffect(() => {
     if (existingDoc && isEditing) {
+      console.log('📄 [AdminPolicyEditorV2] Documento carregado:', existingDoc);
+      
       const doc = existingDoc as any;
       setFormData({
         code: doc.code || '',
@@ -181,26 +187,63 @@ export default function AdminPolicyEditorV2() {
         frameworks: doc.frameworks || { iso27001: [], nist: [], cobit: [], pciDss: [], lgpd: [], bacen: [] },
       });
 
-      // Tentar extrair seções do conteúdo
+      // 🔧 CORREÇÃO: Extrair seções do conteúdo de forma mais robusta
       if (doc.content) {
-        // Tentar parsear o conteúdo para extrair seções
-        // Se for um conteúdo estruturado, separar por seções
-        const contentParts = doc.content.split(/\n## \d+\./);
-        if (contentParts.length > 1) {
-          // Conteúdo estruturado - extrair seções
+        console.log('📄 [AdminPolicyEditorV2] Conteúdo bruto:', doc.content.substring(0, 200) + '...');
+        
+        // Tentar extrair seções usando expressão regular mais flexível
+        const sectionRegex = /<h2\s+id="section-([^"]+)"[^>]*>([^<]*)<\/h2>/gi;
+        const matches = [...doc.content.matchAll(sectionRegex)];
+        
+        if (matches.length > 0) {
+          console.log('📄 [AdminPolicyEditorV2] Seções encontradas:', matches.length);
           const extractedSections: Record<string, string> = {};
-          SECTIONS_CONFIG.forEach((sec, idx) => {
-            const partIndex = idx + 1;
-            if (partIndex < contentParts.length) {
-              extractedSections[sec.id] = contentParts[partIndex]?.trim() || '';
+          
+          matches.forEach((match) => {
+            const sectionId = match[1];
+            const sectionTitle = match[2];
+            
+            // Extrair o conteúdo entre o h2 e o próximo h2 ou fim do documento
+            const startIndex = match.index + match[0].length;
+            const nextMatch = doc.content.indexOf('<h2 id="section-', startIndex);
+            const endIndex = nextMatch !== -1 ? nextMatch : doc.content.length;
+            const content = doc.content.substring(startIndex, endIndex).trim();
+            
+            extractedSections[sectionId] = content;
+            
+            // Atualizar título se diferente
+            if (sectionTitle && sectionTitle !== sectionTitles[sectionId]) {
+              setSectionTitles(prev => ({ ...prev, [sectionId]: sectionTitle }));
             }
           });
-          if (Object.values(extractedSections).some(v => v)) {
+          
+          if (Object.keys(extractedSections).length > 0) {
             setSections(prev => ({ ...prev, ...extractedSections }));
           }
         } else {
-          // Conteúdo não estruturado - colocar na primeira seção
-          setSections(prev => ({ ...prev, objective: doc.content || '' }));
+          // Fallback: tentar extrair por títulos numerados
+          const numberedSections = doc.content.split(/<h2[^>]*>\d+\.\s*([^<]*)<\/h2>/i);
+          if (numberedSections.length > 1) {
+            const extractedSections: Record<string, string> = {};
+            const sectionIds = Object.keys(sections);
+            let sectionIndex = 0;
+            
+            for (let i = 1; i < numberedSections.length && sectionIndex < sectionIds.length; i += 2) {
+              const content = numberedSections[i]?.trim() || '';
+              const id = sectionIds[sectionIndex];
+              if (id) {
+                extractedSections[id] = content;
+                sectionIndex++;
+              }
+            }
+            
+            if (Object.keys(extractedSections).length > 0) {
+              setSections(prev => ({ ...prev, ...extractedSections }));
+            }
+          } else {
+            // Conteúdo não estruturado - colocar na primeira seção
+            setSections(prev => ({ ...prev, objective: doc.content || '' }));
+          }
         }
       }
     }
@@ -295,7 +338,7 @@ export default function AdminPolicyEditorV2() {
     // Índice
     fullContent += `<h2 style="text-transform: uppercase;">ÍNDICE</h2>`;
     fullContent += `<ul style="list-style: none; padding-left: 0;">`;
-    activeSectionIds.forEach((id, index) => {
+    activeSectionIds.forEach((id) => {
       const title = sectionTitles[id] || SECTIONS_CONFIG.find(s => s.id === id)?.title || id;
       fullContent += `<li style="margin-bottom: 4px;"><a href="#section-${id}">${title}</a></li>`;
     });
@@ -333,8 +376,14 @@ export default function AdminPolicyEditorV2() {
     setIsSubmitting(true);
 
     try {
-      const companyName = (user as any)?.companyName || 'NOME DA EMPRESA';
+      const companyName = (user as any)?.companyName || '<NOME DO CLIENTE>';
       const fullContent = generateFullPolicy(companyName);
+
+      // 🔍 LOG DE DIAGNÓSTICO
+      console.log('📝 [AdminPolicyEditorV2] Salvando documento...');
+      console.log('📝 [AdminPolicyEditorV2] ID:', id);
+      console.log('📝 [AdminPolicyEditorV2] isEditing:', isEditing);
+      console.log('📝 [AdminPolicyEditorV2] Conteúdo gerado (primeiros 200 chars):', fullContent.substring(0, 200) + '...');
 
       const data: CreatePolicyDTO = {
         code: formData.code,
@@ -362,14 +411,18 @@ export default function AdminPolicyEditorV2() {
           reviewDate: data.reviewDate,
           frameworks: data.frameworks,
           version: formData.version,
+          versionChanges: 'Atualização via editor estruturado',
         };
+        console.log('📝 [AdminPolicyEditorV2] Atualizando documento:', updateData);
         await updateMutation.mutateAsync({ id, data: updateData });
       } else {
+        console.log('📝 [AdminPolicyEditorV2] Criando novo documento:', data);
         await createMutation.mutateAsync(data);
       }
 
       navigate('/admin/governance');
     } catch (err) {
+      console.error('❌ [AdminPolicyEditorV2] Erro ao salvar:', err);
       setError((err as Error).message);
     } finally {
       setIsSubmitting(false);
