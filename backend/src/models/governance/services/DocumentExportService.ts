@@ -3,8 +3,9 @@ import { IGovernanceDocument } from '../models/GovernanceDocument';
 export class DocumentExportService {
   /**
    * Substitui placeholders no conteúdo do documento
+   * 🆕 TORNADO PÚBLICO (v41) para ser usado pelo GovernanceController
    */
-  private replacePlaceholders(content: string, companyName: string): string {
+  public replacePlaceholders(content: string, companyName: string): string {
     return content
       .replace(/\[NOME DA EMPRESA\]/g, companyName)
       .replace(/\[NOME_DA_EMPRESA\]/g, companyName)

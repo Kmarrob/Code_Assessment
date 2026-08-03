@@ -8,6 +8,7 @@ import {
   governanceFiltersSchema 
 } from '../schemas/governance.schemas';
 import { Company } from '../../../models/Company.js';
+import { DocumentLevel } from '../types/governance.types.js';
 
 const governanceService = new GovernanceService();
 
@@ -30,9 +31,10 @@ export class GovernanceController {
         return res.status(401).json({ error: 'Usuário não autenticado' });
       }
 
-      // Converter datas de string para Date
+      // Converter datas de string para Date e garantir que level seja DocumentLevel
       const data = {
         ...validation.data,
+        level: validation.data.level as DocumentLevel,
         effectiveDate: new Date(validation.data.effectiveDate),
         reviewDate: new Date(validation.data.reviewDate),
       };
@@ -68,7 +70,14 @@ export class GovernanceController {
       }
 
       const filters = governanceFiltersSchema.parse(req.query);
-      const docs = await governanceService.findAll(companyId, filters);
+      
+      // 🔧 CORREÇÃO: Converter level para DocumentLevel se existir
+      const serviceFilters: any = { ...filters };
+      if (filters.level !== undefined) {
+        serviceFilters.level = Number(filters.level) as DocumentLevel;
+      }
+      
+      const docs = await governanceService.findAll(companyId, serviceFilters);
       return res.json(docs);
     } catch (error) {
       console.error('Erro ao listar documentos:', error);
@@ -417,11 +426,12 @@ export class GovernanceController {
   }
 
   // ============================================
-  // 🆕 NOVO (v40) - ENDPOINT DE VISUALIZAÇÃO COM SUBSTITUIÇÃO
+  // 🆕 NOVO (v40/v41) - ENDPOINT DE VISUALIZAÇÃO COM SUBSTITUIÇÃO
   // ============================================
 
   /**
    * Visualizar documento com placeholders substituídos pelo nome da empresa
+   * Suporta busca por _id (ObjectId) ou por code (string)
    */
   async viewDocument(req: Request, res: Response): Promise<Response | void> {
     try {
@@ -429,8 +439,12 @@ export class GovernanceController {
       const user = (req as any).user;
       const companyId = user?.companyId;
 
-      if (!id) {
-        return res.status(400).json({ error: 'ID do documento é obrigatório' });
+      if (!id || id === 'undefined' || id === 'null') {
+        return res.status(400).json({ 
+          success: false,
+          message: 'Identificador inválido',
+          error: 'ID do documento é obrigatório e deve ser válido'
+        });
       }
 
       if (!companyId) {
@@ -448,9 +462,25 @@ export class GovernanceController {
         }
       }
 
-      const doc = await governanceService.findById(id, companyId);
+      // 🔧 CORREÇÃO: Buscar por _id (ObjectId) OU por code (string)
+      let doc = null;
+      const isValidObjectId = /^[0-9a-fA-F]{24}$/.test(id);
+
+      if (isValidObjectId) {
+        // Buscar por _id
+        doc = await governanceService.findById(id, companyId);
+      } else {
+        // Buscar por code - buscar todos e filtrar
+        const allDocs = await governanceService.findAll(companyId, {});
+        doc = allDocs.find(d => d.code === id) || null;
+      }
+
       if (!doc) {
-        return res.status(404).json({ error: 'Documento não encontrado' });
+        return res.status(404).json({ 
+          success: false,
+          message: 'Documento não encontrado',
+          error: 'Nenhum documento encontrado com o identificador fornecido'
+        });
       }
 
       // Buscar nome da empresa
@@ -469,7 +499,11 @@ export class GovernanceController {
       });
     } catch (error) {
       console.error('Erro ao visualizar documento:', error);
-      return res.status(500).json({ error: 'Erro interno ao visualizar documento' });
+      return res.status(500).json({ 
+        success: false,
+        message: 'Erro interno ao visualizar documento',
+        error: error instanceof Error ? error.message : 'Erro desconhecido'
+      });
     }
   }
 }
