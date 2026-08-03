@@ -35,6 +35,9 @@ import AdminStandardEditor from './modules/governance/pages/admin/AdminStandardE
 import AdminProcedureEditor from './modules/governance/pages/admin/AdminProcedureEditor.js';
 import AdminWorkInstructionEditor from './modules/governance/pages/admin/AdminWorkInstructionEditor.js';
 
+// 🆕 NOVO (v41) - Import da página de listagem do Rep (Governança)
+import RepGovernance from './modules/governance/pages/rep/RepGovernance.js';
+
 // 🆕 NOVO (v40) - Import da página de visualização do Rep
 import RepPolicyView from './modules/governance/pages/rep/RepPolicyView.js';
 
@@ -383,11 +386,11 @@ function App() {
                     } />
 
                     {/* ============================================
-                        🆕 NOVO (v39) - ROTA REP - GOVERNANÇA
+                        🆕 NOVO (v41) - ROTA REP - GOVERNANÇA (CORRIGIDA)
                         ============================================ */}
                     <Route path="/rep/governance" element={
                       <Layout>
-                        <AdminGovernance />
+                        <RepGovernance />
                       </Layout>
                     } />
 

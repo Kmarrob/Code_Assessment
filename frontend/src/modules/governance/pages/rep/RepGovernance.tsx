@@ -59,6 +59,10 @@ const statusLabels: Record<DocumentStatus, string> = {
 };
 
 export default function RepGovernance() {
+  // 🔴 TESTE VISÍVEL - Se aparecer no console, o código está rodando
+  console.log('🔴🔴🔴 REPGOVERNANCE ESTÁ RODANDO! 🔴🔴🔴');
+  alert('🔴 SE ESTE ALERT APARECER, O CÓDIGO ESTÁ RODANDO!');
+
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedLevel, setSelectedLevel] = useState<DocumentLevel | 'all'>('all');
@@ -78,10 +82,22 @@ export default function RepGovernance() {
         
         const data = await governanceService.repListDocuments(filters);
         
-        // 🔧 LOG DE DIAGNÓSTICO
-        console.log('📋 Documentos recebidos:', JSON.stringify(data, null, 2));
-        console.log('📋 Primeiro documento:', data[0]);
-        console.log('📋 Campos do primeiro:', Object.keys(data[0] || {}));
+        // 🔧 LOG DE DIAGNÓSTICO - Estrutura completa dos documentos
+        console.log('📋 TOTAL DE DOCUMENTOS:', data?.length || 0);
+        console.log('📋 DOCUMENTOS RECEBIDOS (JSON):', JSON.stringify(data, null, 2));
+        
+        if (data && data.length > 0) {
+          console.log('📋 PRIMEIRO DOCUMENTO:', data[0]);
+          console.log('📋 CAMPOS DO PRIMEIRO:', Object.keys(data[0] || {}));
+          console.log('📋 VALORES IMPORTANTES:', {
+            _id: (data[0] as any)._id,
+            id: (data[0] as any).id,
+            code: data[0].code,
+            title: data[0].title,
+            level: data[0].level,
+            status: data[0].status,
+          });
+        }
         
         setDocuments(data);
         setError(null);
@@ -109,28 +125,33 @@ export default function RepGovernance() {
 
   const handleDownload = async (doc: GovernanceDocument, format: 'doc' | 'pdf') => {
     // TODO: Implementar download
+    console.log(`📥 Download ${format} para ${doc.code} - ${doc.title}`);
     alert(`Download ${format} para ${doc.code} - ${doc.title}`);
   };
 
-  // 🔧 Função para obter o identificador único do documento
-  // Prioridade: code > _id > id > fallback vazio
-  const getDocumentIdentifier = (doc: GovernanceDocument): string => {
-  const identifier =
-    (doc as any)._id ||
-    (doc as any).id ||
-    '';
+  // 🔧 FUNÇÃO PARA OBTER O IDENTIFICADOR ÚNICO DO DOCUMENTO
+  // Prioridade: _id > id > code > fallback usando índice + código
+  const getDocumentIdentifier = (doc: GovernanceDocument, index: number): string => {
+    // Tenta obter o identificador de várias fontes
+    const identifier = 
+      (doc as any)._id || 
+      (doc as any).id || 
+      doc.code || 
+      `doc-${index}-${Date.now()}`;
 
-  console.log('🔎 Identificador encontrado:', {
-    identifier,
-    code: doc.code,
-    id: (doc as any).id,
-    _id: (doc as any)._id,
-    title: doc.title
-  });
+    console.log('🔎 IDENTIFICADOR ENCONTRADO:', {
+      identifier,
+      _id: (doc as any)._id,
+      id: (doc as any).id,
+      code: doc.code,
+      title: doc.title,
+      level: doc.level,
+      index,
+    });
 
-  return identifier;
-};
- 
+    return identifier;
+  };
+
   // Estatísticas
   const totalDocs = documents.length;
   const approvedDocs = documents.filter(d => d.status === 'approved').length;
@@ -226,17 +247,22 @@ export default function RepGovernance() {
           </div>
         ) : (
           <div className="divide-y divide-gray-200">
-            {documents.map((doc) => {
-              const docId = getDocumentIdentifier(doc);
+            {documents.map((doc, index) => {
+              // 🔧 OBTÉM O IDENTIFICADOR COM O ÍNDICE COMO FALLBACK
+              const docId = getDocumentIdentifier(doc, index);
               
-              // 🔧 Log de diagnóstico para cada documento
-              console.log(`📄 Documento ${docId}:`, { 
-                code: doc.code, 
-                _id: (doc as any)._id, 
+              // 🔧 LOG DE DIAGNÓSTICO PARA CADA DOCUMENTO
+              console.log(`📄 DOCUMENTO [${docId}]:`, {
+                code: doc.code,
+                _id: (doc as any)._id,
                 id: (doc as any).id,
-                title: doc.title 
+                title: doc.title,
+                level: doc.level,
+                status: doc.status,
+                version: doc.version,
+                index,
               });
-              
+
               return (
                 <div key={docId} className="hover:bg-gray-50 transition-colors">
                   {/* Document Row */}
@@ -274,14 +300,16 @@ export default function RepGovernance() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2 ml-4">
-                      {/* 🔧 CORREÇÃO: Usar getDocumentIdentifier no botão de navegação */}
+                      {/* 🔧 CORREÇÃO: Usar getDocumentIdentifier com índice no botão de navegação */}
                       <button
                         onClick={() => {
-                          const identifier = getDocumentIdentifier(doc);
+                          const identifier = getDocumentIdentifier(doc, index);
                           if (!identifier) {
-                            console.error('❌ Documento inválido - sem identificador:', doc);
+                            console.error('❌ DOCUMENTO INVÁLIDO - SEM IDENTIFICADOR:', doc);
+                            alert('Erro: Documento sem identificador. Verifique o console para mais detalhes.');
                             return;
                           }
+                          console.log(`✅ NAVEGANDO PARA: /rep/governance/document/${identifier}`);
                           navigate(`/rep/governance/document/${identifier}`);
                         }}
                         className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
