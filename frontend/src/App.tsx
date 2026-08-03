@@ -35,6 +35,9 @@ import AdminStandardEditor from './modules/governance/pages/admin/AdminStandardE
 import AdminProcedureEditor from './modules/governance/pages/admin/AdminProcedureEditor.js';
 import AdminWorkInstructionEditor from './modules/governance/pages/admin/AdminWorkInstructionEditor.js';
 
+// 🆕 NOVO (v42) - Import do Editor Estruturado de Políticas
+import AdminPolicyEditorV2 from './modules/governance/pages/admin/AdminPolicyEditorV2.js';
+
 // 🆕 NOVO (v41) - Import da página de listagem do Rep (Governança)
 import RepGovernance from './modules/governance/pages/rep/RepGovernance.js';
 
@@ -319,6 +322,12 @@ function App() {
                     <Route path="/admin/governance/instruction/new" element={
                       <Layout>
                         <AdminWorkInstructionEditor />
+                      </Layout>
+                    } />
+                    {/* 🆕 NOVO (v42) - Rota para o Editor Estruturado de Políticas */}
+                    <Route path="/admin/governance/policy/new-v2" element={
+                      <Layout>
+                        <AdminPolicyEditorV2 />
                       </Layout>
                     } />
                     <Route path="/admin/governance/document/:id" element={
