@@ -165,6 +165,7 @@ export class GovernanceController {
     }
   }
 
+  // 🆕 CORREÇÃO v41.2: Passar userRole para o service
   async update(req: Request, res: Response) {
     try {
       const { id } = req.params;
@@ -216,7 +217,8 @@ export class GovernanceController {
       if (data.effectiveDate) data.effectiveDate = new Date(data.effectiveDate);
       if (data.reviewDate) data.reviewDate = new Date(data.reviewDate);
 
-      const doc = await governanceService.update(id, data, userId, companyId);
+      // 🆕 Passar userRole para o service
+      const doc = await governanceService.update(id, data, userId, companyId, user?.role);
       if (!doc) {
         return res.status(404).json({ error: 'Documento não encontrado' });
       }
@@ -228,6 +230,7 @@ export class GovernanceController {
     }
   }
 
+  // 🆕 CORREÇÃO v41.2: Passar userRole para o service
   async delete(req: Request, res: Response) {
     try {
       const { id } = req.params;
@@ -265,7 +268,8 @@ export class GovernanceController {
         }
       }
 
-      const deleted = await governanceService.delete(id, companyId);
+      // 🆕 Passar userRole para o service
+      const deleted = await governanceService.delete(id, companyId, user?.role);
       if (!deleted) {
         return res.status(404).json({ error: 'Documento não encontrado' });
       }
@@ -277,6 +281,7 @@ export class GovernanceController {
     }
   }
 
+  // 🆕 CORREÇÃO v41.2: Passar userRole para o service
   async approve(req: Request, res: Response) {
     try {
       const { id } = req.params;
@@ -315,7 +320,8 @@ export class GovernanceController {
         }
       }
 
-      const doc = await governanceService.approve(id, userId, companyId);
+      // 🆕 Passar userRole para o service
+      const doc = await governanceService.approve(id, userId, companyId, user?.role);
       if (!doc) {
         return res.status(404).json({ error: 'Documento não encontrado' });
       }

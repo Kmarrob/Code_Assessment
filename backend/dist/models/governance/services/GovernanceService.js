@@ -68,15 +68,22 @@ class GovernanceService {
         return docs;
     }
     // 🔧 CORREÇÃO v41.1: Adicionar $or com isGlobal no update
-    async update(id, data, userId, companyId) {
-        const doc = await GovernanceDocument_1.GovernanceDocument.findOne({
-            _id: id,
-            $or: [
-                { companyId: companyId },
-                { isGlobal: true }
-            ],
-            deletedAt: null
-        }).exec();
+    // 🆕 CORREÇÃO v41.2: Adicionar bypass para ADMIN
+    async update(id, data, userId, companyId, userRole) {
+        // 🆕 BYPASS PARA ADMIN: Se for admin, busca apenas por ID e deletedAt
+        let query = { _id: id, deletedAt: null };
+        // Se NÃO for admin, aplica as regras de empresa
+        if (userRole !== 'ADMIN' && userRole !== 'admin') {
+            query = {
+                _id: id,
+                $or: [
+                    { companyId: companyId },
+                    { isGlobal: true }
+                ],
+                deletedAt: null
+            };
+        }
+        const doc = await GovernanceDocument_1.GovernanceDocument.findOne(query).exec();
         if (!doc)
             return null;
         const updateData = { ...data, updatedBy: userId };
@@ -97,15 +104,22 @@ class GovernanceService {
         await doc.save();
         return doc;
     }
-    async delete(id, companyId) {
-        const doc = await GovernanceDocument_1.GovernanceDocument.findOne({
-            _id: id,
-            $or: [
-                { companyId: companyId },
-                { isGlobal: true }
-            ],
-            deletedAt: null
-        }).exec();
+    // 🆕 CORREÇÃO v41.2: Adicionar bypass para ADMIN no delete
+    async delete(id, companyId, userRole) {
+        // 🆕 BYPASS PARA ADMIN: Se for admin, busca apenas por ID e deletedAt
+        let query = { _id: id, deletedAt: null };
+        // Se NÃO for admin, aplica as regras de empresa
+        if (userRole !== 'ADMIN' && userRole !== 'admin') {
+            query = {
+                _id: id,
+                $or: [
+                    { companyId: companyId },
+                    { isGlobal: true }
+                ],
+                deletedAt: null
+            };
+        }
+        const doc = await GovernanceDocument_1.GovernanceDocument.findOne(query).exec();
         if (!doc)
             return false;
         doc.deletedAt = new Date();
@@ -113,15 +127,22 @@ class GovernanceService {
         await doc.save();
         return true;
     }
-    async approve(id, userId, companyId) {
-        const doc = await GovernanceDocument_1.GovernanceDocument.findOne({
-            _id: id,
-            $or: [
-                { companyId: companyId },
-                { isGlobal: true }
-            ],
-            deletedAt: null
-        }).exec();
+    // 🆕 CORREÇÃO v41.2: Adicionar bypass para ADMIN no approve
+    async approve(id, userId, companyId, userRole) {
+        // 🆕 BYPASS PARA ADMIN: Se for admin, busca apenas por ID e deletedAt
+        let query = { _id: id, deletedAt: null };
+        // Se NÃO for admin, aplica as regras de empresa
+        if (userRole !== 'ADMIN' && userRole !== 'admin') {
+            query = {
+                _id: id,
+                $or: [
+                    { companyId: companyId },
+                    { isGlobal: true }
+                ],
+                deletedAt: null
+            };
+        }
+        const doc = await GovernanceDocument_1.GovernanceDocument.findOne(query).exec();
         if (!doc)
             return null;
         doc.status = 'approved';

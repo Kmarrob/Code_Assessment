@@ -142,6 +142,7 @@ class GovernanceController {
             return res.status(500).json({ error: 'Erro interno ao buscar documento' });
         }
     }
+    // 🆕 CORREÇÃO v41.2: Passar userRole para o service
     async update(req, res) {
         try {
             const { id } = req.params;
@@ -188,7 +189,8 @@ class GovernanceController {
                 data.effectiveDate = new Date(data.effectiveDate);
             if (data.reviewDate)
                 data.reviewDate = new Date(data.reviewDate);
-            const doc = await governanceService.update(id, data, userId, companyId);
+            // 🆕 Passar userRole para o service
+            const doc = await governanceService.update(id, data, userId, companyId, user?.role);
             if (!doc) {
                 return res.status(404).json({ error: 'Documento não encontrado' });
             }
@@ -199,6 +201,7 @@ class GovernanceController {
             return res.status(500).json({ error: 'Erro interno ao atualizar documento' });
         }
     }
+    // 🆕 CORREÇÃO v41.2: Passar userRole para o service
     async delete(req, res) {
         try {
             const { id } = req.params;
@@ -231,7 +234,8 @@ class GovernanceController {
                     });
                 }
             }
-            const deleted = await governanceService.delete(id, companyId);
+            // 🆕 Passar userRole para o service
+            const deleted = await governanceService.delete(id, companyId, user?.role);
             if (!deleted) {
                 return res.status(404).json({ error: 'Documento não encontrado' });
             }
@@ -242,6 +246,7 @@ class GovernanceController {
             return res.status(500).json({ error: 'Erro interno ao excluir documento' });
         }
     }
+    // 🆕 CORREÇÃO v41.2: Passar userRole para o service
     async approve(req, res) {
         try {
             const { id } = req.params;
@@ -275,7 +280,8 @@ class GovernanceController {
                     });
                 }
             }
-            const doc = await governanceService.approve(id, userId, companyId);
+            // 🆕 Passar userRole para o service
+            const doc = await governanceService.approve(id, userId, companyId, user?.role);
             if (!doc) {
                 return res.status(404).json({ error: 'Documento não encontrado' });
             }
