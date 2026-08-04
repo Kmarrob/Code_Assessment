@@ -67,8 +67,16 @@ class GovernanceService {
             .exec();
         return docs;
     }
+    // 🔧 CORREÇÃO v41.1: Adicionar $or com isGlobal no update
     async update(id, data, userId, companyId) {
-        const doc = await GovernanceDocument_1.GovernanceDocument.findOne({ _id: id, companyId, deletedAt: null }).exec();
+        const doc = await GovernanceDocument_1.GovernanceDocument.findOne({
+            _id: id,
+            $or: [
+                { companyId: companyId },
+                { isGlobal: true }
+            ],
+            deletedAt: null
+        }).exec();
         if (!doc)
             return null;
         const updateData = { ...data, updatedBy: userId };
@@ -90,7 +98,14 @@ class GovernanceService {
         return doc;
     }
     async delete(id, companyId) {
-        const doc = await GovernanceDocument_1.GovernanceDocument.findOne({ _id: id, companyId, deletedAt: null }).exec();
+        const doc = await GovernanceDocument_1.GovernanceDocument.findOne({
+            _id: id,
+            $or: [
+                { companyId: companyId },
+                { isGlobal: true }
+            ],
+            deletedAt: null
+        }).exec();
         if (!doc)
             return false;
         doc.deletedAt = new Date();
@@ -99,7 +114,14 @@ class GovernanceService {
         return true;
     }
     async approve(id, userId, companyId) {
-        const doc = await GovernanceDocument_1.GovernanceDocument.findOne({ _id: id, companyId, deletedAt: null }).exec();
+        const doc = await GovernanceDocument_1.GovernanceDocument.findOne({
+            _id: id,
+            $or: [
+                { companyId: companyId },
+                { isGlobal: true }
+            ],
+            deletedAt: null
+        }).exec();
         if (!doc)
             return null;
         doc.status = 'approved';
