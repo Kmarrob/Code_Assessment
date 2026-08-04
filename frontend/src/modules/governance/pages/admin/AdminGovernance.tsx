@@ -16,8 +16,10 @@ import {
   Trash2,
   Download,
   Upload,
+  Check,
+  X,
 } from 'lucide-react';
-import { useGovernanceDocuments, useDeleteGovernanceDocument } from '../../hooks/useGovernance';
+import { useGovernanceDocuments, useDeleteGovernanceDocument, useApproveGovernanceDocument } from '../../hooks/useGovernance';
 import { GovernanceDocument, DocumentLevel, DocumentStatus } from '../../types/governance.types';
 import { useAuth } from '../../../../contexts/AuthContext.js';
 
@@ -58,12 +60,13 @@ export default function AdminGovernance() {
   const [selectedLevel, setSelectedLevel] = useState<DocumentLevel | 'all'>('all');
   const [selectedStatus, setSelectedStatus] = useState<DocumentStatus | 'all'>('all');
   const [expandedDocs, setExpandedDocs] = useState<Set<string>>(new Set());
+  const [approvingId, setApprovingId] = useState<string | null>(null);
 
   // 🔧 CORREÇÃO: Verificar tanto 'ADMIN' quanto 'admin'
   const isAdmin = user?.role === 'ADMIN' || user?.role === 'admin';
 
   // Usar o hook com a função correta baseada no perfil
-  const { data: documents = [], isLoading, error } = useGovernanceDocuments({
+  const { data: documents = [], isLoading, error, refetch } = useGovernanceDocuments({
     search: searchTerm || undefined,
     level: selectedLevel !== 'all' ? selectedLevel : undefined,
     status: selectedStatus !== 'all' ? selectedStatus : undefined,
@@ -71,6 +74,7 @@ export default function AdminGovernance() {
   });
 
   const deleteMutation = useDeleteGovernanceDocument();
+  const approveMutation = useApproveGovernanceDocument();
 
   const toggleExpand = (id: string) => {
     setExpandedDocs(prev => {
@@ -87,6 +91,23 @@ export default function AdminGovernance() {
   const handleDelete = async (id: string, title: string) => {
     if (window.confirm(`Tem certeza que deseja excluir o documento "${title}"?`)) {
       await deleteMutation.mutateAsync(id);
+    }
+  };
+
+  // 🆕 FUNÇÃO DE APROVAÇÃO
+  const handleApprove = async (id: string, title: string) => {
+    if (window.confirm(`Aprovar o documento "${title}"?`)) {
+      setApprovingId(id);
+      try {
+        await approveMutation.mutateAsync(id);
+        // Recarregar a lista para atualizar o status
+        await refetch();
+      } catch (error) {
+        console.error('Erro ao aprovar documento:', error);
+        alert('Erro ao aprovar documento. Verifique o console.');
+      } finally {
+        setApprovingId(null);
+      }
     }
   };
 
@@ -225,6 +246,8 @@ export default function AdminGovernance() {
             {documents.map((doc) => {
               // 🔧 CORREÇÃO: Obter o ID correto (prioridade para _id)
               const docId = (doc as any)._id || doc.id;
+              // 🆕 Verificar se o documento pode ser aprovado
+              const canApprove = doc.status === 'draft' || doc.status === 'review';
               
               return (
                 <div key={docId} className="hover:bg-gray-50 transition-colors">
@@ -278,6 +301,21 @@ export default function AdminGovernance() {
                       </button>
                       {isAdmin && (
                         <>
+                          {/* 🆕 BOTÃO APROVAR */}
+                          {canApprove && (
+                            <button
+                              onClick={() => handleApprove(docId, doc.title)}
+                              disabled={approvingId === docId}
+                              className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors disabled:opacity-50"
+                              title="Aprovar documento"
+                            >
+                              {approvingId === docId ? (
+                                <div className="w-4 h-4 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
+                              ) : (
+                                <Check className="w-4 h-4" />
+                              )}
+                            </button>
+                          )}
                           <button
                             onClick={() => {
                               if (!docId) {
