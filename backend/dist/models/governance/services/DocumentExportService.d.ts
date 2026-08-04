@@ -3,6 +3,7 @@ export declare class DocumentExportService {
     /**
      * Substitui placeholders no conteúdo do documento
      * 🆕 TORNADO PÚBLICO (v41) para ser usado pelo GovernanceController
+     * 🆕 CORREÇÃO v41.2: Adicionado suporte para <NOME DO CLIENTE> e [NOME DO CLIENTE]
      */
     replacePlaceholders(content: string, companyName: string): string;
     /**

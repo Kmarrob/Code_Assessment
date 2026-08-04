@@ -5,13 +5,17 @@ class DocumentExportService {
     /**
      * Substitui placeholders no conteúdo do documento
      * 🆕 TORNADO PÚBLICO (v41) para ser usado pelo GovernanceController
+     * 🆕 CORREÇÃO v41.2: Adicionado suporte para <NOME DO CLIENTE> e [NOME DO CLIENTE]
      */
     replacePlaceholders(content, companyName) {
         return content
             .replace(/\[NOME DA EMPRESA\]/g, companyName)
             .replace(/\[NOME_DA_EMPRESA\]/g, companyName)
             .replace(/{{company_name}}/g, companyName)
-            .replace(/{{COMPANY_NAME}}/g, companyName);
+            .replace(/{{COMPANY_NAME}}/g, companyName)
+            // 🆕 ADICIONADO: Suporte para placeholder usado no conteúdo da política
+            .replace(/<NOME DO CLIENTE>/g, companyName)
+            .replace(/\[NOME DO CLIENTE\]/g, companyName);
     }
     /**
      * Gera conteúdo para download em formato DOC

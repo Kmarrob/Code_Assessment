@@ -2,13 +2,27 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GovernanceService = void 0;
 const GovernanceDocument_1 = require("../models/GovernanceDocument");
+const logger_js_1 = require("../../../utils/logger.js");
 class GovernanceService {
-    async create(data, userId, companyId) {
+    // 🆕 CORREÇÃO v41.3: ADMIN cria documentos globais (companyId: null, isGlobal: true)
+    async create(data, userId, companyId, userRole) {
+        // 🆕 Se for ADMIN, criar como documento global
+        const isAdmin = userRole === 'ADMIN' || userRole === 'admin';
+        const finalCompanyId = isAdmin ? null : companyId;
+        const isGlobal = isAdmin ? true : false;
+        logger_js_1.logger.info(`📝 [GovernanceService.create] Criando documento:`, {
+            code: data.code,
+            title: data.title,
+            isAdmin,
+            companyId: finalCompanyId,
+            isGlobal
+        });
         const doc = new GovernanceDocument_1.GovernanceDocument({
             ...data,
             createdBy: userId,
             updatedBy: userId,
-            companyId,
+            companyId: finalCompanyId,
+            isGlobal: isGlobal,
             version: 'v1.0',
             status: 'draft',
             versionHistory: [

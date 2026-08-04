@@ -8,6 +8,7 @@ const governance_schemas_1 = require("../schemas/governance.schemas");
 const Company_js_1 = require("../../../models/Company.js");
 const governanceService = new GovernanceService_1.GovernanceService();
 class GovernanceController {
+    // 🆕 CORREÇÃO v41.3: Passar userRole para o service
     async create(req, res) {
         try {
             const validation = governance_schemas_1.createGovernanceDocumentSchema.safeParse(req.body);
@@ -50,7 +51,8 @@ class GovernanceController {
                 effectiveDate: new Date(validation.data.effectiveDate),
                 reviewDate: new Date(validation.data.reviewDate),
             };
-            const doc = await governanceService.create(data, userId, companyId);
+            // 🆕 Passar userRole para o service
+            const doc = await governanceService.create(data, userId, companyId, user?.role);
             return res.status(201).json(doc);
         }
         catch (error) {

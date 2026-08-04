@@ -13,6 +13,7 @@ import { DocumentLevel } from '../types/governance.types.js';
 const governanceService = new GovernanceService();
 
 export class GovernanceController {
+  // 🆕 CORREÇÃO v41.3: Passar userRole para o service
   async create(req: Request, res: Response) {
     try {
       const validation = createGovernanceDocumentSchema.safeParse(req.body);
@@ -61,7 +62,8 @@ export class GovernanceController {
         reviewDate: new Date(validation.data.reviewDate),
       };
 
-      const doc = await governanceService.create(data, userId, companyId);
+      // 🆕 Passar userRole para o service
+      const doc = await governanceService.create(data, userId, companyId, user?.role);
       return res.status(201).json(doc);
     } catch (error) {
       console.error('Erro ao criar documento:', error);
