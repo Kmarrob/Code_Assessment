@@ -246,8 +246,10 @@ export default function AdminGovernance() {
             {documents.map((doc) => {
               // 🔧 CORREÇÃO: Obter o ID correto (prioridade para _id)
               const docId = (doc as any)._id || doc.id;
-              // 🆕 CORREÇÃO v41.5: Mostrar botão também quando status não estiver definido
-              const canApprove = doc.status === 'draft' || doc.status === 'review' || !doc.status;
+              // 🆕 CORREÇÃO v41.6: Mostrar botão para qualquer documento que não esteja aprovado ou arquivado
+              const isApproved = doc.status === 'approved';
+              const isArchived = doc.status === 'archived';
+              const canApprove = !isApproved && !isArchived;
               
               return (
                 <div key={docId} className="hover:bg-gray-50 transition-colors">
@@ -301,7 +303,7 @@ export default function AdminGovernance() {
                       </button>
                       {isAdmin && (
                         <>
-                          {/* 🆕 BOTÃO APROVAR - Agora aparece também quando status não está definido */}
+                          {/* 🆕 BOTÃO APROVAR - Agora aparece para qualquer documento não aprovado/arquivado */}
                           {canApprove && (
                             <button
                               onClick={() => handleApprove(docId, doc.title)}
