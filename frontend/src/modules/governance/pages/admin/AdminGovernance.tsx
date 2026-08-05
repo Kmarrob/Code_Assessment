@@ -246,8 +246,8 @@ export default function AdminGovernance() {
             {documents.map((doc) => {
               // 🔧 CORREÇÃO: Obter o ID correto (prioridade para _id)
               const docId = (doc as any)._id || doc.id;
-              // 🆕 Verificar se o documento pode ser aprovado
-              const canApprove = doc.status === 'draft' || doc.status === 'review';
+              // 🆕 CORREÇÃO v41.5: Mostrar botão também quando status não estiver definido
+              const canApprove = doc.status === 'draft' || doc.status === 'review' || !doc.status;
               
               return (
                 <div key={docId} className="hover:bg-gray-50 transition-colors">
@@ -267,8 +267,8 @@ export default function AdminGovernance() {
                           <span>•</span>
                           <span>Versão {doc.version}</span>
                           <span>•</span>
-                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColors[doc.status]}`}>
-                            {statusLabels[doc.status]}
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColors[doc.status] || 'bg-gray-100 text-gray-600'}`}>
+                            {statusLabels[doc.status] || 'Rascunho'}
                           </span>
                           {doc.status === 'approved' && doc.approvedBy && (
                             <>
@@ -301,7 +301,7 @@ export default function AdminGovernance() {
                       </button>
                       {isAdmin && (
                         <>
-                          {/* 🆕 BOTÃO APROVAR */}
+                          {/* 🆕 BOTÃO APROVAR - Agora aparece também quando status não está definido */}
                           {canApprove && (
                             <button
                               onClick={() => handleApprove(docId, doc.title)}
@@ -358,7 +358,7 @@ export default function AdminGovernance() {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                           <h4 className="text-sm font-medium text-gray-700 mb-1">Resumo</h4>
-                          <p className="text-sm text-gray-600">{doc.summary}</p>
+                          <p className="text-sm text-gray-600">{doc.summary || 'Sem resumo definido'}</p>
                         </div>
                         <div>
                           <h4 className="text-sm font-medium text-gray-700 mb-1">Frameworks</h4>
@@ -385,7 +385,7 @@ export default function AdminGovernance() {
                         <span>Data de Efetivação: {new Date(doc.effectiveDate).toLocaleDateString('pt-BR')}</span>
                         <span>•</span>
                         <span>Revisão: {new Date(doc.reviewDate).toLocaleDateString('pt-BR')}</span>
-                        {doc.attachments.length > 0 && (
+                        {doc.attachments && doc.attachments.length > 0 && (
                           <>
                             <span>•</span>
                             <span className="flex items-center gap-1">
@@ -394,7 +394,7 @@ export default function AdminGovernance() {
                             </span>
                           </>
                         )}
-                        {doc.versionHistory.length > 1 && (
+                        {doc.versionHistory && doc.versionHistory.length > 1 && (
                           <>
                             <span>•</span>
                             <span className="flex items-center gap-1">
