@@ -8,6 +8,7 @@ import {
 import { useGovernanceDocument, useCreateGovernanceDocument, useUpdateGovernanceDocument } from '../../hooks/useGovernance';
 import { CreatePolicyDTO, UpdateGovernanceDocumentDTO } from '../../types/governance.types';
 import { useAuth } from '../../../../contexts/AuthContext.js';
+import { companyService } from '../../../../services/company.service.js';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 
@@ -108,6 +109,46 @@ export default function AdminPolicyEditorV2() {
   // 🔍 LOG DE DIAGNÓSTICO
   console.log('🔍 [AdminPolicyEditorV2] ID:', id);
   console.log('🔍 [AdminPolicyEditorV2] isEditing:', isEditing);
+
+  const [companyName, setCompanyName] = useState<string>('<NOME DO CLIENTE>');
+  const [isLoadingCompany, setIsLoadingCompany] = useState(false);
+
+  // 🆕 CORREÇÃO v41.3: Se for ADMIN, NÃO buscar empresa
+  useEffect(() => {
+    const fetchCompanyName = async () => {
+      // 🆕 CORREÇÃO: ADMIN não tem empresa associada, usar fallback
+      const userRole = (user as any)?.role;
+      if (userRole === 'ADMIN' || userRole === 'admin') {
+        console.log('🏢 [AdminPolicyEditorV2] ADMIN não tem empresa associada, usando fallback');
+        setCompanyName('<NOME DO CLIENTE>');
+        return;
+      }
+
+      const companyId = (user as any)?.companyId;
+      if (!companyId) {
+        console.log('🏢 [AdminPolicyEditorV2] Nenhum companyId encontrado, usando fallback');
+        return;
+      }
+
+      try {
+        setIsLoadingCompany(true);
+        console.log('🏢 [AdminPolicyEditorV2] Buscando empresa para ID:', companyId);
+        const company = await companyService.getCompanyById(companyId);
+        if (company?.name) {
+          console.log('🏢 [AdminPolicyEditorV2] Empresa encontrada:', company.name);
+          setCompanyName(company.name);
+        } else {
+          console.log('🏢 [AdminPolicyEditorV2] Empresa não encontrada, usando fallback');
+        }
+      } catch (error) {
+        console.error('🏢 [AdminPolicyEditorV2] Erro ao buscar empresa:', error);
+      } finally {
+        setIsLoadingCompany(false);
+      }
+    };
+
+    fetchCompanyName();
+  }, [user]);
 
   const { data: existingDoc, isLoading: isLoadingDoc } = useGovernanceDocument(id || '');
   const createMutation = useCreateGovernanceDocument();
@@ -325,15 +366,38 @@ export default function AdminPolicyEditorV2() {
   };
 
   // ============================================================
+  // 🆕 FUNÇÃO PARA SUBSTITUIR TODAS AS VARIAÇÕES DO PLACEHOLDER
+  // ============================================================
+  const replaceAllPlaceholders = (text: string, companyNameParam: string): string => {
+    if (!text) return text;
+    
+    const placeholders = [
+      /<NOME DO CLIENTE>/g,
+      /&lt;NOME DO CLIENTE&gt;/g,
+      /\[NOME DO CLIENTE\]/g,
+      /{{NOME_DO_CLIENTE}}/g,
+      /NOME_DO_CLIENTE/g,
+    ];
+
+    let result = text;
+    placeholders.forEach((regex) => {
+      result = result.replace(regex, companyNameParam);
+    });
+
+    return result;
+  };
+
+  // ============================================================
   // GERAÇÃO DO DOCUMENTO COMPLETO
   // ============================================================
-  const generateFullPolicy = (companyName: string = '<NOME DO CLIENTE>') => {
+  // 🔧 CORREÇÃO v41.8: Substituir TODAS as variações do placeholder
+  const generateFullPolicy = (companyNameParam: string = '<NOME DO CLIENTE>') => {
     const activeSectionIds = sectionOrder.filter(id => activeSections[id]);
     let fullContent = `<div style="text-align: justify; font-family: Arial, sans-serif;">`;
 
     // Título principal
     fullContent += `<h1 style="text-align: center; font-size: 24pt; text-transform: uppercase;">POLÍTICA DE SEGURANÇA DA INFORMAÇÃO</h1>`;
-    fullContent += `<p style="text-align: center; font-size: 14pt; margin-bottom: 30px;"><strong>Empresa:</strong> ${companyName}</p>`;
+    fullContent += `<p style="text-align: center; font-size: 14pt; margin-bottom: 30px;"><strong>Empresa:</strong> ${companyNameParam}</p>`;
 
     // Índice
     fullContent += `<h2 style="text-transform: uppercase;">ÍNDICE</h2>`;
@@ -344,9 +408,12 @@ export default function AdminPolicyEditorV2() {
     });
     fullContent += `</ul>`;
 
-    // Seções
+    // Seções - COM SUBSTITUIÇÃO DE TODAS AS VARIAÇÕES DO PLACEHOLDER
     activeSectionIds.forEach((id) => {
-      const content = sections[id] || '';
+      // 🆕 CORREÇÃO v41.8: Substituir TODAS as variações do placeholder
+      let content = sections[id] || '';
+      content = replaceAllPlaceholders(content, companyNameParam);
+      
       const title = sectionTitles[id] || SECTIONS_CONFIG.find(s => s.id === id)?.title || id;
       fullContent += `<h2 id="section-${id}" style="text-transform: uppercase; margin-top: 30px; border-bottom: 2px solid #333; padding-bottom: 8px;">${title}</h2>`;
       fullContent += `<div style="text-align: justify;">${content}</div>`;
@@ -397,14 +464,15 @@ export default function AdminPolicyEditorV2() {
     setIsSubmitting(true);
 
     try {
-      const companyName = (user as any)?.companyName || '<NOME DO CLIENTE>';
-      const fullContent = generateFullPolicy(companyName);
+      const companyNameToUse = companyName || '<NOME DO CLIENTE>';
+      const fullContent = generateFullPolicy(companyNameToUse);
 
       // 🔍 LOG DE DIAGNÓSTICO
       console.log('📝 [AdminPolicyEditorV2] Salvando documento...');
       console.log('📝 [AdminPolicyEditorV2] ID:', id);
       console.log('📝 [AdminPolicyEditorV2] isEditing:', isEditing);
       console.log('📝 [AdminPolicyEditorV2] Conteúdo gerado (primeiros 200 chars):', fullContent.substring(0, 200) + '...');
+      console.log('📝 [AdminPolicyEditorV2] Nome da empresa usado:', companyNameToUse);
 
       // 🆕 CORREÇÃO: Garantir que o summary tenha pelo menos 10 caracteres
       const originalSummary = formData.summary || '';
@@ -445,7 +513,6 @@ export default function AdminPolicyEditorV2() {
           frameworks: data.frameworks,
           version: formData.version,
           versionChanges: 'Atualização via editor estruturado',
-          // 🆕 CAMPOS ADICIONADOS PARA PERMITIR ATUALIZAÇÃO COMPLETA
           category: formData.category,
           responsible: formData.responsible,
           strategicObjective: formData.strategicObjective,
@@ -698,7 +765,7 @@ export default function AdminPolicyEditorV2() {
               <div
                 className="prose max-w-none"
                 dangerouslySetInnerHTML={{
-                  __html: generateFullPolicy((user as any)?.companyName || '<NOME DO CLIENTE>')
+                  __html: generateFullPolicy(companyName)
                 }}
               />
             </div>

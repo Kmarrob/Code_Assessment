@@ -5,6 +5,7 @@ import { governanceService } from '../../services/governance.service';
 import { useGovernanceViewDocument } from '../../hooks/useGovernance';
 import { useAuth } from '../../../../contexts/AuthContext.js';
 import { GovernanceDocument } from '../../types/governance.types';
+import api from '../../../../services/api';
 
 const levelLabels = {
   1: 'Política',
@@ -19,12 +20,95 @@ export default function RepPolicyView() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
   const [isDownloading, setIsDownloading] = useState(false);
+  const [companyName, setCompanyName] = useState<string>('');
+  const [isLoadingCompany, setIsLoadingCompany] = useState(true);
 
   // Determinar se o usuário é Admin ou Rep
-  const isAdmin = user?.role === 'ADMIN';
+  const isAdmin = user?.role === 'ADMIN' || user?.role === 'admin';
 
   // Usar o hook de visualização com substituição
   const { data: document, isLoading, error } = useGovernanceViewDocument(id || '', isAdmin);
+
+  // Buscar o nome da empresa para substituir o placeholder
+  useEffect(() => {
+    const fetchCompanyName = async () => {
+      setIsLoadingCompany(true);
+      try {
+        // Se for ADMIN, não tem empresa associada, usar fallback
+        if (isAdmin) {
+          console.log('🏢 [RepPolicyView] ADMIN - usando fallback');
+          setCompanyName('Empresa');
+          return;
+        }
+
+        const companyId = (user as any)?.companyId;
+        console.log('🏢 [RepPolicyView] companyId:', companyId);
+
+        if (!companyId) {
+          console.log('🏢 [RepPolicyView] Sem companyId - usando fallback');
+          setCompanyName('Empresa');
+          return;
+        }
+
+        // 🆕 USAR ROTA QUE O REP TEM ACESSO (não admin)
+        // Buscar dados da empresa via rota /api/rep/company/:id
+        try {
+          const response = await api.get(`/rep/company/${companyId}`);
+          console.log('🏢 [RepPolicyView] Resposta da API:', response.data);
+          
+          if (response.data?.name) {
+            setCompanyName(response.data.name);
+          } else {
+            setCompanyName('Empresa');
+          }
+        } catch (apiError) {
+          console.warn('🏢 [RepPolicyView] Erro na API rep, tentando fallback com dados do user');
+          // Fallback: usar o nome da empresa do próprio usuário se disponível
+          const userCompanyName = (user as any)?.companyName || (user as any)?.company?.name;
+          if (userCompanyName) {
+            setCompanyName(userCompanyName);
+          } else {
+            setCompanyName('Empresa');
+          }
+        }
+      } catch (error) {
+        console.error('🏢 [RepPolicyView] Erro ao buscar empresa:', error);
+        setCompanyName('Empresa');
+      } finally {
+        setIsLoadingCompany(false);
+      }
+    };
+
+    fetchCompanyName();
+  }, [user, isAdmin]);
+
+  // 🆕 Função para substituir placeholders no conteúdo
+  const replacePlaceholders = (content: string): string => {
+    if (!content) return content;
+    const companyNameToUse = companyName || 'Empresa';
+    
+    console.log('🔍 [RepPolicyView] Substituindo placeholders:');
+    console.log('🔍 [RepPolicyView] companyNameToUse:', companyNameToUse);
+    console.log('🔍 [RepPolicyView] Conteúdo original (primeiros 200 chars):', content.substring(0, 200));
+    
+    // Substituir TODAS as variações do placeholder
+    const placeholders = [
+      /<NOME DO CLIENTE>/g,
+      /&lt;NOME DO CLIENTE&gt;/g,
+      /\[NOME DO CLIENTE\]/g,
+      /{{NOME_DO_CLIENTE}}/g,
+      /NOME_DO_CLIENTE/g,
+    ];
+
+    let replaced = content;
+    placeholders.forEach((regex) => {
+      replaced = replaced.replace(regex, companyNameToUse);
+    });
+    
+    console.log('🔍 [RepPolicyView] Conteúdo substituído (primeiros 200 chars):', replaced.substring(0, 200));
+    
+    return replaced;
+  };
 
   const handleDownload = async (format: 'doc' | 'pdf') => {
     if (!document) return;
@@ -62,7 +146,7 @@ export default function RepPolicyView() {
     }
   };
 
-  if (isLoading) {
+  if (isLoading || isLoadingCompany) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
@@ -85,6 +169,9 @@ export default function RepPolicyView() {
       </div>
     );
   }
+
+  // 🆕 Substituir placeholders no conteúdo antes de renderizar
+  const contentWithPlaceholders = replacePlaceholders(document.content);
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -169,9 +256,9 @@ export default function RepPolicyView() {
         <p className="text-gray-600">{document.summary}</p>
       </div>
 
-      {/* Content - o conteúdo já vem com os placeholders substituídos pelo backend */}
+      {/* Content - com placeholders substituídos */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 prose prose-sm max-w-none">
-        <div dangerouslySetInnerHTML={{ __html: document.content }} />
+        <div dangerouslySetInnerHTML={{ __html: contentWithPlaceholders }} />
       </div>
     </div>
   );

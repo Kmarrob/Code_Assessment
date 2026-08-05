@@ -50,7 +50,7 @@ export default defineConfig({
     minify: 'terser',
     terserOptions: {
       compress: {
-        drop_console: true,
+        drop_console: false,  // 🔧 CORRIGIDO: manter logs para debugging
         drop_debugger: true,
       },
     },
