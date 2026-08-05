@@ -2,13 +2,14 @@ import { Request, Response } from 'express';
 import { GovernanceService } from '../services/GovernanceService';
 import { FeatureService } from '../services/FeatureService';
 import { DocumentExportService } from '../services/DocumentExportService';
+import { PDFService } from '../../../services/PDFService';
 import { 
   createGovernanceDocumentSchema, 
   updateGovernanceDocumentSchema,
   governanceFiltersSchema 
 } from '../schemas/governance.schemas';
-import { Company } from '../../../models/Company.js';
-import { DocumentLevel } from '../types/governance.types.js';
+import { Company } from '../../../models/Company';
+import { DocumentLevel } from '../types/governance.types';
 
 const governanceService = new GovernanceService();
 
@@ -85,7 +86,7 @@ export class GovernanceController {
         email: user?.email
       });
 
-      if (!companyId) {
+      if (!companyId && user?.role !== 'ADMIN' && user?.role !== 'admin') {
         return res.status(401).json({ error: 'Usuário não autenticado' });
       }
 
@@ -138,7 +139,7 @@ export class GovernanceController {
         return res.status(400).json({ error: 'ID do documento é obrigatório' });
       }
 
-      if (!companyId) {
+      if (!companyId && user?.role !== 'ADMIN' && user?.role !== 'admin') {
         return res.status(401).json({ error: 'Usuário não autenticado' });
       }
 
@@ -189,7 +190,7 @@ export class GovernanceController {
         return res.status(400).json({ error: 'ID do documento é obrigatório' });
       }
 
-      if (!companyId || !userId) {
+      if ((!companyId && user?.role !== 'ADMIN' && user?.role !== 'admin') || !userId) {
         return res.status(401).json({ error: 'Usuário não autenticado' });
       }
 
@@ -253,7 +254,7 @@ export class GovernanceController {
         return res.status(400).json({ error: 'ID do documento é obrigatório' });
       }
 
-      if (!companyId) {
+      if (!companyId && user?.role !== 'ADMIN' && user?.role !== 'admin') {
         return res.status(401).json({ error: 'Usuário não autenticado' });
       }
 
@@ -305,7 +306,7 @@ export class GovernanceController {
         return res.status(400).json({ error: 'ID do documento é obrigatório' });
       }
 
-      if (!companyId || !userId) {
+      if ((!companyId && user?.role !== 'ADMIN' && user?.role !== 'admin') || !userId) {
         return res.status(401).json({ error: 'Usuário não autenticado' });
       }
 
@@ -351,7 +352,7 @@ export class GovernanceController {
         level: level
       });
 
-      if (!companyId) {
+      if (!companyId && user?.role !== 'ADMIN' && user?.role !== 'admin') {
         return res.status(401).json({ error: 'Usuário não autenticado' });
       }
 
@@ -390,7 +391,7 @@ export class GovernanceController {
         email: user?.email
       });
 
-      if (!companyId) {
+      if (!companyId && user?.role !== 'ADMIN' && user?.role !== 'admin') {
         return res.status(401).json({ error: 'Usuário não autenticado' });
       }
 
@@ -442,7 +443,7 @@ export class GovernanceController {
         return res.status(400).json({ error: 'ID do documento é obrigatório' });
       }
 
-      if (!companyId) {
+      if (!companyId && user?.role !== 'ADMIN' && user?.role !== 'admin') {
         return res.status(401).json({ error: 'Usuário não autenticado' });
       }
 
@@ -465,8 +466,11 @@ export class GovernanceController {
       }
 
       // Buscar nome da empresa
-      const company = await Company.findById(companyId);
-      const companyName = company?.name || 'Empresa';
+      let companyName = 'Empresa';
+      if (companyId) {
+        const company = await Company.findById(companyId);
+        if (company?.name) companyName = company.name;
+      }
 
       // Gerar conteúdo DOC
       const exportService = new DocumentExportService();
@@ -507,7 +511,7 @@ export class GovernanceController {
         return res.status(400).json({ error: 'ID do documento é obrigatório' });
       }
 
-      if (!companyId) {
+      if (!companyId && user?.role !== 'ADMIN' && user?.role !== 'admin') {
         return res.status(401).json({ error: 'Usuário não autenticado' });
       }
 
@@ -530,18 +534,20 @@ export class GovernanceController {
       }
 
       // Buscar nome da empresa
-      const company = await Company.findById(companyId);
-      const companyName = company?.name || 'Empresa';
+      let companyName = 'Empresa';
+      if (companyId) {
+        const company = await Company.findById(companyId);
+        if (company?.name) companyName = company.name;
+      }
 
-      // Gerar conteúdo PDF
+      // Gerar conteúdo PDF HTML
       const exportService = new DocumentExportService();
       const htmlContent = await exportService.generatePdfContent(doc, companyName);
 
       // Definir nome do arquivo
       const filename = `${doc.code}_${doc.title.replace(/\s+/g, '_')}.pdf`;
 
-      // Usar o PDFService existente para gerar o PDF
-      const { PDFService } = await import('../../../services/PDFService.js');
+      // Usar o PDFService estático para gerar o buffer PDF
       const pdfBuffer = await PDFService.generateFromHtml(htmlContent);
 
       res.setHeader('Content-Type', 'application/pdf');
@@ -585,7 +591,7 @@ export class GovernanceController {
         });
       }
 
-      if (!companyId) {
+      if (!companyId && user?.role !== 'ADMIN' && user?.role !== 'admin') {
         return res.status(401).json({ error: 'Usuário não autenticado' });
       }
 
@@ -624,8 +630,11 @@ export class GovernanceController {
       }
 
       // Buscar nome da empresa
-      const company = await Company.findById(companyId);
-      const companyName = company?.name || 'Empresa';
+      let companyName = 'Empresa';
+      if (companyId) {
+        const company = await Company.findById(companyId);
+        if (company?.name) companyName = company.name;
+      }
 
       // Substituir placeholders no conteúdo
       const exportService = new DocumentExportService();

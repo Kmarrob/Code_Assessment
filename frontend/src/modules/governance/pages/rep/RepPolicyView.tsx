@@ -110,37 +110,58 @@ export default function RepPolicyView() {
     return replaced;
   };
 
+  // 🔧 CORREÇÃO: handleDownload ajustado para usar window.document explicitamente evitando conflito com a prop document
   const handleDownload = async (format: 'doc' | 'pdf') => {
     if (!document) return;
+    
+    // 🔧 CORREÇÃO: Obter o ID correto (_id ou id)
+    const docId = (document as any)._id || document.id;
+    if (!docId) {
+      console.error('❌ Documento sem ID:', document);
+      alert('Erro: Documento sem identificador');
+      return;
+    }
+    
     setIsDownloading(true);
     try {
+      let blob: Blob;
+      
+      // 🔧 CORREÇÃO: Chamar o serviço UMA ÚNICA VEZ e armazenar o blob
       if (isAdmin) {
         if (format === 'pdf') {
-          await governanceService.downloadDocumentPdf(document.id);
+          blob = await governanceService.downloadDocumentPdf(docId);
         } else {
-          await governanceService.downloadDocumentDoc(document.id);
+          blob = await governanceService.downloadDocumentDoc(docId);
         }
       } else {
         if (format === 'pdf') {
-          await governanceService.repDownloadDocumentPdf(document.id);
+          blob = await governanceService.repDownloadDocumentPdf(docId);
         } else {
-          await governanceService.repDownloadDocumentDoc(document.id);
+          blob = await governanceService.repDownloadDocumentDoc(docId);
         }
       }
       
-      // Criar link para download
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(await (format === 'pdf' 
-        ? (isAdmin ? governanceService.downloadDocumentPdf(document.id) : governanceService.repDownloadDocumentPdf(document.id))
-        : (isAdmin ? governanceService.downloadDocumentDoc(document.id) : governanceService.repDownloadDocumentDoc(document.id))
-      ));
-      link.download = `${document.code}_${document.title.replace(/\s+/g, '_')}.${format}`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      // 🆕 CORREÇÃO: Usar o objeto global window.document para manipular o DOM com segurança
+      if (typeof window !== 'undefined' && window.document) {
+        const url = URL.createObjectURL(blob);
+        const link = window.document.createElement('a');
+        link.href = url;
+        link.download = `${document.code}_${document.title.replace(/\s+/g, '_')}.${format}`;
+        window.document.body.appendChild(link);
+        link.click();
+        window.document.body.removeChild(link);
+        
+        // Liberar a URL após o download
+        setTimeout(() => {
+          URL.revokeObjectURL(url);
+        }, 1000);
+      } else {
+        // Fallback para ambiente não-navegador (SSR)
+        console.warn('⚠️ Download não disponível neste ambiente');
+      }
     } catch (err) {
-      alert('Erro ao baixar documento');
       console.error('Erro no download:', err);
+      alert('Erro ao baixar documento. Verifique o console para mais detalhes.');
     } finally {
       setIsDownloading(false);
     }

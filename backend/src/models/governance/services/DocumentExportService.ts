@@ -1,20 +1,28 @@
 import { IGovernanceDocument } from '../models/GovernanceDocument';
+import { PDFService } from '../../../services/PDFService';
 
 export class DocumentExportService {
   /**
    * Substitui placeholders no conteúdo do documento
    * 🆕 TORNADO PÚBLICO (v41) para ser usado pelo GovernanceController
    * 🆕 CORREÇÃO v41.2: Adicionado suporte para <NOME DO CLIENTE> e [NOME DO CLIENTE]
+   * 🆕 CORREÇÃO v41.4: Adicionado suporte para HTML Entities e variações adicionais
    */
   public replacePlaceholders(content: string, companyName: string): string {
+    if (!content) return content;
+    const nameToUse = companyName || 'Empresa';
+
     return content
-      .replace(/\[NOME DA EMPRESA\]/g, companyName)
-      .replace(/\[NOME_DA_EMPRESA\]/g, companyName)
-      .replace(/{{company_name}}/g, companyName)
-      .replace(/{{COMPANY_NAME}}/g, companyName)
+      .replace(/\[NOME DA EMPRESA\]/g, nameToUse)
+      .replace(/\[NOME_DA_EMPRESA\]/g, nameToUse)
+      .replace(/{{company_name}}/g, nameToUse)
+      .replace(/{{COMPANY_NAME}}/g, nameToUse)
       // 🆕 ADICIONADO: Suporte para placeholder usado no conteúdo da política
-      .replace(/<NOME DO CLIENTE>/g, companyName)
-      .replace(/\[NOME DO CLIENTE\]/g, companyName);
+      .replace(/<NOME DO CLIENTE>/g, nameToUse)
+      .replace(/&lt;NOME DO CLIENTE&gt;/g, nameToUse)
+      .replace(/\[NOME DO CLIENTE\]/g, nameToUse)
+      .replace(/{{NOME_DO_CLIENTE}}/g, nameToUse)
+      .replace(/NOME_DO_CLIENTE/g, nameToUse);
   }
 
   /**
@@ -59,7 +67,7 @@ export class DocumentExportService {
   }
 
   /**
-   * Gera conteúdo para download em formato PDF
+   * Gera conteúdo para download em formato PDF (HTML string formatado)
    */
   async generatePdfContent(document: IGovernanceDocument, companyName: string): Promise<string> {
     // Similar ao DOC, mas com estilos otimizados para PDF
@@ -187,5 +195,13 @@ export class DocumentExportService {
         </body>
       </html>
     `;
+  }
+
+  /**
+   * 🆕 MÉTODOS AUXILIARES DE EXPORTAÇÃO COMPATÍVEIS COM O GERADOR DE PDF REAL
+   */
+  public async exportToPdfBuffer(document: IGovernanceDocument, companyName: string): Promise<Buffer> {
+    const htmlContent = await this.generatePdfContent(document, companyName);
+    return await PDFService.generateFromHtml(htmlContent);
   }
 }
