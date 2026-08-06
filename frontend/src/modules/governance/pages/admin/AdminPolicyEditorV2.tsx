@@ -395,8 +395,8 @@ export default function AdminPolicyEditorV2() {
     const activeSectionIds = sectionOrder.filter(id => activeSections[id]);
     let fullContent = `<div style="text-align: justify; font-family: Arial, sans-serif;">`;
 
-    // Título principal
-    fullContent += `<h1 style="text-align: center; font-size: 24pt; text-transform: uppercase;">POLÍTICA DE SEGURANÇA DA INFORMAÇÃO</h1>`;
+    // 🆕 CORREÇÃO v42.1: Título dinâmico usando o título do formulário
+    fullContent += `<h1 style="text-align: center; font-size: 24pt; text-transform: uppercase;">${formData.title}</h1>`;
     fullContent += `<p style="text-align: center; font-size: 14pt; margin-bottom: 30px;"><strong>Empresa:</strong> ${companyNameParam}</p>`;
 
     // Índice
