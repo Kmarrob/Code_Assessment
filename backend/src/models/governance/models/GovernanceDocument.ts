@@ -25,6 +25,11 @@ export interface IGovernanceDocument extends Document {
   effectiveDate: Date;
   reviewDate: Date;          // Data de revisão obrigatória
   
+  // 🆕 CAMPOS ADICIONAIS PARA POLÍTICAS
+  responsible?: string;           // Responsável pela política
+  strategicObjective?: string;    // Objetivo estratégico
+  scope?: 'all' | 'it' | 'security' | 'privacy';  // Escopo da política
+  
   // Frameworks
   frameworks: {
     iso27001?: string[];
@@ -94,6 +99,15 @@ const GovernanceDocumentSchema = new Schema<IGovernanceDocument>(
     approvedAt: { type: Date },
     effectiveDate: { type: Date, required: true },
     reviewDate: { type: Date, required: true },
+    
+    // 🆕 CAMPOS ADICIONAIS PARA POLÍTICAS
+    responsible: { type: String, default: '' },
+    strategicObjective: { type: String, default: '' },
+    scope: { 
+      type: String, 
+      enum: ['all', 'it', 'security', 'privacy'], 
+      default: 'all' 
+    },
     
     frameworks: {
       iso27001: { type: [String], default: [] },
