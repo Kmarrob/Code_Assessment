@@ -474,10 +474,15 @@ export default function AdminPolicyEditorV2() {
       console.log('📝 [AdminPolicyEditorV2] Conteúdo gerado (primeiros 200 chars):', fullContent.substring(0, 200) + '...');
       console.log('📝 [AdminPolicyEditorV2] Nome da empresa usado:', companyNameToUse);
 
-      // 🆕 CORREÇÃO: Garantir que o summary tenha pelo menos 10 caracteres
+      // 🆕 CORREÇÃO: Garantir que o summary tenha pelo menos 10 caracteres e no máximo 500
       const originalSummary = formData.summary || '';
       const autoSummary = generateAutoSummary();
-      const finalSummary = originalSummary.trim() || autoSummary;
+      let finalSummary = originalSummary.trim() || autoSummary;
+      // 🆕 CORREÇÃO v42: Truncar summary para no máximo 500 caracteres
+      if (finalSummary.length > 500) {
+        finalSummary = finalSummary.substring(0, 497) + '...';
+        console.log('📝 [AdminPolicyEditorV2] Summary truncado para 500 caracteres');
+      }
 
       // 🆕 LOG DA CORREÇÃO
       console.log('📝 [AdminPolicyEditorV2] Summary original:', originalSummary);
