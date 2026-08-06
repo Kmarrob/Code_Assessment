@@ -37,6 +37,10 @@ export const governanceDocumentBaseSchema = z.object({
     lgpd: z.array(z.string()).optional(),
     bacen: z.array(z.string()).optional(),
   }).optional(),
+  // 🆕 CAMPOS ADICIONAIS PARA POLÍTICAS
+  scope: z.enum(['all', 'it', 'security', 'privacy']).optional(),
+  strategicObjective: z.string().min(10).optional(),
+  responsible: z.string().min(3).optional(),
 });
 
 // Create DTO
