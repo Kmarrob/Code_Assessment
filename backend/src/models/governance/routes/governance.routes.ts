@@ -84,9 +84,20 @@ router.get(
       
       const hasAccess = await FeatureService.hasGovernanceAccess(user?.plan || 'basic');
       if (!hasAccess) {
+        const planLabel: Record<string, string> = {
+          basic: 'Básico',
+          pro: 'Profissional',
+          enterprise: 'Enterprise'
+        };
         return res.status(403).json({
           error: 'Plano Enterprise necessário para acessar o módulo de governança',
           code: 'PLAN_FEATURE_NOT_AVAILABLE',
+          currentPlan: user?.plan || 'basic',
+          currentPlanLabel: planLabel[user?.plan || 'basic'] || 'Básico',
+          requiredPlan: 'enterprise',
+          requiredPlanLabel: 'Enterprise',
+          message: `Seu plano atual (${planLabel[user?.plan || 'basic'] || 'Básico'}) não inclui acesso ao módulo de governança. Faça upgrade para o plano Enterprise para acessar políticas, processos e procedimentos.`,
+          upgradeUrl: '/plans'
         });
       }
       next();
@@ -107,9 +118,20 @@ router.get(
       
       const hasAccess = await FeatureService.hasGovernanceAccess(user?.plan || 'basic');
       if (!hasAccess) {
+        const planLabel: Record<string, string> = {
+          basic: 'Básico',
+          pro: 'Profissional',
+          enterprise: 'Enterprise'
+        };
         return res.status(403).json({
           error: 'Plano Enterprise necessário para acessar o módulo de governança',
           code: 'PLAN_FEATURE_NOT_AVAILABLE',
+          currentPlan: user?.plan || 'basic',
+          currentPlanLabel: planLabel[user?.plan || 'basic'] || 'Básico',
+          requiredPlan: 'enterprise',
+          requiredPlanLabel: 'Enterprise',
+          message: `Seu plano atual (${planLabel[user?.plan || 'basic'] || 'Básico'}) não inclui acesso ao módulo de governança. Faça upgrade para o plano Enterprise para acessar políticas, processos e procedimentos.`,
+          upgradeUrl: '/plans'
         });
       }
       next();
@@ -130,9 +152,20 @@ router.get(
       
       const hasAccess = await FeatureService.hasGovernanceAccess(user?.plan || 'basic');
       if (!hasAccess) {
+        const planLabel: Record<string, string> = {
+          basic: 'Básico',
+          pro: 'Profissional',
+          enterprise: 'Enterprise'
+        };
         return res.status(403).json({
           error: 'Plano Enterprise necessário para acessar o módulo de governança',
           code: 'PLAN_FEATURE_NOT_AVAILABLE',
+          currentPlan: user?.plan || 'basic',
+          currentPlanLabel: planLabel[user?.plan || 'basic'] || 'Básico',
+          requiredPlan: 'enterprise',
+          requiredPlanLabel: 'Enterprise',
+          message: `Seu plano atual (${planLabel[user?.plan || 'basic'] || 'Básico'}) não inclui acesso ao módulo de governança. Faça upgrade para o plano Enterprise para acessar políticas, processos e procedimentos.`,
+          upgradeUrl: '/plans'
         });
       }
       next();
@@ -153,9 +186,20 @@ router.get(
       
       const hasAccess = await FeatureService.hasGovernanceAccess(user?.plan || 'basic');
       if (!hasAccess) {
+        const planLabel: Record<string, string> = {
+          basic: 'Básico',
+          pro: 'Profissional',
+          enterprise: 'Enterprise'
+        };
         return res.status(403).json({
           error: 'Plano Enterprise necessário para acessar o módulo de governança',
           code: 'PLAN_FEATURE_NOT_AVAILABLE',
+          currentPlan: user?.plan || 'basic',
+          currentPlanLabel: planLabel[user?.plan || 'basic'] || 'Básico',
+          requiredPlan: 'enterprise',
+          requiredPlanLabel: 'Enterprise',
+          message: `Seu plano atual (${planLabel[user?.plan || 'basic'] || 'Básico'}) não inclui acesso ao módulo de governança. Faça upgrade para o plano Enterprise para acessar políticas, processos e procedimentos.`,
+          upgradeUrl: '/plans'
         });
       }
       next();
@@ -195,9 +239,20 @@ router.get(
       
       const hasAccess = await FeatureService.hasGovernanceAccess(user?.plan || 'basic');
       if (!hasAccess) {
+        const planLabel: Record<string, string> = {
+          basic: 'Básico',
+          pro: 'Profissional',
+          enterprise: 'Enterprise'
+        };
         return res.status(403).json({
           error: 'Plano Enterprise necessário para acessar o módulo de governança',
           code: 'PLAN_FEATURE_NOT_AVAILABLE',
+          currentPlan: user?.plan || 'basic',
+          currentPlanLabel: planLabel[user?.plan || 'basic'] || 'Básico',
+          requiredPlan: 'enterprise',
+          requiredPlanLabel: 'Enterprise',
+          message: `Seu plano atual (${planLabel[user?.plan || 'basic'] || 'Básico'}) não inclui acesso ao módulo de governança. Faça upgrade para o plano Enterprise para acessar políticas, processos e procedimentos.`,
+          upgradeUrl: '/plans'
         });
       }
       next();
@@ -219,9 +274,20 @@ router.get(
       
       const hasAccess = await FeatureService.hasGovernanceAccess(user?.plan || 'basic');
       if (!hasAccess) {
+        const planLabel: Record<string, string> = {
+          basic: 'Básico',
+          pro: 'Profissional',
+          enterprise: 'Enterprise'
+        };
         return res.status(403).json({
           error: 'Plano Enterprise necessário para acessar o módulo de governança',
           code: 'PLAN_FEATURE_NOT_AVAILABLE',
+          currentPlan: user?.plan || 'basic',
+          currentPlanLabel: planLabel[user?.plan || 'basic'] || 'Básico',
+          requiredPlan: 'enterprise',
+          requiredPlanLabel: 'Enterprise',
+          message: `Seu plano atual (${planLabel[user?.plan || 'basic'] || 'Básico'}) não inclui acesso ao módulo de governança. Faça upgrade para o plano Enterprise para acessar políticas, processos e procedimentos.`,
+          upgradeUrl: '/plans'
         });
       }
       next();
@@ -254,9 +320,20 @@ router.get(
       
       const hasAccess = await FeatureService.hasGovernanceAccess(user?.plan || 'basic');
       if (!hasAccess) {
+        const planLabel: Record<string, string> = {
+          basic: 'Básico',
+          pro: 'Profissional',
+          enterprise: 'Enterprise'
+        };
         return res.status(403).json({
           error: 'Plano Enterprise necessário para acessar o módulo de governança',
           code: 'PLAN_FEATURE_NOT_AVAILABLE',
+          currentPlan: user?.plan || 'basic',
+          currentPlanLabel: planLabel[user?.plan || 'basic'] || 'Básico',
+          requiredPlan: 'enterprise',
+          requiredPlanLabel: 'Enterprise',
+          message: `Seu plano atual (${planLabel[user?.plan || 'basic'] || 'Básico'}) não inclui acesso ao módulo de governança. Faça upgrade para o plano Enterprise para acessar políticas, processos e procedimentos.`,
+          upgradeUrl: '/plans'
         });
       }
       next();
