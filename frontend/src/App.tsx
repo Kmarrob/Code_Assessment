@@ -95,6 +95,9 @@ import AdminFunnelAnalytics from './pages/admin/AdminFunnelAnalytics.js';
 // 🔴 NOVO: FASE 8 - Import da página de detalhes do cliente
 import AdminClientDetails from './pages/admin/AdminClientDetails.js';
 
+// 🆕 NOVO (v42.0) - Import da página de Auditoria
+import AdminAuditLogs from './pages/admin/AdminAuditLogs.js';
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -338,6 +341,13 @@ function App() {
                     <Route path="/admin/governance/document/:id/edit" element={
                       <Layout>
                         <AdminPolicyEditorV2 />
+                      </Layout>
+                    } />
+
+                    {/* 🆕 NOVO (v42.0) - Rota para Auditoria do Sistema */}
+                    <Route path="/admin/audit" element={
+                      <Layout>
+                        <AdminAuditLogs />
                       </Layout>
                     } />
                   </Route>

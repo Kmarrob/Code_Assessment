@@ -36,6 +36,9 @@ import analyticsRoutes from './routes/analytics.routes.js';
 // 🔧 CORREÇÃO v41.1: Caminho corrigido de './models/governance/...' para './modules/governance/...'
 import governanceRoutes from './models/governance/routes/governance.routes.js';
 
+// 🆕 NOVO (v42.0) - Importação do módulo de auditoria
+import auditRoutes from './routes/audit.routes.js';
+
 const app = express();
 
 app.use(compression({
@@ -160,6 +163,9 @@ app.use('/api/admin/analytics', analyticsRoutes);
 // 🆕 NOVO (v39) - Rotas de Governança
 app.use('/api/governance', governanceRoutes);
 
+// 🆕 NOVO (v42.0) - Rotas de Auditoria (Admin)
+app.use('/api/admin/audit', auditRoutes);
+
 app.get('/health', noCache, (_req, res) => {
   res.json({
     status: 'ok',
@@ -240,6 +246,8 @@ async function startServer() {
       logger.info(`📊 Analytics Routes: http://localhost:${PORT}/api/admin/analytics`);
       // 🆕 NOVO (v39) - Governance Routes
       logger.info(`📋 Governance Routes: http://localhost:${PORT}/api/governance`);
+      // 🆕 NOVO (v42.0) - Audit Routes
+      logger.info(`📋 Audit Routes: http://localhost:${PORT}/api/admin/audit`);
       logger.info(`📁 Uploads servidos em: http://localhost:${PORT}/uploads`);
     });
 
