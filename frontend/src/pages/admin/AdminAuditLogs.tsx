@@ -79,10 +79,12 @@ export default function AdminAuditLogs() {
     setError(null);
     try {
       const result = await auditService.listLogs(filters);
-      setLogs(result.logs);
-      setPagination(result.pagination);
+      // ✅ Garantia de array válido para não quebrar com undefined
+      setLogs(Array.isArray(result?.logs) ? result.logs : []);
+      setPagination(result?.pagination || { page: 1, limit: 50, total: 0, totalPages: 1 });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao carregar logs');
+      setLogs([]);
     } finally {
       setIsLoading(false);
     }
@@ -94,11 +96,11 @@ export default function AdminAuditLogs() {
       setStats({
         total: data?.total ?? 0,
         days: data?.days ?? 30,
-        byCategory: data?.byCategory ?? [],
-        byAction: data?.byAction ?? [],
-        byLevel: data?.byLevel ?? [],
-        bySuccess: data?.bySuccess ?? [],
-        byDay: data?.byDay ?? [],
+        byCategory: Array.isArray(data?.byCategory) ? data.byCategory : [],
+        byAction: Array.isArray(data?.byAction) ? data.byAction : [],
+        byLevel: Array.isArray(data?.byLevel) ? data.byLevel : [],
+        bySuccess: Array.isArray(data?.bySuccess) ? data.bySuccess : [],
+        byDay: Array.isArray(data?.byDay) ? data.byDay : [],
       });
     } catch (err) {
       console.error('Erro ao carregar estatísticas:', err);
@@ -156,15 +158,20 @@ export default function AdminAuditLogs() {
     }
   };
 
-  const formatDate = (date: string) => {
-    return new Date(date).toLocaleString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-    });
+  const formatDate = (date?: string) => {
+    if (!date) return '-';
+    try {
+      return new Date(date).toLocaleString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      });
+    } catch {
+      return '-';
+    }
   };
 
   const formatDuration = (ms?: number) => {
@@ -174,6 +181,7 @@ export default function AdminAuditLogs() {
   };
 
   const safeStats = stats ?? { total: 0, days: 30, byCategory: [], byAction: [], byLevel: [], bySuccess: [], byDay: [] };
+  const safeLogs = Array.isArray(logs) ? logs : [];
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -280,7 +288,7 @@ export default function AdminAuditLogs() {
             <h3 className="text-lg font-semibold text-red-800">Erro ao carregar logs</h3>
             <p className="text-red-600 mt-2">{error}</p>
           </div>
-        ) : logs.length === 0 ? (
+        ) : safeLogs.length === 0 ? (
           <div className="text-center py-12">
             <Activity className="w-16 h-16 text-gray-300 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-gray-600">Nenhum log encontrado</h3>
@@ -307,63 +315,68 @@ export default function AdminAuditLogs() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {logs.map((log) => (
-                    <tr key={log._id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-4 py-3 text-gray-600 text-xs whitespace-nowrap">
-                        {formatDate(log.timestamp)}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex flex-col">
-                          <span className="text-sm font-medium text-gray-900">{log.userEmail || 'Sistema'}</span>
-                          <span className="text-xs text-gray-400">{log.userName || ''}</span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="font-mono text-xs bg-gray-100 px-2 py-1 rounded">
-                          {log.action}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${CATEGORY_COLORS[log.category] || 'bg-gray-100'}`}>
-                          {CATEGORY_LABELS[log.category] || log.category}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${LEVEL_COLORS[log.level]}`}>
-                          {LEVEL_ICONS[log.level]}
-                          {log.level.toUpperCase()}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex flex-col">
-                          <span className="text-sm text-gray-700">{log.resource}</span>
-                          <span className="text-xs text-gray-400">{log.resourceName || log.resourceId || '-'}</span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        {log.success ? (
-                          <span className="flex items-center gap-1 text-green-600">
-                            <CheckCircle className="w-4 h-4" />
-                            Sucesso
+                  {safeLogs.map((log) => {
+                    const levelKey = (log?.level || 'info').toLowerCase();
+                    const categoryKey = (log?.category || 'system').toLowerCase();
+
+                    return (
+                      <tr key={log._id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-4 py-3 text-gray-600 text-xs whitespace-nowrap">
+                          {formatDate(log.timestamp)}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex flex-col">
+                            <span className="text-sm font-medium text-gray-900">{log.userEmail || 'Sistema'}</span>
+                            <span className="text-xs text-gray-400">{log.userName || ''}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="font-mono text-xs bg-gray-100 px-2 py-1 rounded">
+                            {log.action || '-'}
                           </span>
-                        ) : (
-                          <span className="flex items-center gap-1 text-red-600">
-                            <XCircle className="w-4 h-4" />
-                            Erro
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${CATEGORY_COLORS[categoryKey] || 'bg-gray-100 text-gray-700'}`}>
+                            {CATEGORY_LABELS[categoryKey] || log.category || 'Sistema'}
                           </span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        <button
-                          onClick={() => handleViewLog(log)}
-                          className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
-                          title="Ver detalhes"
-                        >
-                          <Eye className="w-4 h-4 text-gray-400" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${LEVEL_COLORS[levelKey] || 'bg-gray-100 text-gray-700'}`}>
+                            {LEVEL_ICONS[levelKey] || <Activity className="w-3 h-3" />}
+                            {(log.level || 'INFO').toUpperCase()}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex flex-col">
+                            <span className="text-sm text-gray-700">{log.resource || '-'}</span>
+                            <span className="text-xs text-gray-400">{log.resourceName || log.resourceId || '-'}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          {log.success ? (
+                            <span className="flex items-center gap-1 text-green-600">
+                              <CheckCircle className="w-4 h-4" />
+                              Sucesso
+                            </span>
+                          ) : (
+                            <span className="flex items-center gap-1 text-red-600">
+                              <XCircle className="w-4 h-4" />
+                              Erro
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <button
+                            onClick={() => handleViewLog(log)}
+                            className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
+                            title="Ver detalhes"
+                          >
+                            <Eye className="w-4 h-4 text-gray-400" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -415,7 +428,7 @@ export default function AdminAuditLogs() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs text-gray-500">ID</label>
-                  <p className="text-sm font-mono bg-gray-50 px-2 py-1 rounded">{selectedLog._id}</p>
+                  <p className="text-sm font-mono bg-gray-50 px-2 py-1 rounded">{selectedLog._id || '-'}</p>
                 </div>
                 <div>
                   <label className="text-xs text-gray-500">Data/Hora</label>
@@ -432,18 +445,18 @@ export default function AdminAuditLogs() {
                 </div>
                 <div>
                   <label className="text-xs text-gray-500">Ação</label>
-                  <p className="text-sm font-mono bg-gray-100 px-2 py-1 rounded">{selectedLog.action}</p>
+                  <p className="text-sm font-mono bg-gray-100 px-2 py-1 rounded">{selectedLog.action || '-'}</p>
                 </div>
                 <div>
                   <label className="text-xs text-gray-500">Categoria</label>
-                  <p className={`text-sm font-medium px-2 py-1 rounded ${CATEGORY_COLORS[selectedLog.category]}`}>
-                    {CATEGORY_LABELS[selectedLog.category] || selectedLog.category}
+                  <p className={`text-sm font-medium px-2 py-1 rounded ${CATEGORY_COLORS[(selectedLog.category || '').toLowerCase()] || 'bg-gray-100'}`}>
+                    {CATEGORY_LABELS[(selectedLog.category || '').toLowerCase()] || selectedLog.category || '-'}
                   </p>
                 </div>
                 <div>
                   <label className="text-xs text-gray-500">Nível</label>
-                  <p className={`text-sm font-medium px-2 py-1 rounded ${LEVEL_COLORS[selectedLog.level]}`}>
-                    {selectedLog.level.toUpperCase()}
+                  <p className={`text-sm font-medium px-2 py-1 rounded ${LEVEL_COLORS[(selectedLog.level || '').toLowerCase()] || 'bg-gray-100'}`}>
+                    {(selectedLog.level || 'INFO').toUpperCase()}
                   </p>
                 </div>
                 <div>
@@ -458,11 +471,11 @@ export default function AdminAuditLogs() {
                 </div>
                 <div>
                   <label className="text-xs text-gray-500">IP</label>
-                  <p className="text-sm font-mono">{selectedLog.ip}</p>
+                  <p className="text-sm font-mono">{selectedLog.ip || '-'}</p>
                 </div>
                 <div>
                   <label className="text-xs text-gray-500">User Agent</label>
-                  <p className="text-sm text-gray-600 truncate">{selectedLog.userAgent}</p>
+                  <p className="text-sm text-gray-600 truncate">{selectedLog.userAgent || '-'}</p>
                 </div>
                 <div>
                   <label className="text-xs text-gray-500">Método</label>
