@@ -93,7 +93,6 @@ export class AuditService {
 
       await auditLog.save();
 
-      // Também loga no console para debug
       logger.info(`[AUDIT] ${entry.action} | User: ${entry.userEmail || 'system'} | Resource: ${entry.resource} | Success: ${entry.success}`);
 
       return auditLog;
@@ -151,7 +150,160 @@ export class AuditService {
   }
 
   // ============================================
-  // MÉTODOS AUXILIARES POR CATEGORIA
+  // 🆕 MÉTODOS LEGACY (para compatibilidade com AdminController)
+  // ============================================
+
+  /**
+   * 🆕 Método legacy para criação de usuário (compatível com AdminController)
+   */
+  static async logUserCreationLegacy(
+    actorId: string,
+    actorEmail: string,
+    targetUserId: string,
+    targetUserEmail: string,
+    targetRole: string,
+    ip: string,
+    userAgent: string,
+    success: boolean,
+    errorMessage?: string
+  ): Promise<IAuditLog | null> {
+    return this.log({
+      userId: actorId,
+      userEmail: actorEmail,
+      action: 'USER_CREATED',
+      category: 'user',
+      level: success ? 'info' : 'error',
+      resource: 'User',
+      resourceId: targetUserId,
+      resourceName: targetUserEmail,
+      details: { targetRole },
+      ip: ip || '0.0.0.0',
+      userAgent: userAgent || 'unknown',
+      success,
+      errorMessage,
+    });
+  }
+
+  /**
+   * 🆕 Método legacy para atualização de usuário (compatível com AdminController)
+   */
+  static async logUserUpdateLegacy(
+    actorId: string,
+    actorEmail: string,
+    targetUserId: string,
+    targetUserEmail: string,
+    changes: any,
+    ip: string,
+    userAgent: string,
+    success: boolean,
+    errorMessage?: string
+  ): Promise<IAuditLog | null> {
+    return this.log({
+      userId: actorId,
+      userEmail: actorEmail,
+      action: 'USER_UPDATED',
+      category: 'user',
+      level: success ? 'info' : 'error',
+      resource: 'User',
+      resourceId: targetUserId,
+      resourceName: targetUserEmail,
+      details: { changes },
+      ip: ip || '0.0.0.0',
+      userAgent: userAgent || 'unknown',
+      success,
+      errorMessage,
+    });
+  }
+
+  /**
+   * 🆕 Método legacy para desativação de usuário (compatível com AdminController)
+   */
+  static async logUserDeactivationLegacy(
+    actorId: string,
+    actorEmail: string,
+    targetUserId: string,
+    targetUserEmail: string,
+    ip: string,
+    userAgent: string,
+    success: boolean,
+    errorMessage?: string
+  ): Promise<IAuditLog | null> {
+    return this.log({
+      userId: actorId,
+      userEmail: actorEmail,
+      action: 'USER_DEACTIVATED',
+      category: 'user',
+      level: success ? 'info' : 'error',
+      resource: 'User',
+      resourceId: targetUserId,
+      resourceName: targetUserEmail,
+      ip: ip || '0.0.0.0',
+      userAgent: userAgent || 'unknown',
+      success,
+      errorMessage,
+    });
+  }
+
+  /**
+   * 🆕 Método legacy para reativação de usuário (compatível com AdminController)
+   */
+  static async logUserReactivationLegacy(
+    actorId: string,
+    actorEmail: string,
+    targetUserId: string,
+    targetUserEmail: string,
+    ip: string,
+    userAgent: string,
+    success: boolean,
+    errorMessage?: string
+  ): Promise<IAuditLog | null> {
+    return this.log({
+      userId: actorId,
+      userEmail: actorEmail,
+      action: 'USER_REACTIVATED',
+      category: 'user',
+      level: success ? 'info' : 'error',
+      resource: 'User',
+      resourceId: targetUserId,
+      resourceName: targetUserEmail,
+      ip: ip || '0.0.0.0',
+      userAgent: userAgent || 'unknown',
+      success,
+      errorMessage,
+    });
+  }
+
+  /**
+   * 🆕 Método legacy para reset de senha (compatível com AdminController)
+   */
+  static async logPasswordResetLegacy(
+    actorId: string,
+    actorEmail: string,
+    targetUserId: string,
+    targetUserEmail: string,
+    ip: string,
+    userAgent: string,
+    success: boolean,
+    errorMessage?: string
+  ): Promise<IAuditLog | null> {
+    return this.log({
+      userId: actorId,
+      userEmail: actorEmail,
+      action: 'PASSWORD_RESET_CONFIRM',
+      category: 'auth',
+      level: success ? 'info' : 'warning',
+      resource: 'User',
+      resourceId: targetUserId,
+      resourceName: targetUserEmail,
+      ip: ip || '0.0.0.0',
+      userAgent: userAgent || 'unknown',
+      success,
+      errorMessage,
+    });
+  }
+
+  // ============================================
+  // MÉTODOS AUXILIARES POR CATEGORIA (com Request)
   // ============================================
 
   // 🔐 AUTENTICAÇÃO
@@ -205,84 +357,299 @@ export class AuditService {
     });
   }
 
-  // 👤 USUÁRIOS
+  // 👤 USUÁRIOS - MÉTODOS FLEXÍVEIS (aceitam Request OU parâmetros individuais)
+  
+  /**
+   * Criação de usuário - Aceita Request OU parâmetros individuais
+   */
   static async logUserCreation(
     actorId: string,
     actorEmail: string,
     targetUserId: string,
     targetUserEmail: string,
     targetRole: string,
-    req: Request,
-    success: boolean,
-    errorMessage?: string
-  ) {
-    const info = this.getRequestInfo(req);
-    return this.log({
-      userId: actorId,
-      userEmail: actorEmail,
-      ...info,
-      action: 'USER_CREATED',
-      category: 'user',
-      level: success ? 'info' : 'error',
-      resource: 'User',
-      resourceId: targetUserId,
-      resourceName: targetUserEmail,
-      details: { targetRole },
-      success,
-      errorMessage,
-    });
+    sixthParam: string | Request,
+    seventhParam: string | boolean,
+    eighthParam?: boolean | string,
+    ninthParam?: string
+  ): Promise<IAuditLog | null> {
+    // Verificar se o sexto parâmetro é um Request
+    if (typeof sixthParam === 'object' && sixthParam !== null && 'headers' in sixthParam) {
+      // É um Request - usar o método com Request
+      const req = sixthParam as Request;
+      const success = seventhParam as boolean;
+      const errorMessage = eighthParam as string | undefined;
+      const info = this.getRequestInfo(req);
+      const userInfo = this.getUserInfo(req);
+      return this.log({
+        ...userInfo,
+        ...info,
+        userId: actorId,
+        userEmail: actorEmail,
+        action: 'USER_CREATED',
+        category: 'user',
+        level: success ? 'info' : 'error',
+        resource: 'User',
+        resourceId: targetUserId,
+        resourceName: targetUserEmail,
+        details: { targetRole },
+        success,
+        errorMessage,
+      });
+    } else {
+      // É o formato legacy (ip, userAgent, success)
+      const ip = sixthParam as string;
+      const userAgent = seventhParam as string;
+      const success = eighthParam as boolean;
+      const errorMessage = ninthParam as string | undefined;
+      return this.log({
+        userId: actorId,
+        userEmail: actorEmail,
+        action: 'USER_CREATED',
+        category: 'user',
+        level: success ? 'info' : 'error',
+        resource: 'User',
+        resourceId: targetUserId,
+        resourceName: targetUserEmail,
+        details: { targetRole },
+        ip: ip || '0.0.0.0',
+        userAgent: userAgent || 'unknown',
+        success,
+        errorMessage,
+      });
+    }
   }
 
+  /**
+   * Atualização de usuário - Aceita Request OU parâmetros individuais
+   */
   static async logUserUpdate(
     actorId: string,
     actorEmail: string,
     targetUserId: string,
     targetUserEmail: string,
     changes: any,
-    req: Request,
-    success: boolean,
-    errorMessage?: string
-  ) {
-    const info = this.getRequestInfo(req);
-    return this.log({
-      userId: actorId,
-      userEmail: actorEmail,
-      ...info,
-      action: 'USER_UPDATED',
-      category: 'user',
-      level: success ? 'info' : 'error',
-      resource: 'User',
-      resourceId: targetUserId,
-      resourceName: targetUserEmail,
-      details: { changes },
-      success,
-      errorMessage,
-    });
+    sixthParam: string | Request,
+    seventhParam: string | boolean,
+    eighthParam?: boolean | string,
+    ninthParam?: string
+  ): Promise<IAuditLog | null> {
+    // Verificar se o sexto parâmetro é um Request
+    if (typeof sixthParam === 'object' && sixthParam !== null && 'headers' in sixthParam) {
+      // É um Request
+      const req = sixthParam as Request;
+      const success = seventhParam as boolean;
+      const errorMessage = eighthParam as string | undefined;
+      const info = this.getRequestInfo(req);
+      const userInfo = this.getUserInfo(req);
+      return this.log({
+        ...userInfo,
+        ...info,
+        userId: actorId,
+        userEmail: actorEmail,
+        action: 'USER_UPDATED',
+        category: 'user',
+        level: success ? 'info' : 'error',
+        resource: 'User',
+        resourceId: targetUserId,
+        resourceName: targetUserEmail,
+        details: { changes },
+        success,
+        errorMessage,
+      });
+    } else {
+      // Formato legacy
+      const ip = sixthParam as string;
+      const userAgent = seventhParam as string;
+      const success = eighthParam as boolean;
+      const errorMessage = ninthParam as string | undefined;
+      return this.log({
+        userId: actorId,
+        userEmail: actorEmail,
+        action: 'USER_UPDATED',
+        category: 'user',
+        level: success ? 'info' : 'error',
+        resource: 'User',
+        resourceId: targetUserId,
+        resourceName: targetUserEmail,
+        details: { changes },
+        ip: ip || '0.0.0.0',
+        userAgent: userAgent || 'unknown',
+        success,
+        errorMessage,
+      });
+    }
   }
 
+  /**
+   * Desativação de usuário - Aceita Request OU parâmetros individuais
+   */
   static async logUserDeactivation(
     actorId: string,
     actorEmail: string,
     targetUserId: string,
     targetUserEmail: string,
-    req: Request,
-    success: boolean,
-    errorMessage?: string
-  ) {
-    const info = this.getRequestInfo(req);
-    return this.log({
-      userId: actorId,
-      userEmail: actorEmail,
-      ...info,
-      action: 'USER_DEACTIVATED',
-      category: 'user',
-      level: success ? 'info' : 'error',
-      resource: 'User',
-      resourceId: targetUserId,
-      resourceName: targetUserEmail,
-      success,
-      errorMessage,
-    });
+    fifthParam: string | Request,
+    sixthParam: string | boolean,
+    seventhParam?: boolean | string,
+    eighthParam?: string
+  ): Promise<IAuditLog | null> {
+    if (typeof fifthParam === 'object' && fifthParam !== null && 'headers' in fifthParam) {
+      // É um Request
+      const req = fifthParam as Request;
+      const success = sixthParam as boolean;
+      const errorMessage = seventhParam as string | undefined;
+      const info = this.getRequestInfo(req);
+      const userInfo = this.getUserInfo(req);
+      return this.log({
+        ...userInfo,
+        ...info,
+        userId: actorId,
+        userEmail: actorEmail,
+        action: 'USER_DEACTIVATED',
+        category: 'user',
+        level: success ? 'info' : 'error',
+        resource: 'User',
+        resourceId: targetUserId,
+        resourceName: targetUserEmail,
+        success,
+        errorMessage,
+      });
+    } else {
+      // Formato legacy
+      const ip = fifthParam as string;
+      const userAgent = sixthParam as string;
+      const success = seventhParam as boolean;
+      const errorMessage = eighthParam as string | undefined;
+      return this.log({
+        userId: actorId,
+        userEmail: actorEmail,
+        action: 'USER_DEACTIVATED',
+        category: 'user',
+        level: success ? 'info' : 'error',
+        resource: 'User',
+        resourceId: targetUserId,
+        resourceName: targetUserEmail,
+        ip: ip || '0.0.0.0',
+        userAgent: userAgent || 'unknown',
+        success,
+        errorMessage,
+      });
+    }
+  }
+
+  /**
+   * Reativação de usuário - Aceita Request OU parâmetros individuais
+   */
+  static async logUserReactivation(
+    actorId: string,
+    actorEmail: string,
+    targetUserId: string,
+    targetUserEmail: string,
+    fifthParam: string | Request,
+    sixthParam: string | boolean,
+    seventhParam?: boolean | string,
+    eighthParam?: string
+  ): Promise<IAuditLog | null> {
+    if (typeof fifthParam === 'object' && fifthParam !== null && 'headers' in fifthParam) {
+      // É um Request
+      const req = fifthParam as Request;
+      const success = sixthParam as boolean;
+      const errorMessage = seventhParam as string | undefined;
+      const info = this.getRequestInfo(req);
+      const userInfo = this.getUserInfo(req);
+      return this.log({
+        ...userInfo,
+        ...info,
+        userId: actorId,
+        userEmail: actorEmail,
+        action: 'USER_REACTIVATED',
+        category: 'user',
+        level: success ? 'info' : 'error',
+        resource: 'User',
+        resourceId: targetUserId,
+        resourceName: targetUserEmail,
+        success,
+        errorMessage,
+      });
+    } else {
+      // Formato legacy
+      const ip = fifthParam as string;
+      const userAgent = sixthParam as string;
+      const success = seventhParam as boolean;
+      const errorMessage = eighthParam as string | undefined;
+      return this.log({
+        userId: actorId,
+        userEmail: actorEmail,
+        action: 'USER_REACTIVATED',
+        category: 'user',
+        level: success ? 'info' : 'error',
+        resource: 'User',
+        resourceId: targetUserId,
+        resourceName: targetUserEmail,
+        ip: ip || '0.0.0.0',
+        userAgent: userAgent || 'unknown',
+        success,
+        errorMessage,
+      });
+    }
+  }
+
+  /**
+   * Reset de senha - Aceita Request OU parâmetros individuais
+   */
+  static async logPasswordReset(
+    actorId: string,
+    actorEmail: string,
+    targetUserId: string,
+    targetUserEmail: string,
+    fifthParam: string | Request,
+    sixthParam: string | boolean,
+    seventhParam?: boolean | string,
+    eighthParam?: string
+  ): Promise<IAuditLog | null> {
+    if (typeof fifthParam === 'object' && fifthParam !== null && 'headers' in fifthParam) {
+      // É um Request
+      const req = fifthParam as Request;
+      const success = sixthParam as boolean;
+      const errorMessage = seventhParam as string | undefined;
+      const info = this.getRequestInfo(req);
+      const userInfo = this.getUserInfo(req);
+      return this.log({
+        ...userInfo,
+        ...info,
+        userId: actorId,
+        userEmail: actorEmail,
+        action: 'PASSWORD_RESET_CONFIRM',
+        category: 'auth',
+        level: success ? 'info' : 'warning',
+        resource: 'User',
+        resourceId: targetUserId,
+        resourceName: targetUserEmail,
+        success,
+        errorMessage,
+      });
+    } else {
+      // Formato legacy
+      const ip = fifthParam as string;
+      const userAgent = sixthParam as string;
+      const success = seventhParam as boolean;
+      const errorMessage = eighthParam as string | undefined;
+      return this.log({
+        userId: actorId,
+        userEmail: actorEmail,
+        action: 'PASSWORD_RESET_CONFIRM',
+        category: 'auth',
+        level: success ? 'info' : 'warning',
+        resource: 'User',
+        resourceId: targetUserId,
+        resourceName: targetUserEmail,
+        ip: ip || '0.0.0.0',
+        userAgent: userAgent || 'unknown',
+        success,
+        errorMessage,
+      });
+    }
   }
 
   static async logUserRegister(

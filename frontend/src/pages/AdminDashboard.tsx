@@ -9,7 +9,8 @@ import {
   LogOut, Building2, ClipboardList, UserCog, LayoutDashboard, FileText, Lightbulb,
   Download, Palette,
   TrendingUp,  // 🔴 NOVO - Funil de Conversão
-  BookOpen     // 🆕 NOVO - Governança
+  BookOpen,    // 🆕 NOVO - Governança
+  // 🆕 NOVO (v42.0) - Auditoria
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card.js';
 import { AdminBreadcrumbs } from '../components/admin/AdminBreadcrumbs.js';
@@ -76,6 +77,11 @@ export const AdminDashboard: React.FC = () => {
   // 🆕 NOVO - Handler para Governança
   const handleNavigateToGovernance = useCallback(() => {
     navigate('/admin/governance');
+  }, [navigate]);
+
+  // 🆕 NOVO (v42.0) - Handler para Auditoria
+  const handleNavigateToAudit = useCallback(() => {
+    navigate('/admin/audit');
   }, [navigate]);
 
   const handleLogout = useCallback(async () => {
@@ -399,6 +405,24 @@ export const AdminDashboard: React.FC = () => {
                   <div>
                     <h3 className="font-semibold text-gray-900">Funil de Conversão</h3>
                     <p className="text-sm text-gray-500">Análise de receita e retenção</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 🆕 NOVO (v42.0): Card de Auditoria */}
+            <Card 
+              className="hover:shadow-lg transition-shadow cursor-pointer"
+              onClick={handleNavigateToAudit}
+            >
+              <CardContent className="p-6">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-rose-100 rounded-lg">
+                    <Activity className="h-6 w-6 text-rose-600" aria-hidden="true" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-gray-900">Auditoria</h3>
+                    <p className="text-sm text-gray-500">Visualizar logs do sistema</p>
                   </div>
                 </div>
               </CardContent>
