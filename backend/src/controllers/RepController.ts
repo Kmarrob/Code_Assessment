@@ -175,7 +175,8 @@ export class RepController {
         department,
       });
 
-      if (req.userId) {
+      // 🔐 AUDITORIA & VERIFICAÇÃO DE TIPO (Garante que updatedUser não seja null)
+      if (req.userId && updatedUser) {
         await AuditService.logUserUpdate(
           req.userId,
           req.user?.email || '',
@@ -359,7 +360,7 @@ export class RepController {
           userEmail: req.user?.email || '',
           companyId: req.user?.companyId?.toString() || '',
           action: 'CONTROL_REVOKED',
-          category: 'controls',
+          category: 'control',
           level: 'warning',
           resource: 'Assignment',
           resourceId: assignmentId,
@@ -1078,7 +1079,6 @@ export class RepController {
           .join(', ');
 
         // Mantido para preservar a lógica existente.
-        // A variável controlNames continua sendo construída conforme o comportamento original.
         void controlNames;
 
         await AuditService.logControlAssignment(

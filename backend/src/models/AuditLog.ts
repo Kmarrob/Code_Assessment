@@ -10,6 +10,10 @@ export type AuditAction =
   | 'PASSWORD_RESET_REQUEST'
   | 'PASSWORD_RESET_CONFIRM'
   | 'PASSWORD_CHANGE'
+  | '2FA_ENABLED'
+  | '2FA_DISABLED'
+  | '2FA_VERIFIED'
+  | 'TENANT_SWITCHED'
 
   // 👤 Usuários
   | 'USER_REGISTER'
@@ -39,6 +43,8 @@ export type AuditAction =
   | 'DOCUMENT_ARCHIVED'
   | 'DOCUMENT_DOWNLOADED'
   | 'DOCUMENT_VIEWED'
+  | 'DOCUMENT_UPLOADED'
+  | 'DOCUMENT_RESTORED'
 
   // 📊 Controles
   | 'CONTROL_ASSIGNED'
@@ -48,18 +54,27 @@ export type AuditAction =
   | 'CONTROL_RESPONSE_UPDATED'
   | 'CONTROL_REVIEW_REQUESTED'
   | 'CONTROL_REVIEW_COMPLETED'
+  | 'RECOMMENDATION_CREATED'
+  | 'RECOMMENDATION_UPDATED'
+  | 'RECOMMENDATION_DELETED'
 
   // 📈 Relatórios
   | 'REPORT_GENERATED'
   | 'REPORT_DOWNLOADED'
   | 'REPORT_VIEWED'
   | 'REPORT_EXPORTED'
+  | 'REPORT_UPDATED'
+  | 'REPORT_EXPORTED_PDF'
 
   // 💰 Pagamentos
   | 'PAYMENT_CREATED'
   | 'PAYMENT_COMPLETED'
   | 'PAYMENT_FAILED'
   | 'PAYMENT_REFUNDED'
+  | 'PAYMENT_CONFIRMED_WEBHOOK'
+  | 'PAYMENT_FAILED_WEBHOOK'
+  | 'PAYMENT_CONFIRMED_MANUALLY'
+  | 'INVOICE_GENERATED'
   | 'SUBSCRIPTION_CREATED'
   | 'SUBSCRIPTION_UPDATED'
   | 'SUBSCRIPTION_CANCELLED'
@@ -72,6 +87,7 @@ export type AuditAction =
   | 'SEED_EXECUTED'
   | 'MAINTENANCE_MODE'
   | 'HEALTH_CHECK'
+  | 'SYSTEM_ACTION'
 
   // 🔔 Notificações
   | 'NOTIFICATION_SENT'
@@ -94,10 +110,14 @@ export type AuditCategory =
   | 'user'
   | 'company'
   | 'document'
+  | 'documents'
   | 'governance'
   | 'control'
+  | 'controls'
   | 'report'
+  | 'reports'
   | 'payment'
+  | 'financial'
   | 'subscription'
   | 'system'
   | 'notification'
@@ -176,34 +196,123 @@ const AuditLogSchema = new Schema<IAuditLog>(
     companyId: { type: String, ref: 'Company', index: true },
     companyName: { type: String, index: true },
 
-    action: { type: String, required: true, enum: [
-      'LOGIN', 'LOGOUT', 'LOGIN_FAILED', 'REFRESH_TOKEN',
-      'PASSWORD_RESET_REQUEST', 'PASSWORD_RESET_CONFIRM', 'PASSWORD_CHANGE',
-      'USER_REGISTER', 'USER_CREATED', 'USER_UPDATED', 'USER_DEACTIVATED',
-      'USER_REACTIVATED', 'USER_DELETED', 'USER_ROLE_CHANGED', 'USER_PASSWORD_CHANGED',
-      'USER_INVITED', 'USER_ACCEPTED_INVITE',
-      'COMPANY_CREATED', 'COMPANY_UPDATED', 'COMPANY_DEACTIVATED',
-      'COMPANY_REACTIVATED', 'COMPANY_PLAN_CHANGED', 'COMPANY_BRANDING_UPDATED',
-      'DOCUMENT_CREATED', 'DOCUMENT_UPDATED', 'DOCUMENT_DELETED',
-      'DOCUMENT_APPROVED', 'DOCUMENT_ARCHIVED', 'DOCUMENT_DOWNLOADED', 'DOCUMENT_VIEWED',
-      'CONTROL_ASSIGNED', 'CONTROL_REVOKED', 'CONTROL_REASSIGNED',
-      'CONTROL_RESPONDED', 'CONTROL_RESPONSE_UPDATED',
-      'CONTROL_REVIEW_REQUESTED', 'CONTROL_REVIEW_COMPLETED',
-      'REPORT_GENERATED', 'REPORT_DOWNLOADED', 'REPORT_VIEWED', 'REPORT_EXPORTED',
-      'PAYMENT_CREATED', 'PAYMENT_COMPLETED', 'PAYMENT_FAILED', 'PAYMENT_REFUNDED',
-      'SUBSCRIPTION_CREATED', 'SUBSCRIPTION_UPDATED', 'SUBSCRIPTION_CANCELLED', 'SUBSCRIPTION_RENEWED',
-      'SYSTEM_CONFIG_UPDATED', 'SYSTEM_BACKUP', 'SYSTEM_RESTORE', 'SEED_EXECUTED',
-      'MAINTENANCE_MODE', 'HEALTH_CHECK',
-      'NOTIFICATION_SENT', 'NOTIFICATION_READ', 'NOTIFICATION_DELETED',
-      'COMPANY_DOCUMENT_UPLOADED', 'COMPANY_DOCUMENT_DOWNLOADED', 'COMPANY_DOCUMENT_DELETED',
-      'SECURITY_ALERT', 'RATE_LIMIT_EXCEEDED', 'SUSPICIOUS_ACTIVITY', 'API_ACCESS_DENIED'
-    ] },
-    category: { type: String, required: true, enum: [
-      'auth', 'user', 'company', 'document', 'governance',
-      'control', 'report', 'payment', 'subscription', 'system',
-      'notification', 'security'
-    ], index: true },
-    level: { type: String, required: true, enum: ['info', 'warning', 'error', 'critical'], default: 'info', index: true },
+    action: {
+      type: String,
+      required: true,
+      enum: [
+        'LOGIN',
+        'LOGOUT',
+        'LOGIN_FAILED',
+        'REFRESH_TOKEN',
+        'PASSWORD_RESET_REQUEST',
+        'PASSWORD_RESET_CONFIRM',
+        'PASSWORD_CHANGE',
+        '2FA_ENABLED',
+        '2FA_DISABLED',
+        '2FA_VERIFIED',
+        'TENANT_SWITCHED',
+        'USER_REGISTER',
+        'USER_CREATED',
+        'USER_UPDATED',
+        'USER_DEACTIVATED',
+        'USER_REACTIVATED',
+        'USER_DELETED',
+        'USER_ROLE_CHANGED',
+        'USER_PASSWORD_CHANGED',
+        'USER_INVITED',
+        'USER_ACCEPTED_INVITE',
+        'COMPANY_CREATED',
+        'COMPANY_UPDATED',
+        'COMPANY_DEACTIVATED',
+        'COMPANY_REACTIVATED',
+        'COMPANY_PLAN_CHANGED',
+        'COMPANY_BRANDING_UPDATED',
+        'DOCUMENT_CREATED',
+        'DOCUMENT_UPDATED',
+        'DOCUMENT_DELETED',
+        'DOCUMENT_APPROVED',
+        'DOCUMENT_ARCHIVED',
+        'DOCUMENT_DOWNLOADED',
+        'DOCUMENT_VIEWED',
+        'DOCUMENT_UPLOADED',
+        'DOCUMENT_RESTORED',
+        'CONTROL_ASSIGNED',
+        'CONTROL_REVOKED',
+        'CONTROL_REASSIGNED',
+        'CONTROL_RESPONDED',
+        'CONTROL_RESPONSE_UPDATED',
+        'CONTROL_REVIEW_REQUESTED',
+        'CONTROL_REVIEW_COMPLETED',
+        'RECOMMENDATION_CREATED',
+        'RECOMMENDATION_UPDATED',
+        'RECOMMENDATION_DELETED',
+        'REPORT_GENERATED',
+        'REPORT_DOWNLOADED',
+        'REPORT_VIEWED',
+        'REPORT_EXPORTED',
+        'REPORT_UPDATED',
+        'REPORT_EXPORTED_PDF',
+        'PAYMENT_CREATED',
+        'PAYMENT_COMPLETED',
+        'PAYMENT_FAILED',
+        'PAYMENT_REFUNDED',
+        'PAYMENT_CONFIRMED_WEBHOOK',
+        'PAYMENT_FAILED_WEBHOOK',
+        'PAYMENT_CONFIRMED_MANUALLY',
+        'INVOICE_GENERATED',
+        'SUBSCRIPTION_CREATED',
+        'SUBSCRIPTION_UPDATED',
+        'SUBSCRIPTION_CANCELLED',
+        'SUBSCRIPTION_RENEWED',
+        'SYSTEM_CONFIG_UPDATED',
+        'SYSTEM_BACKUP',
+        'SYSTEM_RESTORE',
+        'SEED_EXECUTED',
+        'MAINTENANCE_MODE',
+        'HEALTH_CHECK',
+        'SYSTEM_ACTION',
+        'NOTIFICATION_SENT',
+        'NOTIFICATION_READ',
+        'NOTIFICATION_DELETED',
+        'COMPANY_DOCUMENT_UPLOADED',
+        'COMPANY_DOCUMENT_DOWNLOADED',
+        'COMPANY_DOCUMENT_DELETED',
+        'SECURITY_ALERT',
+        'RATE_LIMIT_EXCEEDED',
+        'SUSPICIOUS_ACTIVITY',
+        'API_ACCESS_DENIED',
+      ],
+    },
+    category: {
+      type: String,
+      required: true,
+      enum: [
+        'auth',
+        'user',
+        'company',
+        'document',
+        'documents',
+        'governance',
+        'control',
+        'controls',
+        'report',
+        'reports',
+        'payment',
+        'financial',
+        'subscription',
+        'system',
+        'notification',
+        'security',
+      ],
+      index: true,
+    },
+    level: {
+      type: String,
+      required: true,
+      enum: ['info', 'warning', 'error', 'critical'],
+      default: 'info',
+      index: true,
+    },
 
     resource: { type: String, required: true },
     resourceId: { type: String, index: true },
