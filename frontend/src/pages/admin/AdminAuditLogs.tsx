@@ -11,8 +11,8 @@ import {
   RefreshCw,
   FileText,
   Eye,
-  ArrowLeft, // 🆕 NOVO - ícone de voltar
-Tag, // 🆕 ADICIONADO
+  ArrowLeft,
+  Tag,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { auditService, AuditLog, AuditFilters } from '../../services/audit.service.js';
@@ -63,7 +63,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 };
 
 export default function AdminAuditLogs() {
-  const navigate = useNavigate(); // 🆕 NOVO - hook de navegação
+  const navigate = useNavigate();
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [pagination, setPagination] = useState({ page: 1, limit: 50, total: 0, totalPages: 1 });
   const [filters, setFilters] = useState<AuditFilters>({ page: 1, limit: 50 });
@@ -92,13 +92,13 @@ export default function AdminAuditLogs() {
     try {
       const data = await auditService.getStats(30);
       setStats({
-        total: data?.total || 0,
-        days: data?.days || 30,
-        byCategory: data?.byCategory || [],
-        byAction: data?.byAction || [],
-        byLevel: data?.byLevel || [],
-        bySuccess: data?.bySuccess || [],
-        byDay: data?.byDay || [],
+        total: data?.total ?? 0,
+        days: data?.days ?? 30,
+        byCategory: data?.byCategory ?? [],
+        byAction: data?.byAction ?? [],
+        byLevel: data?.byLevel ?? [],
+        bySuccess: data?.bySuccess ?? [],
+        byDay: data?.byDay ?? [],
       });
     } catch (err) {
       console.error('Erro ao carregar estatísticas:', err);
@@ -173,14 +173,12 @@ export default function AdminAuditLogs() {
     return `${(ms / 1000).toFixed(2)}s`;
   };
 
-  const safeStats = stats || { total: 0, days: 30, byCategory: [], byAction: [], byLevel: [], bySuccess: [], byDay: [] };
+  const safeStats = stats ?? { total: 0, days: 30, byCategory: [], byAction: [], byLevel: [], bySuccess: [], byDay: [] };
 
   return (
     <div className="container mx-auto px-4 py-8">
-      {/* Header com botão Voltar */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
         <div className="flex items-center gap-4">
-          {/* 🆕 NOVO - Botão Voltar */}
           <button
             onClick={() => navigate('/admin')}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -223,7 +221,6 @@ export default function AdminAuditLogs() {
         </div>
       </div>
 
-      {/* Stats Cards */}
       {safeStats && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
@@ -231,15 +228,15 @@ export default function AdminAuditLogs() {
               <span className="text-sm text-gray-500">Total de Logs</span>
               <Activity className="w-5 h-5 text-[#30736C]" />
             </div>
-            <p className="text-2xl font-bold text-gray-900 mt-1">{safeStats.total || 0}</p>
-            <p className="text-xs text-gray-400">Últimos {safeStats.days || 30} dias</p>
+            <p className="text-2xl font-bold text-gray-900 mt-1">{safeStats.total ?? 0}</p>
+            <p className="text-xs text-gray-400">Últimos {safeStats.days ?? 30} dias</p>
           </div>
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-500">Categorias</span>
               <Tag className="w-5 h-5 text-[#30736C]" />
             </div>
-            <p className="text-2xl font-bold text-gray-900 mt-1">{(safeStats.byCategory || []).length}</p>
+            <p className="text-2xl font-bold text-gray-900 mt-1">{safeStats.byCategory?.length ?? 0}</p>
             <p className="text-xs text-gray-400">Diferentes tipos</p>
           </div>
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
@@ -248,7 +245,7 @@ export default function AdminAuditLogs() {
               <CheckCircle className="w-5 h-5 text-green-500" />
             </div>
             <p className="text-2xl font-bold text-green-600 mt-1">
-              {(safeStats.bySuccess || []).find((s: any) => s._id === true)?.count || 0}
+              {safeStats.bySuccess?.find((s: any) => s._id === true)?.count ?? 0}
             </p>
             <p className="text-xs text-gray-400">Operações bem-sucedidas</p>
           </div>
@@ -258,14 +255,13 @@ export default function AdminAuditLogs() {
               <XCircle className="w-5 h-5 text-red-500" />
             </div>
             <p className="text-2xl font-bold text-red-600 mt-1">
-              {(safeStats.bySuccess || []).find((s: any) => s._id === false)?.count || 0}
+              {safeStats.bySuccess?.find((s: any) => s._id === false)?.count ?? 0}
             </p>
             <p className="text-xs text-gray-400">Operações com erro</p>
           </div>
         </div>
       )}
 
-      {/* Filters */}
       <AuditFiltersComponent
         filters={filters}
         onFilterChange={handleFilterChange}
@@ -273,7 +269,6 @@ export default function AdminAuditLogs() {
         isLoading={isLoading}
       />
 
-      {/* Logs Table */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         {isLoading ? (
           <div className="flex items-center justify-center h-64">
@@ -373,7 +368,6 @@ export default function AdminAuditLogs() {
               </table>
             </div>
 
-            {/* Pagination */}
             {pagination.totalPages > 1 && (
               <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200">
                 <span className="text-sm text-gray-500">
@@ -404,7 +398,6 @@ export default function AdminAuditLogs() {
         )}
       </div>
 
-      {/* Modal de Detalhes do Log */}
       {showModal && selectedLog && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[80vh] overflow-y-auto p-6">
