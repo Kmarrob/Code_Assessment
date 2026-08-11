@@ -324,6 +324,45 @@ export class AuditService {
     });
   }
 
+  /**
+   * 🔑 ALIAS DE COMPATIBILIDADE: logUserLogin -> chama logLogin
+   */
+  static async logUserLogin(
+    userId: string,
+    userEmail: string,
+    thirdParam: Request | string,
+    fourthParam?: boolean | string,
+    fifthParam?: string | boolean,
+    sixthParam?: boolean,
+    seventhParam?: string
+  ) {
+    if (typeof thirdParam === 'object' && thirdParam !== null && 'headers' in thirdParam) {
+      const req = thirdParam as Request;
+      const success = typeof fourthParam === 'boolean' ? fourthParam : true;
+      const errorMessage = typeof fifthParam === 'string' ? fifthParam : undefined;
+      return this.logLogin(userId, userEmail, req, success, errorMessage);
+    } else {
+      const ip = thirdParam as string;
+      const userAgent = (fourthParam as string) || 'unknown';
+      const success = typeof fifthParam === 'boolean' ? fifthParam : true;
+      const errorMessage = seventhParam || (typeof sixthParam === 'string' ? sixthParam : undefined);
+      return this.log({
+        userId,
+        userEmail,
+        action: success ? 'LOGIN' : 'LOGIN_FAILED',
+        category: 'auth',
+        level: success ? 'info' : 'warning',
+        resource: 'User',
+        resourceId: userId,
+        resourceName: userEmail,
+        ip: ip || '0.0.0.0',
+        userAgent: userAgent || 'unknown',
+        success,
+        errorMessage,
+      });
+    }
+  }
+
   static async logLogout(userId: string, userEmail: string, req: Request) {
     const info = this.getRequestInfo(req);
     return this.log({
@@ -851,30 +890,50 @@ export class AuditService {
   static async logControlAssignment(
     actorId: string,
     actorEmail: string,
-    controlId: string,
-    controlName: string,
-    targetUserId: string,
-    targetUserEmail: string,
-    companyId: string,
-    companyName: string,
-    req: Request,
-    success: boolean,
-    errorMessage?: string
+    targetUserIdOrControlIds: string | string[],
+    targetUserEmailOrTargetEmail: string,
+    controlIdsOrIp?: string[] | string,
+    sixthParam?: string,
+    seventhParam?: string | boolean,
+    eighthParam?: boolean,
+    ninthParam?: string
   ) {
-    const info = this.getRequestInfo(req);
+    let targetUserId = '';
+    let targetUserEmail = '';
+    let controlIds: string[] = [];
+    let ip = '0.0.0.0';
+    let userAgent = 'unknown';
+    let success = true;
+    let errorMessage: string | undefined;
+
+    if (Array.isArray(controlIdsOrIp)) {
+      targetUserId = targetUserIdOrControlIds as string;
+      targetUserEmail = targetUserEmailOrTargetEmail;
+      controlIds = controlIdsOrIp;
+      ip = (sixthParam as string) || '0.0.0.0';
+      userAgent = (seventhParam as string) || 'unknown';
+      success = typeof eighthParam === 'boolean' ? eighthParam : true;
+      errorMessage = ninthParam;
+    } else {
+      targetUserId = typeof eighthParam === 'string' ? eighthParam : '';
+      targetUserEmail = typeof ninthParam === 'string' ? ninthParam : '';
+      controlIds = Array.isArray(targetUserIdOrControlIds) ? targetUserIdOrControlIds : [targetUserIdOrControlIds as string];
+      ip = (sixthParam as string) || '0.0.0.0';
+      userAgent = typeof seventhParam === 'string' ? seventhParam : 'unknown';
+      success = typeof seventhParam === 'boolean' ? seventhParam : true;
+    }
+
     return this.log({
       userId: actorId,
       userEmail: actorEmail,
-      companyId,
-      companyName,
-      ...info,
       action: 'CONTROL_ASSIGNED',
-      category: 'control',
+      category: 'controls',
       level: success ? 'info' : 'error',
-      resource: 'Control',
-      resourceId: controlId,
-      resourceName: controlName,
-      details: { targetUserEmail },
+      resource: 'ControlAssignment',
+      resourceId: targetUserId,
+      details: { targetUserEmail, controlIds },
+      ip,
+      userAgent,
       success,
       errorMessage,
     });
@@ -883,29 +942,44 @@ export class AuditService {
   static async logControlResponse(
     userId: string,
     userEmail: string,
-    controlId: string,
-    controlName: string,
-    maturityLevel: number,
-    companyId: string,
-    companyName: string,
-    req: Request,
-    success: boolean,
-    errorMessage?: string
+    assignmentIdOrControlId: string,
+    controlIdOrName: string,
+    maturityLevel: any,
+    sixthParam?: string | Request,
+    seventhParam?: string | boolean,
+    eighthParam?: boolean | string,
+    ninthParam?: string
   ) {
-    const info = this.getRequestInfo(req);
+    let ip = '0.0.0.0';
+    let userAgent = 'unknown';
+    let success = true;
+    let errorMessage: string | undefined;
+
+    if (typeof sixthParam === 'object' && sixthParam !== null && 'headers' in sixthParam) {
+      const req = sixthParam as Request;
+      const reqInfo = this.getRequestInfo(req);
+      ip = reqInfo.ip;
+      userAgent = reqInfo.userAgent;
+      success = typeof seventhParam === 'boolean' ? seventhParam : true;
+      errorMessage = eighthParam as string | undefined;
+    } else {
+      ip = (sixthParam as string) || '0.0.0.0';
+      userAgent = (seventhParam as string) || 'unknown';
+      success = typeof eighthParam === 'boolean' ? eighthParam : true;
+      errorMessage = ninthParam;
+    }
+
     return this.log({
       userId,
       userEmail,
-      companyId,
-      companyName,
-      ...info,
       action: 'CONTROL_RESPONDED',
-      category: 'control',
+      category: 'controls',
       level: 'info',
-      resource: 'Control',
-      resourceId: controlId,
-      resourceName: controlName,
-      details: { maturityLevel },
+      resource: 'ControlResponse',
+      resourceId: assignmentIdOrControlId,
+      details: { controlId: controlIdOrName, maturityLevel },
+      ip,
+      userAgent,
       success,
       errorMessage,
     });
@@ -930,7 +1004,7 @@ export class AuditService {
       companyName,
       ...info,
       action: 'REPORT_GENERATED',
-      category: 'report',
+      category: 'reports',
       level: success ? 'info' : 'error',
       resource: 'Report',
       resourceId: reportId,
@@ -962,7 +1036,7 @@ export class AuditService {
       companyName,
       ...info,
       action,
-      category: 'payment',
+      category: 'financial',
       level: success ? 'info' : 'error',
       resource: 'Payment',
       resourceId: paymentId,
