@@ -12,8 +12,9 @@ import {
   FileText,
   Eye,
   ArrowLeft, // 🆕 NOVO - ícone de voltar
+Tag, // 🆕 ADICIONADO
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom'; // 🆕 NOVO - para navegação
+import { useNavigate } from 'react-router-dom';
 import { auditService, AuditLog, AuditFilters } from '../../services/audit.service.js';
 import { AuditFilters as AuditFiltersComponent } from '../../components/admin/AuditFilters.js';
 
