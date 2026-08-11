@@ -313,6 +313,8 @@ export class AuditService {
     return this.log({
       ...userInfo,
       ...info,
+      userId: userId || userInfo.userId,       // 👈 Garante o userId explicitamente
+      userEmail: userEmail || userInfo.userEmail, // 👈 Garante o userEmail explicitamente
       action: success ? 'LOGIN' : 'LOGIN_FAILED',
       category: 'auth',
       level: success ? 'info' : 'warning',
@@ -347,8 +349,8 @@ export class AuditService {
       const success = typeof fifthParam === 'boolean' ? fifthParam : true;
       const errorMessage = seventhParam || (typeof sixthParam === 'string' ? sixthParam : undefined);
       return this.log({
-        userId,
-        userEmail,
+        userId,       // 👈 Garante o userId explicitamente no formato legacy
+        userEmail,    // 👈 Garante o userEmail explicitamente no formato legacy
         action: success ? 'LOGIN' : 'LOGIN_FAILED',
         category: 'auth',
         level: success ? 'info' : 'warning',
