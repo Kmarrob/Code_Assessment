@@ -10,6 +10,7 @@ import {
 } from '../schemas/governance.schemas';
 import { Company } from '../../../models/Company';
 import { DocumentLevel } from '../types/governance.types';
+import { AuditService } from '../../../services/AuditService.js';
 
 const governanceService = new GovernanceService();
 
@@ -65,9 +66,48 @@ export class GovernanceController {
 
       // 🆕 Passar userRole para o service
       const doc = await governanceService.create(data, userId, companyId, user?.role);
+
+      // 🔐 AUDITORIA: Registro de criação de documento
+      if (doc) {
+        let compName = user?.company || '';
+        if (companyId) {
+          const comp = await Company.findById(companyId);
+          if (comp?.name) compName = comp.name;
+        }
+        await AuditService.logDocumentCreation(
+          userId,
+          user?.email || 'desconhecido',
+          (doc as any)._id?.toString() || (doc as any).id || '',
+          doc.code || '',
+          doc.title || '',
+          companyId || '',
+          compName,
+          req,
+          true
+        );
+      }
+
       return res.status(201).json(doc);
     } catch (error) {
       console.error('Erro ao criar documento:', error);
+
+      // 🔐 AUDITORIA: Falha ao criar documento
+      const user = (req as any).user;
+      if (user?.id) {
+        await AuditService.logDocumentCreation(
+          user.id,
+          user.email || 'desconhecido',
+          '',
+          req.body?.code || '',
+          req.body?.title || '',
+          user.companyId || '',
+          user.company || '',
+          req,
+          false,
+          error instanceof Error ? error.message : 'Erro interno ao criar documento'
+        );
+      }
+
       return res.status(500).json({ error: 'Erro interno ao criar documento' });
     }
   }
@@ -226,6 +266,31 @@ export class GovernanceController {
         return res.status(404).json({ error: 'Documento não encontrado' });
       }
 
+      // 🔐 AUDITORIA: Registro de atualização de documento
+      let compName = user?.company || '';
+      if (companyId) {
+        const comp = await Company.findById(companyId);
+        if (comp?.name) compName = comp.name;
+      }
+      await AuditService.log({
+        userId,
+        userEmail: user?.email || 'desconhecido',
+        companyId: companyId || '',
+        companyName: compName,
+        action: 'DOCUMENT_UPDATED',
+        category: 'governance',
+        level: 'info',
+        resource: 'GovernanceDocument',
+        resourceId: id,
+        resourceName: doc.code || doc.title,
+        details: { changes: validation.data },
+        success: true,
+        ip: AuditService.getRequestInfo(req).ip,
+        userAgent: AuditService.getRequestInfo(req).userAgent,
+        method: req.method,
+        path: req.path
+      });
+
       return res.json(doc);
     } catch (error) {
       console.error('Erro ao atualizar documento:', error);
@@ -276,6 +341,29 @@ export class GovernanceController {
       if (!deleted) {
         return res.status(404).json({ error: 'Documento não encontrado' });
       }
+
+      // 🔐 AUDITORIA: Registro de exclusão de documento
+      let compName = user?.company || '';
+      if (companyId) {
+        const comp = await Company.findById(companyId);
+        if (comp?.name) compName = comp.name;
+      }
+      await AuditService.log({
+        userId: user?.id,
+        userEmail: user?.email || 'desconhecido',
+        companyId: companyId || '',
+        companyName: compName,
+        action: 'DOCUMENT_DELETED',
+        category: 'governance',
+        level: 'warning',
+        resource: 'GovernanceDocument',
+        resourceId: id,
+        success: true,
+        ip: AuditService.getRequestInfo(req).ip,
+        userAgent: AuditService.getRequestInfo(req).userAgent,
+        method: req.method,
+        path: req.path
+      });
 
       return res.status(204).send();
     } catch (error) {
@@ -328,6 +416,24 @@ export class GovernanceController {
       if (!doc) {
         return res.status(404).json({ error: 'Documento não encontrado' });
       }
+
+      // 🔐 AUDITORIA: Registro de aprovação de documento
+      let compName = user?.company || '';
+      if (companyId) {
+        const comp = await Company.findById(companyId);
+        if (comp?.name) compName = comp.name;
+      }
+      await AuditService.logDocumentApproval(
+        userId,
+        user?.email || 'desconhecido',
+        (doc as any)._id?.toString() || id,
+        doc.code || '',
+        doc.title || '',
+        companyId || '',
+        compName,
+        req,
+        true
+      );
 
       return res.json(doc);
     } catch (error) {
@@ -479,6 +585,20 @@ export class GovernanceController {
       // Definir nome do arquivo
       const filename = `${doc.code}_${doc.title.replace(/\s+/g, '_')}.doc`;
 
+      // 🔐 AUDITORIA: Registro do download em DOC
+      await AuditService.logDocumentDownload(
+        user?.id || '',
+        user?.email || 'desconhecido',
+        (doc as any)._id?.toString() || id,
+        doc.code || '',
+        doc.title || '',
+        'doc',
+        companyId || '',
+        companyName,
+        req,
+        true
+      );
+
       res.setHeader('Content-Type', 'application/msword');
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
       return res.send(content);
@@ -549,6 +669,20 @@ export class GovernanceController {
 
       // Usar o PDFService estático para gerar o buffer PDF
       const pdfBuffer = await PDFService.generateFromHtml(htmlContent);
+
+      // 🔐 AUDITORIA: Registro do download em PDF
+      await AuditService.logDocumentDownload(
+        user?.id || '',
+        user?.email || 'desconhecido',
+        (doc as any)._id?.toString() || id,
+        doc.code || '',
+        doc.title || '',
+        'pdf',
+        companyId || '',
+        companyName,
+        req,
+        true
+      );
 
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
@@ -639,6 +773,25 @@ export class GovernanceController {
       // Substituir placeholders no conteúdo
       const exportService = new DocumentExportService();
       const contentWithCompany = exportService.replacePlaceholders(doc.content, companyName);
+
+      // 🔐 AUDITORIA: Registro de visualização do documento
+      await AuditService.log({
+        userId: user?.id,
+        userEmail: user?.email || 'desconhecido',
+        companyId: companyId || '',
+        companyName,
+        action: 'DOCUMENT_VIEWED',
+        category: 'governance',
+        level: 'info',
+        resource: 'GovernanceDocument',
+        resourceId: (doc as any)._id?.toString() || id,
+        resourceName: doc.code || doc.title,
+        success: true,
+        ip: AuditService.getRequestInfo(req).ip,
+        userAgent: AuditService.getRequestInfo(req).userAgent,
+        method: req.method,
+        path: req.path
+      });
 
       // Retornar documento com o conteúdo substituído
       const docObj = doc.toObject ? doc.toObject() : doc;

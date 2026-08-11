@@ -156,9 +156,9 @@ export class AdminController {
 
       const user = await AdminService.createUser(userData);
 
-      // Verificar se userId existe antes de usar
+      // 🔐 AUDITORIA: Registro de criação do usuário
       if (req.userId) {
-        AuditService.logUserCreation(
+        await AuditService.logUserCreation(
           req.userId,
           req.user?.email || '',
           user._id.toString(),
@@ -178,6 +178,21 @@ export class AdminController {
         timestamp: new Date().toISOString(),
       });
     } catch (error) {
+      // 🔐 AUDITORIA: Registro de falha na criação
+      if (req.userId) {
+        await AuditService.logUserCreation(
+          req.userId,
+          req.user?.email || '',
+          '',
+          req.body?.email || '',
+          req.body?.role || '',
+          req.ip || '',
+          req.headers['user-agent'] || '',
+          false,
+          error instanceof Error ? error.message : 'Erro ao criar usuário'
+        );
+      }
+
       ErrorLogger.logError(error as Error, {
         userId: req.userId,
         email: req.user?.email,
@@ -235,8 +250,9 @@ export class AdminController {
 
       const user = await AdminService.updateUser(id, updateData);
 
+      // 🔐 AUDITORIA: Registro de atualização de usuário
       if (req.userId) {
-        AuditService.logUserUpdate(
+        await AuditService.logUserUpdate(
           req.userId,
           req.user?.email || '',
           id,
@@ -256,6 +272,21 @@ export class AdminController {
         timestamp: new Date().toISOString(),
       });
     } catch (error) {
+      // 🔐 AUDITORIA: Registro de falha na atualização
+      if (req.userId && req.params?.id) {
+        await AuditService.logUserUpdate(
+          req.userId,
+          req.user?.email || '',
+          req.params.id,
+          'desconhecido',
+          req.body,
+          req.ip || '',
+          req.headers['user-agent'] || '',
+          false,
+          error instanceof Error ? error.message : 'Erro ao atualizar usuário'
+        );
+      }
+
       ErrorLogger.logError(error as Error, {
         userId: req.userId,
         email: req.user?.email,
@@ -291,8 +322,9 @@ export class AdminController {
 
       await AdminService.deleteUser(id);
 
+      // 🔐 AUDITORIA: Registro de desativação
       if (req.userId) {
-        AuditService.logUserDeactivation(
+        await AuditService.logUserDeactivation(
           req.userId,
           req.user?.email || '',
           id,
@@ -337,8 +369,9 @@ export class AdminController {
         throw new NotFoundError('Usuário não encontrado');
       }
 
+      // 🔐 AUDITORIA: Registro de reativação
       if (req.userId) {
-        AuditService.logUserReactivation(
+        await AuditService.logUserReactivation(
           req.userId,
           req.user?.email || '',
           id,
@@ -392,8 +425,9 @@ export class AdminController {
 
       await AdminService.resetPassword(id, validation.data.password);
 
+      // 🔐 AUDITORIA: Registro de reset de senha pelo administrador
       if (req.userId) {
-        AuditService.logPasswordReset(
+        await AuditService.logPasswordReset(
           req.userId,
           req.user?.email || '',
           id,
@@ -474,6 +508,26 @@ export class AdminController {
         req.userId!
       );
 
+      // 🔐 AUDITORIA: Registro de upload de logo
+      if (req.userId) {
+        await AuditService.log({
+          userId: req.userId,
+          userEmail: req.user?.email || '',
+          companyId,
+          action: 'COMPANY_BRANDING_UPDATED',
+          category: 'company',
+          level: 'info',
+          resource: 'CompanyBranding',
+          resourceId: companyId,
+          details: { type: 'logo', filename: req.file.originalname },
+          success: true,
+          ip: req.ip || '',
+          userAgent: req.headers['user-agent'] || '',
+          method: req.method,
+          path: req.path,
+        });
+      }
+
       res.json({
         success: true,
         message: 'Logo enviada com sucesso',
@@ -527,6 +581,26 @@ export class AdminController {
         req.file,
         req.userId!
       );
+
+      // 🔐 AUDITORIA: Registro de upload de favicon
+      if (req.userId) {
+        await AuditService.log({
+          userId: req.userId,
+          userEmail: req.user?.email || '',
+          companyId,
+          action: 'COMPANY_BRANDING_UPDATED',
+          category: 'company',
+          level: 'info',
+          resource: 'CompanyBranding',
+          resourceId: companyId,
+          details: { type: 'favicon', filename: req.file.originalname },
+          success: true,
+          ip: req.ip || '',
+          userAgent: req.headers['user-agent'] || '',
+          method: req.method,
+          path: req.path,
+        });
+      }
 
       res.json({
         success: true,
@@ -631,6 +705,26 @@ export class AdminController {
 
       const result = await AdminService.removeLogo(companyId);
 
+      // 🔐 AUDITORIA: Registro de remoção de logo
+      if (req.userId) {
+        await AuditService.log({
+          userId: req.userId,
+          userEmail: req.user?.email || '',
+          companyId,
+          action: 'COMPANY_BRANDING_UPDATED',
+          category: 'company',
+          level: 'warning',
+          resource: 'CompanyBranding',
+          resourceId: companyId,
+          details: { type: 'remove_logo' },
+          success: true,
+          ip: req.ip || '',
+          userAgent: req.headers['user-agent'] || '',
+          method: req.method,
+          path: req.path,
+        });
+      }
+
       res.json({
         success: true,
         message: 'Logo removida com sucesso',
@@ -674,6 +768,26 @@ export class AdminController {
       }
 
       const result = await AdminService.removeFavicon(companyId);
+
+      // 🔐 AUDITORIA: Registro de remoção de favicon
+      if (req.userId) {
+        await AuditService.log({
+          userId: req.userId,
+          userEmail: req.user?.email || '',
+          companyId,
+          action: 'COMPANY_BRANDING_UPDATED',
+          category: 'company',
+          level: 'warning',
+          resource: 'CompanyBranding',
+          resourceId: companyId,
+          details: { type: 'remove_favicon' },
+          success: true,
+          ip: req.ip || '',
+          userAgent: req.headers['user-agent'] || '',
+          method: req.method,
+          path: req.path,
+        });
+      }
 
       res.json({
         success: true,
@@ -723,6 +837,26 @@ export class AdminController {
         companyId,
         { showLogoInHeader, showLogoInReport, useCustomColors }
       );
+
+      // 🔐 AUDITORIA: Registro de alteração nas configurações de branding
+      if (req.userId) {
+        await AuditService.log({
+          userId: req.userId,
+          userEmail: req.user?.email || '',
+          companyId,
+          action: 'COMPANY_BRANDING_UPDATED',
+          category: 'company',
+          level: 'info',
+          resource: 'CompanyBrandingSettings',
+          resourceId: companyId,
+          details: { showLogoInHeader, showLogoInReport, useCustomColors },
+          success: true,
+          ip: req.ip || '',
+          userAgent: req.headers['user-agent'] || '',
+          method: req.method,
+          path: req.path,
+        });
+      }
 
       res.json({
         success: true,

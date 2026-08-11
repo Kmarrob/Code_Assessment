@@ -7,6 +7,7 @@ import { AuthenticatedRequest, UserRole } from '../types/index.js';
 import { AppError, ValidationError } from '../middleware/errorHandler.js';
 import { ErrorLogger } from '../utils/errorLogger.js';
 import { logger } from '../utils/logger.js';
+import { AuditService } from '../services/AuditService.js';
 
 export class SubscriptionController {
   /**
@@ -73,6 +74,26 @@ export class SubscriptionController {
         subscriptionId,
         notes,
       });
+
+      // 🔐 AUDITORIA: Registro de criação de assinatura
+      if (req.userId) {
+        await AuditService.log({
+          userId: req.userId,
+          userEmail: req.user?.email || '',
+          companyId,
+          action: 'SUBSCRIPTION_CREATED',
+          category: 'financial',
+          level: 'info',
+          resource: 'Subscription',
+          resourceId: (subscription as any)?._id?.toString() || '',
+          details: { planId, billingCycle, autoRenew },
+          success: true,
+          ip: req.ip || '',
+          userAgent: req.headers['user-agent'] || '',
+          method: req.method,
+          path: req.path,
+        });
+      }
 
       // Gerar fatura inicial
       try {
@@ -329,6 +350,24 @@ export class SubscriptionController {
         userId
       );
 
+      // 🔐 AUDITORIA: Registro de atualização de assinatura
+      await AuditService.log({
+        userId,
+        userEmail: user.email,
+        companyId: (subscription as any)?.companyId?.toString() || '',
+        action: 'SUBSCRIPTION_UPDATED',
+        category: 'financial',
+        level: 'info',
+        resource: 'Subscription',
+        resourceId: id,
+        details: { status, planId, autoRenew, maxUsers, currentUsers, consultingHoursUsed },
+        success: true,
+        ip: req.ip || '',
+        userAgent: req.headers['user-agent'] || '',
+        method: req.method,
+        path: req.path,
+      });
+
       res.json({
         success: true,
         message: 'Assinatura atualizada com sucesso',
@@ -392,6 +431,24 @@ export class SubscriptionController {
       }
 
       const result = await SubscriptionService.cancelSubscription(id, userId, reason);
+
+      // 🔐 AUDITORIA: Registro de cancelamento de assinatura
+      await AuditService.log({
+        userId,
+        userEmail: user?.email || '',
+        companyId: subscription.companyId.toString(),
+        action: 'SUBSCRIPTION_CANCELLED',
+        category: 'financial',
+        level: 'warning',
+        resource: 'Subscription',
+        resourceId: id,
+        details: { reason },
+        success: true,
+        ip: req.ip || '',
+        userAgent: req.headers['user-agent'] || '',
+        method: req.method,
+        path: req.path,
+      });
 
       res.json({
         success: true,

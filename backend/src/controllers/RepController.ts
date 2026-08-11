@@ -87,7 +87,7 @@ export class RepController {
       const user = await RepService.createUser(repId, validation.data);
 
       if (req.userId) {
-        AuditService.logUserCreation(
+        await AuditService.logUserCreation(
           req.userId,
           req.user?.email || '',
           user._id.toString(),
@@ -107,6 +107,20 @@ export class RepController {
         timestamp: new Date().toISOString(),
       });
     } catch (error) {
+      if (req.userId) {
+        await AuditService.logUserCreation(
+          req.userId,
+          req.user?.email || '',
+          '',
+          req.body?.email || '',
+          'user',
+          req.ip || '',
+          req.headers['user-agent'] || '',
+          false,
+          error instanceof Error ? error.message : 'Erro ao criar usuário'
+        );
+      }
+
       ErrorLogger.logError(error as Error, {
         userId: req.userId,
         email: req.user?.email,
@@ -160,6 +174,19 @@ export class RepController {
         email,
         department,
       });
+
+      if (req.userId) {
+        await AuditService.logUserUpdate(
+          req.userId,
+          req.user?.email || '',
+          userId,
+          updatedUser.email,
+          { name, email, department },
+          req.ip || '',
+          req.headers['user-agent'] || '',
+          true
+        );
+      }
 
       res.json({
         success: true,
@@ -230,10 +257,24 @@ export class RepController {
         });
       }
 
+      const targetUser = await User.findById(userId);
+
       const result = await RepService.inactivateUser(repId, userId, {
         reason,
         description: description || '',
       });
+
+      if (req.userId) {
+        await AuditService.logUserDeactivation(
+          req.userId,
+          req.user?.email || '',
+          userId,
+          targetUser?.email || 'desconhecido',
+          req.ip || '',
+          req.headers['user-agent'] || '',
+          true
+        );
+      }
 
       res.json({
         success: true,
@@ -312,6 +353,25 @@ export class RepController {
         newUserId || null
       );
 
+      if (req.userId) {
+        await AuditService.log({
+          userId: req.userId,
+          userEmail: req.user?.email || '',
+          companyId: req.user?.companyId?.toString() || '',
+          action: 'CONTROL_REVOKED',
+          category: 'controls',
+          level: 'warning',
+          resource: 'Assignment',
+          resourceId: assignmentId,
+          details: { newUserId: newUserId || null },
+          success: true,
+          ip: req.ip || '',
+          userAgent: req.headers['user-agent'] || '',
+          method: req.method,
+          path: req.path,
+        });
+      }
+
       res.json({
         success: true,
         message: result.newUserId
@@ -359,6 +419,21 @@ export class RepController {
       }
 
       const result = await RepService.assignControls(repId, validation.data);
+
+      const targetUser = await User.findById(validation.data.userId);
+
+      if (req.userId) {
+        await AuditService.logControlAssignment(
+          req.userId,
+          req.user?.email || '',
+          validation.data.userId,
+          targetUser?.email || '',
+          validation.data.controlIds,
+          req.ip || '',
+          req.headers['user-agent'] || '',
+          true
+        );
+      }
 
       res.json({
         success: true,
@@ -1006,12 +1081,12 @@ export class RepController {
         // A variável controlNames continua sendo construída conforme o comportamento original.
         void controlNames;
 
-        await AuditService.logUserCreation(
+        await AuditService.logControlAssignment(
           repId,
           req.user?.email || '',
           repId,
           rep.email,
-          'rep',
+          controlIds,
           req.ip || '',
           req.headers['user-agent'] || '',
           true

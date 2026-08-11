@@ -6,6 +6,7 @@ import { AppError, ValidationError } from '../middleware/errorHandler.js';
 import { ErrorLogger } from '../utils/errorLogger.js';
 import { validate } from '../utils/validation.js';
 import { z } from 'zod';
+import { AuditService } from '../services/AuditService.js';
 
 const saveResponseSchema = z.object({
   assignmentId: z.string().min(1, 'ID da atribuição é obrigatório'),
@@ -113,6 +114,20 @@ export class UserController {
 
       const response = await UserService.saveResponse(userId, data);
 
+      // 🔐 AUDITORIA: Registro da resposta do controle ISO 27001
+      if (req.userId) {
+        await AuditService.logControlResponse(
+          req.userId,
+          req.user?.email || '',
+          data.assignmentId,
+          (response as any)?.controlId || data.assignmentId,
+          data.maturityLevel,
+          req.ip || '',
+          req.headers['user-agent'] || '',
+          true
+        );
+      }
+
       res.json({
         success: true,
         message: 'Resposta salva com sucesso',
@@ -121,6 +136,21 @@ export class UserController {
         timestamp: new Date().toISOString(),
       });
     } catch (error) {
+      // 🔐 AUDITORIA: Registro de falha no envio da resposta
+      if (req.userId && req.body?.assignmentId) {
+        await AuditService.logControlResponse(
+          req.userId,
+          req.user?.email || '',
+          req.body.assignmentId,
+          req.body.assignmentId,
+          req.body.maturityLevel || '0',
+          req.ip || '',
+          req.headers['user-agent'] || '',
+          false,
+          error instanceof Error ? error.message : 'Erro ao salvar resposta'
+        );
+      }
+
       ErrorLogger.logError(error as Error, {
         userId: req.userId,
         email: req.user?.email,

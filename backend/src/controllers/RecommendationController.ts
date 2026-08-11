@@ -5,6 +5,7 @@ import { AppError, NotFoundError, ValidationError } from '../middleware/errorHan
 import { logger } from '../utils/logger.js';
 import { AuthenticatedRequest, UserRole } from '../types/index.js';
 import { Control } from '../models/Control.js';
+import { AuditService } from '../services/AuditService.js';
 
 export class RecommendationController {
   /**
@@ -56,6 +57,24 @@ export class RecommendationController {
         },
         userId
       );
+
+      // 🔐 AUDITORIA: Registro de criação de recomendação
+      await AuditService.log({
+        userId,
+        userEmail: user.email,
+        action: 'RECOMMENDATION_CREATED',
+        category: 'controls',
+        level: 'info',
+        resource: 'Recommendation',
+        resourceId: (recommendation as any)?._id?.toString() || controlId,
+        resourceName: titulo,
+        details: { controlId, dominio },
+        success: true,
+        ip: req.ip || '',
+        userAgent: req.headers['user-agent'] || '',
+        method: req.method,
+        path: req.path,
+      });
 
       res.status(201).json({
         success: true,
@@ -191,6 +210,24 @@ export class RecommendationController {
         userId
       );
 
+      // 🔐 AUDITORIA: Registro de atualização de recomendação
+      await AuditService.log({
+        userId,
+        userEmail: user.email,
+        action: 'RECOMMENDATION_UPDATED',
+        category: 'controls',
+        level: 'info',
+        resource: 'Recommendation',
+        resourceId: (recommendation as any)?._id?.toString() || controlId,
+        resourceName: titulo,
+        details: { controlId, dominio },
+        success: true,
+        ip: req.ip || '',
+        userAgent: req.headers['user-agent'] || '',
+        method: req.method,
+        path: req.path,
+      });
+
       res.json({
         success: true,
         message: 'Recomendação atualizada com sucesso',
@@ -226,6 +263,25 @@ export class RecommendationController {
       }
 
       await RecommendationService.deleteRecommendation(controlId);
+
+      // 🔐 AUDITORIA: Registro de exclusão de recomendação
+      if (req.userId && user) {
+        await AuditService.log({
+          userId: req.userId,
+          userEmail: user.email,
+          action: 'RECOMMENDATION_DELETED',
+          category: 'controls',
+          level: 'warning',
+          resource: 'Recommendation',
+          resourceId: controlId,
+          details: { controlId },
+          success: true,
+          ip: req.ip || '',
+          userAgent: req.headers['user-agent'] || '',
+          method: req.method,
+          path: req.path,
+        });
+      }
 
       res.json({
         success: true,

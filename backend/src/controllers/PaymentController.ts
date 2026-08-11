@@ -6,6 +6,7 @@ import { AuthenticatedRequest, UserRole } from '../types/index.js';
 import { AppError, ValidationError } from '../middleware/errorHandler.js';
 import { ErrorLogger } from '../utils/errorLogger.js';
 import { logger } from '../utils/logger.js';
+import { AuditService } from '../services/AuditService.js';
 
 export class PaymentController {
   /**
@@ -124,6 +125,26 @@ export class PaymentController {
         metadata,
       });
 
+      // 🔐 AUDITORIA: Registro de criação de pagamento
+      if (req.userId) {
+        await AuditService.log({
+          userId: req.userId,
+          userEmail: req.user?.email || '',
+          companyId,
+          action: 'PAYMENT_CREATED',
+          category: 'financial',
+          level: 'info',
+          resource: 'Payment',
+          resourceId: (payment as any)?._id?.toString() || '',
+          details: { amount, currency, paymentMethod, paymentProvider },
+          success: true,
+          ip: req.ip || '',
+          userAgent: req.headers['user-agent'] || '',
+          method: req.method,
+          path: req.path,
+        });
+      }
+
       res.status(201).json({
         success: true,
         message: 'Pagamento criado com sucesso',
@@ -182,8 +203,43 @@ export class PaymentController {
           paidAt ? new Date(paidAt) : new Date(),
           { subscriptionId, ...metadata }
         );
+
+        // 🔐 AUDITORIA: Confirmação via Webhook
+        await AuditService.log({
+          userId: 'SYSTEM_WEBHOOK',
+          userEmail: 'webhook@system',
+          action: 'PAYMENT_CONFIRMED_WEBHOOK',
+          category: 'financial',
+          level: 'info',
+          resource: 'Payment',
+          resourceId: paymentId,
+          details: { provider, amount, status },
+          success: true,
+          ip: req.ip || '',
+          userAgent: req.headers['user-agent'] || '',
+          method: req.method,
+          path: req.path,
+        });
       } else if (status === 'failed' || status === 'denied' || status === 'refused') {
         result = await PaymentService.failPayment(paymentId, status);
+
+        // 🔐 AUDITORIA: Falha via Webhook
+        await AuditService.log({
+          userId: 'SYSTEM_WEBHOOK',
+          userEmail: 'webhook@system',
+          action: 'PAYMENT_FAILED_WEBHOOK',
+          category: 'financial',
+          level: 'warning',
+          resource: 'Payment',
+          resourceId: paymentId,
+          details: { provider, amount, status },
+          success: false,
+          errorMessage: `Status de pagamento: ${status}`,
+          ip: req.ip || '',
+          userAgent: req.headers['user-agent'] || '',
+          method: req.method,
+          path: req.path,
+        });
       } else {
         logger.warn(`Status de pagamento não tratado: ${status}`);
         result = { message: 'Status recebido, mas não processado' };
@@ -256,6 +312,24 @@ export class PaymentController {
         { manualConfirmation: true, confirmedBy: userId, notes }
       );
 
+      // 🔐 AUDITORIA: Confirmação manual de pagamento
+      await AuditService.log({
+        userId,
+        userEmail: user.email,
+        companyId: payment.companyId?.toString(),
+        action: 'PAYMENT_CONFIRMED_MANUALLY',
+        category: 'financial',
+        level: 'info',
+        resource: 'Payment',
+        resourceId: id,
+        details: { amountPaid, notes },
+        success: true,
+        ip: req.ip || '',
+        userAgent: req.headers['user-agent'] || '',
+        method: req.method,
+        path: req.path,
+      });
+
       res.json({
         success: true,
         message: 'Pagamento confirmado manualmente com sucesso',
@@ -308,6 +382,24 @@ export class PaymentController {
       const { reason } = req.body;
 
       const payment = await PaymentService.refundPayment(id, userId, reason);
+
+      // 🔐 AUDITORIA: Estorno de pagamento
+      await AuditService.log({
+        userId,
+        userEmail: user.email,
+        companyId: (payment as any)?.companyId?.toString(),
+        action: 'PAYMENT_REFUNDED',
+        category: 'financial',
+        level: 'warning',
+        resource: 'Payment',
+        resourceId: id,
+        details: { reason },
+        success: true,
+        ip: req.ip || '',
+        userAgent: req.headers['user-agent'] || '',
+        method: req.method,
+        path: req.path,
+      });
 
       res.json({
         success: true,
@@ -590,6 +682,24 @@ export class PaymentController {
       }
 
       const payment = await PaymentService.generateInvoice(subscriptionId, userId);
+
+      // 🔐 AUDITORIA: Geração de Fatura
+      await AuditService.log({
+        userId,
+        userEmail: user.email,
+        companyId: subscription.companyId?.toString(),
+        action: 'INVOICE_GENERATED',
+        category: 'financial',
+        level: 'info',
+        resource: 'Payment',
+        resourceId: (payment as any)?._id?.toString() || '',
+        details: { subscriptionId },
+        success: true,
+        ip: req.ip || '',
+        userAgent: req.headers['user-agent'] || '',
+        method: req.method,
+        path: req.path,
+      });
 
       res.status(201).json({
         success: true,

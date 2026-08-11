@@ -10,6 +10,7 @@ import { Response as ResponseModel } from '../models/Response.js';
 import { Assignment } from '../models/Assignment.js';
 import { Company } from '../models/Company.js';
 import { PDFService } from '../services/PDFService.js';
+import { AuditService } from '../services/AuditService.js';
 
 export class ReportController {
   /**
@@ -84,6 +85,25 @@ export class ReportController {
       // POPULAR companyId para obter o nome da empresa
       await report.populate('companyId', 'name cnpj');
 
+      // 🔐 AUDITORIA: Registro de geração do relatório
+      if (req.userId) {
+        await AuditService.log({
+          userId: req.userId,
+          userEmail: req.user?.email || '',
+          companyId,
+          action: 'REPORT_GENERATED',
+          category: 'reports',
+          level: 'info',
+          resource: 'Report',
+          resourceId: (report as any)?._id?.toString() || companyId,
+          success: true,
+          ip: req.ip || '',
+          userAgent: req.headers['user-agent'] || '',
+          method: req.method,
+          path: req.path,
+        });
+      }
+
       res.json({
         success: true,
         message: 'Relatório gerado com sucesso',
@@ -134,6 +154,26 @@ export class ReportController {
 
       // POPULAR companyId para obter o nome da empresa
       await report.populate('companyId', 'name cnpj');
+
+      // 🔐 AUDITORIA: Registro de atualização do relatório
+      if (req.userId) {
+        await AuditService.log({
+          userId: req.userId,
+          userEmail: req.user?.email || '',
+          companyId,
+          action: 'REPORT_UPDATED',
+          category: 'reports',
+          level: 'info',
+          resource: 'Report',
+          resourceId: (report as any)?._id?.toString() || companyId,
+          details: { projectNumber, scope, status },
+          success: true,
+          ip: req.ip || '',
+          userAgent: req.headers['user-agent'] || '',
+          method: req.method,
+          path: req.path,
+        });
+      }
 
       res.json({
         success: true,
@@ -612,6 +652,26 @@ export class ReportController {
       }
 
       logger.info(`✅ PDF gerado com sucesso: ${pdfBuffer.length} bytes para ${companyName}`);
+
+      // 🔐 AUDITORIA: Registro do download em PDF do relatório completo
+      if (req.userId) {
+        await AuditService.log({
+          userId: req.userId,
+          userEmail: req.user?.email || '',
+          companyId,
+          action: 'REPORT_EXPORTED_PDF',
+          category: 'reports',
+          level: 'info',
+          resource: 'Report',
+          resourceId: (reportData as any)?._id?.toString() || companyId,
+          details: { companyName, bufferSize: pdfBuffer.length },
+          success: true,
+          ip: req.ip || '',
+          userAgent: req.headers['user-agent'] || '',
+          method: req.method,
+          path: req.path,
+        });
+      }
 
       // Usar nome sanitizado para o arquivo
       const fileName = `relatorio_${sanitizedCompanyName}_${new Date().toISOString().split('T')[0]}.pdf`;
