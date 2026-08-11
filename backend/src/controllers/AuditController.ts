@@ -33,13 +33,31 @@ export class AuditController {
 
       const filter: any = {};
 
-      if (action) filter.action = action;
-      if (category) filter.category = category;
-      if (level) filter.level = level;
+      if (action && action !== 'all' && action !== 'todos') filter.action = action;
+      if (category && category !== 'all' && category !== 'todos') filter.category = category;
+
+      // 🛠️ Mapeamento e tolerância para Nível (Level)
+      if (level && level !== 'all' && level !== 'todos' && level !== 'Todos') {
+        const levelStr = String(level).toLowerCase().trim();
+        if (levelStr === 'critico' || levelStr === 'crítico' || levelStr === 'critical') {
+          filter.level = 'critical';
+        } else if (levelStr === 'erro' || levelStr === 'error') {
+          filter.level = 'error';
+        } else if (levelStr === 'aviso' || levelStr === 'warning') {
+          filter.level = 'warning';
+        } else if (levelStr === 'info' || levelStr === 'informação') {
+          filter.level = 'info';
+        } else {
+          filter.level = level;
+        }
+      }
+
       if (userId) filter.userId = userId;
       if (userEmail) filter.userEmail = { $regex: userEmail, $options: 'i' };
       if (companyId) filter.companyId = companyId;
-      if (success !== undefined) filter.success = success === 'true';
+      if (success !== undefined && success !== '' && success !== 'all') {
+        filter.success = success === 'true';
+      }
 
       if (startDate || endDate) {
         filter.timestamp = {};
