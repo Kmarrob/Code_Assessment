@@ -32,6 +32,9 @@ import { AdminController } from './controllers/AdminController.js';
 import brandingRoutes from './routes/branding.routes.js';
 import analyticsRoutes from './routes/analytics.routes.js';
 
+// 🆕 NOVO - Middleware de Auditoria HTTP Global
+import { auditHttpMiddleware } from './middleware/auditMiddleware.js';
+
 // 🆕 NOVO (v39) - Importação do módulo de governança
 // 🔧 CORREÇÃO v41.1: Caminho corrigido de './models/governance/...' para './modules/governance/...'
 import governanceRoutes from './models/governance/routes/governance.routes.js';
@@ -114,6 +117,9 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(httpLogger);
+
+// 🆕 NOVO - Registra o middleware de auditoria global para todas as requisições da API
+app.use(auditHttpMiddleware);
 
 // ============================================
 // 🔴 CORREÇÃO: Servir arquivos estáticos (uploads)
