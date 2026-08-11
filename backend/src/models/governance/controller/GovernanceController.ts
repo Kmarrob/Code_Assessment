@@ -283,7 +283,7 @@ export class GovernanceController {
         resource: 'GovernanceDocument',
         resourceId: id,
         resourceName: doc.code || doc.title,
-        details: { changes: validation.data },
+        details: { metadata: validation.data },
         success: true,
         ip: AuditService.getRequestInfo(req).ip,
         userAgent: AuditService.getRequestInfo(req).userAgent,
