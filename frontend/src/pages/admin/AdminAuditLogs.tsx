@@ -5,20 +5,15 @@ import {
   AlertCircle,
   CheckCircle,
   XCircle,
-  Clock,
   ChevronLeft,
   ChevronRight,
   Download,
   RefreshCw,
   FileText,
-  Search,
-  Filter,
-  Calendar,
-  User,
-  Building,
-  Tag,
   Eye,
+  ArrowLeft, // 🆕 NOVO - ícone de voltar
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom'; // 🆕 NOVO - para navegação
 import { auditService, AuditLog, AuditFilters } from '../../services/audit.service.js';
 import { AuditFilters as AuditFiltersComponent } from '../../components/admin/AuditFilters.js';
 
@@ -67,6 +62,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 };
 
 export default function AdminAuditLogs() {
+  const navigate = useNavigate(); // 🆕 NOVO - hook de navegação
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [pagination, setPagination] = useState({ page: 1, limit: 50, total: 0, totalPages: 1 });
   const [filters, setFilters] = useState<AuditFilters>({ page: 1, limit: 50 });
@@ -94,7 +90,6 @@ export default function AdminAuditLogs() {
   const loadStats = async () => {
     try {
       const data = await auditService.getStats(30);
-      // 🆕 CORREÇÃO: Garantir que os dados tenham a estrutura esperada
       setStats({
         total: data?.total || 0,
         days: data?.days || 30,
@@ -106,7 +101,6 @@ export default function AdminAuditLogs() {
       });
     } catch (err) {
       console.error('Erro ao carregar estatísticas:', err);
-      // 🆕 CORREÇÃO: Definir stats com valores padrão em caso de erro
       setStats({
         total: 0,
         days: 30,
@@ -178,18 +172,27 @@ export default function AdminAuditLogs() {
     return `${(ms / 1000).toFixed(2)}s`;
   };
 
-  // 🆕 CORREÇÃO: Função segura para acessar stats
   const safeStats = stats || { total: 0, days: 30, byCategory: [], byAction: [], byLevel: [], bySuccess: [], byDay: [] };
 
   return (
     <div className="container mx-auto px-4 py-8">
-      {/* Header */}
+      {/* Header com botão Voltar */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">📋 Auditoria do Sistema</h1>
-          <p className="text-gray-500 mt-1">
-            Visualize todos os logs de atividades do sistema
-          </p>
+        <div className="flex items-center gap-4">
+          {/* 🆕 NOVO - Botão Voltar */}
+          <button
+            onClick={() => navigate('/admin')}
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            title="Voltar para o Dashboard"
+          >
+            <ArrowLeft className="w-5 h-5 text-gray-600" />
+          </button>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">📋 Auditoria do Sistema</h1>
+            <p className="text-gray-500 mt-1">
+              Visualize todos os logs de atividades do sistema
+            </p>
+          </div>
         </div>
         <div className="flex flex-wrap gap-3 mt-4 md:mt-0">
           <button

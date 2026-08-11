@@ -303,7 +303,7 @@ export class AuditService {
   }
 
   // ============================================
-  // MÉTODOS AUXILIARES POR CATEGORIA (com Request)
+  // MÉTODOS AUXILIARES POR CATEGORIA
   // ============================================
 
   // 🔐 AUTENTICAÇÃO
@@ -337,23 +337,6 @@ export class AuditService {
       resourceId: userId,
       resourceName: userEmail,
       success: true,
-    });
-  }
-
-  static async logPasswordReset(userId: string, userEmail: string, req: Request, success: boolean, errorMessage?: string) {
-    const info = this.getRequestInfo(req);
-    return this.log({
-      userId,
-      userEmail,
-      ...info,
-      action: 'PASSWORD_RESET_CONFIRM',
-      category: 'auth',
-      level: success ? 'info' : 'warning',
-      resource: 'User',
-      resourceId: userId,
-      resourceName: userEmail,
-      success,
-      errorMessage,
     });
   }
 
