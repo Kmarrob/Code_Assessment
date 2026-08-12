@@ -1,5 +1,6 @@
 // backend/src/controllers/RepController.ts
 import { Response, NextFunction } from 'express';
+import mongoose from 'mongoose';
 import { RepService } from '../services/RepService.js';
 import { validate } from '../utils/validation.js';
 import { AuthenticatedRequest } from '../types/index.js';
@@ -623,7 +624,7 @@ export class RepController {
         select: '_id id nome dominioDeSI tipoDeControle nota',
       });
 
-      let rawControlsList = company.assignedControls || [];
+      let rawControlsList: any[] = company.assignedControls || [];
 
       // FALLBACK: Se a empresa não tem controles explicitamente atribuídos em assignedControls,
       // busca todos os controles da coleção mestre Control (93 controles ISO 27001).
@@ -651,20 +652,29 @@ export class RepController {
        * Apenas a lista retornada pela API é filtrada.
        */
 
+      // Converter explicitamente para Objetos ObjectId do Mongoose para satisfazer a tipagem do TypeScript (TS2322)
+      const controlObjectIds: mongoose.Types.ObjectId[] = rawControlsList
+        .map((control: any) => {
+          if (!control) return null;
+          const idVal = control._id || control;
+          return mongoose.Types.ObjectId.isValid(idVal)
+            ? new mongoose.Types.ObjectId(idVal)
+            : null;
+        })
+        .filter((id): id is mongoose.Types.ObjectId => id !== null);
+
       const assignedControls = await Assignment.find({
-  controlId: {
-    $in: rawControlsList.map(
-      (control: any) => (control._id ? control._id : control)
-    ),
-  },
-})
+        controlId: {
+          $in: controlObjectIds,
+        },
+      })
         .select('controlId')
         .lean();
 
       // IDs dos controles que já foram atribuídos a qualquer usuário
       const assignedControlIds = new Set(
         assignedControls.map((assignment: any) =>
-          assignment.controlId.toString()
+          assignment.controlId ? assignment.controlId.toString() : ''
         )
       );
 
@@ -695,7 +705,7 @@ export class RepController {
       const controls = rawControlsList
         .filter(
           (control: any) =>
-            !assignedControlIds.has(control._id.toString())
+            control && control._id && !assignedControlIds.has(control._id.toString())
         )
         .sort((a: any, b: any) => {
           const aId = String(a.id || '').trim();
