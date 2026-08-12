@@ -66,7 +66,15 @@ export const auditService = {
    */
   async listLogs(filters?: AuditFilters): Promise<{ logs: AuditLog[]; pagination: any }> {
     const response = await api.get('/admin/audit/logs', { params: filters });
-    return response.data;
+    
+    // 🛠️ FIX: Tratar tanto a estrutura envelopada { data: { logs: [...] } } quanto { logs: [...] }
+    const logs = response.data?.data?.logs || response.data?.logs || [];
+    const pagination = response.data?.pagination || { page: 1, limit: 50, total: logs.length, totalPages: 1 };
+
+    return {
+      logs,
+      pagination,
+    };
   },
 
   /**
@@ -74,7 +82,7 @@ export const auditService = {
    */
   async getStats(days?: number): Promise<AuditStats> {
     const response = await api.get('/admin/audit/stats', { params: { days } });
-    return response.data.data;
+    return response.data?.data || response.data;
   },
 
   /**
@@ -82,7 +90,7 @@ export const auditService = {
    */
   async getLogById(id: string): Promise<AuditLog> {
     const response = await api.get(`/admin/audit/logs/${id}`);
-    return response.data.data.log;
+    return response.data?.data?.log || response.data?.log || response.data;
   },
 
   /**
