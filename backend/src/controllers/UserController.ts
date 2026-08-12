@@ -1,7 +1,7 @@
 // backend/src/controllers/UserController.ts
 import { Response, NextFunction } from 'express';
 import { UserService } from '../services/UserService.js';
-import { AuthenticatedRequest, MaturityLevel } from '../types/index.js';
+import { AuthenticatedRequest, MaturityLevel, ProgressStatus } from '../types/index.js';
 import { AppError, ValidationError } from '../middleware/errorHandler.js';
 import { ErrorLogger } from '../utils/errorLogger.js';
 import { validate } from '../utils/validation.js';
@@ -276,11 +276,16 @@ export class UserController {
         throw new ValidationError(validation.errors || {});
       }
 
+      // 🆕 Converter progressStatus para o enum ProgressStatus
+      const progressStatusEnum = validation.data.progressStatus === 'in_progress' 
+        ? ProgressStatus.IN_PROGRESS 
+        : ProgressStatus.INTERRUPTED;
+
       const result = await UserService.saveProgress(
         userId,
         validation.data.assignmentId,
         validation.data.partialData,
-        validation.data.progressStatus
+        progressStatusEnum
       );
 
       res.json({
