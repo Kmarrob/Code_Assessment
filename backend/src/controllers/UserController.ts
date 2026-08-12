@@ -7,6 +7,8 @@ import { ErrorLogger } from '../utils/errorLogger.js';
 import { validate } from '../utils/validation.js';
 import { z } from 'zod';
 import { AuditService } from '../services/AuditService.js';
+// 🔴 CORREÇÃO: Import correto do NotificationService
+import { NotificationService } from '../services/NotificationService.js';
 
 const saveResponseSchema = z.object({
   assignmentId: z.string().min(1, 'ID da atribuição é obrigatório'),
