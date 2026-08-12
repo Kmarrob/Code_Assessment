@@ -50,6 +50,26 @@ const responseSchema = new Schema<IResponse>(
       type: Date,
       default: Date.now,
     },
+    // 🆕 CAMPOS PARA PROGRESSO (NOVOS - NADA FOI EXCLUÍDO)
+    progressStatus: {
+      type: String,
+      enum: ['not_started', 'in_progress', 'interrupted', 'completed'],
+      default: 'not_started',
+      index: true,
+    },
+    lastActivityAt: {
+      type: Date,
+      default: Date.now,
+      index: true,
+    },
+    isInterrupted: {
+      type: Boolean,
+      default: false,
+    },
+    partialData: {
+      type: Schema.Types.Mixed,
+      default: {},
+    },
   },
   {
     timestamps: true,
@@ -66,6 +86,9 @@ responseSchema.index({ userId: 1, maturityLevel: 1 });
 responseSchema.index({ controlId: 1, maturityLevel: 1 });
 // 🔴 NOVO ÍNDICE
 responseSchema.index({ companyId: 1, userId: 1 });
+// 🆕 NOVOS ÍNDICES PARA PROGRESSO
+responseSchema.index({ userId: 1, progressStatus: 1, lastActivityAt: -1 });
+responseSchema.index({ userId: 1, isInterrupted: 1 });
 
 // ============================================
 // MÉTODOS ESTÁTICOS
@@ -115,6 +138,49 @@ responseSchema.statics.getUserStats = function(userId: string) {
       },
     },
   ]);
+};
+
+// 🆕 MÉTODOS PARA PROGRESSO
+
+/**
+ * Buscar atividades em andamento/interrompidas de um usuário
+ */
+responseSchema.statics.getInProgressActivities = function(userId: string) {
+  return this.find({
+    userId,
+    progressStatus: { $in: ['in_progress', 'interrupted'] },
+  })
+    .populate({
+      path: 'assignmentId',
+      populate: {
+        path: 'controlId',
+        select: 'id nome dominioDeSI',
+      },
+    })
+    .populate('controlId', 'id nome')
+    .sort({ lastActivityAt: -1 })
+    .lean();
+};
+
+/**
+ * Verificar se o usuário tem atividades pendentes
+ */
+responseSchema.statics.hasPendingActivities = async function(userId: string): Promise<boolean> {
+  const count = await this.countDocuments({
+    userId,
+    progressStatus: { $in: ['in_progress', 'interrupted'] },
+  });
+  return count > 0;
+};
+
+/**
+ * Buscar progresso de uma atribuição específica
+ */
+responseSchema.statics.getProgressByAssignment = function(assignmentId: string) {
+  return this.findOne({
+    assignmentId,
+    progressStatus: { $in: ['in_progress', 'interrupted'] },
+  }).lean();
 };
 
 export const Response: Model<IResponse> = mongoose.model<IResponse>('Response', responseSchema);

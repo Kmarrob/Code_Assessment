@@ -2,11 +2,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext.js';
-import { LayoutDashboard, ClipboardList, CheckCircle, Clock, AlertCircle, Loader2, LogOut, Download, Filter } from 'lucide-react';
+import { LayoutDashboard, ClipboardList, CheckCircle, Clock, AlertCircle, Loader2, LogOut, Download, Filter, ArrowRight, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card.js';
 import { Button } from '../components/ui/Button.js';
-import { userService, UserStats, UserControl } from '../services/user.service.js';
+import { userService, UserStats, UserControl, InProgressActivity } from '../services/user.service.js';
 import { FeatureGuard } from '../components/common/FeatureGuard.js';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../components/ui/Dialog.js';
 
 export const UserDashboard: React.FC = () => {
   const { user, logout } = useAuth();
@@ -18,6 +19,33 @@ export const UserDashboard: React.FC = () => {
   
   // Estado para filtro de status
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'in_progress' | 'completed'>('all');
+
+  // 🆕 ESTADOS PARA PROGRESSO
+  const [isCheckingProgress, setIsCheckingProgress] = useState(false);
+  const [pendingActivities, setPendingActivities] = useState<InProgressActivity[]>([]);
+  const [showProgressModal, setShowProgressModal] = useState(false);
+  const [hasCheckedProgress, setHasCheckedProgress] = useState(false);
+
+  // ============================================
+  // 🆕 VERIFICAR ATIVIDADES PENDENTES
+  // ============================================
+  const checkPendingActivities = async () => {
+    if (hasCheckedProgress) return;
+    
+    setIsCheckingProgress(true);
+    try {
+      const activities = await userService.getInProgressActivities();
+      if (activities && activities.length > 0) {
+        setPendingActivities(activities);
+        setShowProgressModal(true);
+      }
+    } catch (err) {
+      console.error('Erro ao verificar atividades pendentes:', err);
+    } finally {
+      setIsCheckingProgress(false);
+      setHasCheckedProgress(true);
+    }
+  };
 
   // ============================================
   // HANDLERS
@@ -36,6 +64,17 @@ export const UserDashboard: React.FC = () => {
     setFilterStatus(status);
   };
 
+  // 🆕 Handler para continuar de onde parou
+  const handleContinueProgress = (assignmentId: string) => {
+    setShowProgressModal(false);
+    navigate(`/user/answer/${assignmentId}`);
+  };
+
+  // 🆕 Handler para fechar o modal (ignorar)
+  const handleCloseModal = () => {
+    setShowProgressModal(false);
+  };
+
   // ============================================
   // CARREGAR DADOS
   // ============================================
@@ -49,6 +88,9 @@ export const UserDashboard: React.FC = () => {
       ]);
       setStats(statsData);
       setControls(controlsData);
+      
+      // 🆕 APÓS CARREGAR DADOS, VERIFICAR ATIVIDADES PENDENTES
+      await checkPendingActivities();
     } catch (err) {
       console.error('Erro ao carregar dados:', err);
       setError('Erro ao carregar seus dados. Tente novamente.');
@@ -129,7 +171,6 @@ export const UserDashboard: React.FC = () => {
       {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          {/* 🔴 CORRIGIDO: Logo redireciona para o dashboard do usuário */}
           <button
             onClick={() => navigate('/user/dashboard')}
             className="flex items-center gap-2 hover:opacity-80 transition-opacity"
@@ -163,14 +204,12 @@ export const UserDashboard: React.FC = () => {
               Gerencie seus controles atribuídos e acompanhe seu progresso
             </p>
           </div>
-          {/* Botão de Exportação protegido por FeatureGuard */}
           <FeatureGuard feature="canExportData">
             <Button
               variant="outline"
               size="sm"
               className="mt-2 md:mt-0"
               onClick={() => {
-                // TODO: Implementar exportação de dados
                 console.log('Exportar dados do usuário');
               }}
             >
@@ -389,6 +428,95 @@ export const UserDashboard: React.FC = () => {
           </CardContent>
         </Card>
       </main>
+
+      {/* 🆕 MODAL DE ATIVIDADES PENDENTES */}
+      <Dialog open={showProgressModal} onOpenChange={setShowProgressModal}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold text-gray-900 flex items-center gap-3">
+              <Clock className="h-6 w-6 text-yellow-600" />
+              Você possui atividades em andamento
+            </DialogTitle>
+            <DialogDescription className="text-gray-600">
+              Identificamos que você interrompeu atividades anteriormente. 
+              Escolha uma para continuar de onde parou.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {pendingActivities.map((activity) => (
+              <div
+                key={activity.assignmentId}
+                className="bg-white border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition-colors"
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3">
+                      <span className="font-mono text-sm font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                        {activity.controlCode || 'N/A'}
+                      </span>
+                      <h4 className="font-medium text-gray-900">
+                        {activity.controlName || 'Controle não identificado'}
+                      </h4>
+                    </div>
+                    <div className="mt-2 grid grid-cols-2 gap-2 text-sm text-gray-500">
+                      <span>
+                        <span className="font-medium">Status:</span>{' '}
+                        {activity.progressStatus === 'in_progress' ? 'Em andamento' : 'Interrompido'}
+                      </span>
+                      <span>
+                        <span className="font-medium">Última atividade:</span>{' '}
+                        {activity.lastActivityAt ? new Date(activity.lastActivityAt).toLocaleDateString('pt-BR', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        }) : 'N/A'}
+                      </span>
+                      {activity.domain && activity.domain.length > 0 && (
+                        <span className="col-span-2">
+                          <span className="font-medium">Domínio:</span>{' '}
+                          {activity.domain.join(', ')}
+                        </span>
+                      )}
+                      {activity.partialData?.maturityLevel && (
+                        <span className="col-span-2">
+                          <span className="font-medium">Nível selecionado:</span>{' '}
+                          {activity.partialData.maturityLevel === '2' ? 'Implementado' :
+                           activity.partialData.maturityLevel === '1' ? 'Parcial' :
+                           activity.partialData.maturityLevel === '0' ? 'Não Implementado' : 'N/A'}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <Button
+                    onClick={() => handleContinueProgress(activity.assignmentId)}
+                    className="flex items-center gap-2 bg-[#30736C] hover:bg-[#1E5359] text-white flex-shrink-0 ml-4"
+                  >
+                    Continuar
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <DialogFooter className="flex justify-between">
+            <Button
+              onClick={handleCloseModal}
+              variant="outline"
+              className="text-gray-600"
+            >
+              <X className="h-4 w-4 mr-2" />
+              Fechar
+            </Button>
+            <span className="text-xs text-gray-400">
+              Seu progresso foi salvo e não será perdido.
+            </span>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

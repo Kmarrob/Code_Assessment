@@ -16,6 +16,13 @@ const saveResponseSchema = z.object({
   notes: z.string().optional(),
 });
 
+// 🆕 NOVO SCHEMA PARA PROGRESSO
+const saveProgressSchema = z.object({
+  assignmentId: z.string().min(1, 'ID da atribuição é obrigatório'),
+  partialData: z.any(),
+  progressStatus: z.enum(['in_progress', 'interrupted']).default('in_progress'),
+});
+
 export class UserController {
   /**
    * Obter controles do usuário
@@ -226,6 +233,215 @@ export class UserController {
       res.json({
         success: true,
         data: questions,
+        statusCode: 200,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      ErrorLogger.logError(error as Error, {
+        userId: req.userId,
+        email: req.user?.email,
+        ip: req.ip,
+        userAgent: req.headers['user-agent'],
+        path: req.path,
+        method: req.method,
+        params: req.params,
+      });
+      next(error);
+    }
+  }
+
+  // ============================================
+  // 🆕 NOVOS ENDPOINTS PARA PROGRESSO (ADICIONADOS - NADA FOI EXCLUÍDO)
+  // ============================================
+
+  /**
+   * Salvar progresso parcial de um controle (em andamento)
+   * POST /api/user/progress
+   */
+  static async saveProgress(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const userId = req.userId;
+      if (!userId) {
+        throw new AppError('Usuário não autenticado', 401);
+      }
+
+      const validation = validate(saveProgressSchema, req.body);
+      if (!validation.success) {
+        throw new ValidationError(validation.errors || {});
+      }
+
+      const result = await UserService.saveProgress(
+        userId,
+        validation.data.assignmentId,
+        validation.data.partialData,
+        validation.data.progressStatus
+      );
+
+      res.json({
+        success: true,
+        message: 'Progresso salvo com sucesso',
+        data: result,
+        statusCode: 200,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      ErrorLogger.logError(error as Error, {
+        userId: req.userId,
+        email: req.user?.email,
+        ip: req.ip,
+        userAgent: req.headers['user-agent'],
+        path: req.path,
+        method: req.method,
+        body: req.body,
+      });
+      next(error);
+    }
+  }
+
+  /**
+   * Buscar atividades em andamento/interrompidas do usuário
+   * GET /api/user/progress/in-progress
+   */
+  static async getInProgressActivities(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const userId = req.userId;
+      if (!userId) {
+        throw new AppError('Usuário não autenticado', 401);
+      }
+
+      const activities = await UserService.getInProgressActivities(userId);
+
+      res.json({
+        success: true,
+        data: activities,
+        statusCode: 200,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      ErrorLogger.logError(error as Error, {
+        userId: req.userId,
+        email: req.user?.email,
+        ip: req.ip,
+        userAgent: req.headers['user-agent'],
+        path: req.path,
+        method: req.method,
+      });
+      next(error);
+    }
+  }
+
+  /**
+   * Verificar se o usuário tem atividades pendentes
+   * GET /api/user/progress/has-pending
+   */
+  static async hasPendingActivity(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const userId = req.userId;
+      if (!userId) {
+        throw new AppError('Usuário não autenticado', 401);
+      }
+
+      const hasPending = await UserService.hasPendingActivity(userId);
+
+      res.json({
+        success: true,
+        data: { hasPending },
+        statusCode: 200,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      ErrorLogger.logError(error as Error, {
+        userId: req.userId,
+        email: req.user?.email,
+        ip: req.ip,
+        userAgent: req.headers['user-agent'],
+        path: req.path,
+        method: req.method,
+      });
+      next(error);
+    }
+  }
+
+  /**
+   * Buscar progresso de uma atribuição específica
+   * GET /api/user/progress/assignment/:assignmentId
+   */
+  static async getProgressByAssignment(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const userId = req.userId;
+      if (!userId) {
+        throw new AppError('Usuário não autenticado', 401);
+      }
+
+      const { assignmentId } = req.params;
+      if (!assignmentId) {
+        throw new AppError('ID da atribuição é obrigatório', 400);
+      }
+
+      const progress = await UserService.getProgressByAssignment(userId, assignmentId);
+
+      res.json({
+        success: true,
+        data: progress,
+        statusCode: 200,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      ErrorLogger.logError(error as Error, {
+        userId: req.userId,
+        email: req.user?.email,
+        ip: req.ip,
+        userAgent: req.headers['user-agent'],
+        path: req.path,
+        method: req.method,
+        params: req.params,
+      });
+      next(error);
+    }
+  }
+
+  /**
+   * Limpar progresso de uma atividade
+   * DELETE /api/user/progress/assignment/:assignmentId
+   */
+  static async clearProgress(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const userId = req.userId;
+      if (!userId) {
+        throw new AppError('Usuário não autenticado', 401);
+      }
+
+      const { assignmentId } = req.params;
+      if (!assignmentId) {
+        throw new AppError('ID da atribuição é obrigatório', 400);
+      }
+
+      const result = await UserService.clearProgress(userId, assignmentId);
+
+      res.json({
+        success: true,
+        message: 'Progresso limpo com sucesso',
+        data: result,
         statusCode: 200,
         timestamp: new Date().toISOString(),
       });

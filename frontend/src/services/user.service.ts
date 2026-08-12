@@ -33,6 +33,51 @@ export interface UserProgress {
   controls: UserControl[];
 }
 
+// 🆕 TIPOS PARA PROGRESSO
+export interface InProgressActivity {
+  assignmentId: string;
+  controlId: string;
+  controlCode: string;
+  controlName: string;
+  progressStatus: 'in_progress' | 'interrupted';
+  lastActivityAt: string;
+  partialData: {
+    maturityLevel?: string;
+    scenarioDescription?: string;
+    notes?: string;
+    [key: string]: any;
+  };
+  isInterrupted: boolean;
+  domain: string[];
+}
+
+export interface AssignmentProgress {
+  assignmentId: string;
+  controlId: string;
+  controlCode: string;
+  controlName: string;
+  progressStatus: 'in_progress' | 'interrupted';
+  lastActivityAt: string;
+  partialData: any;
+  isInterrupted: boolean;
+  existingResponse: {
+    maturityLevel: string;
+    scenarioDescription: string;
+    observations: string;
+  };
+}
+
+export interface SaveProgressData {
+  assignmentId: string;
+  partialData: {
+    maturityLevel?: string;
+    scenarioDescription?: string;
+    notes?: string;
+    [key: string]: any;
+  };
+  progressStatus: 'in_progress' | 'interrupted';
+}
+
 export const userService = {
   /**
    * Obter controles do usuário
@@ -69,6 +114,50 @@ export const userService = {
     notes?: string;
   }): Promise<any> {
     const response = await api.post<ApiResponse<any>>('/user/responses', data);
+    return response.data.data;
+  },
+
+  // ============================================
+  // 🆕 NOVOS MÉTODOS PARA PROGRESSO (ADICIONADOS - NADA FOI EXCLUÍDO)
+  // ============================================
+
+  /**
+   * Salvar progresso parcial de um controle (em andamento)
+   */
+  async saveProgress(data: SaveProgressData): Promise<any> {
+    const response = await api.post<ApiResponse<any>>('/user/progress', data);
+    return response.data.data;
+  },
+
+  /**
+   * Buscar atividades em andamento/interrompidas do usuário
+   */
+  async getInProgressActivities(): Promise<InProgressActivity[]> {
+    const response = await api.get<ApiResponse<InProgressActivity[]>>('/user/progress/in-progress');
+    return response.data.data;
+  },
+
+  /**
+   * Verificar se há atividades pendentes
+   */
+  async hasPendingActivity(): Promise<boolean> {
+    const response = await api.get<ApiResponse<{ hasPending: boolean }>>('/user/progress/has-pending');
+    return response.data.data.hasPending;
+  },
+
+  /**
+   * Buscar progresso de uma atribuição específica
+   */
+  async getProgressByAssignment(assignmentId: string): Promise<AssignmentProgress | null> {
+    const response = await api.get<ApiResponse<AssignmentProgress | null>>(`/user/progress/assignment/${assignmentId}`);
+    return response.data.data;
+  },
+
+  /**
+   * Limpar progresso de uma atividade
+   */
+  async clearProgress(assignmentId: string): Promise<any> {
+    const response = await api.delete<ApiResponse<any>>(`/user/progress/assignment/${assignmentId}`);
     return response.data.data;
   },
 };

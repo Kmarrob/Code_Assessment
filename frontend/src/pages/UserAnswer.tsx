@@ -1,7 +1,7 @@
 // frontend/src/pages/UserAnswer.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, AlertCircle, CheckCircle, Clock } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card.js';
 import { Button } from '../components/ui/Button.js';
 import { userService } from '../services/user.service.js';
@@ -36,8 +36,15 @@ export const UserAnswer: React.FC = () => {
   const [notes, setNotes] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isAutoSaving, setIsAutoSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  
+  // 🆕 Estados para progresso
+  const [isInProgress, setIsInProgress] = useState(false);
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   // Estados para o modal de confirmação
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
@@ -47,6 +54,83 @@ export const UserAnswer: React.FC = () => {
     scenarioDescription: string;
     notes: string;
   } | null>(null);
+
+  // ============================================
+  // FUNÇÃO DE SALVAMENTO DE PROGRESSO
+  // ============================================
+  const saveProgress = useCallback(async (status: 'in_progress' | 'interrupted' = 'in_progress') => {
+    if (!assignmentId || !selectedMaturity) {
+      return;
+    }
+
+    // Não salvar se já está em estado de salvamento final
+    if (isSaving) return;
+
+    setIsAutoSaving(true);
+    try {
+      await userService.saveProgress({
+        assignmentId: assignmentId,
+        partialData: {
+          maturityLevel: selectedMaturity,
+          scenarioDescription: scenarioDescription,
+          notes: notes,
+        },
+        progressStatus: status,
+      });
+      setLastSavedAt(new Date());
+      setHasUnsavedChanges(false);
+      setIsInProgress(true);
+      console.log('💾 Progresso salvo automaticamente');
+    } catch (err) {
+      console.error('❌ Erro ao salvar progresso:', err);
+    } finally {
+      setIsAutoSaving(false);
+    }
+  }, [assignmentId, selectedMaturity, scenarioDescription, notes, isSaving]);
+
+  // ============================================
+  // AUTOSAVE COM DEBOUNCE
+  // ============================================
+  useEffect(() => {
+    if (!isLoading && assignmentId && selectedMaturity) {
+      // Limpar timeout anterior
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+      
+      // Configurar novo timeout (3 segundos)
+      saveTimeoutRef.current = setTimeout(() => {
+        saveProgress('in_progress');
+      }, 3000);
+      
+      return () => {
+        if (saveTimeoutRef.current) {
+          clearTimeout(saveTimeoutRef.current);
+        }
+      };
+    }
+  }, [selectedMaturity, scenarioDescription, notes, isLoading, assignmentId, saveProgress]);
+
+  // ============================================
+  // SALVAR AO SAIR DA PÁGINA
+  // ============================================
+  useEffect(() => {
+    const handleBeforeUnload = async (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges && selectedMaturity) {
+        try {
+          await saveProgress('interrupted');
+          console.log('💾 Progresso salvo ao sair da página');
+        } catch (err) {
+          console.error('❌ Erro ao salvar ao sair:', err);
+        }
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [hasUnsavedChanges, selectedMaturity, saveProgress]);
 
   // ============================================
   // CARREGAR DADOS
@@ -71,6 +155,23 @@ export const UserAnswer: React.FC = () => {
         // Buscar as perguntas para este controle
         const questionsData = await questionService.getUserQuestionsByControl(assignment.control?.id || '');
         setQuestions(questionsData);
+
+        // 🆕 VERIFICAR SE HÁ PROGRESSO SALVO
+        try {
+          const savedProgress = await userService.getProgressByAssignment(assignmentId!);
+          if (savedProgress && savedProgress.partialData) {
+            console.log('📂 Progresso recuperado:', savedProgress);
+            const pd = savedProgress.partialData;
+            setSelectedMaturity(pd.maturityLevel || '');
+            setScenarioDescription(pd.scenarioDescription || '');
+            setNotes(pd.notes || '');
+            setIsInProgress(true);
+            setLastSavedAt(new Date(savedProgress.lastActivityAt));
+            toast.success('📂 Progresso recuperado! Continue de onde parou.');
+          }
+        } catch (progressErr) {
+          console.log('ℹ️ Nenhum progresso salvo para esta atribuição');
+        }
 
         // Verificar se já existe resposta
         if (assignment.response) {
@@ -119,7 +220,11 @@ export const UserAnswer: React.FC = () => {
   // ============================================
   // HANDLERS
   // ============================================
-  const handleBack = () => {
+  const handleBack = async () => {
+    // Salvar progresso antes de sair, se houver alterações
+    if (hasUnsavedChanges && selectedMaturity) {
+      await saveProgress('interrupted');
+    }
     navigate('/dashboard');
   };
 
@@ -181,6 +286,8 @@ export const UserAnswer: React.FC = () => {
         notes: notes || '',
       });
       setHasExistingResponse(true);
+      setIsInProgress(false);
+      setHasUnsavedChanges(false);
       
       setTimeout(() => {
         navigate('/dashboard');
@@ -236,6 +343,35 @@ export const UserAnswer: React.FC = () => {
           Voltar ao dashboard
         </button>
 
+        {/* 🆕 INDICADOR DE PROGRESSO */}
+        {(isInProgress || isAutoSaving || hasUnsavedChanges) && (
+          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center gap-3">
+            {isAutoSaving ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+                <span className="text-sm text-blue-700">Salvando progresso...</span>
+              </>
+            ) : hasUnsavedChanges ? (
+              <>
+                <Clock className="h-4 w-4 text-yellow-600" />
+                <span className="text-sm text-yellow-700">Alterações não salvas</span>
+              </>
+            ) : (
+              <>
+                <CheckCircle className="h-4 w-4 text-green-600" />
+                <span className="text-sm text-green-700">
+                  Progresso salvo {lastSavedAt ? `às ${lastSavedAt.toLocaleTimeString()}` : ''}
+                </span>
+              </>
+            )}
+            {isInProgress && !hasExistingResponse && (
+              <span className="text-xs text-blue-600 ml-auto bg-blue-100 px-2 py-1 rounded-full">
+                Em andamento
+              </span>
+            )}
+          </div>
+        )}
+
         <Card>
           <CardHeader>
             <div className="flex items-center gap-3">
@@ -250,6 +386,9 @@ export const UserAnswer: React.FC = () => {
                 </CardTitle>
                 <p className="text-sm text-gray-500 mt-1">
                   {hasExistingResponse ? 'Editando sua resposta para este controle' : 'Responda as perguntas para avaliar a maturidade do controle'}
+                  {isInProgress && !hasExistingResponse && (
+                    <span className="ml-2 text-blue-600">(Progresso salvo)</span>
+                  )}
                 </p>
               </div>
             </div>
@@ -344,7 +483,10 @@ export const UserAnswer: React.FC = () => {
                 </label>
                 <textarea
                   value={scenarioDescription}
-                  onChange={(e) => setScenarioDescription(e.target.value)}
+                  onChange={(e) => {
+                    setScenarioDescription(e.target.value);
+                    setHasUnsavedChanges(true);
+                  }}
                   rows={4}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                   placeholder="Descreva como este controle está implementado na sua organização..."
@@ -367,7 +509,10 @@ export const UserAnswer: React.FC = () => {
                 </label>
                 <textarea
                   value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
+                  onChange={(e) => {
+                    setNotes(e.target.value);
+                    setHasUnsavedChanges(true);
+                  }}
                   rows={3}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                   placeholder="Observações adicionais sobre este controle..."
