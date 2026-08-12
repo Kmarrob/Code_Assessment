@@ -652,12 +652,12 @@ export class RepController {
        */
 
       const assignedControls = await Assignment.find({
-        controlId: {
-          $in: rawControlsList.map(
-            (control: any) => control._id
-          ),
-        },
-      })
+  controlId: {
+    $in: rawControlsList.map(
+      (control: any) => (control._id ? control._id : control)
+    ),
+  },
+})
         .select('controlId')
         .lean();
 
