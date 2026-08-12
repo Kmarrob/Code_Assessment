@@ -663,15 +663,17 @@ export class RepController {
         })
         .filter((id): id is mongoose.Types.ObjectId => id !== null);
 
+      // 🆕 CORREÇÃO: Filtrar atribuições APENAS da mesma empresa
       const assignedControls = await Assignment.find({
         controlId: {
           $in: controlObjectIds,
         },
+        companyId: rep.companyId, // ← FILTRO ADICIONADO
       })
         .select('controlId')
         .lean();
 
-      // IDs dos controles que já foram atribuídos a qualquer usuário
+      // IDs dos controles que já foram atribuídos a qualquer usuário da empresa
       const assignedControlIds = new Set(
         assignedControls.map((assignment: any) =>
           assignment.controlId ? assignment.controlId.toString() : ''
@@ -866,11 +868,6 @@ export class RepController {
           acc[q.controlId] = q;
           return acc;
         }, {});
-
-        console.log(
-          '🔵 [getUsersWithResponses] Perguntas encontradas:',
-          questions.length
-        );
       }
 
       // Mapear respostas por usuário
