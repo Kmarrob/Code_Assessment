@@ -8,6 +8,7 @@ import { ErrorLogger } from '../utils/errorLogger.js';
 import { AuditService } from '../services/AuditService.js';
 import { User } from '../models/User.js';
 import { Company } from '../models/Company.js';
+import { Control } from '../models/Control.js';
 import { Response as ResponseModel } from '../models/Response.js';
 import { Assignment } from '../models/Assignment.js';
 import { Question } from '../models/Question.js';
@@ -622,6 +623,16 @@ export class RepController {
         select: '_id id nome dominioDeSI tipoDeControle nota',
       });
 
+      let rawControlsList = company.assignedControls || [];
+
+      // FALLBACK: Se a empresa não tem controles explicitamente atribuídos em assignedControls,
+      // busca todos os controles da coleção mestre Control (93 controles ISO 27001).
+      if (!Array.isArray(rawControlsList) || rawControlsList.length === 0) {
+        rawControlsList = await Control.find({})
+          .select('_id id nome dominioDeSI tipoDeControle nota')
+          .lean();
+      }
+
       /*
        * IMPORTANTE:
        *
@@ -642,7 +653,7 @@ export class RepController {
 
       const assignedControls = await Assignment.find({
         controlId: {
-          $in: (company.assignedControls || []).map(
+          $in: rawControlsList.map(
             (control: any) => control._id
           ),
         },
@@ -681,7 +692,7 @@ export class RepController {
        *
        * Nenhum controle é excluído ou alterado.
        */
-      const controls = (company.assignedControls || [])
+      const controls = rawControlsList
         .filter(
           (control: any) =>
             !assignedControlIds.has(control._id.toString())
