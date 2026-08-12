@@ -5,6 +5,7 @@ const RecommendationService_js_1 = require("../services/RecommendationService.js
 const errorHandler_js_1 = require("../middleware/errorHandler.js");
 const index_js_1 = require("../types/index.js");
 const Control_js_1 = require("../models/Control.js");
+const AuditService_js_1 = require("../services/AuditService.js");
 class RecommendationController {
     /**
      * Criar uma recomendação para um controle (ADMIN)
@@ -40,6 +41,23 @@ class RecommendationController {
                 recomendacoes,
                 solucoesTecnicas: solucoesTecnicas || [],
             }, userId);
+            // 🔐 AUDITORIA: Registro de criação de recomendação
+            await AuditService_js_1.AuditService.log({
+                userId,
+                userEmail: user.email,
+                action: 'RECOMMENDATION_CREATED',
+                category: 'controls',
+                level: 'info',
+                resource: 'Recommendation',
+                resourceId: recommendation?._id?.toString() || controlId,
+                resourceName: titulo,
+                details: { controlId, dominio },
+                success: true,
+                ip: req.ip || '',
+                userAgent: req.headers['user-agent'] || '',
+                method: req.method,
+                path: req.path,
+            });
             res.status(201).json({
                 success: true,
                 message: 'Recomendação criada com sucesso',
@@ -139,6 +157,23 @@ class RecommendationController {
                 recomendacoes,
                 solucoesTecnicas,
             }, userId);
+            // 🔐 AUDITORIA: Registro de atualização de recomendação
+            await AuditService_js_1.AuditService.log({
+                userId,
+                userEmail: user.email,
+                action: 'RECOMMENDATION_UPDATED',
+                category: 'controls',
+                level: 'info',
+                resource: 'Recommendation',
+                resourceId: recommendation?._id?.toString() || controlId,
+                resourceName: titulo,
+                details: { controlId, dominio },
+                success: true,
+                ip: req.ip || '',
+                userAgent: req.headers['user-agent'] || '',
+                method: req.method,
+                path: req.path,
+            });
             res.json({
                 success: true,
                 message: 'Recomendação atualizada com sucesso',
@@ -166,6 +201,24 @@ class RecommendationController {
                 throw new errorHandler_js_1.ValidationError({ controlId: ['ID do controle é obrigatório'] });
             }
             await RecommendationService_js_1.RecommendationService.deleteRecommendation(controlId);
+            // 🔐 AUDITORIA: Registro de exclusão de recomendação
+            if (req.userId && user) {
+                await AuditService_js_1.AuditService.log({
+                    userId: req.userId,
+                    userEmail: user.email,
+                    action: 'RECOMMENDATION_DELETED',
+                    category: 'controls',
+                    level: 'warning',
+                    resource: 'Recommendation',
+                    resourceId: controlId,
+                    details: { controlId },
+                    success: true,
+                    ip: req.ip || '',
+                    userAgent: req.headers['user-agent'] || '',
+                    method: req.method,
+                    path: req.path,
+                });
+            }
             res.json({
                 success: true,
                 message: 'Recomendação removida com sucesso',

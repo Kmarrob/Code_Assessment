@@ -36,9 +36,13 @@ const index_js_1 = require("./types/index.js");
 const AdminController_js_1 = require("./controllers/AdminController.js");
 const branding_routes_js_1 = __importDefault(require("./routes/branding.routes.js"));
 const analytics_routes_js_1 = __importDefault(require("./routes/analytics.routes.js"));
+// 🆕 NOVO - Middleware de Auditoria HTTP Global
+const auditMiddleware_js_1 = require("./middleware/auditMiddleware.js");
 // 🆕 NOVO (v39) - Importação do módulo de governança
 // 🔧 CORREÇÃO v41.1: Caminho corrigido de './models/governance/...' para './modules/governance/...'
 const governance_routes_js_1 = __importDefault(require("./models/governance/routes/governance.routes.js"));
+// 🆕 NOVO (v42.0) - Importação do módulo de auditoria
+const audit_routes_js_1 = __importDefault(require("./routes/audit.routes.js"));
 const app = (0, express_1.default)();
 app.use((0, compression_1.default)({
     level: 6,
@@ -109,6 +113,8 @@ app.use((0, cors_1.default)({
 app.use(express_1.default.json({ limit: '10mb' }));
 app.use(express_1.default.urlencoded({ extended: true, limit: '10mb' }));
 app.use(logger_js_1.httpLogger);
+// 🆕 NOVO - Registra o middleware de auditoria global para todas as requisições da API
+app.use(auditMiddleware_js_1.auditHttpMiddleware);
 // ============================================
 // 🔴 CORREÇÃO: Servir arquivos estáticos (uploads)
 // ============================================
@@ -150,6 +156,8 @@ app.use('/api/branding', branding_routes_js_1.default);
 app.use('/api/admin/analytics', analytics_routes_js_1.default);
 // 🆕 NOVO (v39) - Rotas de Governança
 app.use('/api/governance', governance_routes_js_1.default);
+// 🆕 NOVO (v42.0) - Rotas de Auditoria (Admin)
+app.use('/api/admin/audit', audit_routes_js_1.default);
 app.get('/health', cache_js_1.noCache, (_req, res) => {
     res.json({
         status: 'ok',
@@ -224,6 +232,8 @@ async function startServer() {
             logger_js_1.logger.info(`📊 Analytics Routes: http://localhost:${PORT}/api/admin/analytics`);
             // 🆕 NOVO (v39) - Governance Routes
             logger_js_1.logger.info(`📋 Governance Routes: http://localhost:${PORT}/api/governance`);
+            // 🆕 NOVO (v42.0) - Audit Routes
+            logger_js_1.logger.info(`📋 Audit Routes: http://localhost:${PORT}/api/admin/audit`);
             logger_js_1.logger.info(`📁 Uploads servidos em: http://localhost:${PORT}/uploads`);
         });
     }

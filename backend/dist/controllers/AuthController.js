@@ -6,6 +6,7 @@ const validation_js_1 = require("../utils/validation.js");
 const User_js_1 = require("../models/User.js");
 const errorHandler_js_1 = require("../middleware/errorHandler.js");
 const logger_js_1 = require("../utils/logger.js");
+const AuditService_js_1 = require("../services/AuditService.js");
 class AuthController {
     static async register(req, res, next) {
         try {
@@ -19,6 +20,8 @@ class AuthController {
                 role: validation.data.role,
             };
             const user = await AuthService_js_1.AuthService.register(userData);
+            // 🔐 AUDITORIA: Registro de Usuário com sucesso
+            await AuditService_js_1.AuditService.logUserRegister(user._id?.toString() || user.id || '', user.email, user.companyId?.toString() || '', user.company || '', req, true);
             res.status(201).json({
                 success: true,
                 message: 'Usuário registrado com sucesso',
@@ -28,6 +31,8 @@ class AuthController {
             });
         }
         catch (error) {
+            // 🔐 AUDITORIA: Falha no Registro de Usuário
+            await AuditService_js_1.AuditService.logUserRegister('', req.body?.email || 'desconhecido', '', req.body?.company || '', req, false, error instanceof Error ? error.message : 'Erro no registro');
             next(error);
         }
     }
@@ -39,6 +44,8 @@ class AuthController {
             }
             const { email, password } = validation.data;
             const { user, tokens } = await AuthService_js_1.AuthService.login(email, password);
+            // 🔐 AUDITORIA: Login realizado com sucesso
+            await AuditService_js_1.AuditService.logLogin(user._id?.toString() || user.id || '', user.email, req, true);
             res.json({
                 success: true,
                 message: 'Login realizado com sucesso',
@@ -51,6 +58,8 @@ class AuthController {
             });
         }
         catch (error) {
+            // 🔐 AUDITORIA: Falha de Login
+            await AuditService_js_1.AuditService.logLogin('', req.body?.email || 'desconhecido', req, false, error instanceof Error ? error.message : 'Falha na autenticação');
             next(error);
         }
     }
@@ -80,6 +89,8 @@ class AuthController {
                 throw new errorHandler_js_1.AppError('Usuário não autenticado', 401);
             }
             await AuthService_js_1.AuthService.logout(userId);
+            // 🔐 AUDITORIA: Logout realizado com sucesso
+            await AuditService_js_1.AuditService.logLogout(userId, req.user?.email || 'desconhecido', req);
             res.json({
                 success: true,
                 message: 'Logout realizado com sucesso',
@@ -123,16 +134,26 @@ class AuthController {
             if (!user) {
                 throw new errorHandler_js_1.AppError('Usuário não encontrado', 404);
             }
-            if (name)
+            const changes = {};
+            if (name && name !== user.name) {
+                changes.name = { before: user.name, after: name };
                 user.name = name;
-            if (company)
+            }
+            if (company && company !== user.company) {
+                changes.company = { before: user.company, after: company };
                 user.company = company;
-            if (department)
+            }
+            if (department && department !== user.department) {
+                changes.department = { before: user.department, after: department };
                 user.department = department;
+            }
             if (currentPassword && newPassword) {
                 await AuthService_js_1.AuthService.changePassword(userId, currentPassword, newPassword);
+                changes.password = 'alterada';
             }
             await user.save();
+            // 🔐 AUDITORIA: Atualização de perfil
+            await AuditService_js_1.AuditService.logUserUpdate(userId, user.email, userId, user.email, changes, req, true);
             res.json({
                 success: true,
                 message: 'Perfil atualizado com sucesso',
@@ -142,6 +163,10 @@ class AuthController {
             });
         }
         catch (error) {
+            // 🔐 AUDITORIA: Falha na atualização de perfil
+            if (req.userId && req.user?.email) {
+                await AuditService_js_1.AuditService.logUserUpdate(req.userId, req.user.email, req.userId, req.user.email, req.body, req, false, error instanceof Error ? error.message : 'Erro ao atualizar perfil');
+            }
             next(error);
         }
     }
@@ -279,6 +304,8 @@ class AuthController {
             user.passwordChangedAt = new Date();
             await user.save();
             logger_js_1.logger.info(`Senha redefinida para o usuário: ${user.email}`);
+            // 🔐 AUDITORIA: Redefinição de senha realizada com sucesso
+            await AuditService_js_1.AuditService.logPasswordReset(user._id.toString(), user.email, user._id.toString(), user.email, req, true);
             res.json({
                 success: true,
                 message: 'Senha redefinida com sucesso',
@@ -287,6 +314,10 @@ class AuthController {
             });
         }
         catch (error) {
+            // 🔐 AUDITORIA: Falha na redefinição de senha
+            if (req.body?.token) {
+                await AuditService_js_1.AuditService.logPasswordReset(req.body.token, 'desconhecido', req.body.token, 'desconhecido', req, false, error instanceof Error ? error.message : 'Erro ao redefinir senha');
+            }
             next(error);
         }
     }

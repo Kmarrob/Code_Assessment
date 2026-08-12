@@ -1,21 +1,29 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DocumentExportService = void 0;
+const PDFService_1 = require("../../../services/PDFService");
 class DocumentExportService {
     /**
      * Substitui placeholders no conteúdo do documento
      * 🆕 TORNADO PÚBLICO (v41) para ser usado pelo GovernanceController
      * 🆕 CORREÇÃO v41.2: Adicionado suporte para <NOME DO CLIENTE> e [NOME DO CLIENTE]
+     * 🆕 CORREÇÃO v41.4: Adicionado suporte para HTML Entities e variações adicionais
      */
     replacePlaceholders(content, companyName) {
+        if (!content)
+            return content;
+        const nameToUse = companyName || 'Empresa';
         return content
-            .replace(/\[NOME DA EMPRESA\]/g, companyName)
-            .replace(/\[NOME_DA_EMPRESA\]/g, companyName)
-            .replace(/{{company_name}}/g, companyName)
-            .replace(/{{COMPANY_NAME}}/g, companyName)
+            .replace(/\[NOME DA EMPRESA\]/g, nameToUse)
+            .replace(/\[NOME_DA_EMPRESA\]/g, nameToUse)
+            .replace(/{{company_name}}/g, nameToUse)
+            .replace(/{{COMPANY_NAME}}/g, nameToUse)
             // 🆕 ADICIONADO: Suporte para placeholder usado no conteúdo da política
-            .replace(/<NOME DO CLIENTE>/g, companyName)
-            .replace(/\[NOME DO CLIENTE\]/g, companyName);
+            .replace(/<NOME DO CLIENTE>/g, nameToUse)
+            .replace(/&lt;NOME DO CLIENTE&gt;/g, nameToUse)
+            .replace(/\[NOME DO CLIENTE\]/g, nameToUse)
+            .replace(/{{NOME_DO_CLIENTE}}/g, nameToUse)
+            .replace(/NOME_DO_CLIENTE/g, nameToUse);
     }
     /**
      * Gera conteúdo para download em formato DOC
@@ -54,7 +62,7 @@ class DocumentExportService {
         return header + content + footer;
     }
     /**
-     * Gera conteúdo para download em formato PDF
+     * Gera conteúdo para download em formato PDF (HTML string formatado)
      */
     async generatePdfContent(document, companyName) {
         // Similar ao DOC, mas com estilos otimizados para PDF
@@ -181,6 +189,13 @@ class DocumentExportService {
         </body>
       </html>
     `;
+    }
+    /**
+     * 🆕 MÉTODOS AUXILIARES DE EXPORTAÇÃO COMPATÍVEIS COM O GERADOR DE PDF REAL
+     */
+    async exportToPdfBuffer(document, companyName) {
+        const htmlContent = await this.generatePdfContent(document, companyName);
+        return await PDFService_1.PDFService.generateFromHtml(htmlContent);
     }
 }
 exports.DocumentExportService = DocumentExportService;

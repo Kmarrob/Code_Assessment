@@ -8,6 +8,7 @@ const DocumentService_js_1 = require("../services/DocumentService.js");
 const errors_js_1 = require("../utils/errors.js");
 const User_js_1 = require("../models/User.js"); // 🔴 ADICIONADO
 const multer_1 = __importDefault(require("multer"));
+const AuditService_js_1 = require("../services/AuditService.js");
 // Configuração do multer para upload de arquivos
 const storage = multer_1.default.memoryStorage();
 const upload = (0, multer_1.default)({
@@ -98,6 +99,24 @@ class DocumentController {
                 tags: parsedTags,
                 controlIds: parsedControlIds,
                 metadata: parsedMetadata,
+            });
+            // 🔐 AUDITORIA: Registro de upload de documento
+            await AuditService_js_1.AuditService.log({
+                userId,
+                userEmail: user.email,
+                companyId: companyId.toString(),
+                action: 'DOCUMENT_UPLOADED',
+                category: 'documents',
+                level: 'info',
+                resource: 'Document',
+                resourceId: document?._id?.toString() || '',
+                resourceName: title,
+                details: { fileName: file.originalname, fileSize: file.size, mimeType: file.mimetype },
+                success: true,
+                ip: req.ip || '',
+                userAgent: req.headers['user-agent'] || '',
+                method: req.method,
+                path: req.path,
             });
             res.status(201).json({
                 success: true,
@@ -220,6 +239,24 @@ class DocumentController {
             if (!file) {
                 throw new errors_js_1.AppError('Arquivo não encontrado', 404);
             }
+            // 🔐 AUDITORIA: Registro de download do documento
+            await AuditService_js_1.AuditService.log({
+                userId,
+                userEmail: user.email,
+                companyId: companyId.toString(),
+                action: 'DOCUMENT_DOWNLOADED',
+                category: 'documents',
+                level: 'info',
+                resource: 'Document',
+                resourceId: id,
+                resourceName: file.fileName,
+                details: { mimeType: file.mimeType },
+                success: true,
+                ip: req.ip || '',
+                userAgent: req.headers['user-agent'] || '',
+                method: req.method,
+                path: req.path,
+            });
             res.setHeader('Content-Type', file.mimeType);
             res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(file.fileName)}"`);
             res.send(file.buffer);
@@ -277,6 +314,24 @@ class DocumentController {
                 controlIds: parsedControlIds,
                 metadata: parsedMetadata,
             });
+            // 🔐 AUDITORIA: Registro de atualização do documento
+            await AuditService_js_1.AuditService.log({
+                userId,
+                userEmail: user.email,
+                companyId: companyId.toString(),
+                action: 'DOCUMENT_UPDATED',
+                category: 'documents',
+                level: 'info',
+                resource: 'Document',
+                resourceId: id,
+                resourceName: title,
+                details: { category, status },
+                success: true,
+                ip: req.ip || '',
+                userAgent: req.headers['user-agent'] || '',
+                method: req.method,
+                path: req.path,
+            });
             res.status(200).json({
                 success: true,
                 data: document,
@@ -311,6 +366,22 @@ class DocumentController {
                 throw new errors_js_1.AppError('ID do documento é obrigatório', 400);
             }
             await DocumentService_js_1.DocumentService.deleteDocument(id, companyId.toString());
+            // 🔐 AUDITORIA: Registro de exclusão do documento
+            await AuditService_js_1.AuditService.log({
+                userId,
+                userEmail: user.email,
+                companyId: companyId.toString(),
+                action: 'DOCUMENT_DELETED',
+                category: 'documents',
+                level: 'warning',
+                resource: 'Document',
+                resourceId: id,
+                success: true,
+                ip: req.ip || '',
+                userAgent: req.headers['user-agent'] || '',
+                method: req.method,
+                path: req.path,
+            });
             res.status(200).json({
                 success: true,
                 message: 'Documento excluído com sucesso',
@@ -344,6 +415,22 @@ class DocumentController {
                 throw new errors_js_1.AppError('ID do documento é obrigatório', 400);
             }
             const document = await DocumentService_js_1.DocumentService.archiveDocument(id, companyId.toString());
+            // 🔐 AUDITORIA: Registro de arquivamento
+            await AuditService_js_1.AuditService.log({
+                userId,
+                userEmail: user.email,
+                companyId: companyId.toString(),
+                action: 'DOCUMENT_ARCHIVED',
+                category: 'documents',
+                level: 'info',
+                resource: 'Document',
+                resourceId: id,
+                success: true,
+                ip: req.ip || '',
+                userAgent: req.headers['user-agent'] || '',
+                method: req.method,
+                path: req.path,
+            });
             res.status(200).json({
                 success: true,
                 data: document,
@@ -378,6 +465,22 @@ class DocumentController {
                 throw new errors_js_1.AppError('ID do documento é obrigatório', 400);
             }
             const document = await DocumentService_js_1.DocumentService.restoreDocument(id, companyId.toString());
+            // 🔐 AUDITORIA: Registro de restauração
+            await AuditService_js_1.AuditService.log({
+                userId,
+                userEmail: user.email,
+                companyId: companyId.toString(),
+                action: 'DOCUMENT_RESTORED',
+                category: 'documents',
+                level: 'info',
+                resource: 'Document',
+                resourceId: id,
+                success: true,
+                ip: req.ip || '',
+                userAgent: req.headers['user-agent'] || '',
+                method: req.method,
+                path: req.path,
+            });
             res.status(200).json({
                 success: true,
                 data: document,

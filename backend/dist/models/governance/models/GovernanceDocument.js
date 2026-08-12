@@ -61,6 +61,14 @@ const GovernanceDocumentSchema = new mongoose_1.Schema({
     approvedAt: { type: Date },
     effectiveDate: { type: Date, required: true },
     reviewDate: { type: Date, required: true },
+    // 🆕 CAMPOS ADICIONAIS PARA POLÍTICAS
+    responsible: { type: String, default: '' },
+    strategicObjective: { type: String, default: '' },
+    scope: {
+        type: String,
+        enum: ['all', 'it', 'security', 'privacy'],
+        default: 'all'
+    },
     frameworks: {
         iso27001: { type: [String], default: [] },
         nist: { type: [String], default: [] },

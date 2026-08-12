@@ -8,13 +8,51 @@ const auth_js_1 = require("../middleware/auth.js");
 const sanitizeAdmin_js_1 = require("../middleware/sanitizeAdmin.js");
 const rateLimit_js_1 = require("../middleware/rateLimit.js");
 const index_js_1 = require("../types/index.js");
+const Company_js_1 = require("../models/Company.js");
 const router = (0, express_1.Router)();
-// Todas as rotas exigem autenticação e role REP
+// Todas as rotas exigem autenticação
 router.use(auth_js_1.authenticate);
+// ============================================
+// 🆕 ROTA PARA REP BUSCAR NOME DA PRÓPRIA EMPRESA (v41.9)
+// ============================================
+// 🔧 CORREÇÃO: Esta rota DEVE vir ANTES do middleware authorize(UserRole.REP)
+// para que o REP possa acessar sem ser bloqueado
+router.get('/company/:id', rateLimit_js_1.authenticatedRateLimiter, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const user = req.user;
+        console.log('🔍 [GET /company/:id] user:', {
+            id: user?.id,
+            role: user?.role,
+            companyId: user?.companyId,
+            email: user?.email
+        });
+        // 🔒 Verificar se o REP está tentando acessar a própria empresa
+        // ADMIN pode acessar qualquer empresa, REP apenas a sua
+        if (user?.role !== 'ADMIN' && user?.role !== 'admin') {
+            // 🔧 CORREÇÃO: Converter ObjectId para string antes de comparar
+            if (user?.companyId?.toString() !== id) {
+                return res.status(403).json({ error: 'Acesso negado' });
+            }
+        }
+        const company = await Company_js_1.Company.findById(id).select('name');
+        if (!company) {
+            return res.status(404).json({ error: 'Empresa não encontrada' });
+        }
+        return res.json({
+            id: company._id,
+            name: company.name
+        });
+    }
+    catch (error) {
+        console.error('Erro ao buscar empresa:', error);
+        return res.status(500).json({ error: 'Erro ao buscar empresa' });
+    }
+});
+// ============================================
+// ROTAS DO PREPOSTO (exigem role REP)
+// ============================================
 router.use((0, auth_js_1.authorize)(index_js_1.UserRole.REP));
-// ============================================
-// ROTAS DO PREPOSTO
-// ============================================
 // Listar usuários do preposto
 router.get('/users', rateLimit_js_1.adminRateLimiter, RepController_js_1.RepController.listUsers);
 // 🔴 NOVA ROTA ESTÁTICA: Movida para cima para evitar conflito com parâmetros dinâmicos

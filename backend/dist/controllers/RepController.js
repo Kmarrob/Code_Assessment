@@ -1,6 +1,10 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.RepController = void 0;
+const mongoose_1 = __importDefault(require("mongoose"));
 const RepService_js_1 = require("../services/RepService.js");
 const validation_js_1 = require("../utils/validation.js");
 const errorHandler_js_1 = require("../middleware/errorHandler.js");
@@ -8,6 +12,7 @@ const errorLogger_js_1 = require("../utils/errorLogger.js");
 const AuditService_js_1 = require("../services/AuditService.js");
 const User_js_1 = require("../models/User.js");
 const Company_js_1 = require("../models/Company.js");
+const Control_js_1 = require("../models/Control.js");
 const Response_js_1 = require("../models/Response.js");
 const Assignment_js_1 = require("../models/Assignment.js");
 const Question_js_1 = require("../models/Question.js");
@@ -63,7 +68,7 @@ class RepController {
             }
             const user = await RepService_js_1.RepService.createUser(repId, validation.data);
             if (req.userId) {
-                AuditService_js_1.AuditService.logUserCreation(req.userId, req.user?.email || '', user._id.toString(), user.email, user.role, req.ip || '', req.headers['user-agent'] || '', true);
+                await AuditService_js_1.AuditService.logUserCreation(req.userId, req.user?.email || '', user._id.toString(), user.email, user.role, req.ip || '', req.headers['user-agent'] || '', true);
             }
             res.status(201).json({
                 success: true,
@@ -74,6 +79,9 @@ class RepController {
             });
         }
         catch (error) {
+            if (req.userId) {
+                await AuditService_js_1.AuditService.logUserCreation(req.userId, req.user?.email || '', '', req.body?.email || '', 'user', req.ip || '', req.headers['user-agent'] || '', false, error instanceof Error ? error.message : 'Erro ao criar usuário');
+            }
             errorLogger_js_1.ErrorLogger.logError(error, {
                 userId: req.userId,
                 email: req.user?.email,
@@ -115,6 +123,10 @@ class RepController {
                 email,
                 department,
             });
+            // 🔐 AUDITORIA & VERIFICAÇÃO DE TIPO (Garante que updatedUser não seja null)
+            if (req.userId && updatedUser) {
+                await AuditService_js_1.AuditService.logUserUpdate(req.userId, req.user?.email || '', userId, updatedUser.email, { name, email, department }, req.ip || '', req.headers['user-agent'] || '', true);
+            }
             res.json({
                 success: true,
                 message: 'Usuário atualizado com sucesso',
@@ -169,10 +181,14 @@ class RepController {
                     ],
                 });
             }
+            const targetUser = await User_js_1.User.findById(userId);
             const result = await RepService_js_1.RepService.inactivateUser(repId, userId, {
                 reason,
                 description: description || '',
             });
+            if (req.userId) {
+                await AuditService_js_1.AuditService.logUserDeactivation(req.userId, req.user?.email || '', userId, targetUser?.email || 'desconhecido', req.ip || '', req.headers['user-agent'] || '', true);
+            }
             res.json({
                 success: true,
                 message: 'Usuário inativado com sucesso',
@@ -230,6 +246,24 @@ class RepController {
                 }
             }
             const result = await RepService_js_1.RepService.revokeControl(repId, assignmentId, newUserId || null);
+            if (req.userId) {
+                await AuditService_js_1.AuditService.log({
+                    userId: req.userId,
+                    userEmail: req.user?.email || '',
+                    companyId: req.user?.companyId?.toString() || '',
+                    action: 'CONTROL_REVOKED',
+                    category: 'control',
+                    level: 'warning',
+                    resource: 'Assignment',
+                    resourceId: assignmentId,
+                    details: { newUserId: newUserId || null },
+                    success: true,
+                    ip: req.ip || '',
+                    userAgent: req.headers['user-agent'] || '',
+                    method: req.method,
+                    path: req.path,
+                });
+            }
             res.json({
                 success: true,
                 message: result.newUserId
@@ -268,6 +302,10 @@ class RepController {
                 throw new errorHandler_js_1.ValidationError(validation.errors || {});
             }
             const result = await RepService_js_1.RepService.assignControls(repId, validation.data);
+            const targetUser = await User_js_1.User.findById(validation.data.userId);
+            if (req.userId) {
+                await AuditService_js_1.AuditService.logControlAssignment(req.userId, req.user?.email || '', validation.data.userId, targetUser?.email || '', validation.data.controlIds, req.ip || '', req.headers['user-agent'] || '', true);
+            }
             res.json({
                 success: true,
                 message: `${result.assigned} controles atribuídos com sucesso`,
@@ -412,6 +450,14 @@ class RepController {
                 path: 'assignedControls',
                 select: '_id id nome dominioDeSI tipoDeControle nota',
             });
+            let rawControlsList = company.assignedControls || [];
+            // FALLBACK: Se a empresa não tem controles explicitamente atribuídos em assignedControls,
+            // busca todos os controles da coleção mestre Control (93 controles ISO 27001).
+            if (!Array.isArray(rawControlsList) || rawControlsList.length === 0) {
+                rawControlsList = await Control_js_1.Control.find({})
+                    .select('_id id nome dominioDeSI tipoDeControle nota')
+                    .lean();
+            }
             /*
              * IMPORTANTE:
              *
@@ -429,15 +475,26 @@ class RepController {
              *
              * Apenas a lista retornada pela API é filtrada.
              */
+            // Converter explicitamente para Objetos ObjectId do Mongoose para satisfazer a tipagem do TypeScript (TS2322)
+            const controlObjectIds = rawControlsList
+                .map((control) => {
+                if (!control)
+                    return null;
+                const idVal = control._id || control;
+                return mongoose_1.default.Types.ObjectId.isValid(idVal)
+                    ? new mongoose_1.default.Types.ObjectId(idVal)
+                    : null;
+            })
+                .filter((id) => id !== null);
             const assignedControls = await Assignment_js_1.Assignment.find({
                 controlId: {
-                    $in: (company.assignedControls || []).map((control) => control._id),
+                    $in: controlObjectIds,
                 },
             })
                 .select('controlId')
                 .lean();
             // IDs dos controles que já foram atribuídos a qualquer usuário
-            const assignedControlIds = new Set(assignedControls.map((assignment) => assignment.controlId.toString()));
+            const assignedControlIds = new Set(assignedControls.map((assignment) => assignment.controlId ? assignment.controlId.toString() : ''));
             /*
              * Retornar somente controles ainda não atribuídos.
              *
@@ -462,8 +519,8 @@ class RepController {
              *
              * Nenhum controle é excluído ou alterado.
              */
-            const controls = (company.assignedControls || [])
-                .filter((control) => !assignedControlIds.has(control._id.toString()))
+            const controls = rawControlsList
+                .filter((control) => control && control._id && !assignedControlIds.has(control._id.toString()))
                 .sort((a, b) => {
                 const aId = String(a.id || '').trim();
                 const bId = String(b.id || '').trim();
@@ -746,9 +803,8 @@ class RepController {
                     .map((id) => id)
                     .join(', ');
                 // Mantido para preservar a lógica existente.
-                // A variável controlNames continua sendo construída conforme o comportamento original.
                 void controlNames;
-                await AuditService_js_1.AuditService.logUserCreation(repId, req.user?.email || '', repId, rep.email, 'rep', req.ip || '', req.headers['user-agent'] || '', true);
+                await AuditService_js_1.AuditService.logControlAssignment(repId, req.user?.email || '', repId, rep.email, controlIds, req.ip || '', req.headers['user-agent'] || '', true);
             }
             res.json({
                 success: true,

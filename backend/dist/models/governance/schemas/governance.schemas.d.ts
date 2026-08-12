@@ -31,16 +31,22 @@ export declare const governanceDocumentBaseSchema: z.ZodObject<{
         lgpd?: string[] | undefined;
         bacen?: string[] | undefined;
     }>>;
+    scope: z.ZodOptional<z.ZodEnum<["all", "it", "security", "privacy"]>>;
+    strategicObjective: z.ZodOptional<z.ZodString>;
+    responsible: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
     code: string;
     level: number;
-    title: string;
     category: string;
+    title: string;
     summary: string;
     content: string;
     effectiveDate: string;
     reviewDate: string;
+    scope?: "all" | "security" | "it" | "privacy" | undefined;
     keywords?: string[] | undefined;
+    responsible?: string | undefined;
+    strategicObjective?: string | undefined;
     frameworks?: {
         iso27001?: string[] | undefined;
         nist?: string[] | undefined;
@@ -52,13 +58,16 @@ export declare const governanceDocumentBaseSchema: z.ZodObject<{
 }, {
     code: string;
     level: string | 3 | 1 | 2 | 4 | 5;
-    title: string;
     category: string;
+    title: string;
     summary: string;
     content: string;
     effectiveDate: string | Date;
     reviewDate: string | Date;
+    scope?: "all" | "security" | "it" | "privacy" | undefined;
     keywords?: string[] | undefined;
+    responsible?: string | undefined;
+    strategicObjective?: string | undefined;
     frameworks?: {
         iso27001?: string[] | undefined;
         nist?: string[] | undefined;
@@ -100,16 +109,22 @@ export declare const createGovernanceDocumentSchema: z.ZodObject<{
         lgpd?: string[] | undefined;
         bacen?: string[] | undefined;
     }>>;
+    scope: z.ZodOptional<z.ZodEnum<["all", "it", "security", "privacy"]>>;
+    strategicObjective: z.ZodOptional<z.ZodString>;
+    responsible: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
     code: string;
     level: number;
-    title: string;
     category: string;
+    title: string;
     summary: string;
     content: string;
     effectiveDate: string;
     reviewDate: string;
+    scope?: "all" | "security" | "it" | "privacy" | undefined;
     keywords?: string[] | undefined;
+    responsible?: string | undefined;
+    strategicObjective?: string | undefined;
     frameworks?: {
         iso27001?: string[] | undefined;
         nist?: string[] | undefined;
@@ -121,13 +136,16 @@ export declare const createGovernanceDocumentSchema: z.ZodObject<{
 }, {
     code: string;
     level: string | 3 | 1 | 2 | 4 | 5;
-    title: string;
     category: string;
+    title: string;
     summary: string;
     content: string;
     effectiveDate: string | Date;
     reviewDate: string | Date;
+    scope?: "all" | "security" | "it" | "privacy" | undefined;
     keywords?: string[] | undefined;
+    responsible?: string | undefined;
+    strategicObjective?: string | undefined;
     frameworks?: {
         iso27001?: string[] | undefined;
         nist?: string[] | undefined;
@@ -176,14 +194,16 @@ export declare const updateGovernanceDocumentSchema: z.ZodObject<{
 }, "strip", z.ZodTypeAny, {
     status?: "approved" | "draft" | "archived" | "review" | undefined;
     version?: string | undefined;
-    title?: string | undefined;
     category?: string | undefined;
+    title?: string | undefined;
     summary?: string | undefined;
-    scope?: "all" | "it" | "security" | "privacy" | undefined;
+    scope?: "all" | "security" | "it" | "privacy" | undefined;
     content?: string | undefined;
     keywords?: string[] | undefined;
     effectiveDate?: string | undefined;
     reviewDate?: string | undefined;
+    responsible?: string | undefined;
+    strategicObjective?: string | undefined;
     frameworks?: {
         iso27001?: string[] | undefined;
         nist?: string[] | undefined;
@@ -193,19 +213,19 @@ export declare const updateGovernanceDocumentSchema: z.ZodObject<{
         bacen?: string[] | undefined;
     } | undefined;
     versionChanges?: string | undefined;
-    strategicObjective?: string | undefined;
-    responsible?: string | undefined;
 }, {
     status?: "approved" | "draft" | "archived" | "review" | undefined;
     version?: string | undefined;
-    title?: string | undefined;
     category?: string | undefined;
+    title?: string | undefined;
     summary?: string | undefined;
-    scope?: "all" | "it" | "security" | "privacy" | undefined;
+    scope?: "all" | "security" | "it" | "privacy" | undefined;
     content?: string | undefined;
     keywords?: string[] | undefined;
     effectiveDate?: string | Date | undefined;
     reviewDate?: string | Date | undefined;
+    responsible?: string | undefined;
+    strategicObjective?: string | undefined;
     frameworks?: {
         iso27001?: string[] | undefined;
         nist?: string[] | undefined;
@@ -215,8 +235,6 @@ export declare const updateGovernanceDocumentSchema: z.ZodObject<{
         bacen?: string[] | undefined;
     } | undefined;
     versionChanges?: string | undefined;
-    strategicObjective?: string | undefined;
-    responsible?: string | undefined;
 }>;
 export declare const governanceFiltersSchema: z.ZodObject<{
     level: z.ZodOptional<z.ZodUnion<[z.ZodLiteral<1>, z.ZodLiteral<2>, z.ZodLiteral<3>, z.ZodLiteral<4>, z.ZodLiteral<5>, z.ZodEffects<z.ZodEffects<z.ZodString, number, string>, number, string>]>>;
@@ -276,15 +294,15 @@ export declare const policySchema: z.ZodObject<{
 }, "strip", z.ZodTypeAny, {
     code: string;
     level: number;
-    title: string;
     category: string;
+    title: string;
     summary: string;
-    scope: "all" | "it" | "security" | "privacy";
+    scope: "all" | "security" | "it" | "privacy";
     content: string;
     effectiveDate: string;
     reviewDate: string;
-    strategicObjective: string;
     responsible: string;
+    strategicObjective: string;
     keywords?: string[] | undefined;
     frameworks?: {
         iso27001?: string[] | undefined;
@@ -297,15 +315,15 @@ export declare const policySchema: z.ZodObject<{
 }, {
     code: string;
     level: string | 3 | 1 | 2 | 4 | 5;
-    title: string;
     category: string;
+    title: string;
     summary: string;
-    scope: "all" | "it" | "security" | "privacy";
+    scope: "all" | "security" | "it" | "privacy";
     content: string;
     effectiveDate: string | Date;
     reviewDate: string | Date;
-    strategicObjective: string;
     responsible: string;
+    strategicObjective: string;
     keywords?: string[] | undefined;
     frameworks?: {
         iso27001?: string[] | undefined;
@@ -348,6 +366,9 @@ export declare const standardSchema: z.ZodObject<{
         lgpd?: string[] | undefined;
         bacen?: string[] | undefined;
     }>>;
+    scope: z.ZodOptional<z.ZodEnum<["all", "it", "security", "privacy"]>>;
+    strategicObjective: z.ZodOptional<z.ZodString>;
+    responsible: z.ZodOptional<z.ZodString>;
 } & {
     policyId: z.ZodString;
     mandatory: z.ZodDefault<z.ZodBoolean>;
@@ -355,15 +376,18 @@ export declare const standardSchema: z.ZodObject<{
 }, "strip", z.ZodTypeAny, {
     code: string;
     level: number;
-    title: string;
     category: string;
+    title: string;
     summary: string;
     content: string;
     effectiveDate: string;
     reviewDate: string;
     policyId: string;
     mandatory: boolean;
+    scope?: "all" | "security" | "it" | "privacy" | undefined;
     keywords?: string[] | undefined;
+    responsible?: string | undefined;
+    strategicObjective?: string | undefined;
     frameworks?: {
         iso27001?: string[] | undefined;
         nist?: string[] | undefined;
@@ -376,14 +400,17 @@ export declare const standardSchema: z.ZodObject<{
 }, {
     code: string;
     level: string | 3 | 1 | 2 | 4 | 5;
-    title: string;
     category: string;
+    title: string;
     summary: string;
     content: string;
     effectiveDate: string | Date;
     reviewDate: string | Date;
     policyId: string;
+    scope?: "all" | "security" | "it" | "privacy" | undefined;
     keywords?: string[] | undefined;
+    responsible?: string | undefined;
+    strategicObjective?: string | undefined;
     frameworks?: {
         iso27001?: string[] | undefined;
         nist?: string[] | undefined;
@@ -427,6 +454,9 @@ export declare const procedureSchema: z.ZodObject<{
         lgpd?: string[] | undefined;
         bacen?: string[] | undefined;
     }>>;
+    scope: z.ZodOptional<z.ZodEnum<["all", "it", "security", "privacy"]>>;
+    strategicObjective: z.ZodOptional<z.ZodString>;
+    responsible: z.ZodOptional<z.ZodString>;
 } & {
     standardId: z.ZodString;
     steps: z.ZodArray<z.ZodObject<{
@@ -450,8 +480,8 @@ export declare const procedureSchema: z.ZodObject<{
 }, "strip", z.ZodTypeAny, {
     code: string;
     level: number;
-    title: string;
     category: string;
+    title: string;
     summary: string;
     steps: {
         description: string;
@@ -465,7 +495,10 @@ export declare const procedureSchema: z.ZodObject<{
     standardId: string;
     inputs: string[];
     outputs: string[];
+    scope?: "all" | "security" | "it" | "privacy" | undefined;
     keywords?: string[] | undefined;
+    responsible?: string | undefined;
+    strategicObjective?: string | undefined;
     frameworks?: {
         iso27001?: string[] | undefined;
         nist?: string[] | undefined;
@@ -477,8 +510,8 @@ export declare const procedureSchema: z.ZodObject<{
 }, {
     code: string;
     level: string | 3 | 1 | 2 | 4 | 5;
-    title: string;
     category: string;
+    title: string;
     summary: string;
     steps: {
         description: string;
@@ -490,7 +523,10 @@ export declare const procedureSchema: z.ZodObject<{
     effectiveDate: string | Date;
     reviewDate: string | Date;
     standardId: string;
+    scope?: "all" | "security" | "it" | "privacy" | undefined;
     keywords?: string[] | undefined;
+    responsible?: string | undefined;
+    strategicObjective?: string | undefined;
     frameworks?: {
         iso27001?: string[] | undefined;
         nist?: string[] | undefined;
@@ -534,6 +570,9 @@ export declare const workInstructionSchema: z.ZodObject<{
         lgpd?: string[] | undefined;
         bacen?: string[] | undefined;
     }>>;
+    scope: z.ZodOptional<z.ZodEnum<["all", "it", "security", "privacy"]>>;
+    strategicObjective: z.ZodOptional<z.ZodString>;
+    responsible: z.ZodOptional<z.ZodString>;
 } & {
     procedureId: z.ZodString;
     detailedSteps: z.ZodString;
@@ -543,8 +582,8 @@ export declare const workInstructionSchema: z.ZodObject<{
 }, "strip", z.ZodTypeAny, {
     code: string;
     level: number;
-    title: string;
     category: string;
+    title: string;
     summary: string;
     content: string;
     effectiveDate: string;
@@ -554,7 +593,10 @@ export declare const workInstructionSchema: z.ZodObject<{
     tools: string[];
     prerequisites: string[];
     verificationPoints: string[];
+    scope?: "all" | "security" | "it" | "privacy" | undefined;
     keywords?: string[] | undefined;
+    responsible?: string | undefined;
+    strategicObjective?: string | undefined;
     frameworks?: {
         iso27001?: string[] | undefined;
         nist?: string[] | undefined;
@@ -566,15 +608,18 @@ export declare const workInstructionSchema: z.ZodObject<{
 }, {
     code: string;
     level: string | 3 | 1 | 2 | 4 | 5;
-    title: string;
     category: string;
+    title: string;
     summary: string;
     content: string;
     effectiveDate: string | Date;
     reviewDate: string | Date;
     procedureId: string;
     detailedSteps: string;
+    scope?: "all" | "security" | "it" | "privacy" | undefined;
     keywords?: string[] | undefined;
+    responsible?: string | undefined;
+    strategicObjective?: string | undefined;
     frameworks?: {
         iso27001?: string[] | undefined;
         nist?: string[] | undefined;
@@ -619,6 +664,9 @@ export declare const recordSchema: z.ZodObject<{
         lgpd?: string[] | undefined;
         bacen?: string[] | undefined;
     }>>;
+    scope: z.ZodOptional<z.ZodEnum<["all", "it", "security", "privacy"]>>;
+    strategicObjective: z.ZodOptional<z.ZodString>;
+    responsible: z.ZodOptional<z.ZodString>;
 } & {
     procedureId: z.ZodString;
     recordType: z.ZodEnum<["form", "evidence", "report", "log"]>;
@@ -627,17 +675,20 @@ export declare const recordSchema: z.ZodObject<{
 }, "strip", z.ZodTypeAny, {
     code: string;
     level: number;
-    title: string;
     category: string;
+    title: string;
     summary: string;
     content: string;
     effectiveDate: string;
     reviewDate: string;
     procedureId: string;
-    recordType: "evidence" | "form" | "report" | "log";
+    recordType: "report" | "evidence" | "form" | "log";
     retentionPeriod: number;
     retentionPolicy: string;
+    scope?: "all" | "security" | "it" | "privacy" | undefined;
     keywords?: string[] | undefined;
+    responsible?: string | undefined;
+    strategicObjective?: string | undefined;
     frameworks?: {
         iso27001?: string[] | undefined;
         nist?: string[] | undefined;
@@ -649,16 +700,19 @@ export declare const recordSchema: z.ZodObject<{
 }, {
     code: string;
     level: string | 3 | 1 | 2 | 4 | 5;
-    title: string;
     category: string;
+    title: string;
     summary: string;
     content: string;
     effectiveDate: string | Date;
     reviewDate: string | Date;
     procedureId: string;
-    recordType: "evidence" | "form" | "report" | "log";
+    recordType: "report" | "evidence" | "form" | "log";
     retentionPolicy: string;
+    scope?: "all" | "security" | "it" | "privacy" | undefined;
     keywords?: string[] | undefined;
+    responsible?: string | undefined;
+    strategicObjective?: string | undefined;
     frameworks?: {
         iso27001?: string[] | undefined;
         nist?: string[] | undefined;

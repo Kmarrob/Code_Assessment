@@ -39,6 +39,10 @@ exports.governanceDocumentBaseSchema = zod_1.z.object({
         lgpd: zod_1.z.array(zod_1.z.string()).optional(),
         bacen: zod_1.z.array(zod_1.z.string()).optional(),
     }).optional(),
+    // 🆕 CAMPOS ADICIONAIS PARA POLÍTICAS
+    scope: zod_1.z.enum(['all', 'it', 'security', 'privacy']).optional(),
+    strategicObjective: zod_1.z.string().min(10).optional(),
+    responsible: zod_1.z.string().min(3).optional(),
 });
 // Create DTO
 exports.createGovernanceDocumentSchema = exports.governanceDocumentBaseSchema;

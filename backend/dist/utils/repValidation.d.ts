@@ -81,14 +81,14 @@ export declare const repResponseSchema: z.ZodObject<{
     evidence: z.ZodOptional<z.ZodString>;
     observations: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
-    assignmentId: string;
     maturityLevel: "0" | "1" | "2" | "N/A";
+    assignmentId: string;
     scenarioDescription?: string | undefined;
     evidence?: string | undefined;
     observations?: string | undefined;
 }, {
-    assignmentId: string;
     maturityLevel: "0" | "1" | "2" | "N/A";
+    assignmentId: string;
     scenarioDescription?: string | undefined;
     evidence?: string | undefined;
     observations?: string | undefined;

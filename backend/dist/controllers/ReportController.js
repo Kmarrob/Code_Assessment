@@ -12,6 +12,7 @@ const Response_js_1 = require("../models/Response.js");
 const Assignment_js_1 = require("../models/Assignment.js");
 const Company_js_1 = require("../models/Company.js");
 const PDFService_js_1 = require("../services/PDFService.js");
+const AuditService_js_1 = require("../services/AuditService.js");
 class ReportController {
     /**
      * Obter ou criar relatório de uma empresa
@@ -66,6 +67,24 @@ class ReportController {
             const report = await ReportService_js_1.ReportService.generateReportData(companyId);
             // POPULAR companyId para obter o nome da empresa
             await report.populate('companyId', 'name cnpj');
+            // 🔐 AUDITORIA: Registro de geração do relatório
+            if (req.userId) {
+                await AuditService_js_1.AuditService.log({
+                    userId: req.userId,
+                    userEmail: req.user?.email || '',
+                    companyId,
+                    action: 'REPORT_GENERATED',
+                    category: 'reports',
+                    level: 'info',
+                    resource: 'Report',
+                    resourceId: report?._id?.toString() || companyId,
+                    success: true,
+                    ip: req.ip || '',
+                    userAgent: req.headers['user-agent'] || '',
+                    method: req.method,
+                    path: req.path,
+                });
+            }
             res.json({
                 success: true,
                 message: 'Relatório gerado com sucesso',
@@ -102,6 +121,25 @@ class ReportController {
             const report = await ReportService_js_1.ReportService.updateReport(companyId, { projectNumber, scope, status }, userId);
             // POPULAR companyId para obter o nome da empresa
             await report.populate('companyId', 'name cnpj');
+            // 🔐 AUDITORIA: Registro de atualização do relatório
+            if (req.userId) {
+                await AuditService_js_1.AuditService.log({
+                    userId: req.userId,
+                    userEmail: req.user?.email || '',
+                    companyId,
+                    action: 'REPORT_UPDATED',
+                    category: 'reports',
+                    level: 'info',
+                    resource: 'Report',
+                    resourceId: report?._id?.toString() || companyId,
+                    details: { projectNumber, scope, status },
+                    success: true,
+                    ip: req.ip || '',
+                    userAgent: req.headers['user-agent'] || '',
+                    method: req.method,
+                    path: req.path,
+                });
+            }
             res.json({
                 success: true,
                 message: 'Relatório atualizado com sucesso',
@@ -480,6 +518,25 @@ class ReportController {
                 throw new errorHandler_js_1.AppError('Falha ao gerar o PDF: buffer vazio', 500);
             }
             logger_js_1.logger.info(`✅ PDF gerado com sucesso: ${pdfBuffer.length} bytes para ${companyName}`);
+            // 🔐 AUDITORIA: Registro do download em PDF do relatório completo
+            if (req.userId) {
+                await AuditService_js_1.AuditService.log({
+                    userId: req.userId,
+                    userEmail: req.user?.email || '',
+                    companyId,
+                    action: 'REPORT_EXPORTED_PDF',
+                    category: 'reports',
+                    level: 'info',
+                    resource: 'Report',
+                    resourceId: reportData?._id?.toString() || companyId,
+                    details: { companyName, bufferSize: pdfBuffer.length },
+                    success: true,
+                    ip: req.ip || '',
+                    userAgent: req.headers['user-agent'] || '',
+                    method: req.method,
+                    path: req.path,
+                });
+            }
             // Usar nome sanitizado para o arquivo
             const fileName = `relatorio_${sanitizedCompanyName}_${new Date().toISOString().split('T')[0]}.pdf`;
             res.setHeader('Content-Type', 'application/pdf');

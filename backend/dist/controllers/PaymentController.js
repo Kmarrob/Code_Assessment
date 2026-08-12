@@ -7,6 +7,7 @@ const index_js_1 = require("../types/index.js");
 const errorHandler_js_1 = require("../middleware/errorHandler.js");
 const errorLogger_js_1 = require("../utils/errorLogger.js");
 const logger_js_1 = require("../utils/logger.js");
+const AuditService_js_1 = require("../services/AuditService.js");
 class PaymentController {
     /**
      * Criar novo pagamento
@@ -83,6 +84,25 @@ class PaymentController {
                 notes,
                 metadata,
             });
+            // 🔐 AUDITORIA: Registro de criação de pagamento
+            if (req.userId) {
+                await AuditService_js_1.AuditService.log({
+                    userId: req.userId,
+                    userEmail: req.user?.email || '',
+                    companyId,
+                    action: 'PAYMENT_CREATED',
+                    category: 'financial',
+                    level: 'info',
+                    resource: 'Payment',
+                    resourceId: payment?._id?.toString() || '',
+                    details: { amount, currency, paymentMethod, paymentProvider },
+                    success: true,
+                    ip: req.ip || '',
+                    userAgent: req.headers['user-agent'] || '',
+                    method: req.method,
+                    path: req.path,
+                });
+            }
             res.status(201).json({
                 success: true,
                 message: 'Pagamento criado com sucesso',
@@ -126,9 +146,42 @@ class PaymentController {
             let result;
             if (status === 'paid' || status === 'approved' || status === 'confirmed') {
                 result = await PaymentService_js_1.PaymentService.confirmPayment(paymentId, provider, amount, paidAt ? new Date(paidAt) : new Date(), { subscriptionId, ...metadata });
+                // 🔐 AUDITORIA: Confirmação via Webhook
+                await AuditService_js_1.AuditService.log({
+                    userId: 'SYSTEM_WEBHOOK',
+                    userEmail: 'webhook@system',
+                    action: 'PAYMENT_CONFIRMED_WEBHOOK',
+                    category: 'financial',
+                    level: 'info',
+                    resource: 'Payment',
+                    resourceId: paymentId,
+                    details: { provider, amount, status },
+                    success: true,
+                    ip: req.ip || '',
+                    userAgent: req.headers['user-agent'] || '',
+                    method: req.method,
+                    path: req.path,
+                });
             }
             else if (status === 'failed' || status === 'denied' || status === 'refused') {
                 result = await PaymentService_js_1.PaymentService.failPayment(paymentId, status);
+                // 🔐 AUDITORIA: Falha via Webhook
+                await AuditService_js_1.AuditService.log({
+                    userId: 'SYSTEM_WEBHOOK',
+                    userEmail: 'webhook@system',
+                    action: 'PAYMENT_FAILED_WEBHOOK',
+                    category: 'financial',
+                    level: 'warning',
+                    resource: 'Payment',
+                    resourceId: paymentId,
+                    details: { provider, amount, status },
+                    success: false,
+                    errorMessage: `Status de pagamento: ${status}`,
+                    ip: req.ip || '',
+                    userAgent: req.headers['user-agent'] || '',
+                    method: req.method,
+                    path: req.path,
+                });
             }
             else {
                 logger_js_1.logger.warn(`Status de pagamento não tratado: ${status}`);
@@ -183,6 +236,23 @@ class PaymentController {
             }
             // Confirmar pagamento manualmente
             const result = await PaymentService_js_1.PaymentService.confirmPayment(payment.providerPaymentId || payment._id.toString(), payment.paymentProvider, amountPaid, paidAt ? new Date(paidAt) : new Date(), { manualConfirmation: true, confirmedBy: userId, notes });
+            // 🔐 AUDITORIA: Confirmação manual de pagamento
+            await AuditService_js_1.AuditService.log({
+                userId,
+                userEmail: user.email,
+                companyId: payment.companyId?.toString(),
+                action: 'PAYMENT_CONFIRMED_MANUALLY',
+                category: 'financial',
+                level: 'info',
+                resource: 'Payment',
+                resourceId: id,
+                details: { amountPaid, notes },
+                success: true,
+                ip: req.ip || '',
+                userAgent: req.headers['user-agent'] || '',
+                method: req.method,
+                path: req.path,
+            });
             res.json({
                 success: true,
                 message: 'Pagamento confirmado manualmente com sucesso',
@@ -226,6 +296,23 @@ class PaymentController {
             }
             const { reason } = req.body;
             const payment = await PaymentService_js_1.PaymentService.refundPayment(id, userId, reason);
+            // 🔐 AUDITORIA: Estorno de pagamento
+            await AuditService_js_1.AuditService.log({
+                userId,
+                userEmail: user.email,
+                companyId: payment?.companyId?.toString(),
+                action: 'PAYMENT_REFUNDED',
+                category: 'financial',
+                level: 'warning',
+                resource: 'Payment',
+                resourceId: id,
+                details: { reason },
+                success: true,
+                ip: req.ip || '',
+                userAgent: req.headers['user-agent'] || '',
+                method: req.method,
+                path: req.path,
+            });
             res.json({
                 success: true,
                 message: 'Pagamento estornado com sucesso',
@@ -460,6 +547,23 @@ class PaymentController {
                 throw new errorHandler_js_1.AppError('Acesso restrito a administradores e prepostos', 403);
             }
             const payment = await PaymentService_js_1.PaymentService.generateInvoice(subscriptionId, userId);
+            // 🔐 AUDITORIA: Geração de Fatura
+            await AuditService_js_1.AuditService.log({
+                userId,
+                userEmail: user.email,
+                companyId: subscription.companyId?.toString(),
+                action: 'INVOICE_GENERATED',
+                category: 'financial',
+                level: 'info',
+                resource: 'Payment',
+                resourceId: payment?._id?.toString() || '',
+                details: { subscriptionId },
+                success: true,
+                ip: req.ip || '',
+                userAgent: req.headers['user-agent'] || '',
+                method: req.method,
+                path: req.path,
+            });
             res.status(201).json({
                 success: true,
                 message: 'Fatura gerada com sucesso',

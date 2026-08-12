@@ -48,6 +48,7 @@ class GovernanceService {
             deletedAt: null
         }).exec();
     }
+    // 🔧 CORREÇÃO v41.4: Combinar $or com $and para não sobrescrever a visibilidade
     async findAll(companyId, filters = {}) {
         // 🆕 NOVO (v40) - Buscar documentos da empresa OU documentos globais
         const query = {
@@ -64,14 +65,26 @@ class GovernanceService {
             query.status = filters.status;
         if (filters.category)
             query.category = filters.category;
-        // 🔧 CORREÇÃO: O $or para busca já existe, não sobrescrever
+        // 🔧 CORREÇÃO v41.4: Combinar $or de busca com $or de visibilidade usando $and
         if (filters.search) {
-            // Adicionar busca ao query existente
-            query.$or = [
-                { title: { $regex: filters.search, $options: 'i' } },
-                { code: { $regex: filters.search, $options: 'i' } },
-                { content: { $regex: filters.search, $options: 'i' } },
+            // Criar um $and que combina a visibilidade com a busca
+            query.$and = [
+                {
+                    $or: [
+                        { companyId: companyId },
+                        { isGlobal: true }
+                    ]
+                },
+                {
+                    $or: [
+                        { title: { $regex: filters.search, $options: 'i' } },
+                        { code: { $regex: filters.search, $options: 'i' } },
+                        { content: { $regex: filters.search, $options: 'i' } },
+                    ]
+                }
             ];
+            // Remover o $or original para evitar duplicidade
+            delete query.$or;
         }
         if (filters.framework) {
             query[`frameworks.${filters.framework}`] = { $exists: true, $not: { $size: 0 } };

@@ -7,6 +7,7 @@ const index_js_1 = require("../types/index.js");
 const errorHandler_js_1 = require("../middleware/errorHandler.js");
 const errorLogger_js_1 = require("../utils/errorLogger.js");
 const logger_js_1 = require("../utils/logger.js");
+const AuditService_js_1 = require("../services/AuditService.js");
 class SubscriptionController {
     /**
      * Criar nova assinatura (self-service)
@@ -58,6 +59,25 @@ class SubscriptionController {
                 subscriptionId,
                 notes,
             });
+            // 🔐 AUDITORIA: Registro de criação de assinatura
+            if (req.userId) {
+                await AuditService_js_1.AuditService.log({
+                    userId: req.userId,
+                    userEmail: req.user?.email || '',
+                    companyId,
+                    action: 'SUBSCRIPTION_CREATED',
+                    category: 'financial',
+                    level: 'info',
+                    resource: 'Subscription',
+                    resourceId: subscription?._id?.toString() || '',
+                    details: { planId, billingCycle, autoRenew },
+                    success: true,
+                    ip: req.ip || '',
+                    userAgent: req.headers['user-agent'] || '',
+                    method: req.method,
+                    path: req.path,
+                });
+            }
             // Gerar fatura inicial
             try {
                 await PaymentService_js_1.PaymentService.generateInvoice(subscription._id.toString(), userId);
@@ -263,6 +283,23 @@ class SubscriptionController {
                 consultingHoursUsed,
                 notes,
             }, userId);
+            // 🔐 AUDITORIA: Registro de atualização de assinatura
+            await AuditService_js_1.AuditService.log({
+                userId,
+                userEmail: user.email,
+                companyId: subscription?.companyId?.toString() || '',
+                action: 'SUBSCRIPTION_UPDATED',
+                category: 'financial',
+                level: 'info',
+                resource: 'Subscription',
+                resourceId: id,
+                details: { status, planId, autoRenew, maxUsers, currentUsers, consultingHoursUsed },
+                success: true,
+                ip: req.ip || '',
+                userAgent: req.headers['user-agent'] || '',
+                method: req.method,
+                path: req.path,
+            });
             res.json({
                 success: true,
                 message: 'Assinatura atualizada com sucesso',
@@ -317,6 +354,23 @@ class SubscriptionController {
                 throw new errorHandler_js_1.AppError('Acesso restrito a administradores e prepostos', 403);
             }
             const result = await SubscriptionService_js_1.SubscriptionService.cancelSubscription(id, userId, reason);
+            // 🔐 AUDITORIA: Registro de cancelamento de assinatura
+            await AuditService_js_1.AuditService.log({
+                userId,
+                userEmail: user?.email || '',
+                companyId: subscription.companyId.toString(),
+                action: 'SUBSCRIPTION_CANCELLED',
+                category: 'financial',
+                level: 'warning',
+                resource: 'Subscription',
+                resourceId: id,
+                details: { reason },
+                success: true,
+                ip: req.ip || '',
+                userAgent: req.headers['user-agent'] || '',
+                method: req.method,
+                path: req.path,
+            });
             res.json({
                 success: true,
                 message: 'Assinatura cancelada com sucesso',

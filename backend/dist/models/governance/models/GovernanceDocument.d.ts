@@ -16,6 +16,9 @@ export interface IGovernanceDocument extends Document {
     approvedAt?: Date;
     effectiveDate: Date;
     reviewDate: Date;
+    responsible?: string;
+    strategicObjective?: string;
+    scope?: 'all' | 'it' | 'security' | 'privacy';
     frameworks: {
         iso27001?: string[];
         nist?: string[];
