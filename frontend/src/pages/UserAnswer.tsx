@@ -293,6 +293,26 @@ export const UserAnswer: React.FC = () => {
             attachmentName: '',
           }]);
         }
+
+        // 🆕 CORREÇÃO: Se não houver resposta existente e não houver progresso salvo, marcar como in_progress
+        if (!hasExistingResponse && !isInProgress && assignmentId) {
+          try {
+            await userService.saveProgress({
+              assignmentId: assignmentId,
+              partialData: {
+                maturityLevel: '',
+                scenarioDescription: '',
+                notes: '',
+              },
+              progressStatus: 'in_progress',
+            });
+            setIsInProgress(true);
+            console.log('📝 Atividade marcada como em andamento');
+          } catch (err) {
+            console.error('❌ Erro ao marcar como em andamento:', err);
+          }
+        }
+
       } catch (err) {
         console.error('Erro ao carregar dados:', err);
         setError('Erro ao carregar os dados. Tente novamente.');
@@ -417,7 +437,6 @@ export const UserAnswer: React.FC = () => {
   const currentQuestion = questions[0];
 
   return (
-    // 🆕 Adicionar eventos de interação para resetar o timer de inatividade
     <div 
       className="min-h-screen bg-gray-50 py-8"
       onMouseMove={resetInactivityTimer}
@@ -433,7 +452,6 @@ export const UserAnswer: React.FC = () => {
           Voltar ao dashboard
         </button>
 
-        {/* Indicador de Progresso */}
         {(isInProgress || isAutoSaving || hasUnsavedChanges) && (
           <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center gap-3">
             {isAutoSaving ? (
@@ -485,7 +503,6 @@ export const UserAnswer: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-6">
-              {/* Pergunta */}
               <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                 <h3 className="text-sm font-medium text-gray-700 mb-2">Pergunta de Avaliação</h3>
                 <p className="text-gray-900 text-lg">{currentQuestion?.text}</p>
@@ -496,7 +513,6 @@ export const UserAnswer: React.FC = () => {
                 )}
               </div>
 
-              {/* Nível de Maturidade */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Nível de Maturidade *
@@ -563,7 +579,6 @@ export const UserAnswer: React.FC = () => {
                 )}
               </div>
 
-              {/* Descrição do Cenário */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Descrição do Cenário Atual
@@ -580,7 +595,6 @@ export const UserAnswer: React.FC = () => {
                 />
               </div>
 
-              {/* Orientação */}
               {currentQuestion?.guidance && (
                 <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
                   <p className="text-sm text-blue-700">
@@ -589,7 +603,6 @@ export const UserAnswer: React.FC = () => {
                 </div>
               )}
 
-              {/* Observações */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Observações Adicionais
@@ -606,7 +619,6 @@ export const UserAnswer: React.FC = () => {
                 />
               </div>
 
-              {/* Anexo (opcional) */}
               {currentQuestion?.attachmentUrl && (
                 <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
                   <p className="text-sm text-gray-500">
@@ -623,7 +635,6 @@ export const UserAnswer: React.FC = () => {
                 </div>
               )}
 
-              {/* Mensagens */}
               {success && (
                 <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center gap-3">
                   <CheckCircle className="h-5 w-5 text-green-500" />
@@ -638,7 +649,6 @@ export const UserAnswer: React.FC = () => {
                 </div>
               )}
 
-              {/* Botões */}
               <div className="flex gap-3 pt-4 border-t border-gray-200">
                 <Button
                   onClick={handleBack}
@@ -671,7 +681,6 @@ export const UserAnswer: React.FC = () => {
         </Card>
       </div>
 
-      {/* Modal de Confirmação de Alteração */}
       <ConfirmDialog
         isOpen={isConfirmModalOpen}
         title="Confirmar Alteração"
@@ -699,7 +708,6 @@ export const UserAnswer: React.FC = () => {
         isLoading={isSaving}
       />
 
-      {/* 🆕 MODAL DE INATIVIDADE */}
       <Dialog open={showInactivityModal} onOpenChange={setShowInactivityModal}>
         <DialogContent className="max-w-md">
           <DialogHeader>
