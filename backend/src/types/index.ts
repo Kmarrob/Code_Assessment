@@ -63,6 +63,14 @@ export enum ResponseStatus {
   REVOKED = 'revoked', // 🔴 ADICIONADO
 }
 
+// 🆕 NOVO ENUM PARA PROGRESSO
+export enum ProgressStatus {
+  NOT_STARTED = 'not_started',
+  IN_PROGRESS = 'in_progress',
+  INTERRUPTED = 'interrupted',
+  COMPLETED = 'completed',
+}
+
 export enum MaturityLevel {
   N_A = 'N/A',
   LEVEL_0 = '0',
@@ -178,6 +186,11 @@ export interface IResponse {
   submittedAt: Date;
   createdAt: Date;
   updatedAt: Date;
+  // 🆕 CAMPOS PARA PROGRESSO (ADICIONADOS - NADA FOI EXCLUÍDO)
+  progressStatus: ProgressStatus;
+  lastActivityAt: Date;
+  isInterrupted: boolean;
+  partialData: Record<string, any>;
 }
 
 // ============================================

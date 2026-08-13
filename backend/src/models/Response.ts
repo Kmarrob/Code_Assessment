@@ -1,6 +1,16 @@
 // backend/src/models/Response.ts
 import mongoose, { Schema, Model } from 'mongoose';
-import { IResponse } from '../types/index.js';
+import { IResponse, ProgressStatus } from '../types/index.js';
+
+// 🆕 INTERFACE DO MODELO COM MÉTODOS ESTÁTICOS
+interface ResponseModel extends Model<IResponse> {
+  findByUser(userId: string): Promise<any[]>;
+  findByRep(repId: string): Promise<any[]>;
+  getUserStats(userId: string): Promise<any[]>;
+  getInProgressActivities(userId: string): Promise<any[]>;
+  hasPendingActivities(userId: string): Promise<boolean>;
+  getProgressByAssignment(assignmentId: string): Promise<any>;
+}
 
 const responseSchema = new Schema<IResponse>(
   {
@@ -50,11 +60,11 @@ const responseSchema = new Schema<IResponse>(
       type: Date,
       default: Date.now,
     },
-    // 🆕 CAMPOS PARA PROGRESSO (NOVOS - NADA FOI EXCLUÍDO)
+    // 🆕 CAMPOS PARA PROGRESSO - USANDO O ENUM ProgressStatus
     progressStatus: {
       type: String,
-      enum: ['not_started', 'in_progress', 'interrupted', 'completed'],
-      default: 'not_started',
+      enum: Object.values(ProgressStatus),
+      default: ProgressStatus.NOT_STARTED,
       index: true,
     },
     lastActivityAt: {
@@ -148,7 +158,9 @@ responseSchema.statics.getUserStats = function(userId: string) {
 responseSchema.statics.getInProgressActivities = function(userId: string) {
   return this.find({
     userId,
-    progressStatus: { $in: ['in_progress', 'interrupted'] },
+    progressStatus: { 
+      $in: [ProgressStatus.IN_PROGRESS, ProgressStatus.INTERRUPTED] 
+    },
   })
     .populate({
       path: 'assignmentId',
@@ -168,7 +180,9 @@ responseSchema.statics.getInProgressActivities = function(userId: string) {
 responseSchema.statics.hasPendingActivities = async function(userId: string): Promise<boolean> {
   const count = await this.countDocuments({
     userId,
-    progressStatus: { $in: ['in_progress', 'interrupted'] },
+    progressStatus: { 
+      $in: [ProgressStatus.IN_PROGRESS, ProgressStatus.INTERRUPTED] 
+    },
   });
   return count > 0;
 };
@@ -179,8 +193,11 @@ responseSchema.statics.hasPendingActivities = async function(userId: string): Pr
 responseSchema.statics.getProgressByAssignment = function(assignmentId: string) {
   return this.findOne({
     assignmentId,
-    progressStatus: { $in: ['in_progress', 'interrupted'] },
+    progressStatus: { 
+      $in: [ProgressStatus.IN_PROGRESS, ProgressStatus.INTERRUPTED] 
+    },
   }).lean();
 };
 
-export const Response: Model<IResponse> = mongoose.model<IResponse>('Response', responseSchema);
+// 🆕 EXPORTAR COM A INTERFACE ESTENDIDA
+export const Response: ResponseModel = mongoose.model<IResponse, ResponseModel>('Response', responseSchema);

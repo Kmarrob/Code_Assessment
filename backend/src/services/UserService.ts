@@ -6,7 +6,7 @@ import { Question } from '../models/Question.js';
 import { Control } from '../models/Control.js';
 import { NotFoundError, AppError } from '../middleware/errorHandler.js';
 import { logger } from '../utils/logger.js';
-import { ResponseStatus, MaturityLevel } from '../types/index.js';
+import { ResponseStatus, MaturityLevel, ProgressStatus } from '../types/index.js';
 // 🔴 NOVO: Import do NotificationService
 import { NotificationService } from './NotificationService.js';
 
@@ -180,7 +180,7 @@ export class UserService {
       response.scenarioDescription = autoScenarioDescription;
       response.evidence = evidenceString ? [evidenceString] : [];
       response.observations = notes || '';
-      response.progressStatus = 'completed';
+      response.progressStatus = ProgressStatus.COMPLETED;
       response.lastActivityAt = new Date();
       response.isInterrupted = false;
       await response.save();
@@ -196,7 +196,7 @@ export class UserService {
         evidence: evidenceString ? [evidenceString] : [],
         observations: notes || '',
         submittedAt: new Date(),
-        progressStatus: 'completed',
+        progressStatus: ProgressStatus.COMPLETED,
         lastActivityAt: new Date(),
         isInterrupted: false,
         partialData: {},
@@ -273,7 +273,7 @@ export class UserService {
     userId: string,
     assignmentId: string,
     partialData: any,
-    progressStatus: 'in_progress' | 'interrupted' = 'in_progress'
+    progressStatus: ProgressStatus.IN_PROGRESS | ProgressStatus.INTERRUPTED = ProgressStatus.IN_PROGRESS
   ) {
     // Verificar se a atribuição existe e pertence ao usuário
     const assignment = await Assignment.findOne({
@@ -301,7 +301,7 @@ export class UserService {
       response.partialData = partialData;
       response.progressStatus = progressStatus;
       response.lastActivityAt = new Date();
-      response.isInterrupted = progressStatus === 'interrupted';
+      response.isInterrupted = progressStatus === ProgressStatus.INTERRUPTED;
       
       // Se ainda não tem maturityLevel no partialData, manter o existente
       if (partialData.maturityLevel && partialData.maturityLevel !== '') {
@@ -322,7 +322,7 @@ export class UserService {
         submittedAt: new Date(),
         progressStatus: progressStatus,
         lastActivityAt: new Date(),
-        isInterrupted: progressStatus === 'interrupted',
+        isInterrupted: progressStatus === ProgressStatus.INTERRUPTED,
         partialData: partialData,
       });
       await response.save();
@@ -439,7 +439,7 @@ export class UserService {
     const response = await Response.findOne({ assignmentId });
 
     if (response) {
-      response.progressStatus = 'not_started';
+      response.progressStatus = ProgressStatus.NOT_STARTED;
       response.isInterrupted = false;
       response.partialData = {};
       response.lastActivityAt = new Date();
