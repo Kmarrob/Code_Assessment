@@ -208,6 +208,14 @@ export class UserService {
       await assignment.save();
     }
 
+    // 🔴 CORREÇÃO: Atualizar status da atribuição SEMPRE (dentro ou fora do if/else)
+    // Isso garante que mesmo quando a resposta já existe (atualização), o status seja alterado para COMPLETED
+    if (assignment.status !== ResponseStatus.COMPLETED) {
+      assignment.status = ResponseStatus.COMPLETED;
+      await assignment.save();
+      logger.info(`✅ Assignment ${assignmentId} atualizado para COMPLETED`);
+    }
+
     logger.info(`Resposta salva para o usuário ${userId} - Controle: ${assignment.controlId}`);
 
     // 🔴 NOTIFICAÇÃO: Enviar notificação para o preposto
