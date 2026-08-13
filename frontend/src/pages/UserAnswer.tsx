@@ -1,13 +1,14 @@
 // frontend/src/pages/UserAnswer.tsx
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, Loader2, AlertCircle, CheckCircle, Clock } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, AlertCircle, CheckCircle, Clock, AlarmClock } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card.js';
 import { Button } from '../components/ui/Button.js';
 import { userService } from '../services/user.service.js';
 import { questionService } from '../services/question.service.js';
 import { useAuth } from '../contexts/AuthContext.js';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog.js';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../components/ui/Dialog.js';
 import toast from 'react-hot-toast';
 
 interface Question {
@@ -40,11 +41,21 @@ export const UserAnswer: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   
-  // 🆕 Estados para progresso
+  // Estados para progresso
   const [isInProgress, setIsInProgress] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // 🆕 TIMER DE INATIVIDADE
+  const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const INACTIVITY_TIMEOUT = 5 * 60 * 1000; // 5 minutos
+  const INACTIVITY_WARNING_TIMEOUT = 30 * 1000; // 30 segundos para resposta
+  
+  // 🆕 Estados para modal de inatividade
+  const [showInactivityModal, setShowInactivityModal] = useState(false);
+  const [inactivityCountdown, setInactivityCountdown] = useState(30);
+  const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
   // Estados para o modal de confirmação
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
@@ -63,7 +74,6 @@ export const UserAnswer: React.FC = () => {
       return;
     }
 
-    // Não salvar se já está em estado de salvamento final
     if (isSaving) return;
 
     setIsAutoSaving(true);
@@ -89,6 +99,81 @@ export const UserAnswer: React.FC = () => {
   }, [assignmentId, selectedMaturity, scenarioDescription, notes, isSaving]);
 
   // ============================================
+  // 🆕 GERENCIAR TIMER DE INATIVIDADE
+  // ============================================
+  const resetInactivityTimer = useCallback(() => {
+    // Limpar timers existentes
+    if (inactivityTimerRef.current) {
+      clearTimeout(inactivityTimerRef.current);
+    }
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current);
+    }
+    
+    // Fechar modal se estiver aberto
+    if (showInactivityModal) {
+      setShowInactivityModal(false);
+      setInactivityCountdown(30);
+    }
+
+    // Se já tiver selecionado um nível, iniciar timer
+    if (selectedMaturity && !isSaving) {
+      inactivityTimerRef.current = setTimeout(() => {
+        // Mostrar modal de aviso
+        setShowInactivityModal(true);
+        setInactivityCountdown(30);
+        
+        // Iniciar contagem regressiva
+        countdownIntervalRef.current = setInterval(() => {
+          setInactivityCountdown(prev => {
+            if (prev <= 1) {
+              // Tempo esgotado - marcar como interrompido
+              if (countdownIntervalRef.current) {
+                clearInterval(countdownIntervalRef.current);
+              }
+              saveProgress('interrupted');
+              setShowInactivityModal(false);
+              toast.info('⏰ Inatividade detectada. Seu progresso foi salvo.');
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+      }, INACTIVITY_TIMEOUT);
+    }
+  }, [selectedMaturity, isSaving, saveProgress, showInactivityModal]);
+
+  // ============================================
+  // 🆕 CONTINUAR (RESETAR TIMER)
+  // ============================================
+  const handleContinueActivity = useCallback(() => {
+    // Limpar timers
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current);
+    }
+    setShowInactivityModal(false);
+    setInactivityCountdown(30);
+    resetInactivityTimer();
+    toast.info('🔄 Timer reiniciado. Continue sua atividade.');
+  }, [resetInactivityTimer]);
+
+  // ============================================
+  // 🆕 SAIR (SALVAR COMO INTERROMPIDO)
+  // ============================================
+  const handleExitActivity = useCallback(async () => {
+    // Limpar timers
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current);
+    }
+    setShowInactivityModal(false);
+    setInactivityCountdown(30);
+    
+    await saveProgress('interrupted');
+    toast.info('📂 Progresso salvo. Você pode continuar depois.');
+    navigate('/dashboard');
+  }, [saveProgress, navigate]);
+
+  // ============================================
   // AUTOSAVE COM DEBOUNCE
   // ============================================
   useEffect(() => {
@@ -103,13 +188,16 @@ export const UserAnswer: React.FC = () => {
         saveProgress('in_progress');
       }, 3000);
       
+      // 🆕 Resetar timer de inatividade
+      resetInactivityTimer();
+      
       return () => {
         if (saveTimeoutRef.current) {
           clearTimeout(saveTimeoutRef.current);
         }
       };
     }
-  }, [selectedMaturity, scenarioDescription, notes, isLoading, assignmentId, saveProgress]);
+  }, [selectedMaturity, scenarioDescription, notes, isLoading, assignmentId, saveProgress, resetInactivityTimer]);
 
   // ============================================
   // SALVAR AO SAIR DA PÁGINA
@@ -129,6 +217,13 @@ export const UserAnswer: React.FC = () => {
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
+      // 🆕 Limpar timers ao desmontar
+      if (inactivityTimerRef.current) {
+        clearTimeout(inactivityTimerRef.current);
+      }
+      if (countdownIntervalRef.current) {
+        clearInterval(countdownIntervalRef.current);
+      }
     };
   }, [hasUnsavedChanges, selectedMaturity, saveProgress]);
 
@@ -140,7 +235,6 @@ export const UserAnswer: React.FC = () => {
       setIsLoading(true);
       setError(null);
       try {
-        // Buscar os controles do usuário para obter o controlId
         const controls = await userService.getControls();
         const assignment = controls.find(c => c.assignmentId === assignmentId);
         
@@ -152,11 +246,9 @@ export const UserAnswer: React.FC = () => {
 
         setControlId(assignment.control?.id || '');
 
-        // Buscar as perguntas para este controle
         const questionsData = await questionService.getUserQuestionsByControl(assignment.control?.id || '');
         setQuestions(questionsData);
 
-        // 🆕 VERIFICAR SE HÁ PROGRESSO SALVO
         try {
           const savedProgress = await userService.getProgressByAssignment(assignmentId!);
           if (savedProgress && savedProgress.partialData) {
@@ -173,14 +265,12 @@ export const UserAnswer: React.FC = () => {
           console.log('ℹ️ Nenhum progresso salvo para esta atribuição');
         }
 
-        // Verificar se já existe resposta
         if (assignment.response) {
           setHasExistingResponse(true);
           setSelectedMaturity(assignment.response.maturityLevel || '');
           setScenarioDescription(assignment.response.scenarioDescription || '');
           setNotes(assignment.response.observations || '');
           
-          // Salvar dados originais para comparação
           setOriginalData({
             maturityLevel: assignment.response.maturityLevel || '',
             scenarioDescription: assignment.response.scenarioDescription || '',
@@ -188,7 +278,6 @@ export const UserAnswer: React.FC = () => {
           });
         }
 
-        // Se não houver perguntas, criar uma pergunta padrão
         if (questionsData.length === 0) {
           setQuestions([{
             _id: 'default',
@@ -221,7 +310,6 @@ export const UserAnswer: React.FC = () => {
   // HANDLERS
   // ============================================
   const handleBack = async () => {
-    // Salvar progresso antes de sair, se houver alterações
     if (hasUnsavedChanges && selectedMaturity) {
       await saveProgress('interrupted');
     }
@@ -243,7 +331,6 @@ export const UserAnswer: React.FC = () => {
       return;
     }
 
-    // Se já existe resposta, mostrar modal de confirmação
     if (hasExistingResponse && originalData) {
       const hasChanges = 
         selectedMaturity !== originalData.maturityLevel ||
@@ -259,7 +346,6 @@ export const UserAnswer: React.FC = () => {
       }
     }
 
-    // Se não existe resposta, salvar diretamente
     handleSave();
   };
 
@@ -279,7 +365,6 @@ export const UserAnswer: React.FC = () => {
       setSuccess('Resposta salva com sucesso!');
       toast.success('Resposta salva com sucesso!');
       
-      // Atualizar dados originais
       setOriginalData({
         maturityLevel: selectedMaturity,
         scenarioDescription: scenarioDescription || '',
@@ -332,9 +417,14 @@ export const UserAnswer: React.FC = () => {
   const currentQuestion = questions[0];
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    // 🆕 Adicionar eventos de interação para resetar o timer de inatividade
+    <div 
+      className="min-h-screen bg-gray-50 py-8"
+      onMouseMove={resetInactivityTimer}
+      onKeyDown={resetInactivityTimer}
+      onClick={resetInactivityTimer}
+    >
       <div className="container mx-auto px-4 max-w-4xl">
-        {/* Botão voltar */}
         <button
           onClick={handleBack}
           className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors mb-6"
@@ -343,7 +433,7 @@ export const UserAnswer: React.FC = () => {
           Voltar ao dashboard
         </button>
 
-        {/* 🆕 INDICADOR DE PROGRESSO */}
+        {/* Indicador de Progresso */}
         {(isInProgress || isAutoSaving || hasUnsavedChanges) && (
           <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center gap-3">
             {isAutoSaving ? (
@@ -412,7 +502,6 @@ export const UserAnswer: React.FC = () => {
                   Nível de Maturidade *
                 </label>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  {/* Nível 2 - Implementado */}
                   <button
                     onClick={() => setSelectedMaturity('2')}
                     className={`p-4 border-2 rounded-lg text-left transition-colors ${
@@ -430,7 +519,6 @@ export const UserAnswer: React.FC = () => {
                     </p>
                   </button>
 
-                  {/* Nível 1 - Parcial */}
                   <button
                     onClick={() => setSelectedMaturity('1')}
                     className={`p-4 border-2 rounded-lg text-left transition-colors ${
@@ -448,7 +536,6 @@ export const UserAnswer: React.FC = () => {
                     </p>
                   </button>
 
-                  {/* Nível 0 - Não Implementado */}
                   <button
                     onClick={() => setSelectedMaturity('0')}
                     className={`p-4 border-2 rounded-lg text-left transition-colors ${
@@ -584,7 +671,7 @@ export const UserAnswer: React.FC = () => {
         </Card>
       </div>
 
-      {/* Modal de Confirmação */}
+      {/* Modal de Confirmação de Alteração */}
       <ConfirmDialog
         isOpen={isConfirmModalOpen}
         title="Confirmar Alteração"
@@ -611,6 +698,46 @@ export const UserAnswer: React.FC = () => {
         onCancel={() => setIsConfirmModalOpen(false)}
         isLoading={isSaving}
       />
+
+      {/* 🆕 MODAL DE INATIVIDADE */}
+      <Dialog open={showInactivityModal} onOpenChange={setShowInactivityModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-yellow-100 rounded-full">
+                <AlarmClock className="h-6 w-6 text-yellow-600" />
+              </div>
+              <DialogTitle className="text-xl font-bold text-gray-900">
+                Você está inativo
+              </DialogTitle>
+            </div>
+            <DialogDescription className="text-gray-600">
+              Identificamos que você não interage com a página há 5 minutos.
+              <br /><br />
+              <span className="font-medium">Deseja continuar de onde parou ou salvar e sair?</span>
+              <br /><br />
+              <span className="text-sm text-yellow-600">
+                ⏳ O progresso será salvo automaticamente em {inactivityCountdown} segundos.
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex flex-col sm:flex-row gap-3">
+            <Button
+              onClick={handleExitActivity}
+              variant="outline"
+              className="w-full sm:w-auto"
+            >
+              Salvar e Sair
+            </Button>
+            <Button
+              onClick={handleContinueActivity}
+              className="w-full sm:w-auto bg-[#30736C] hover:bg-[#1E5359] text-white"
+            >
+              Continuar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
