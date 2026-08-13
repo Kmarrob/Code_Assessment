@@ -2,6 +2,9 @@
 import mongoose, { Schema, Model } from 'mongoose';
 import { IAssignment, ResponseStatus } from '../types/index.js';
 
+// 🆕 Array com os valores do enum para evitar problema de importação circular
+const RESPONSE_STATUS_VALUES = ['pending', 'in_progress', 'completed', 'skipped', 'expired', 'revoked'];
+
 const assignmentSchema = new Schema<IAssignment>(
   {
     userId: {
@@ -28,7 +31,7 @@ const assignmentSchema = new Schema<IAssignment>(
     },
     status: {
       type: String,
-      enum: Object.values(ResponseStatus),
+      enum: RESPONSE_STATUS_VALUES,
       default: ResponseStatus.PENDING,
     },
   },
