@@ -133,7 +133,8 @@ export const UserAnswer: React.FC = () => {
               }
               saveProgress('interrupted');
               setShowInactivityModal(false);
-              toast.info('⏰ Inatividade detectada. Seu progresso foi salvo.');
+              // 🆕 CORREÇÃO: toast.info → toast com ícone
+              toast('⏰ Inatividade detectada. Seu progresso foi salvo.', { icon: '⏰' });
               return 0;
             }
             return prev - 1;
@@ -154,7 +155,8 @@ export const UserAnswer: React.FC = () => {
     setShowInactivityModal(false);
     setInactivityCountdown(30);
     resetInactivityTimer();
-    toast.info('🔄 Timer reiniciado. Continue sua atividade.');
+    // 🆕 CORREÇÃO: toast.info → toast com ícone
+    toast('🔄 Timer reiniciado. Continue sua atividade.', { icon: '🔄' });
   }, [resetInactivityTimer]);
 
   // ============================================
@@ -169,7 +171,8 @@ export const UserAnswer: React.FC = () => {
     setInactivityCountdown(30);
     
     await saveProgress('interrupted');
-    toast.info('📂 Progresso salvo. Você pode continuar depois.');
+    // 🆕 CORREÇÃO: toast.info → toast com ícone
+    toast('📂 Progresso salvo. Você pode continuar depois.', { icon: '📂' });
     navigate('/dashboard');
   }, [saveProgress, navigate]);
 
@@ -259,6 +262,7 @@ export const UserAnswer: React.FC = () => {
             setNotes(pd.notes || '');
             setIsInProgress(true);
             setLastSavedAt(new Date(savedProgress.lastActivityAt));
+            // 🆕 CORREÇÃO: toast.success mantido
             toast.success('📂 Progresso recuperado! Continue de onde parou.');
           }
         } catch (progressErr) {
@@ -347,6 +351,7 @@ export const UserAnswer: React.FC = () => {
 
   const handleSaveClick = () => {
     if (!selectedMaturity) {
+      // 🆕 CORREÇÃO: toast.error mantido
       toast.error('Selecione um nível de maturidade');
       return;
     }
@@ -361,7 +366,8 @@ export const UserAnswer: React.FC = () => {
         setIsConfirmModalOpen(true);
         return;
       } else {
-        toast.info('Nenhuma alteração detectada');
+        // 🆕 CORREÇÃO: toast.info → toast com ícone
+        toast('Nenhuma alteração detectada', { icon: 'ℹ️' });
         return;
       }
     }
@@ -383,6 +389,7 @@ export const UserAnswer: React.FC = () => {
       });
 
       setSuccess('Resposta salva com sucesso!');
+      // 🆕 CORREÇÃO: toast.success mantido
       toast.success('Resposta salva com sucesso!');
       
       setOriginalData({
@@ -401,6 +408,7 @@ export const UserAnswer: React.FC = () => {
       console.error('Erro ao salvar resposta:', err);
       const message = err.response?.data?.message || 'Erro ao salvar resposta. Tente novamente.';
       setError(message);
+      // 🆕 CORREÇÃO: toast.error mantido
       toast.error(message);
     } finally {
       setIsSaving(false);
