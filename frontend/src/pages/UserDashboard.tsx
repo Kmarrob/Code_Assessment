@@ -1,6 +1,6 @@
 // frontend/src/pages/UserDashboard.tsx
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom'; // 👈 ADICIONADO: useLocation
 import { useAuth } from '../contexts/AuthContext.js';
 import { LayoutDashboard, ClipboardList, CheckCircle, Clock, AlertCircle, Loader2, LogOut, Download, Filter, ArrowRight, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card.js';
@@ -12,6 +12,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 export const UserDashboard: React.FC = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation(); // 👈 ADICIONADO: Hook para acessar o estado da navegação
+  
   const [stats, setStats] = useState<UserStats>({ total: 0, completed: 0, pending: 0, inProgress: 0 });
   const [controls, setControls] = useState<UserControl[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -98,6 +100,19 @@ export const UserDashboard: React.FC = () => {
       setIsLoading(false);
     }
   };
+
+  // ============================================
+  // 🆕 CORREÇÃO: Recarregar dados ao voltar da página de resposta
+  // ============================================
+  useEffect(() => {
+    // Verifica se o estado de navegação contém a flag 'refresh'
+    if (location.state && (location.state as any).refresh) {
+      console.log('🔄 Recarregando dados do dashboard após salvar resposta...');
+      // Limpa o estado para evitar recarregamentos infinitos
+      navigate(location.pathname, { replace: true, state: {} });
+      loadData();
+    }
+  }, [location.state]); // 👈 Executa quando o estado de navegação mudar
 
   useEffect(() => {
     loadData();
