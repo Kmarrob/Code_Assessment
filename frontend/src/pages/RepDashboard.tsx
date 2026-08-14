@@ -8,7 +8,8 @@ import {
   Search, ChevronLeft, ChevronRight, Plus, Loader2,
   LayoutDashboard, MessageSquare, Edit, Trash2, 
   X, RefreshCw, AlertTriangle, ChevronDown, FileText,
-  Palette, UserCheck, BookOpen
+  Palette, UserCheck, BookOpen,
+  ClipboardCheck // 🆕 NOVO (v44.0) - Auditoria Interna (SGSI)
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card.js';
 import { Button } from '../components/ui/Button.js';
@@ -117,6 +118,11 @@ export const RepDashboard: React.FC = () => {
   // 🔴 NOVO: Abrir modal para atribuir controles para si mesmo
   const handleOpenAssignToSelf = () => {
     setShowAssignToSelfModal(true);
+  };
+
+  // 🆕 NOVO (v44.0): Navegar para Auditoria Interna
+  const handleNavigateToInternalAudit = () => {
+    navigate('/rep/audit/dashboard');
   };
 
   // Abrir modal de inativação
@@ -518,6 +524,23 @@ export const RepDashboard: React.FC = () => {
               </div>
             </div>
             <ChevronRight className="w-4 h-4 text-emerald-400 mt-2" />
+          </div>
+
+          {/* 🆕 NOVO (v44.0): Card "Auditoria Interna" (SGSI) */}
+          <div
+            onClick={handleNavigateToInternalAudit}
+            className="bg-white border-2 border-indigo-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-indigo-600">Executar</p>
+                <p className="text-lg font-bold text-indigo-900">Auditoria Interna</p>
+              </div>
+              <div className="p-3 bg-indigo-100 rounded-full">
+                <ClipboardCheck className="w-6 h-6 text-indigo-600" />
+              </div>
+            </div>
+            <ChevronRight className="w-4 h-4 text-indigo-400 mt-2" />
           </div>
 
           {/* 🔴 NOVO: Card "Personalizar Identidade Visual" (apenas Enterprise) */}

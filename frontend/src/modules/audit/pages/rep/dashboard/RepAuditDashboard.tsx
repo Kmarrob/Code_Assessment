@@ -11,8 +11,9 @@ import {
   Eye,
   ChevronRight,
 } from 'lucide-react';
-import { usePlans, usePlanStats } from '../../hooks/useAudit';
-import { AuditPlan } from '../../types/audit.types';
+// 🔧 CORREÇÃO: Caminho corrigido de '../../hooks/useAudit' para '../../../hooks/useAudit'
+import { usePlans, usePlanStats } from '../../../hooks/useAudit';
+import { AuditPlan } from '../../../types/audit.types';
 
 const STATUS_COLORS: Record<string, string> = {
   draft: 'bg-gray-100 text-gray-600',
