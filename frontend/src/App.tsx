@@ -52,17 +52,18 @@ import RepPolicyView from './modules/governance/pages/rep/RepPolicyView.js';
 
 // ============================================
 // 🆕 NOVO (v44.0) - IMPORTAÇÕES DO MÓDULO DE AUDITORIA INTERNA (SGSI)
+// 🔧 CORREÇÃO: usar named imports em vez de default imports
 // ============================================
-import AdminAuditDashboard from './modules/audit/pages/admin/dashboard/AdminAuditDashboard.js';
-import AdminAuditReports from './modules/audit/pages/admin/reports/AdminAuditReports.js';
-import RepAuditDashboard from './modules/audit/pages/rep/dashboard/RepAuditDashboard.js';
-import RepAuditPlans from './modules/audit/pages/rep/plans/RepAuditPlans.js';
-import RepAuditPlanForm from './modules/audit/pages/rep/plans/RepAuditPlanForm.js';
-import RepAuditExecution from './modules/audit/pages/rep/execution/RepAuditExecution.js';
-import RepAuditFindings from './modules/audit/pages/rep/findings/RepAuditFindings.js';
-import RepAuditFindingForm from './modules/audit/pages/rep/findings/RepAuditFindingForm.js';
-import RepAuditActionPlan from './modules/audit/pages/rep/actions/RepAuditActionPlan.js';
-import RepAuditReport from './modules/audit/pages/rep/reports/RepAuditReport.js';
+import { AdminAuditDashboard } from './modules/audit/pages/admin/dashboard/AdminAuditDashboard.js';
+import { AdminAuditReports } from './modules/audit/pages/admin/reports/AdminAuditReports.js';
+import { RepAuditDashboard } from './modules/audit/pages/rep/dashboard/RepAuditDashboard.js';
+import { RepAuditPlans } from './modules/audit/pages/rep/plans/RepAuditPlans.js';
+import { RepAuditPlanForm } from './modules/audit/pages/rep/plans/RepAuditPlanForm.js';
+import { RepAuditExecution } from './modules/audit/pages/rep/execution/RepAuditExecution.js';
+import { RepAuditFindings } from './modules/audit/pages/rep/findings/RepAuditFindings.js';
+import { RepAuditFindingForm } from './modules/audit/pages/rep/findings/RepAuditFindingForm.js';
+import { RepAuditActionPlan } from './modules/audit/pages/rep/actions/RepAuditActionPlan.js';
+import { RepAuditReport } from './modules/audit/pages/rep/reports/RepAuditReport.js';
 
 // ============================================
 // IMPORTAÇÕES DO DASHBOARD (DIRETAS - CORRIGIDO)
