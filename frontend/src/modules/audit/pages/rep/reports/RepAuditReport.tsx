@@ -26,7 +26,7 @@ import {
   useApproveReport,
   useRejectReport,
   useDeleteReport,
-} from '../../hooks/useAudit';
+} from '../../../hooks/useAudit';
 import { AuditReport, AuditReportStatus } from '../../types/audit.types';
 
 const STATUS_OPTIONS: { value: AuditReportStatus | 'all'; label: string; color: string }[] = [
