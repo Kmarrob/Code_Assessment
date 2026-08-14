@@ -17,7 +17,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { usePlans, useDeletePlan, useCancelPlan } from '../../../hooks/useAudit';
-import { AuditPlan, AuditStatus } from '../../types/audit.types';
+import { AuditPlan, AuditStatus } from '../../../types/audit.types';
 
 const STATUS_OPTIONS: { value: AuditStatus | 'all'; label: string }[] = [
   { value: 'all', label: 'Todos' },

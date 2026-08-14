@@ -17,7 +17,7 @@ import {
   Calendar,
 } from 'lucide-react';
 import { useActionsByFinding, useCompleteAction, useValidateAction, useStartAction } from '../../../hooks/useAudit';
-import { AuditActionPlan, AuditActionStatus } from '../../types/audit.types';
+import { AuditActionPlan, AuditActionStatus } from '../../../types/audit.types';
 
 const STATUS_OPTIONS: { value: AuditActionStatus | 'all'; label: string; color: string }[] = [
   { value: 'all', label: 'Todos', color: 'bg-gray-100 text-gray-600' },

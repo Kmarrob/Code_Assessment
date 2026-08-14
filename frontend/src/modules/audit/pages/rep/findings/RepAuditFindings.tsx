@@ -17,7 +17,7 @@ import {
   Search,
 } from 'lucide-react';
 import { useFindings, useFindingStats, useDeleteFinding } from '../../../hooks/useAudit';
-import { AuditFinding, AuditFindingStatus, AuditFindingType } from '../../types/audit.types';
+import { AuditFinding, AuditFindingStatus, AuditFindingType } from '../../../types/audit.types';
 
 const STATUS_OPTIONS: { value: AuditFindingStatus | 'all'; label: string; color: string }[] = [
   { value: 'all', label: 'Todos', color: 'bg-gray-100 text-gray-600' },
