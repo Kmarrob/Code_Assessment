@@ -11,6 +11,10 @@ export class AuditChecklistController {
     try {
       const { auditPlanId } = req.params;
 
+      if (!auditPlanId) {
+        return res.status(400).json({ success: false, message: 'ID do plano é obrigatório' });
+      }
+
       const checklists = await auditChecklistService.findByPlanId(auditPlanId);
 
       return res.status(200).json({ success: true, data: checklists });
@@ -25,6 +29,14 @@ export class AuditChecklistController {
   async findByPlanAndControl(req: Request, res: Response): Promise<Response> {
     try {
       const { auditPlanId, controlId } = req.params;
+
+      if (!auditPlanId) {
+        return res.status(400).json({ success: false, message: 'ID do plano é obrigatório' });
+      }
+
+      if (!controlId) {
+        return res.status(400).json({ success: false, message: 'ID do controle é obrigatório' });
+      }
 
       const checklist = await auditChecklistService.findByPlanAndControl(auditPlanId, controlId);
 
@@ -46,6 +58,14 @@ export class AuditChecklistController {
       const { id } = req.params;
       const userId = (req as any).userId;
       const { questions } = req.body;
+
+      if (!id) {
+        return res.status(400).json({ success: false, message: 'ID não informado' });
+      }
+
+      if (!userId) {
+        return res.status(401).json({ success: false, message: 'Usuário não autenticado' });
+      }
 
       if (!questions || !Array.isArray(questions)) {
         return res.status(400).json({ success: false, message: 'Questões inválidas' });
@@ -71,6 +91,14 @@ export class AuditChecklistController {
       const { id } = req.params;
       const userId = (req as any).userId;
 
+      if (!id) {
+        return res.status(400).json({ success: false, message: 'ID não informado' });
+      }
+
+      if (!userId) {
+        return res.status(401).json({ success: false, message: 'Usuário não autenticado' });
+      }
+
       const checklist = await auditChecklistService.complete(id, userId);
 
       if (!checklist) {
@@ -89,6 +117,10 @@ export class AuditChecklistController {
   async getStats(req: Request, res: Response): Promise<Response> {
     try {
       const { auditPlanId } = req.params;
+
+      if (!auditPlanId) {
+        return res.status(400).json({ success: false, message: 'ID do plano é obrigatório' });
+      }
 
       const stats = await auditChecklistService.getStats(auditPlanId);
 

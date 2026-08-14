@@ -12,8 +12,16 @@ export class AuditFindingController {
     try {
       const userId = (req as any).userId;
       const { auditPlanId } = req.params;
-      const data: CreateAuditFindingDTO = req.body;
 
+      if (!userId) {
+        return res.status(401).json({ success: false, message: 'Usuário não autenticado' });
+      }
+
+      if (!auditPlanId) {
+        return res.status(400).json({ success: false, message: 'ID do plano é obrigatório' });
+      }
+
+      const data: CreateAuditFindingDTO = req.body;
       const finding = await auditFindingService.create(data, auditPlanId, userId);
 
       return res.status(201).json({ success: true, data: finding });
@@ -28,6 +36,10 @@ export class AuditFindingController {
   async findByPlanId(req: Request, res: Response): Promise<Response> {
     try {
       const { auditPlanId } = req.params;
+
+      if (!auditPlanId) {
+        return res.status(400).json({ success: false, message: 'ID do plano é obrigatório' });
+      }
 
       const findings = await auditFindingService.findByPlanId(auditPlanId);
 
@@ -67,6 +79,10 @@ export class AuditFindingController {
     try {
       const { id } = req.params;
 
+      if (!id) {
+        return res.status(400).json({ success: false, message: 'ID não informado' });
+      }
+
       const finding = await auditFindingService.findById(id);
 
       if (!finding) {
@@ -88,6 +104,14 @@ export class AuditFindingController {
       const userId = (req as any).userId;
       const data: UpdateAuditFindingDTO = req.body;
 
+      if (!id) {
+        return res.status(400).json({ success: false, message: 'ID não informado' });
+      }
+
+      if (!userId) {
+        return res.status(401).json({ success: false, message: 'Usuário não autenticado' });
+      }
+
       const finding = await auditFindingService.update(id, data, userId);
 
       if (!finding) {
@@ -107,6 +131,14 @@ export class AuditFindingController {
     try {
       const { id } = req.params;
       const userId = (req as any).userId;
+
+      if (!id) {
+        return res.status(400).json({ success: false, message: 'ID não informado' });
+      }
+
+      if (!userId) {
+        return res.status(401).json({ success: false, message: 'Usuário não autenticado' });
+      }
 
       const finding = await auditFindingService.submitForValidation(id, userId);
 
@@ -128,6 +160,14 @@ export class AuditFindingController {
       const { id } = req.params;
       const userId = (req as any).userId;
       const { status, comment } = req.body;
+
+      if (!id) {
+        return res.status(400).json({ success: false, message: 'ID não informado' });
+      }
+
+      if (!userId) {
+        return res.status(401).json({ success: false, message: 'Usuário não autenticado' });
+      }
 
       if (!status || !['closed', 'reopened'].includes(status)) {
         return res.status(400).json({ success: false, message: 'Status deve ser "closed" ou "reopened"' });
@@ -151,6 +191,10 @@ export class AuditFindingController {
   async getStats(req: Request, res: Response): Promise<Response> {
     try {
       const { auditPlanId } = req.params;
+
+      if (!auditPlanId) {
+        return res.status(400).json({ success: false, message: 'ID do plano é obrigatório' });
+      }
 
       const stats = await auditFindingService.getStats(auditPlanId);
 

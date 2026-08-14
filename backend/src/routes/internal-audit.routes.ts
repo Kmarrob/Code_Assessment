@@ -8,7 +8,8 @@ import {
   AuditReportController,
 } from '../controllers/audit';
 
-import { authMiddleware } from '../middleware/auth';
+// 🔧 CORREÇÃO: Usar authenticate em vez de authMiddleware
+import { authenticate } from '../middleware/auth';
 
 const router = Router();
 
@@ -23,7 +24,7 @@ const auditReportController = new AuditReportController();
 // ============================================================
 // MIDDLEWARE DE AUTENTICAÇÃO (TODAS AS ROTAS)
 // ============================================================
-router.use(authMiddleware);
+router.use(authenticate);
 
 // ============================================================
 // PLANOS DE AUDITORIA

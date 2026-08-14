@@ -11,7 +11,16 @@ export class AuditActionPlanController {
   async create(req: Request, res: Response): Promise<Response> {
     try {
       const userId = (req as any).userId;
+
+      if (!userId) {
+        return res.status(401).json({ success: false, message: 'Usuário não autenticado' });
+      }
+
       const data: CreateAuditActionPlanDTO = req.body;
+
+      if (!data.findingId) {
+        return res.status(400).json({ success: false, message: 'ID da NC é obrigatório' });
+      }
 
       const actionPlan = await auditActionPlanService.create(data, userId);
 
@@ -28,6 +37,10 @@ export class AuditActionPlanController {
     try {
       const { findingId } = req.params;
 
+      if (!findingId) {
+        return res.status(400).json({ success: false, message: 'ID da NC é obrigatório' });
+      }
+
       const actionPlans = await auditActionPlanService.findByFindingId(findingId);
 
       return res.status(200).json({ success: true, data: actionPlans });
@@ -43,6 +56,10 @@ export class AuditActionPlanController {
     try {
       const { responsible } = req.params;
 
+      if (!responsible) {
+        return res.status(400).json({ success: false, message: 'ID do responsável é obrigatório' });
+      }
+
       const actionPlans = await auditActionPlanService.findByResponsible(responsible);
 
       return res.status(200).json({ success: true, data: actionPlans });
@@ -57,6 +74,10 @@ export class AuditActionPlanController {
   async findById(req: Request, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
+
+      if (!id) {
+        return res.status(400).json({ success: false, message: 'ID não informado' });
+      }
 
       const actionPlan = await auditActionPlanService.findById(id);
 
@@ -79,6 +100,14 @@ export class AuditActionPlanController {
       const userId = (req as any).userId;
       const data: UpdateAuditActionPlanDTO = req.body;
 
+      if (!id) {
+        return res.status(400).json({ success: false, message: 'ID não informado' });
+      }
+
+      if (!userId) {
+        return res.status(401).json({ success: false, message: 'Usuário não autenticado' });
+      }
+
       const actionPlan = await auditActionPlanService.update(id, data, userId);
 
       if (!actionPlan) {
@@ -98,6 +127,14 @@ export class AuditActionPlanController {
     try {
       const { id } = req.params;
       const userId = (req as any).userId;
+
+      if (!id) {
+        return res.status(400).json({ success: false, message: 'ID não informado' });
+      }
+
+      if (!userId) {
+        return res.status(401).json({ success: false, message: 'Usuário não autenticado' });
+      }
 
       const actionPlan = await auditActionPlanService.startProgress(id, userId);
 
@@ -120,6 +157,14 @@ export class AuditActionPlanController {
       const userId = (req as any).userId;
       const { evidenceIds } = req.body;
 
+      if (!id) {
+        return res.status(400).json({ success: false, message: 'ID não informado' });
+      }
+
+      if (!userId) {
+        return res.status(401).json({ success: false, message: 'Usuário não autenticado' });
+      }
+
       const actionPlan = await auditActionPlanService.complete(id, userId, evidenceIds);
 
       if (!actionPlan) {
@@ -140,6 +185,14 @@ export class AuditActionPlanController {
       const { id } = req.params;
       const userId = (req as any).userId;
       const { status, comment } = req.body;
+
+      if (!id) {
+        return res.status(400).json({ success: false, message: 'ID não informado' });
+      }
+
+      if (!userId) {
+        return res.status(401).json({ success: false, message: 'Usuário não autenticado' });
+      }
 
       if (!status || !['completed', 'rejected'].includes(status)) {
         return res.status(400).json({ success: false, message: 'Status deve ser "completed" ou "rejected"' });

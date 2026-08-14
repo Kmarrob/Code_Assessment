@@ -11,7 +11,16 @@ export class AuditReportController {
   async create(req: Request, res: Response): Promise<Response> {
     try {
       const userId = (req as any).userId;
+
+      if (!userId) {
+        return res.status(401).json({ success: false, message: 'Usuário não autenticado' });
+      }
+
       const data: CreateAuditReportDTO = req.body;
+
+      if (!data.auditPlanId) {
+        return res.status(400).json({ success: false, message: 'ID do plano é obrigatório' });
+      }
 
       const report = await auditReportService.create(data, userId);
 
@@ -49,6 +58,10 @@ export class AuditReportController {
     try {
       const { id } = req.params;
 
+      if (!id) {
+        return res.status(400).json({ success: false, message: 'ID não informado' });
+      }
+
       const report = await auditReportService.findById(id);
 
       if (!report) {
@@ -68,6 +81,10 @@ export class AuditReportController {
     try {
       const { auditPlanId } = req.params;
 
+      if (!auditPlanId) {
+        return res.status(400).json({ success: false, message: 'ID do plano é obrigatório' });
+      }
+
       const reports = await auditReportService.findByPlanId(auditPlanId);
 
       return res.status(200).json({ success: true, data: reports });
@@ -84,6 +101,14 @@ export class AuditReportController {
       const { id } = req.params;
       const userId = (req as any).userId;
       const data: UpdateAuditReportDTO = req.body;
+
+      if (!id) {
+        return res.status(400).json({ success: false, message: 'ID não informado' });
+      }
+
+      if (!userId) {
+        return res.status(401).json({ success: false, message: 'Usuário não autenticado' });
+      }
 
       const report = await auditReportService.update(id, data, userId);
 
@@ -105,6 +130,14 @@ export class AuditReportController {
       const { id } = req.params;
       const userId = (req as any).userId;
 
+      if (!id) {
+        return res.status(400).json({ success: false, message: 'ID não informado' });
+      }
+
+      if (!userId) {
+        return res.status(401).json({ success: false, message: 'Usuário não autenticado' });
+      }
+
       const report = await auditReportService.submitForReview(id, userId);
 
       if (!report) {
@@ -124,6 +157,14 @@ export class AuditReportController {
     try {
       const { id } = req.params;
       const userId = (req as any).userId;
+
+      if (!id) {
+        return res.status(400).json({ success: false, message: 'ID não informado' });
+      }
+
+      if (!userId) {
+        return res.status(401).json({ success: false, message: 'Usuário não autenticado' });
+      }
 
       const report = await auditReportService.approve(id, userId);
 
@@ -145,6 +186,14 @@ export class AuditReportController {
       const { id } = req.params;
       const userId = (req as any).userId;
       const { reason } = req.body;
+
+      if (!id) {
+        return res.status(400).json({ success: false, message: 'ID não informado' });
+      }
+
+      if (!userId) {
+        return res.status(401).json({ success: false, message: 'Usuário não autenticado' });
+      }
 
       if (!reason) {
         return res.status(400).json({ success: false, message: 'Motivo da rejeição é obrigatório' });
@@ -168,6 +217,10 @@ export class AuditReportController {
   async generateAutoReport(req: Request, res: Response): Promise<Response> {
     try {
       const { auditPlanId } = req.params;
+
+      if (!auditPlanId) {
+        return res.status(400).json({ success: false, message: 'ID do plano é obrigatório' });
+      }
 
       const report = await auditReportService.generateAutoReport(auditPlanId);
 
