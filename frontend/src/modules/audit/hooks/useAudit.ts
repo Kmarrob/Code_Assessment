@@ -226,7 +226,7 @@ export function useCompleteChecklist() {
 }
 
 // ============================================================
-// HOOKS — NÃO CONFORMIDADES
+// HOOKS — NÃO CONFORMIDADES (FINDINGS)
 // ============================================================
 
 export function useFindings(planId: string, filters?: AuditFindingFilters) {
@@ -293,6 +293,21 @@ export function useValidateFinding() {
       auditService.validateFinding(id, status, comment),
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: auditKeys.finding(id) });
+    },
+  });
+}
+
+// ============================================================
+// 🆕 HOOKS — DELETE FINDING (ADICIONADO)
+// ============================================================
+
+export function useDeleteFinding() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => auditService.deleteFinding(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: auditKeys.findings('') });
+      queryClient.invalidateQueries({ queryKey: auditKeys.findingStats('') });
     },
   });
 }
