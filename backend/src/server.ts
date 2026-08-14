@@ -42,6 +42,9 @@ import governanceRoutes from './models/governance/routes/governance.routes.js';
 // 🆕 NOVO (v42.0) - Importação do módulo de auditoria
 import auditRoutes from './routes/audit.routes.js';
 
+// 🆕 NOVO (v44.0) - Import do módulo de auditoria interna (planos, checklists, NCs, relatórios)
+import internalAuditRoutes from './routes/internal-audit.routes.js';
+
 const app = express();
 
 app.use(compression({
@@ -172,6 +175,9 @@ app.use('/api/governance', governanceRoutes);
 // 🆕 NOVO (v42.0) - Rotas de Auditoria (Admin)
 app.use('/api/admin/audit', auditRoutes);
 
+// 🆕 NOVO (v44.0) - Rotas de Auditoria Interna (Planos, Checklists, NCs, Relatórios)
+app.use('/api/internal-audit', internalAuditRoutes);
+
 app.get('/health', noCache, (_req, res) => {
   res.json({
     status: 'ok',
@@ -254,6 +260,8 @@ async function startServer() {
       logger.info(`📋 Governance Routes: http://localhost:${PORT}/api/governance`);
       // 🆕 NOVO (v42.0) - Audit Routes
       logger.info(`📋 Audit Routes: http://localhost:${PORT}/api/admin/audit`);
+      // 🆕 NOVO (v44.0) - Internal Audit Routes
+      logger.info(`📋 Internal Audit Routes: http://localhost:${PORT}/api/internal-audit`);
       logger.info(`📁 Uploads servidos em: http://localhost:${PORT}/uploads`);
     });
 
