@@ -13,7 +13,8 @@ import {
 } from 'lucide-react';
 // 🔧 CORREÇÃO: Caminho corrigido de '../../hooks/useAudit' para '../../../hooks/useAudit'
 import { usePlan, useChecklists, useCompletePlan } from '../../../hooks/useAudit';
-import { AuditChecklist } from '../../components/AuditChecklist';
+// 🔧 CORREÇÃO: Caminho corrigido de '../../components/AuditChecklist' para '../../../components/AuditChecklist'
+import { AuditChecklist } from '../../../components/AuditChecklist';
 import { AuditChecklistItem } from '../../../types/audit.types';
 
 export function RepAuditExecution() {
