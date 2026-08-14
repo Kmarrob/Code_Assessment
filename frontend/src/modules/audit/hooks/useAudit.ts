@@ -162,6 +162,21 @@ export function useCancelPlan() {
 }
 
 // ============================================================
+// 🆕 HOOKS — DELETE PLAN (ADICIONADO)
+// ============================================================
+
+export function useDeletePlan() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => auditService.deletePlan(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: auditKeys.plans() });
+      queryClient.invalidateQueries({ queryKey: auditKeys.plansStats() });
+    },
+  });
+}
+
+// ============================================================
 // HOOKS — CHECKLISTS
 // ============================================================
 

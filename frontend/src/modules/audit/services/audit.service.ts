@@ -109,6 +109,13 @@ export const auditService = {
   },
 
   /**
+   * 🆕 Excluir plano (apenas se estiver em draft)
+   */
+  async deletePlan(id: string): Promise<void> {
+    await api.delete(`${BASE_URL}/plans/${id}`);
+  },
+
+  /**
    * Obter estatísticas dos planos
    */
   async getPlanStats(): Promise<AuditStats> {
