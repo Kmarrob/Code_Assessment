@@ -109,7 +109,7 @@ export const auditService = {
   },
 
   /**
-   * 🆕 Excluir plano (apenas se estiver em draft)
+   * Excluir plano (apenas se estiver em draft)
    */
   async deletePlan(id: string): Promise<void> {
     await api.delete(`${BASE_URL}/plans/${id}`);
@@ -233,6 +233,13 @@ export const auditService = {
   async getFindingStats(planId: string): Promise<AuditFindingStats> {
     const response = await api.get(`${BASE_URL}/findings/plan/${planId}/stats`);
     return response.data.data;
+  },
+
+  /**
+   * Excluir uma não conformidade (apenas se estiver aberta)
+   */
+  async deleteFinding(id: string): Promise<void> {
+    await api.delete(`${BASE_URL}/findings/${id}`);
   },
 
   // ============================================================
@@ -417,6 +424,13 @@ export const auditService = {
   async rejectReport(id: string, reason: string): Promise<AuditReport> {
     const response = await api.post(`${BASE_URL}/reports/${id}/reject`, { reason });
     return response.data.data;
+  },
+
+  /**
+   * Excluir um relatório (apenas se estiver em draft)
+   */
+  async deleteReport(id: string): Promise<void> {
+    await api.delete(`${BASE_URL}/reports/${id}`);
   },
 
   /**

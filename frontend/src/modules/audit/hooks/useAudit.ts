@@ -161,10 +161,6 @@ export function useCancelPlan() {
   });
 }
 
-// ============================================================
-// 🆕 HOOKS — DELETE PLAN (ADICIONADO)
-// ============================================================
-
 export function useDeletePlan() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -296,10 +292,6 @@ export function useValidateFinding() {
     },
   });
 }
-
-// ============================================================
-// 🆕 HOOKS — DELETE FINDING (ADICIONADO)
-// ============================================================
 
 export function useDeleteFinding() {
   const queryClient = useQueryClient();
@@ -488,6 +480,16 @@ export function useRejectReport() {
       auditService.rejectReport(id, reason),
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: auditKeys.report(id) });
+      queryClient.invalidateQueries({ queryKey: auditKeys.reports() });
+    },
+  });
+}
+
+export function useDeleteReport() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => auditService.deleteReport(id),
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: auditKeys.reports() });
     },
   });
