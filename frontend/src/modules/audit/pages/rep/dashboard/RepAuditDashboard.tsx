@@ -11,7 +11,6 @@ import {
   Eye,
   ChevronRight,
 } from 'lucide-react';
-// 🔧 CORREÇÃO: Caminho corrigido de '../../hooks/useAudit' para '../../../hooks/useAudit'
 import { usePlans, usePlanStats } from '../../../hooks/useAudit';
 import { AuditPlan } from '../../../types/audit.types';
 
