@@ -11,9 +11,10 @@ import {
   Eye,
   ChevronRight,
 } from 'lucide-react';
-import { usePlan, useChecklists, useCompletePlan } from '../../hooks/useAudit';
+// 🔧 CORREÇÃO: Caminho corrigido de '../../hooks/useAudit' para '../../../hooks/useAudit'
+import { usePlan, useChecklists, useCompletePlan } from '../../../hooks/useAudit';
 import { AuditChecklist } from '../../components/AuditChecklist';
-import { AuditChecklistItem } from '../../types/audit.types';
+import { AuditChecklistItem } from '../../../types/audit.types';
 
 export function RepAuditExecution() {
   const navigate = useNavigate();
