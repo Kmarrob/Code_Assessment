@@ -51,6 +51,20 @@ import RepGovernance from './modules/governance/pages/rep/RepGovernance.js';
 import RepPolicyView from './modules/governance/pages/rep/RepPolicyView.js';
 
 // ============================================
+// 🆕 NOVO (v44.0) - IMPORTAÇÕES DO MÓDULO DE AUDITORIA INTERNA (SGSI)
+// ============================================
+import AdminAuditDashboard from './modules/audit/pages/admin/dashboard/AdminAuditDashboard.js';
+import AdminAuditReports from './modules/audit/pages/admin/reports/AdminAuditReports.js';
+import RepAuditDashboard from './modules/audit/pages/rep/dashboard/RepAuditDashboard.js';
+import RepAuditPlans from './modules/audit/pages/rep/plans/RepAuditPlans.js';
+import RepAuditPlanForm from './modules/audit/pages/rep/plans/RepAuditPlanForm.js';
+import RepAuditExecution from './modules/audit/pages/rep/execution/RepAuditExecution.js';
+import RepAuditFindings from './modules/audit/pages/rep/findings/RepAuditFindings.js';
+import RepAuditFindingForm from './modules/audit/pages/rep/findings/RepAuditFindingForm.js';
+import RepAuditActionPlan from './modules/audit/pages/rep/actions/RepAuditActionPlan.js';
+import RepAuditReport from './modules/audit/pages/rep/reports/RepAuditReport.js';
+
+// ============================================
 // IMPORTAÇÕES DO DASHBOARD (DIRETAS - CORRIGIDO)
 // ============================================
 import { DashboardOverview } from './pages/dashboard/DashboardOverview.js';
@@ -378,6 +392,25 @@ function App() {
                         <AdminAuditLogs />
                       </Layout>
                     } />
+
+                    {/* ============================================
+                        🆕 NOVO (v44.0) - ROTAS ADMIN - AUDITORIA INTERNA (SGSI)
+                        ============================================ */}
+                    <Route path="/admin/audit/dashboard" element={
+                      <Layout>
+                        <AdminAuditDashboard />
+                      </Layout>
+                    } />
+                    <Route path="/admin/audit/reports" element={
+                      <Layout>
+                        <AdminAuditReports />
+                      </Layout>
+                    } />
+                    <Route path="/admin/audit/reports/:id" element={
+                      <Layout>
+                        <AdminAuditReports />
+                      </Layout>
+                    } />
                   </Route>
 
                   { /* ============================================
@@ -479,6 +512,91 @@ function App() {
                     <Route path="/rep/dashboard/dominios" element={
                       <Layout>
                         <Domains />
+                      </Layout>
+                    } />
+
+                    {/* ============================================
+                        🆕 NOVO (v44.0) - ROTAS REP - AUDITORIA INTERNA (SGSI)
+                        ============================================ */}
+                    {/* Dashboard */}
+                    <Route path="/rep/audit/dashboard" element={
+                      <Layout>
+                        <RepAuditDashboard />
+                      </Layout>
+                    } />
+
+                    {/* Planos */}
+                    <Route path="/rep/audit/plans" element={
+                      <Layout>
+                        <RepAuditPlans />
+                      </Layout>
+                    } />
+                    <Route path="/rep/audit/plans/new" element={
+                      <Layout>
+                        <RepAuditPlanForm />
+                      </Layout>
+                    } />
+                    <Route path="/rep/audit/plans/:id" element={
+                      <Layout>
+                        <RepAuditPlanForm />
+                      </Layout>
+                    } />
+                    <Route path="/rep/audit/plans/:id/edit" element={
+                      <Layout>
+                        <RepAuditPlanForm />
+                      </Layout>
+                    } />
+
+                    {/* Execução */}
+                    <Route path="/rep/audit/execution/:planId" element={
+                      <Layout>
+                        <RepAuditExecution />
+                      </Layout>
+                    } />
+
+                    {/* Não Conformidades */}
+                    <Route path="/rep/audit/findings/:planId" element={
+                      <Layout>
+                        <RepAuditFindings />
+                      </Layout>
+                    } />
+                    <Route path="/rep/audit/findings/new/:planId" element={
+                      <Layout>
+                        <RepAuditFindingForm />
+                      </Layout>
+                    } />
+                    <Route path="/rep/audit/findings/:findingId" element={
+                      <Layout>
+                        <RepAuditFindingForm />
+                      </Layout>
+                    } />
+                    <Route path="/rep/audit/findings/:findingId/edit" element={
+                      <Layout>
+                        <RepAuditFindingForm />
+                      </Layout>
+                    } />
+
+                    {/* Planos de Ação */}
+                    <Route path="/rep/audit/actions/:findingId" element={
+                      <Layout>
+                        <RepAuditActionPlan />
+                      </Layout>
+                    } />
+                    <Route path="/rep/audit/actions/new/:findingId" element={
+                      <Layout>
+                        <RepAuditActionPlan />
+                      </Layout>
+                    } />
+
+                    {/* Relatórios */}
+                    <Route path="/rep/audit/reports/:planId" element={
+                      <Layout>
+                        <RepAuditReport />
+                      </Layout>
+                    } />
+                    <Route path="/rep/audit/reports/:reportId/edit" element={
+                      <Layout>
+                        <RepAuditReport />
                       </Layout>
                     } />
                   </Route>

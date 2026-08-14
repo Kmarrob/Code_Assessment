@@ -402,7 +402,8 @@ export const UserAnswer: React.FC = () => {
       setHasUnsavedChanges(false);
       
       setTimeout(() => {
-        navigate('/dashboard');
+        // 👇 Força a recarga dos dados no dashboard, passando um estado para indicar que uma resposta foi salva.
+        navigate('/dashboard', { state: { refresh: true } });
       }, 2000);
     } catch (err: any) {
       console.error('Erro ao salvar resposta:', err);
