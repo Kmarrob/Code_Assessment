@@ -173,11 +173,11 @@ export default function AdminGovernance() {
               Nova Norma (Estruturada)
             </button>
             <button
-              onClick={() => navigate('/admin/governance/procedure/new')}
+              onClick={() => navigate('/admin/governance/procedure/new-v2')}
               className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
             >
               <Plus className="w-4 h-4" />
-              Novo Procedimento
+              Novo Procedimento (Estruturada)
             </button>
           </div>
         )}

@@ -41,6 +41,9 @@ import AdminPolicyEditorV2 from './modules/governance/pages/admin/AdminPolicyEdi
 // 🆕 NOVO (v44) - Import do Editor Estruturado de Normas
 import AdminNormEditorV2 from './modules/governance/pages/admin/AdminNormEditorV2.js';
 
+// 🆕 NOVO (v44) - Import do Editor Estruturado de Procedimentos
+import AdminProcedureEditorV2 from './modules/governance/pages/admin/AdminProcedureEditorV2.js';
+
 // 🆕 NOVO (v41) - Import da página de listagem do Rep (Governança)
 import RepGovernance from './modules/governance/pages/rep/RepGovernance.js';
 
@@ -345,6 +348,17 @@ function App() {
                     <Route path="/admin/governance/standard/:id/edit-v2" element={
                       <Layout>
                         <AdminNormEditorV2 />
+                      </Layout>
+                    } />
+                    {/* 🆕 NOVO (v44) - Rota para o Editor Estruturado de Procedimentos */}
+                    <Route path="/admin/governance/procedure/new-v2" element={
+                      <Layout>
+                        <AdminProcedureEditorV2 />
+                      </Layout>
+                    } />
+                    <Route path="/admin/governance/procedure/:id/edit-v2" element={
+                      <Layout>
+                        <AdminProcedureEditorV2 />
                       </Layout>
                     } />
                     <Route path="/admin/governance/document/:id" element={
