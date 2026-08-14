@@ -16,8 +16,9 @@ import {
   Search,
   Filter,
 } from 'lucide-react';
-import { useReports, useApproveReport, useRejectReport } from '../../hooks/useAudit';
-import { AuditReport, AuditReportStatus } from '../../types/audit.types';
+// 🔧 CORREÇÃO: Caminho corrigido de '../../hooks/useAudit' para '../../../hooks/useAudit'
+import { useReports, useApproveReport, useRejectReport } from '../../../hooks/useAudit';
+import { AuditReport, AuditReportStatus } from '../../../types/audit.types';
 
 const STATUS_OPTIONS: { value: AuditReportStatus | 'all'; label: string; color: string }[] = [
   { value: 'all', label: 'Todos', color: 'bg-gray-100 text-gray-600' },
