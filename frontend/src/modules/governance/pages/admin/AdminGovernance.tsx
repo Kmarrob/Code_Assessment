@@ -159,13 +159,6 @@ export default function AdminGovernance() {
         {isAdmin && (
           <div className="flex flex-wrap gap-3 mt-4 md:mt-0">
             <button
-              onClick={() => navigate('/admin/governance/policy/new')}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              Nova Política
-            </button>
-            <button
               onClick={() => navigate('/admin/governance/policy/new-v2')}
               className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
             >
@@ -173,11 +166,11 @@ export default function AdminGovernance() {
               Nova Política (Estruturada)
             </button>
             <button
-              onClick={() => navigate('/admin/governance/standard/new')}
+              onClick={() => navigate('/admin/governance/standard/new-v2')}
               className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
             >
               <Plus className="w-4 h-4" />
-              Nova Norma
+              Nova Norma (Estruturada)
             </button>
             <button
               onClick={() => navigate('/admin/governance/procedure/new')}
