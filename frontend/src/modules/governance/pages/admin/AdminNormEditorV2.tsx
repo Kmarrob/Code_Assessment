@@ -76,6 +76,11 @@ export default function AdminNormEditorV2() {
   const [policies, setPolicies] = useState<Array<{ _id: string; code: string; title: string }>>([]);
   const [isLoadingPolicies, setIsLoadingPolicies] = useState(false);
 
+  // 🆕 ESTADO PARA SEÇÕES CUSTOMIZADAS
+  const [customSections, setCustomSections] = useState<Array<{ id: string; title: string }>>([]);
+  const [isAddingSection, setIsAddingSection] = useState(false);
+  const [newSectionTitle, setNewSectionTitle] = useState('');
+
   // Buscar nome da empresa
   useEffect(() => {
     const fetchCompanyName = async () => {
@@ -163,14 +168,23 @@ export default function AdminNormEditorV2() {
   const [previewMode, setPreviewMode] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
 
-  // Inicializar seções
+  // Inicializar seções (com suporte a custom sections)
   useEffect(() => {
     const initialSections: Record<string, string> = {};
     const initialTitles: Record<string, string> = {};
     const initialOrder: string[] = [];
     const initialActive: Record<string, boolean> = {};
 
+    // Seções padrão
     SECTIONS_CONFIG.forEach((sec) => {
+      initialSections[sec.id] = '';
+      initialTitles[sec.id] = sec.title;
+      initialOrder.push(sec.id);
+      initialActive[sec.id] = true;
+    });
+
+    // Seções customizadas
+    customSections.forEach((sec) => {
       initialSections[sec.id] = '';
       initialTitles[sec.id] = sec.title;
       initialOrder.push(sec.id);
@@ -182,7 +196,7 @@ export default function AdminNormEditorV2() {
     setSectionOrder(initialOrder);
     setActiveSections(initialActive);
     setExpandedSection(initialOrder[0] || null);
-  }, []);
+  }, [customSections]);
 
   // Carregar documento existente
   useEffect(() => {
@@ -212,6 +226,8 @@ export default function AdminNormEditorV2() {
         
         if (matches.length > 0) {
           const extractedSections: Record<string, string> = {};
+          const extractedCustomSections: Array<{ id: string; title: string }> = [];
+          
           matches.forEach((match) => {
             const sectionId = match[1];
             const sectionTitle = match[2];
@@ -221,10 +237,21 @@ export default function AdminNormEditorV2() {
             const content = doc.content.substring(startIndex, endIndex).trim();
             extractedSections[sectionId] = content;
             
+            // Verificar se é uma seção padrão ou customizada
+            const isDefaultSection = SECTIONS_CONFIG.some(s => s.id === sectionId);
+            if (!isDefaultSection) {
+              extractedCustomSections.push({ id: sectionId, title: sectionTitle });
+            }
+            
             if (sectionTitle && sectionTitle !== sectionTitles[sectionId]) {
               setSectionTitles(prev => ({ ...prev, [sectionId]: sectionTitle }));
             }
           });
+          
+          // Adicionar seções customizadas encontradas no documento
+          if (extractedCustomSections.length > 0) {
+            setCustomSections(extractedCustomSections);
+          }
           
           if (Object.keys(extractedSections).length > 0) {
             setSections(prev => ({ ...prev, ...extractedSections }));
@@ -268,6 +295,49 @@ export default function AdminNormEditorV2() {
 
   const toggleSectionExpand = (id: string) => {
     setExpandedSection(prev => prev === id ? null : id);
+  };
+
+  // ============================================================
+  // 🆕 MANIPULAÇÃO DE SEÇÕES CUSTOMIZADAS
+  // ============================================================
+  const handleAddCustomSection = () => {
+    if (!newSectionTitle.trim()) return;
+    
+    const id = `custom-${Date.now()}`;
+    const title = newSectionTitle.trim();
+    
+    // Adicionar à lista de seções customizadas
+    setCustomSections(prev => [...prev, { id, title }]);
+    
+    // Adicionar à ordem das seções
+    setSectionOrder(prev => [...prev, id]);
+    
+    // Ativar a seção
+    setActiveSections(prev => ({ ...prev, [id]: true }));
+    
+    // Inicializar conteúdo vazio
+    setSections(prev => ({ ...prev, [id]: '' }));
+    
+    // Adicionar título
+    setSectionTitles(prev => ({ ...prev, [id]: title }));
+    
+    // Expandir a nova seção
+    setExpandedSection(id);
+    
+    // Limpar campos
+    setNewSectionTitle('');
+    setIsAddingSection(false);
+  };
+
+  const handleRemoveCustomSection = (id: string) => {
+    // Não remover seções padrão
+    const isDefaultSection = SECTIONS_CONFIG.some(s => s.id === id);
+    if (isDefaultSection) return;
+    
+    setCustomSections(prev => prev.filter(s => s.id !== id));
+    setActiveSections(prev => ({ ...prev, [id]: false }));
+    setSectionOrder(prev => prev.filter(s => s.id !== id));
+    // Manter o conteúdo para permitir restauração futura
   };
 
   // ============================================================
@@ -777,7 +847,9 @@ export default function AdminNormEditorV2() {
         {/* Seções da Norma */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           <div className="p-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
-            <h2 className="text-lg font-semibold text-gray-900">Conteúdo da Norma (12 Seções)</h2>
+            <h2 className="text-lg font-semibold text-gray-900">
+              Conteúdo da Norma ({activeSectionIds.length} Seções)
+            </h2>
             <div className="flex gap-2">
               <button
                 type="button"
@@ -803,14 +875,69 @@ export default function AdminNormEditorV2() {
             <div className="flex flex-col lg:flex-row">
               {/* Índice */}
               <div className="lg:w-1/4 border-r border-gray-200 p-4 bg-gray-50 max-h-[600px] overflow-y-auto">
-                <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                  <Menu className="w-4 h-4" />
-                  ÍNDICE
+                <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    <Menu className="w-4 h-4" />
+                    ÍNDICE
+                  </span>
+                  {/* 🆕 BOTÃO ADICIONAR SEÇÃO */}
+                  <button
+                    type="button"
+                    onClick={() => setIsAddingSection(true)}
+                    className="flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 transition-colors"
+                  >
+                    <Plus className="w-3 h-3" />
+                    Adicionar Seção
+                  </button>
                 </h3>
+                
+                {/* 🆕 INPUT PARA ADICIONAR NOVA SEÇÃO */}
+                {isAddingSection && (
+                  <div className="mb-3 p-2 bg-indigo-50 rounded-lg border border-indigo-200">
+                    <input
+                      type="text"
+                      value={newSectionTitle}
+                      onChange={(e) => setNewSectionTitle(e.target.value)}
+                      placeholder="Título da nova seção..."
+                      className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      autoFocus
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          handleAddCustomSection();
+                        }
+                        if (e.key === 'Escape') {
+                          setIsAddingSection(false);
+                          setNewSectionTitle('');
+                        }
+                      }}
+                    />
+                    <div className="flex gap-2 mt-2">
+                      <button
+                        type="button"
+                        onClick={handleAddCustomSection}
+                        className="px-3 py-1 bg-indigo-600 text-white text-xs rounded hover:bg-indigo-700 transition-colors"
+                      >
+                        Adicionar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsAddingSection(false);
+                          setNewSectionTitle('');
+                        }}
+                        className="px-3 py-1 bg-gray-200 text-gray-700 text-xs rounded hover:bg-gray-300 transition-colors"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                )}
+                
                 <ul className="space-y-1">
                   {activeSectionIds.map((id) => {
                     const title = sectionTitles[id] || SECTIONS_CONFIG.find(s => s.id === id)?.title || id;
                     const isActive = expandedSection === id;
+                    const isCustom = customSections.some(s => s.id === id);
                     return (
                       <li key={id}>
                         <button
@@ -821,7 +948,22 @@ export default function AdminNormEditorV2() {
                           }`}
                         >
                           <span className="truncate">{title}</span>
-                          {isActive ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                          <div className="flex items-center gap-1">
+                            {isCustom && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRemoveCustomSection(id);
+                                }}
+                                className="text-red-400 hover:text-red-600"
+                                title="Remover seção"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            )}
+                            {isActive ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                          </div>
                         </button>
                       </li>
                     );
@@ -834,6 +976,7 @@ export default function AdminNormEditorV2() {
                 {activeSectionIds.map((id) => {
                   const isExpanded = expandedSection === id;
                   const title = sectionTitles[id] || SECTIONS_CONFIG.find(s => s.id === id)?.title || id;
+                  const isCustom = customSections.some(s => s.id === id);
 
                   return (
                     <div
@@ -859,6 +1002,11 @@ export default function AdminNormEditorV2() {
                           <span className="text-xs text-gray-400 ml-2">
                             {sections[id]?.length || 0} caracteres
                           </span>
+                          {isCustom && (
+                            <span className="text-xs text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
+                              Custom
+                            </span>
+                          )}
                         </div>
                         <div className="flex items-center gap-1">
                           <button
