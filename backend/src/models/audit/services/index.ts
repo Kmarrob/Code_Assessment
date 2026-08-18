@@ -1,6 +1,10 @@
-export { AuditPlanService } from './AuditPlanService';
-export { AuditChecklistService } from './AuditChecklistService';
-export { AuditFindingService } from './AuditFindingService';
-export { AuditEvidenceService } from './AuditEvidenceService';
-export { AuditActionPlanService } from './AuditActionPlanService';
-export { AuditReportService } from './AuditReportService';
+export { AuditPlanService, auditPlanService } from './AuditPlanService';
+export { AuditChecklistService, auditChecklistService } from './AuditChecklistService';
+export { AuditFindingService, auditFindingService } from './AuditFindingService';
+export { AuditEvidenceService, auditEvidenceService } from './AuditEvidenceService';
+export { AuditActionPlanService, auditActionPlanService } from './AuditActionPlanService';
+export { AuditReportService, auditReportService } from './AuditReportService';
+export { AuditProgramService, auditProgramService } from './AuditProgramService';
+export { AuditSoAService, auditSoAService } from './AuditSoAService';
+export { AuditRiskService, auditRiskService } from './AuditRiskService';
+export { AuditDocumentReviewService, auditDocumentReviewService } from './AuditDocumentReviewService';

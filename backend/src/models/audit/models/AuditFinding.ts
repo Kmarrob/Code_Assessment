@@ -1,29 +1,89 @@
 import mongoose, { Schema } from 'mongoose';
-import { IAuditFinding, AuditFindingType, AuditFindingStatus } from '../types/audit.types';
+
+export type FindingType = 'NC_A' | 'NC_B' | 'CM' | 'OM' | 'AP';
+export type FindingStatus = 'open' | 'in_progress' | 'pending_validation' | 'closed' | 'reopened';
+
+export interface IAuditFinding {
+  _id: string;
+  auditPlanId: string;
+  checklistId?: string; // Referência ao checklist onde foi identificado
+  
+  // Identificação
+  number: string; // NC-001, NC-002, etc.
+  type: FindingType;
+  
+  // Descrição
+  title: string;
+  description: string;
+  area: string;
+  process: string;
+  clause: string; // ISO 27001:2022 cláusula
+  controlId?: string; // Controle relacionado (5.1, 6.2, etc.)
+  
+  // Evidências
+  evidenceIds: string[];
+  
+  // Prazo
+  deadline: Date;
+  
+  // Status
+  status: FindingStatus;
+  
+  // Validação
+  createdBy: string;
+  validatedBy?: string;
+  validatedAt?: Date;
+  validationComment?: string;
+  
+  // Reabertura
+  reopenedAt?: Date;
+  reopenedBy?: string;
+  reopenReason?: string;
+  
+  // Metadados
+  createdAt: Date;
+  updatedAt: Date;
+  deletedAt?: Date;
+}
 
 const AuditFindingSchema = new Schema<IAuditFinding>(
   {
-    auditPlanId: { type: String, ref: 'AuditPlan', required: true },
+    auditPlanId: { type: String, required: true, index: true },
+    checklistId: { type: String, index: true },
+    
+    number: { type: String, required: true, unique: true },
     type: {
       type: String,
-      enum: ['nc_a', 'nc_b', 'comment', 'opportunity', 'positive'],
+      enum: ['NC_A', 'NC_B', 'CM', 'OM', 'AP'],
       required: true,
     },
+    
     title: { type: String, required: true },
     description: { type: String, required: true },
     area: { type: String, required: true },
+    process: { type: String, required: true },
     clause: { type: String, required: true },
-    evidenceIds: [{ type: String, ref: 'AuditEvidence' }],
+    controlId: { type: String },
+    
+    evidenceIds: [{ type: String }],
+    
+    deadline: { type: Date, required: true },
+    
     status: {
       type: String,
       enum: ['open', 'in_progress', 'pending_validation', 'closed', 'reopened'],
       default: 'open',
     },
-    createdBy: { type: String, ref: 'User', required: true },
-    createdAt: { type: Date, default: Date.now },
-    validatedBy: { type: String, ref: 'User' },
+    
+    createdBy: { type: String, required: true },
+    validatedBy: { type: String },
     validatedAt: { type: Date },
-    updatedAt: { type: Date, default: Date.now },
+    validationComment: { type: String },
+    
+    reopenedAt: { type: Date },
+    reopenedBy: { type: String },
+    reopenReason: { type: String },
+    
     deletedAt: { type: Date },
   },
   {
@@ -33,32 +93,47 @@ const AuditFindingSchema = new Schema<IAuditFinding>(
   }
 );
 
-// Virtual para ID
+// Índices
+AuditFindingSchema.index({ auditPlanId: 1, type: 1 });
+AuditFindingSchema.index({ auditPlanId: 1, status: 1 });
+AuditFindingSchema.index({ number: 1 }, { unique: true });
+
+// Virtual
 AuditFindingSchema.virtual('id').get(function () {
   return this._id.toString();
 });
 
-// Índices
-AuditFindingSchema.index({ auditPlanId: 1, status: 1 });
-AuditFindingSchema.index({ area: 1 });
-AuditFindingSchema.index({ type: 1 });
-AuditFindingSchema.index({ deletedAt: 1 });
+// Virtual para classificação textual
+AuditFindingSchema.virtual('typeLabel').get(function () {
+  const labels = {
+    NC_A: 'Não Conformidade Maior',
+    NC_B: 'Não Conformidade Menor',
+    CM: 'Comentário',
+    OM: 'Oportunidade de Melhoria',
+    AP: 'Boas Práticas / Aspecto Positivo',
+  };
+  return labels[this.type as FindingType] || this.type;
+});
 
-// Soft delete
+// Virtual para cor/severidade
+AuditFindingSchema.virtual('severity').get(function () {
+  const severities = {
+    NC_A: 'critical',
+    NC_B: 'high',
+    CM: 'medium',
+    OM: 'low',
+    AP: 'info',
+  };
+  return severities[this.type as FindingType] || 'medium';
+});
+
+// Middleware para soft delete
 AuditFindingSchema.pre('find', function () {
   this.where({ deletedAt: null });
 });
 
 AuditFindingSchema.pre('findOne', function () {
   this.where({ deletedAt: null });
-});
-
-// Validação: quem criou não pode validar
-AuditFindingSchema.pre('save', function (next) {
-  if (this.validatedBy && this.validatedBy === this.createdBy) {
-    next(new Error('O validador não pode ser o mesmo que criou a NC'));
-  }
-  next();
 });
 
 export const AuditFinding = mongoose.model<IAuditFinding>('AuditFinding', AuditFindingSchema);

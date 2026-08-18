@@ -1,6 +1,10 @@
-export { AuditPlanController } from './AuditPlanController';
-export { AuditChecklistController } from './AuditChecklistController';
-export { AuditFindingController } from './AuditFindingController';
-export { AuditEvidenceController } from './AuditEvidenceController';
-export { AuditActionPlanController } from './AuditActionPlanController';
-export { AuditReportController } from './AuditReportController';
+export { AuditPlanController, auditPlanController } from './AuditPlanController';
+export { AuditChecklistController, auditChecklistController } from './AuditChecklistController';
+export { AuditFindingController, auditFindingController } from './AuditFindingController';
+export { AuditEvidenceController, auditEvidenceController } from './AuditEvidenceController';
+export { AuditActionPlanController, auditActionPlanController } from './AuditActionPlanController';
+export { AuditReportController, auditReportController } from './AuditReportController';
+export { AuditProgramController, auditProgramController } from './AuditProgramController';
+export { AuditSoAController, auditSoAController } from './AuditSoAController';
+export { AuditRiskController, auditRiskController } from './AuditRiskController';
+export { AuditDocumentReviewController, auditDocumentReviewController } from './AuditDocumentReviewController';

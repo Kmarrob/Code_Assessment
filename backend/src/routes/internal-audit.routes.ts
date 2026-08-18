@@ -1,99 +1,180 @@
 import { Router } from 'express';
-import {
-  AuditPlanController,
-  AuditChecklistController,
-  AuditFindingController,
-  AuditEvidenceController,
-  AuditActionPlanController,
-  AuditReportController,
+import { authMiddleware } from '../middleware/auth';
+import { 
+  auditPlanController,
+  auditChecklistController,
+  auditFindingController,
+  auditEvidenceController,
+  auditActionPlanController,
+  auditReportController,
+  auditProgramController,
+  auditSoAController,
+  auditRiskController,
+  auditDocumentReviewController,
 } from '../controllers/audit';
-
-// 🔧 CORREÇÃO: Usar authenticate em vez de authMiddleware
-import { authenticate } from '../middleware/auth';
 
 const router = Router();
 
-// Instanciar controllers
-const auditPlanController = new AuditPlanController();
-const auditChecklistController = new AuditChecklistController();
-const auditFindingController = new AuditFindingController();
-const auditEvidenceController = new AuditEvidenceController();
-const auditActionPlanController = new AuditActionPlanController();
-const auditReportController = new AuditReportController();
+// ============================================================
+// MIDDLEWARE DE AUTENTICAÇÃO
+// ============================================================
+router.use(authMiddleware);
 
 // ============================================================
-// MIDDLEWARE DE AUTENTICAÇÃO (TODAS AS ROTAS)
+// ROTAS DE PLANOS DE AUDITORIA
 // ============================================================
-router.use(authenticate);
+router.post('/plans', auditPlanController.create);
+router.get('/plans', auditPlanController.findAll);
+router.get('/plans/stats', auditPlanController.getStats);
+router.get('/plans/:id', auditPlanController.findById);
+router.put('/plans/:id', auditPlanController.update);
+router.delete('/plans/:id', auditPlanController.delete);
+router.post('/plans/:id/submit', auditPlanController.submitForApproval);
+router.post('/plans/:id/approve', auditPlanController.approve);
+router.post('/plans/:id/reject', auditPlanController.reject);
+router.post('/plans/:id/start', auditPlanController.startAudit);
+router.post('/plans/:id/complete', auditPlanController.completeAudit);
 
 // ============================================================
-// PLANOS DE AUDITORIA
+// ROTAS DE CHECKLISTS
 // ============================================================
-router.post('/plans', auditPlanController.create.bind(auditPlanController));
-router.get('/plans', auditPlanController.findAll.bind(auditPlanController));
-router.get('/plans/:id', auditPlanController.findById.bind(auditPlanController));
-router.put('/plans/:id', auditPlanController.update.bind(auditPlanController));
-router.post('/plans/:id/submit', auditPlanController.submitForApproval.bind(auditPlanController));
-router.post('/plans/:id/approve', auditPlanController.approve.bind(auditPlanController));
-router.post('/plans/:id/reject', auditPlanController.reject.bind(auditPlanController));
-router.post('/plans/:id/cancel', auditPlanController.cancel.bind(auditPlanController));
-router.post('/plans/:id/start', auditPlanController.startAudit.bind(auditPlanController));
-router.post('/plans/:id/complete', auditPlanController.completeAudit.bind(auditPlanController));
-router.get('/plans/stats', auditPlanController.getStats.bind(auditPlanController));
+router.get('/checklists/plan/:auditPlanId', auditChecklistController.findByPlanId);
+router.get('/checklists/plan/:auditPlanId/control/:controlId', auditChecklistController.findByPlanAndControl);
+router.get('/checklists/plan/:auditPlanId/stats', auditChecklistController.getStats);
+router.put('/checklists/:id', auditChecklistController.updateChecklist);
+router.post('/checklists/:id/complete', auditChecklistController.complete);
 
 // ============================================================
-// CHECKLISTS
+// ROTAS DE NÃO CONFORMIDADES (FINDINGS)
 // ============================================================
-router.get('/checklists/plan/:auditPlanId', auditChecklistController.findByPlanId.bind(auditChecklistController));
-router.get('/checklists/plan/:auditPlanId/control/:controlId', auditChecklistController.findByPlanAndControl.bind(auditChecklistController));
-router.put('/checklists/:id', auditChecklistController.update.bind(auditChecklistController));
-router.post('/checklists/:id/complete', auditChecklistController.complete.bind(auditChecklistController));
-router.get('/checklists/plan/:auditPlanId/stats', auditChecklistController.getStats.bind(auditChecklistController));
+router.post('/findings/plan/:auditPlanId', auditFindingController.create);
+router.get('/findings/plan/:auditPlanId', auditFindingController.findByPlanId);
+router.get('/findings', auditFindingController.findAll);
+router.get('/findings/:id', auditFindingController.findById);
+router.put('/findings/:id', auditFindingController.update);
+router.delete('/findings/:id', auditFindingController.delete);
+router.post('/findings/:id/submit', auditFindingController.submitForValidation);
+router.post('/findings/:id/validate', auditFindingController.validate);
+router.get('/findings/plan/:auditPlanId/stats', auditFindingController.getStats);
 
 // ============================================================
-// NÃO CONFORMIDADES (FINDINGS)
+// ROTAS DE EVIDÊNCIAS
 // ============================================================
-router.post('/findings/plan/:auditPlanId', auditFindingController.create.bind(auditFindingController));
-router.get('/findings/plan/:auditPlanId', auditFindingController.findByPlanId.bind(auditFindingController));
-router.get('/findings', auditFindingController.findAll.bind(auditFindingController));
-router.get('/findings/:id', auditFindingController.findById.bind(auditFindingController));
-router.put('/findings/:id', auditFindingController.update.bind(auditFindingController));
-router.post('/findings/:id/submit', auditFindingController.submitForValidation.bind(auditFindingController));
-router.post('/findings/:id/validate', auditFindingController.validate.bind(auditFindingController));
-router.get('/findings/plan/:auditPlanId/stats', auditFindingController.getStats.bind(auditFindingController));
+router.post('/evidence/upload', auditEvidenceController.upload);
+router.get('/evidence/plan/:auditPlanId', auditEvidenceController.findByPlanId);
+router.get('/evidence/finding/:findingId', auditEvidenceController.findByFindingId);
+router.get('/evidence/:id', auditEvidenceController.findById);
+router.delete('/evidence/:id', auditEvidenceController.delete);
 
 // ============================================================
-// PLANOS DE AÇÃO
+// ROTAS DE PLANOS DE AÇÃO
 // ============================================================
-router.post('/actions', auditActionPlanController.create.bind(auditActionPlanController));
-router.get('/actions/finding/:findingId', auditActionPlanController.findByFindingId.bind(auditActionPlanController));
-router.get('/actions/responsible/:responsible', auditActionPlanController.findByResponsible.bind(auditActionPlanController));
-router.get('/actions/:id', auditActionPlanController.findById.bind(auditActionPlanController));
-router.put('/actions/:id', auditActionPlanController.update.bind(auditActionPlanController));
-router.post('/actions/:id/start', auditActionPlanController.startProgress.bind(auditActionPlanController));
-router.post('/actions/:id/complete', auditActionPlanController.complete.bind(auditActionPlanController));
-router.post('/actions/:id/validate', auditActionPlanController.validate.bind(auditActionPlanController));
+router.post('/actions', auditActionPlanController.create);
+router.get('/actions/finding/:findingId', auditActionPlanController.findByFindingId);
+router.get('/actions/responsible/:responsible', auditActionPlanController.findByResponsible);
+router.get('/actions/:id', auditActionPlanController.findById);
+router.put('/actions/:id', auditActionPlanController.update);
+router.delete('/actions/:id', auditActionPlanController.delete);
+router.post('/actions/:id/start', auditActionPlanController.startProgress);
+router.post('/actions/:id/complete', auditActionPlanController.complete);
+router.post('/actions/:id/validate', auditActionPlanController.validate);
 
 // ============================================================
-// EVIDÊNCIAS
+// ROTAS DE RELATÓRIOS
 // ============================================================
-router.post('/evidence/upload', auditEvidenceController.upload.bind(auditEvidenceController));
-router.get('/evidence/plan/:auditPlanId', auditEvidenceController.findByPlanId.bind(auditEvidenceController));
-router.get('/evidence/finding/:findingId', auditEvidenceController.findByFindingId.bind(auditEvidenceController));
-router.get('/evidence/:id', auditEvidenceController.findById.bind(auditEvidenceController));
-router.delete('/evidence/:id', auditEvidenceController.delete.bind(auditEvidenceController));
+router.post('/reports', auditReportController.create);
+router.get('/reports', auditReportController.findAll);
+router.get('/reports/plan/:auditPlanId', auditReportController.findByPlanId);
+router.get('/reports/:id', auditReportController.findById);
+router.put('/reports/:id', auditReportController.update);
+router.delete('/reports/:id', auditReportController.delete);
+router.post('/reports/:id/submit', auditReportController.submitForReview);
+router.post('/reports/:id/approve', auditReportController.approve);
+router.post('/reports/:id/reject', auditReportController.reject);
+router.post('/reports/plan/:auditPlanId/generate', auditReportController.generateAutoReport);
 
 // ============================================================
-// RELATÓRIOS
+// 🆕 ROTAS DE PROGRAMA DE AUDITORIAS
 // ============================================================
-router.post('/reports', auditReportController.create.bind(auditReportController));
-router.get('/reports', auditReportController.findAll.bind(auditReportController));
-router.get('/reports/plan/:auditPlanId', auditReportController.findByPlanId.bind(auditReportController));
-router.get('/reports/:id', auditReportController.findById.bind(auditReportController));
-router.put('/reports/:id', auditReportController.update.bind(auditReportController));
-router.post('/reports/:id/submit', auditReportController.submitForReview.bind(auditReportController));
-router.post('/reports/:id/approve', auditReportController.approve.bind(auditReportController));
-router.post('/reports/:id/reject', auditReportController.reject.bind(auditReportController));
-router.post('/reports/plan/:auditPlanId/generate', auditReportController.generateAutoReport.bind(auditReportController));
+router.post('/program', auditProgramController.create);
+router.get('/program/company/:companyId', auditProgramController.findAllByCompany);
+router.get('/program/company/:companyId/year/:year', auditProgramController.findByCompanyAndYear);
+router.get('/program/:id', auditProgramController.findById);
+router.put('/program/:id', auditProgramController.update);
+router.delete('/program/:id', auditProgramController.delete);
+router.post('/program/:id/approve', auditProgramController.approve);
+router.post('/program/:id/activate', auditProgramController.activate);
+router.post('/program/:id/archive', auditProgramController.archive);
+router.get('/program/:id/stats', auditProgramController.getStatistics);
+router.get('/program/:id/next-audits', auditProgramController.generateNextAudits);
+
+// Setores
+router.post('/program/:id/sector', auditProgramController.addSector);
+router.put('/program/:id/sector/:index', auditProgramController.updateSector);
+
+// Auditoria de fornecedores
+router.post('/program/:id/supplier-audit', auditProgramController.addSupplierAudit);
+router.put('/program/:id/supplier-audit/:index', auditProgramController.updateSupplierAudit);
+
+// Auditoria externa
+router.put('/program/:id/external-audit', auditProgramController.updateExternalAudit);
+
+// Atividades
+router.post('/program/:id/activity', auditProgramController.addActivity);
+router.put('/program/:id/activity/:index', auditProgramController.updateActivity);
+
+// ============================================================
+// 🆕 ROTAS DE DECLARAÇÃO DE APLICABILIDADE (SoA)
+// ============================================================
+router.post('/soa', auditSoAController.create);
+router.get('/soa/company/:companyId', auditSoAController.findByCompany);
+router.get('/soa/company/:companyId/active', auditSoAController.findActiveByCompany);
+router.get('/soa/:id', auditSoAController.findById);
+router.put('/soa/:id', auditSoAController.update);
+router.delete('/soa/:id', auditSoAController.delete);
+router.post('/soa/:id/approve', auditSoAController.approve);
+router.post('/soa/:id/archive', auditSoAController.archive);
+router.get('/soa/:id/stats', auditSoAController.getStatistics);
+router.get('/soa/:id/export', auditSoAController.exportToSpreadsheet);
+
+// Controles da SoA
+router.put('/soa/:id/control/:clause', auditSoAController.updateControl);
+
+// ============================================================
+// 🆕 ROTAS DE GESTÃO DE RISCOS
+// ============================================================
+router.post('/risks', auditRiskController.create);
+router.get('/risks/company/:companyId', auditRiskController.findAllByCompany);
+router.get('/risks/company/:companyId/stats', auditRiskController.getStatistics);
+router.get('/risks/company/:companyId/critical', auditRiskController.getCriticalRisks);
+router.get('/risks/company/:companyId/export', auditRiskController.exportToSpreadsheet);
+router.get('/risks/:id', auditRiskController.findById);
+router.get('/risks/company/:companyId/risk-id/:riskId', auditRiskController.findByRiskId);
+router.put('/risks/:id', auditRiskController.update);
+router.delete('/risks/:id', auditRiskController.delete);
+router.put('/risks/:id/assessment', auditRiskController.updateAssessment);
+router.post('/risks/:id/treat', auditRiskController.treatRisk);
+router.put('/risks/:id/monitor', auditRiskController.monitorRisk);
+router.post('/risks/:id/reopen', auditRiskController.reopenRisk);
+
+// ============================================================
+// 🆕 ROTAS DE REVISÃO DE DOCUMENTAÇÃO
+// ============================================================
+router.post('/document-review', auditDocumentReviewController.create);
+router.get('/document-review/company/:companyId', auditDocumentReviewController.findAllByCompany);
+router.get('/document-review/plan/:auditPlanId', auditDocumentReviewController.findByAuditPlanId);
+router.get('/document-review/:id', auditDocumentReviewController.findById);
+router.put('/document-review/:id', auditDocumentReviewController.update);
+router.delete('/document-review/:id', auditDocumentReviewController.delete);
+router.post('/document-review/:id/complete', auditDocumentReviewController.completeReview);
+router.get('/document-review/:id/summary', auditDocumentReviewController.getSummary);
+router.get('/document-review/:id/nonconformities', auditDocumentReviewController.getNonconformities);
+router.get('/document-review/:id/recommendations', auditDocumentReviewController.getRecommendations);
+
+// Documentos da revisão
+router.put('/document-review/:id/document/:clause', auditDocumentReviewController.updateDocument);
+router.put('/document-review/:id/document/:clause/status', auditDocumentReviewController.updateDocumentStatus);
+router.post('/document-review/:id/document', auditDocumentReviewController.addDocument);
+router.delete('/document-review/:id/document/:clause', auditDocumentReviewController.removeDocument);
 
 export default router;
