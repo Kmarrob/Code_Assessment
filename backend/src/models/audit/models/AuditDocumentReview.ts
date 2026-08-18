@@ -1,135 +1,129 @@
-import { AuditDocumentReview, IAuditDocumentReview } from '../models/AuditDocumentReview';
+import mongoose, { Schema } from 'mongoose';
 
-export class AuditDocumentReviewService {
-  async create(data: Partial<IAuditDocumentReview>): Promise<IAuditDocumentReview> {
-    const review = new AuditDocumentReview(data);
-    return await review.save();
-  }
-
-  async findById(id: string): Promise<IAuditDocumentReview | null> {
-    return await AuditDocumentReview.findById(id).lean();
-  }
-
-  async findByAuditPlanId(auditPlanId: string): Promise<IAuditDocumentReview | null> {
-    return await AuditDocumentReview.findOne({ auditPlanId }).lean();
-  }
-
-  async findAllByCompany(companyId: string): Promise<IAuditDocumentReview[]> {
-    return await AuditDocumentReview.find({ companyId }).sort({ createdAt: -1 }).lean();
-  }
-
-  async update(id: string, data: Partial<IAuditDocumentReview>): Promise<IAuditDocumentReview | null> {
-    return await AuditDocumentReview.findByIdAndUpdate(id, data, { new: true }).lean();
-  }
-
-  async updateDocument(id: string, clause: string, data: any): Promise<IAuditDocumentReview | null> {
-    const review = await AuditDocumentReview.findById(id);
-    if (!review) return null;
-
-    const docIndex = review.documents.findIndex((d: any) => d.clause === clause);
-    if (docIndex === -1) throw new Error(`Cláusula ${clause} não encontrada`);
-
-    Object.assign(review.documents[docIndex], data);
-    review.markModified('documents');
-    await review.save();
-    return review.toObject();
-  }
-
-  async updateDocumentStatus(id: string, clause: string, status: string, observations?: string): Promise<IAuditDocumentReview | null> {
-    const review = await AuditDocumentReview.findById(id);
-    if (!review) return null;
-
-    const docIndex = review.documents.findIndex((d: any) => d.clause === clause);
-    if (docIndex === -1) throw new Error(`Cláusula ${clause} não encontrada`);
-
-    review.documents[docIndex].status = status;
-    if (observations) review.documents[docIndex].observations = observations;
-    review.markModified('documents');
-    await review.save();
-    return review.toObject();
-  }
-
-  async addDocument(id: string, document: any): Promise<IAuditDocumentReview | null> {
-    const review = await AuditDocumentReview.findById(id);
-    if (!review) return null;
-
-    const existing = review.documents.find((d: any) => d.clause === document.clause);
-    if (existing) throw new Error(`Cláusula ${document.clause} já existe`);
-
-    review.documents.push(document);
-    review.markModified('documents');
-    await review.save();
-    return review.toObject();
-  }
-
-  async removeDocument(id: string, clause: string): Promise<IAuditDocumentReview | null> {
-    const review = await AuditDocumentReview.findById(id);
-    if (!review) return null;
-
-    review.documents = review.documents.filter((d: any) => d.clause !== clause);
-    review.markModified('documents');
-    await review.save();
-    return review.toObject();
-  }
-
-  async completeReview(id: string, reviewedBy: string, observations?: string): Promise<IAuditDocumentReview | null> {
-    const review = await AuditDocumentReview.findById(id);
-    if (!review) return null;
-
-    review.reviewedBy = reviewedBy;
-    review.reviewedAt = new Date();
-    if (observations) review.observations = observations;
-    await review.save();
-    return review.toObject();
-  }
-
-  async delete(id: string): Promise<IAuditDocumentReview | null> {
-    return await AuditDocumentReview.findByIdAndUpdate(id, { deletedAt: new Date() }, { new: true }).lean();
-  }
-
-  async getSummary(id: string): Promise<any> {
-    const review = await AuditDocumentReview.findById(id);
-    if (!review) return null;
-
-    const statusLabels = {
-      OK: 'Conforme',
-      NC_A: 'Não Conformidade Maior',
-      NC_B: 'Não Conformidade Menor',
-      PI: 'Potencial de Melhoria',
-      GP: 'Boas Práticas',
-      CM: 'Comentário',
-      '--': 'Não Avaliado',
-    };
-
-    return {
-      summary: {
-        totalDocuments: review.documents.length,
-        ok: review.documents.filter((d: any) => d.status === 'OK').length,
-        ncA: review.documents.filter((d: any) => d.status === 'NC_A').length,
-        ncB: review.documents.filter((d: any) => d.status === 'NC_B').length,
-        pi: review.documents.filter((d: any) => d.status === 'PI').length,
-        gp: review.documents.filter((d: any) => d.status === 'GP').length,
-        cm: review.documents.filter((d: any) => d.status === 'CM').length,
-        notAssessed: review.documents.filter((d: any) => d.status === '--').length,
-      },
-      documents: review.documents.map((doc: any) => ({
-        ...doc,
-        statusLabel: statusLabels[doc.status as keyof typeof statusLabels] || doc.status,
-      })),
-    };
-  }
-
-  async getNonconformities(id: string): Promise<any[]> {
-    const review = await AuditDocumentReview.findById(id);
-    if (!review) return [];
-    return review.documents.filter((d: any) => d.status === 'NC_A' || d.status === 'NC_B');
-  }
-
-  async getRecommendations(id: string): Promise<any[]> {
-    const review = await AuditDocumentReview.findById(id);
-    if (!review) return [];
-    return review.documents.filter((d: any) => d.status === 'PI');
-  }
+export interface IDocumentReviewItem {
+  clause: string;
+  requirement: string;
+  status: 'OK' | 'NC_A' | 'NC_B' | 'PI' | 'GP' | 'CM' | '--';
+  observations: string;
+  reviewer: string;
+  reviewDate: Date;
+  documentId?: string;
+  documentName?: string;
 }
 
-export const auditDocumentReviewService = new AuditDocumentReviewService();
+export interface IAuditDocumentReview {
+  _id: string;
+  companyId: string;
+  auditPlanId: string;
+  documents: IDocumentReviewItem[];
+  summary: {
+    totalDocuments: number;
+    ok: number;
+    ncA: number;
+    ncB: number;
+    pi: number;
+    gp: number;
+    cm: number;
+    notAssessed: number;
+  };
+  createdBy: string;
+  reviewedBy?: string;
+  reviewedAt?: Date;
+  observations?: string;
+  createdAt: Date;
+  updatedAt: Date;
+  deletedAt?: Date;
+}
+
+const AuditDocumentReviewSchema = new Schema<IAuditDocumentReview>(
+  {
+    companyId: { type: String, required: true, index: true },
+    auditPlanId: { type: String, required: true, index: true },
+    documents: [
+      {
+        clause: { type: String, required: true },
+        requirement: { type: String, required: true },
+        status: {
+          type: String,
+          enum: ['OK', 'NC_A', 'NC_B', 'PI', 'GP', 'CM', '--'],
+          default: '--',
+        },
+        observations: { type: String, default: '' },
+        reviewer: { type: String, required: true },
+        reviewDate: { type: Date, required: true },
+        documentId: { type: String },
+        documentName: { type: String },
+      },
+    ],
+    summary: {
+      totalDocuments: { type: Number, default: 0 },
+      ok: { type: Number, default: 0 },
+      ncA: { type: Number, default: 0 },
+      ncB: { type: Number, default: 0 },
+      pi: { type: Number, default: 0 },
+      gp: { type: Number, default: 0 },
+      cm: { type: Number, default: 0 },
+      notAssessed: { type: Number, default: 0 },
+    },
+    createdBy: { type: String, required: true },
+    reviewedBy: { type: String },
+    reviewedAt: { type: Date },
+    observations: { type: String },
+    deletedAt: { type: Date },
+  },
+  {
+    timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
+  }
+);
+
+AuditDocumentReviewSchema.index({ auditPlanId: 1 });
+AuditDocumentReviewSchema.index({ companyId: 1, auditPlanId: 1 }, { unique: true });
+
+AuditDocumentReviewSchema.virtual('id').get(function () {
+  return this._id.toString();
+});
+
+AuditDocumentReviewSchema.pre('find', function () {
+  this.where({ deletedAt: null });
+});
+
+AuditDocumentReviewSchema.pre('findOne', function () {
+  this.where({ deletedAt: null });
+});
+
+AuditDocumentReviewSchema.methods.updateSummary = function () {
+  const statusCounts = {
+    OK: 0,
+    NC_A: 0,
+    NC_B: 0,
+    PI: 0,
+    GP: 0,
+    CM: 0,
+    '--': 0,
+  };
+
+  this.documents.forEach((doc: IDocumentReviewItem) => {
+    const key = doc.status as keyof typeof statusCounts;
+    if (statusCounts[key] !== undefined) {
+      statusCounts[key]++;
+    }
+  });
+
+  this.summary = {
+    totalDocuments: this.documents.length,
+    ok: statusCounts.OK,
+    ncA: statusCounts.NC_A,
+    ncB: statusCounts.NC_B,
+    pi: statusCounts.PI,
+    gp: statusCounts.GP,
+    cm: statusCounts.CM,
+    notAssessed: statusCounts['--'],
+  };
+};
+
+export const AuditDocumentReview = mongoose.model<IAuditDocumentReview>(
+  'AuditDocumentReview',
+  AuditDocumentReviewSchema
+);

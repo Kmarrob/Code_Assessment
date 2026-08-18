@@ -57,7 +57,7 @@ export class AuditChecklistController {
   async updateChecklist(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
-      const userId = req.user?.id;
+      const userId = req.user?._id?.toString();
       const { questions } = req.body;
 
       if (!id) {
@@ -90,7 +90,7 @@ export class AuditChecklistController {
   async complete(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
-      const userId = req.user?.id;
+      const userId = req.user?._id?.toString();
 
       if (!id) {
         return res.status(400).json({ success: false, message: 'ID não informado' });

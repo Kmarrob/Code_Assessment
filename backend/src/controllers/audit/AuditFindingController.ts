@@ -11,7 +11,7 @@ export class AuditFindingController {
   // ============================================================
   async create(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?._id?.toString();
       const { auditPlanId } = req.params;
 
       if (!userId) {
@@ -102,7 +102,7 @@ export class AuditFindingController {
   async update(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
-      const userId = req.user?.id;
+      const userId = req.user?._id?.toString();
       const data: UpdateAuditFindingDTO = req.body;
 
       if (!id) {
@@ -131,7 +131,7 @@ export class AuditFindingController {
   async submitForValidation(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
-      const userId = req.user?.id;
+      const userId = req.user?._id?.toString();
 
       if (!id) {
         return res.status(400).json({ success: false, message: 'ID não informado' });
@@ -159,7 +159,7 @@ export class AuditFindingController {
   async validate(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
-      const userId = req.user?.id;
+      const userId = req.user?._id?.toString();
       const { status, comment } = req.body;
 
       if (!id) {
