@@ -1,5 +1,6 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import { AuditChecklistService } from '../../models/audit/services/AuditChecklistService';
+import { AuthenticatedRequest } from '../../types';
 
 const auditChecklistService = new AuditChecklistService();
 
@@ -7,7 +8,7 @@ export class AuditChecklistController {
   // ============================================================
   // LISTAR CHECKLISTS POR PLANO
   // ============================================================
-  async findByPlanId(req: Request, res: Response): Promise<Response> {
+  async findByPlanId(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { auditPlanId } = req.params;
 
@@ -26,7 +27,7 @@ export class AuditChecklistController {
   // ============================================================
   // BUSCAR CHECKLIST POR PLANO E CONTROLE
   // ============================================================
-  async findByPlanAndControl(req: Request, res: Response): Promise<Response> {
+  async findByPlanAndControl(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { auditPlanId, controlId } = req.params;
 
@@ -51,12 +52,12 @@ export class AuditChecklistController {
   }
 
   // ============================================================
-  // ATUALIZAR CHECKLIST
+  // ATUALIZAR CHECKLIST (corresponde a updateChecklist na rota)
   // ============================================================
-  async update(req: Request, res: Response): Promise<Response> {
+  async updateChecklist(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
-      const userId = (req as any).userId;
+      const userId = req.user?.id;
       const { questions } = req.body;
 
       if (!id) {
@@ -86,10 +87,10 @@ export class AuditChecklistController {
   // ============================================================
   // MARCAR CHECKLIST COMO CONCLUÍDO
   // ============================================================
-  async complete(req: Request, res: Response): Promise<Response> {
+  async complete(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
-      const userId = (req as any).userId;
+      const userId = req.user?.id;
 
       if (!id) {
         return res.status(400).json({ success: false, message: 'ID não informado' });
@@ -114,7 +115,7 @@ export class AuditChecklistController {
   // ============================================================
   // ESTATÍSTICAS DO CHECKLIST
   // ============================================================
-  async getStats(req: Request, res: Response): Promise<Response> {
+  async getStats(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { auditPlanId } = req.params;
 

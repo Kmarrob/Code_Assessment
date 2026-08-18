@@ -1,19 +1,28 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import { auditProgramService } from '../../models/audit/services/AuditProgramService';
 import { AuditProgram } from '../../models/audit/models/AuditProgram';
+import { AuthenticatedRequest } from '../../types';
 
 export class AuditProgramController {
   /**
    * Criar novo programa de auditorias
    * POST /api/internal-audit/program
    */
-  async create(req: Request, res: Response): Promise<Response> {
+  async create(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { companyId, year, sectors, supplierAudits, externalAudit, otherActivities, observations } = req.body;
       const userId = req.user?.id;
 
       if (!userId) {
         return res.status(401).json({ error: 'Usuário não autenticado' });
+      }
+
+      if (!companyId) {
+        return res.status(400).json({ error: 'companyId é obrigatório' });
+      }
+
+      if (!year) {
+        return res.status(400).json({ error: 'year é obrigatório' });
       }
 
       // Verificar se já existe programa para este ano
@@ -44,9 +53,14 @@ export class AuditProgramController {
    * Buscar programa por ID
    * GET /api/internal-audit/program/:id
    */
-  async findById(req: Request, res: Response): Promise<Response> {
+  async findById(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
+
+      if (!id) {
+        return res.status(400).json({ error: 'ID é obrigatório' });
+      }
+
       const program = await auditProgramService.findById(id);
 
       if (!program) {
@@ -63,9 +77,18 @@ export class AuditProgramController {
    * Buscar programa por empresa e ano
    * GET /api/internal-audit/program/company/:companyId/year/:year
    */
-  async findByCompanyAndYear(req: Request, res: Response): Promise<Response> {
+  async findByCompanyAndYear(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { companyId, year } = req.params;
+
+      if (!companyId) {
+        return res.status(400).json({ error: 'companyId é obrigatório' });
+      }
+
+      if (!year) {
+        return res.status(400).json({ error: 'year é obrigatório' });
+      }
+
       const program = await auditProgramService.findByCompanyAndYear(
         companyId,
         parseInt(year)
@@ -85,9 +108,14 @@ export class AuditProgramController {
    * Listar programas de uma empresa
    * GET /api/internal-audit/program/company/:companyId
    */
-  async findAllByCompany(req: Request, res: Response): Promise<Response> {
+  async findAllByCompany(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { companyId } = req.params;
+
+      if (!companyId) {
+        return res.status(400).json({ error: 'companyId é obrigatório' });
+      }
+
       const { status, limit, skip } = req.query;
 
       const programs = await auditProgramService.findAllByCompany(companyId, {
@@ -106,10 +134,14 @@ export class AuditProgramController {
    * Atualizar programa
    * PUT /api/internal-audit/program/:id
    */
-  async update(req: Request, res: Response): Promise<Response> {
+  async update(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
       const { sectors, supplierAudits, externalAudit, otherActivities, observations } = req.body;
+
+      if (!id) {
+        return res.status(400).json({ error: 'ID é obrigatório' });
+      }
 
       const program = await auditProgramService.update(id, {
         sectors,
@@ -133,13 +165,17 @@ export class AuditProgramController {
    * Aprovar programa
    * POST /api/internal-audit/program/:id/approve
    */
-  async approve(req: Request, res: Response): Promise<Response> {
+  async approve(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
       const userId = req.user?.id;
 
       if (!userId) {
         return res.status(401).json({ error: 'Usuário não autenticado' });
+      }
+
+      if (!id) {
+        return res.status(400).json({ error: 'ID é obrigatório' });
       }
 
       const program = await auditProgramService.approve(id, userId);
@@ -158,9 +194,13 @@ export class AuditProgramController {
    * Ativar programa
    * POST /api/internal-audit/program/:id/activate
    */
-  async activate(req: Request, res: Response): Promise<Response> {
+  async activate(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
+
+      if (!id) {
+        return res.status(400).json({ error: 'ID é obrigatório' });
+      }
 
       const program = await auditProgramService.activate(id);
 
@@ -178,9 +218,13 @@ export class AuditProgramController {
    * Arquivar programa
    * POST /api/internal-audit/program/:id/archive
    */
-  async archive(req: Request, res: Response): Promise<Response> {
+  async archive(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
+
+      if (!id) {
+        return res.status(400).json({ error: 'ID é obrigatório' });
+      }
 
       const program = await auditProgramService.archive(id);
 
@@ -198,10 +242,18 @@ export class AuditProgramController {
    * Adicionar setor ao programa
    * POST /api/internal-audit/program/:id/sector
    */
-  async addSector(req: Request, res: Response): Promise<Response> {
+  async addSector(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
       const { name, processes, importance, scoreA, scoreB, frequency, nextAuditDate } = req.body;
+
+      if (!id) {
+        return res.status(400).json({ error: 'ID é obrigatório' });
+      }
+
+      if (!name) {
+        return res.status(400).json({ error: 'name é obrigatório' });
+      }
 
       const program = await auditProgramService.addSector(id, {
         name,
@@ -227,10 +279,18 @@ export class AuditProgramController {
    * Atualizar setor do programa
    * PUT /api/internal-audit/program/:id/sector/:index
    */
-  async updateSector(req: Request, res: Response): Promise<Response> {
+  async updateSector(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id, index } = req.params;
       const data = req.body;
+
+      if (!id) {
+        return res.status(400).json({ error: 'ID é obrigatório' });
+      }
+
+      if (!index) {
+        return res.status(400).json({ error: 'index é obrigatório' });
+      }
 
       const program = await auditProgramService.updateSector(id, parseInt(index), data);
 
@@ -248,10 +308,26 @@ export class AuditProgramController {
    * Adicionar auditoria de fornecedor
    * POST /api/internal-audit/program/:id/supplier-audit
    */
-  async addSupplierAudit(req: Request, res: Response): Promise<Response> {
+  async addSupplierAudit(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
       const { supplierName, supplierId, auditDate, scope } = req.body;
+
+      if (!id) {
+        return res.status(400).json({ error: 'ID é obrigatório' });
+      }
+
+      if (!supplierName) {
+        return res.status(400).json({ error: 'supplierName é obrigatório' });
+      }
+
+      if (!auditDate) {
+        return res.status(400).json({ error: 'auditDate é obrigatório' });
+      }
+
+      if (!scope) {
+        return res.status(400).json({ error: 'scope é obrigatório' });
+      }
 
       const program = await auditProgramService.addSupplierAudit(id, {
         supplierName,
@@ -274,10 +350,18 @@ export class AuditProgramController {
    * Atualizar auditoria de fornecedor
    * PUT /api/internal-audit/program/:id/supplier-audit/:index
    */
-  async updateSupplierAudit(req: Request, res: Response): Promise<Response> {
+  async updateSupplierAudit(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id, index } = req.params;
       const data = req.body;
+
+      if (!id) {
+        return res.status(400).json({ error: 'ID é obrigatório' });
+      }
+
+      if (!index) {
+        return res.status(400).json({ error: 'index é obrigatório' });
+      }
 
       const program = await auditProgramService.updateSupplierAudit(id, parseInt(index), data);
 
@@ -295,10 +379,14 @@ export class AuditProgramController {
    * Atualizar auditoria externa
    * PUT /api/internal-audit/program/:id/external-audit
    */
-  async updateExternalAudit(req: Request, res: Response): Promise<Response> {
+  async updateExternalAudit(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
       const data = req.body;
+
+      if (!id) {
+        return res.status(400).json({ error: 'ID é obrigatório' });
+      }
 
       if (data.plannedDate) {
         data.plannedDate = new Date(data.plannedDate);
@@ -320,10 +408,22 @@ export class AuditProgramController {
    * Adicionar atividade ao programa
    * POST /api/internal-audit/program/:id/activity
    */
-  async addActivity(req: Request, res: Response): Promise<Response> {
+  async addActivity(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
       const { name, description, scheduledDate } = req.body;
+
+      if (!id) {
+        return res.status(400).json({ error: 'ID é obrigatório' });
+      }
+
+      if (!name) {
+        return res.status(400).json({ error: 'name é obrigatório' });
+      }
+
+      if (!scheduledDate) {
+        return res.status(400).json({ error: 'scheduledDate é obrigatório' });
+      }
 
       const program = await auditProgramService.addActivity(id, {
         name,
@@ -345,10 +445,18 @@ export class AuditProgramController {
    * Atualizar atividade
    * PUT /api/internal-audit/program/:id/activity/:index
    */
-  async updateActivity(req: Request, res: Response): Promise<Response> {
+  async updateActivity(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id, index } = req.params;
       const data = req.body;
+
+      if (!id) {
+        return res.status(400).json({ error: 'ID é obrigatório' });
+      }
+
+      if (!index) {
+        return res.status(400).json({ error: 'index é obrigatório' });
+      }
 
       if (data.scheduledDate) {
         data.scheduledDate = new Date(data.scheduledDate);
@@ -373,9 +481,13 @@ export class AuditProgramController {
    * Excluir programa
    * DELETE /api/internal-audit/program/:id
    */
-  async delete(req: Request, res: Response): Promise<Response> {
+  async delete(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
+
+      if (!id) {
+        return res.status(400).json({ error: 'ID é obrigatório' });
+      }
 
       const program = await auditProgramService.delete(id);
 
@@ -393,9 +505,14 @@ export class AuditProgramController {
    * Obter estatísticas do programa
    * GET /api/internal-audit/program/:id/stats
    */
-  async getStatistics(req: Request, res: Response): Promise<Response> {
+  async getStatistics(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
+
+      if (!id) {
+        return res.status(400).json({ error: 'ID é obrigatório' });
+      }
+
       const stats = await auditProgramService.getStatistics(id);
 
       if (!stats) {
@@ -412,9 +529,14 @@ export class AuditProgramController {
    * Gerar próximas auditorias
    * GET /api/internal-audit/program/:id/next-audits
    */
-  async generateNextAudits(req: Request, res: Response): Promise<Response> {
+  async generateNextAudits(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
+
+      if (!id) {
+        return res.status(400).json({ error: 'ID é obrigatório' });
+      }
+
       const nextAudits = await auditProgramService.generateNextAudits(id);
 
       if (!nextAudits) {

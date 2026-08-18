@@ -1,18 +1,27 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import { auditDocumentReviewService } from '../../models/audit/services/AuditDocumentReviewService';
+import { AuthenticatedRequest } from '../../types';
 
 export class AuditDocumentReviewController {
   /**
    * Criar nova revisão de documentação
    * POST /api/internal-audit/document-review
    */
-  async create(req: Request, res: Response): Promise<Response> {
+  async create(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { companyId, auditPlanId, documents, observations } = req.body;
       const userId = req.user?.id;
 
       if (!userId) {
         return res.status(401).json({ error: 'Usuário não autenticado' });
+      }
+
+      if (!companyId) {
+        return res.status(400).json({ error: 'companyId é obrigatório' });
+      }
+
+      if (!auditPlanId) {
+        return res.status(400).json({ error: 'auditPlanId é obrigatório' });
       }
 
       // Verificar se já existe revisão para este plano
@@ -39,9 +48,14 @@ export class AuditDocumentReviewController {
    * Buscar revisão por ID
    * GET /api/internal-audit/document-review/:id
    */
-  async findById(req: Request, res: Response): Promise<Response> {
+  async findById(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
+
+      if (!id) {
+        return res.status(400).json({ error: 'ID é obrigatório' });
+      }
+
       const review = await auditDocumentReviewService.findById(id);
 
       if (!review) {
@@ -58,9 +72,14 @@ export class AuditDocumentReviewController {
    * Buscar revisão por plano de auditoria
    * GET /api/internal-audit/document-review/plan/:auditPlanId
    */
-  async findByAuditPlanId(req: Request, res: Response): Promise<Response> {
+  async findByAuditPlanId(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { auditPlanId } = req.params;
+
+      if (!auditPlanId) {
+        return res.status(400).json({ error: 'auditPlanId é obrigatório' });
+      }
+
       const review = await auditDocumentReviewService.findByAuditPlanId(auditPlanId);
 
       if (!review) {
@@ -77,9 +96,14 @@ export class AuditDocumentReviewController {
    * Buscar revisões por empresa
    * GET /api/internal-audit/document-review/company/:companyId
    */
-  async findAllByCompany(req: Request, res: Response): Promise<Response> {
+  async findAllByCompany(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { companyId } = req.params;
+
+      if (!companyId) {
+        return res.status(400).json({ error: 'companyId é obrigatório' });
+      }
+
       const reviews = await auditDocumentReviewService.findAllByCompany(companyId);
 
       return res.json(reviews);
@@ -92,10 +116,14 @@ export class AuditDocumentReviewController {
    * Atualizar revisão
    * PUT /api/internal-audit/document-review/:id
    */
-  async update(req: Request, res: Response): Promise<Response> {
+  async update(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
       const { documents, observations } = req.body;
+
+      if (!id) {
+        return res.status(400).json({ error: 'ID é obrigatório' });
+      }
 
       const review = await auditDocumentReviewService.update(id, {
         documents,
@@ -116,10 +144,18 @@ export class AuditDocumentReviewController {
    * Atualizar um documento específico da revisão
    * PUT /api/internal-audit/document-review/:id/document/:clause
    */
-  async updateDocument(req: Request, res: Response): Promise<Response> {
+  async updateDocument(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id, clause } = req.params;
       const { requirement, status, observations, reviewer, reviewDate, documentId, documentName } = req.body;
+
+      if (!id) {
+        return res.status(400).json({ error: 'ID é obrigatório' });
+      }
+
+      if (!clause) {
+        return res.status(400).json({ error: 'Cláusula é obrigatória' });
+      }
 
       const data: any = {};
       if (requirement !== undefined) data.requirement = requirement;
@@ -146,10 +182,22 @@ export class AuditDocumentReviewController {
    * Atualizar status de um documento
    * PUT /api/internal-audit/document-review/:id/document/:clause/status
    */
-  async updateDocumentStatus(req: Request, res: Response): Promise<Response> {
+  async updateDocumentStatus(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id, clause } = req.params;
       const { status, observations } = req.body;
+
+      if (!id) {
+        return res.status(400).json({ error: 'ID é obrigatório' });
+      }
+
+      if (!clause) {
+        return res.status(400).json({ error: 'Cláusula é obrigatória' });
+      }
+
+      if (!status) {
+        return res.status(400).json({ error: 'Status é obrigatório' });
+      }
 
       if (!['OK', 'NC_A', 'NC_B', 'PI', 'GP', 'CM', '--'].includes(status)) {
         return res.status(400).json({ 
@@ -178,10 +226,14 @@ export class AuditDocumentReviewController {
    * Adicionar documento à revisão
    * POST /api/internal-audit/document-review/:id/document
    */
-  async addDocument(req: Request, res: Response): Promise<Response> {
+  async addDocument(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
       const { clause, requirement, status, observations, reviewer, reviewDate, documentId, documentName } = req.body;
+
+      if (!id) {
+        return res.status(400).json({ error: 'ID é obrigatório' });
+      }
 
       if (!clause || !requirement || !reviewer) {
         return res.status(400).json({ error: 'Clause, requirement e reviewer são obrigatórios' });
@@ -212,9 +264,17 @@ export class AuditDocumentReviewController {
    * Remover documento da revisão
    * DELETE /api/internal-audit/document-review/:id/document/:clause
    */
-  async removeDocument(req: Request, res: Response): Promise<Response> {
+  async removeDocument(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id, clause } = req.params;
+
+      if (!id) {
+        return res.status(400).json({ error: 'ID é obrigatório' });
+      }
+
+      if (!clause) {
+        return res.status(400).json({ error: 'Cláusula é obrigatória' });
+      }
 
       const review = await auditDocumentReviewService.removeDocument(id, clause);
 
@@ -232,7 +292,7 @@ export class AuditDocumentReviewController {
    * Finalizar revisão
    * POST /api/internal-audit/document-review/:id/complete
    */
-  async completeReview(req: Request, res: Response): Promise<Response> {
+  async completeReview(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
       const { observations } = req.body;
@@ -240,6 +300,10 @@ export class AuditDocumentReviewController {
 
       if (!userId) {
         return res.status(401).json({ error: 'Usuário não autenticado' });
+      }
+
+      if (!id) {
+        return res.status(400).json({ error: 'ID é obrigatório' });
       }
 
       const review = await auditDocumentReviewService.completeReview(
@@ -262,9 +326,13 @@ export class AuditDocumentReviewController {
    * Excluir revisão
    * DELETE /api/internal-audit/document-review/:id
    */
-  async delete(req: Request, res: Response): Promise<Response> {
+  async delete(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
+
+      if (!id) {
+        return res.status(400).json({ error: 'ID é obrigatório' });
+      }
 
       const review = await auditDocumentReviewService.delete(id);
 
@@ -282,9 +350,14 @@ export class AuditDocumentReviewController {
    * Obter resumo da revisão
    * GET /api/internal-audit/document-review/:id/summary
    */
-  async getSummary(req: Request, res: Response): Promise<Response> {
+  async getSummary(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
+
+      if (!id) {
+        return res.status(400).json({ error: 'ID é obrigatório' });
+      }
+
       const summary = await auditDocumentReviewService.getSummary(id);
 
       if (!summary) {
@@ -301,9 +374,14 @@ export class AuditDocumentReviewController {
    * Obter não conformidades da revisão
    * GET /api/internal-audit/document-review/:id/nonconformities
    */
-  async getNonconformities(req: Request, res: Response): Promise<Response> {
+  async getNonconformities(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
+
+      if (!id) {
+        return res.status(400).json({ error: 'ID é obrigatório' });
+      }
+
       const nonconformities = await auditDocumentReviewService.getNonconformities(id);
 
       if (!nonconformities) {
@@ -320,9 +398,14 @@ export class AuditDocumentReviewController {
    * Obter recomendações da revisão
    * GET /api/internal-audit/document-review/:id/recommendations
    */
-  async getRecommendations(req: Request, res: Response): Promise<Response> {
+  async getRecommendations(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
+
+      if (!id) {
+        return res.status(400).json({ error: 'ID é obrigatório' });
+      }
+
       const recommendations = await auditDocumentReviewService.getRecommendations(id);
 
       if (!recommendations) {

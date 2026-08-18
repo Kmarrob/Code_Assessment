@@ -1,6 +1,7 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import { AuditFindingService } from '../../models/audit/services/AuditFindingService';
 import { CreateAuditFindingDTO, UpdateAuditFindingDTO } from '../../models/audit/types/audit.types';
+import { AuthenticatedRequest } from '../../types';
 
 const auditFindingService = new AuditFindingService();
 
@@ -8,9 +9,9 @@ export class AuditFindingController {
   // ============================================================
   // CRIAR NC
   // ============================================================
-  async create(req: Request, res: Response): Promise<Response> {
+  async create(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
-      const userId = (req as any).userId;
+      const userId = req.user?.id;
       const { auditPlanId } = req.params;
 
       if (!userId) {
@@ -33,7 +34,7 @@ export class AuditFindingController {
   // ============================================================
   // LISTAR NCs POR PLANO
   // ============================================================
-  async findByPlanId(req: Request, res: Response): Promise<Response> {
+  async findByPlanId(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { auditPlanId } = req.params;
 
@@ -52,7 +53,7 @@ export class AuditFindingController {
   // ============================================================
   // LISTAR NCs COM FILTROS
   // ============================================================
-  async findAll(req: Request, res: Response): Promise<Response> {
+  async findAll(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { auditPlanId, type, status, area, createdBy } = req.query;
 
@@ -75,7 +76,7 @@ export class AuditFindingController {
   // ============================================================
   // BUSCAR NC POR ID
   // ============================================================
-  async findById(req: Request, res: Response): Promise<Response> {
+  async findById(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
 
@@ -98,10 +99,10 @@ export class AuditFindingController {
   // ============================================================
   // ATUALIZAR NC
   // ============================================================
-  async update(req: Request, res: Response): Promise<Response> {
+  async update(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
-      const userId = (req as any).userId;
+      const userId = req.user?.id;
       const data: UpdateAuditFindingDTO = req.body;
 
       if (!id) {
@@ -125,12 +126,12 @@ export class AuditFindingController {
   }
 
   // ============================================================
-  // ENVIAR NC PARA VALIDAÇÃO
+  // ENVIAR NC PARA VALIDAÇÃO (corresponde a submit na rota)
   // ============================================================
-  async submitForValidation(req: Request, res: Response): Promise<Response> {
+  async submitForValidation(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
-      const userId = (req as any).userId;
+      const userId = req.user?.id;
 
       if (!id) {
         return res.status(400).json({ success: false, message: 'ID não informado' });
@@ -155,10 +156,10 @@ export class AuditFindingController {
   // ============================================================
   // VALIDAR NC (FECHAR/REABRIR)
   // ============================================================
-  async validate(req: Request, res: Response): Promise<Response> {
+  async validate(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
-      const userId = (req as any).userId;
+      const userId = req.user?.id;
       const { status, comment } = req.body;
 
       if (!id) {
@@ -188,7 +189,7 @@ export class AuditFindingController {
   // ============================================================
   // ESTATÍSTICAS DE NCs
   // ============================================================
-  async getStats(req: Request, res: Response): Promise<Response> {
+  async getStats(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { auditPlanId } = req.params;
 

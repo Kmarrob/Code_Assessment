@@ -1,18 +1,23 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import { auditSoAService } from '../../models/audit/services/AuditSoAService';
+import { AuthenticatedRequest } from '../../types';
 
 export class AuditSoAController {
   /**
    * Criar nova Declaração de Aplicabilidade
    * POST /api/internal-audit/soa
    */
-  async create(req: Request, res: Response): Promise<Response> {
+  async create(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { companyId, version, controls, observations } = req.body;
       const userId = req.user?.id;
 
       if (!userId) {
         return res.status(401).json({ error: 'Usuário não autenticado' });
+      }
+
+      if (!companyId) {
+        return res.status(400).json({ error: 'companyId é obrigatório' });
       }
 
       // Verificar se já existe SoA ativa
@@ -42,9 +47,14 @@ export class AuditSoAController {
    * Buscar SoA por ID
    * GET /api/internal-audit/soa/:id
    */
-  async findById(req: Request, res: Response): Promise<Response> {
+  async findById(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
+
+      if (!id) {
+        return res.status(400).json({ error: 'ID é obrigatório' });
+      }
+
       const soa = await auditSoAService.findById(id);
 
       if (!soa) {
@@ -61,9 +71,14 @@ export class AuditSoAController {
    * Buscar SoA por empresa
    * GET /api/internal-audit/soa/company/:companyId
    */
-  async findByCompany(req: Request, res: Response): Promise<Response> {
+  async findByCompany(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { companyId } = req.params;
+
+      if (!companyId) {
+        return res.status(400).json({ error: 'companyId é obrigatório' });
+      }
+
       const { status } = req.query;
 
       const soas = await auditSoAService.findByCompany(companyId, {
@@ -80,9 +95,14 @@ export class AuditSoAController {
    * Buscar SoA ativa por empresa
    * GET /api/internal-audit/soa/company/:companyId/active
    */
-  async findActiveByCompany(req: Request, res: Response): Promise<Response> {
+  async findActiveByCompany(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { companyId } = req.params;
+
+      if (!companyId) {
+        return res.status(400).json({ error: 'companyId é obrigatório' });
+      }
+
       const soa = await auditSoAService.findActiveByCompany(companyId);
 
       if (!soa) {
@@ -99,10 +119,14 @@ export class AuditSoAController {
    * Atualizar SoA
    * PUT /api/internal-audit/soa/:id
    */
-  async update(req: Request, res: Response): Promise<Response> {
+  async update(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
       const { version, controls, observations } = req.body;
+
+      if (!id) {
+        return res.status(400).json({ error: 'ID é obrigatório' });
+      }
 
       const soa = await auditSoAService.update(id, {
         version,
@@ -124,10 +148,18 @@ export class AuditSoAController {
    * Atualizar um controle específico da SoA
    * PUT /api/internal-audit/soa/:id/control/:clause
    */
-  async updateControl(req: Request, res: Response): Promise<Response> {
+  async updateControl(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id, clause } = req.params;
       const data = req.body;
+
+      if (!id) {
+        return res.status(400).json({ error: 'ID é obrigatório' });
+      }
+
+      if (!clause) {
+        return res.status(400).json({ error: 'clause é obrigatório' });
+      }
 
       // Converter strings para booleanos
       if (data.motivators) {
@@ -171,13 +203,17 @@ export class AuditSoAController {
    * Aprovar SoA
    * POST /api/internal-audit/soa/:id/approve
    */
-  async approve(req: Request, res: Response): Promise<Response> {
+  async approve(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
       const userId = req.user?.id;
 
       if (!userId) {
         return res.status(401).json({ error: 'Usuário não autenticado' });
+      }
+
+      if (!id) {
+        return res.status(400).json({ error: 'ID é obrigatório' });
       }
 
       const soa = await auditSoAService.approve(id, userId);
@@ -196,9 +232,13 @@ export class AuditSoAController {
    * Arquivar SoA
    * POST /api/internal-audit/soa/:id/archive
    */
-  async archive(req: Request, res: Response): Promise<Response> {
+  async archive(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
+
+      if (!id) {
+        return res.status(400).json({ error: 'ID é obrigatório' });
+      }
 
       const soa = await auditSoAService.archive(id);
 
@@ -216,9 +256,13 @@ export class AuditSoAController {
    * Excluir SoA
    * DELETE /api/internal-audit/soa/:id
    */
-  async delete(req: Request, res: Response): Promise<Response> {
+  async delete(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
+
+      if (!id) {
+        return res.status(400).json({ error: 'ID é obrigatório' });
+      }
 
       const soa = await auditSoAService.delete(id);
 
@@ -236,9 +280,14 @@ export class AuditSoAController {
    * Obter estatísticas da SoA
    * GET /api/internal-audit/soa/:id/stats
    */
-  async getStatistics(req: Request, res: Response): Promise<Response> {
+  async getStatistics(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
+
+      if (!id) {
+        return res.status(400).json({ error: 'ID é obrigatório' });
+      }
+
       const stats = await auditSoAService.getStatistics(id);
 
       if (!stats) {
@@ -255,9 +304,14 @@ export class AuditSoAController {
    * Exportar SoA para formato de planilha
    * GET /api/internal-audit/soa/:id/export
    */
-  async exportToSpreadsheet(req: Request, res: Response): Promise<Response> {
+  async exportToSpreadsheet(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
+
+      if (!id) {
+        return res.status(400).json({ error: 'ID é obrigatório' });
+      }
+
       const data = await auditSoAService.exportToSpreadsheet(id);
 
       if (!data) {

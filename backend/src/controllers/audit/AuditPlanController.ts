@@ -1,6 +1,7 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import { AuditPlanService } from '../../models/audit/services/AuditPlanService';
 import { CreateAuditPlanDTO, UpdateAuditPlanDTO } from '../../models/audit/types/audit.types';
+import { AuthenticatedRequest } from '../../types';
 
 const auditPlanService = new AuditPlanService();
 
@@ -8,10 +9,10 @@ export class AuditPlanController {
   // ============================================================
   // CRIAR PLANO
   // ============================================================
-  async create(req: Request, res: Response): Promise<Response> {
+  async create(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
-      const userId = (req as any).userId;
-      const companyId = (req as any).companyId;
+      const userId = req.user?.id;
+      const companyId = req.user?.companyId;
 
       if (!userId) {
         return res.status(401).json({ success: false, message: 'Usuário não autenticado' });
@@ -33,9 +34,9 @@ export class AuditPlanController {
   // ============================================================
   // LISTAR PLANOS
   // ============================================================
-  async findAll(req: Request, res: Response): Promise<Response> {
+  async findAll(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
-      const companyId = (req as any).companyId;
+      const companyId = req.user?.companyId;
 
       if (!companyId) {
         return res.status(400).json({ success: false, message: 'Empresa não identificada' });
@@ -61,7 +62,7 @@ export class AuditPlanController {
   // ============================================================
   // BUSCAR PLANO POR ID
   // ============================================================
-  async findById(req: Request, res: Response): Promise<Response> {
+  async findById(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
 
@@ -84,10 +85,10 @@ export class AuditPlanController {
   // ============================================================
   // ATUALIZAR PLANO
   // ============================================================
-  async update(req: Request, res: Response): Promise<Response> {
+  async update(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
-      const userId = (req as any).userId;
+      const userId = req.user?.id;
       const data: UpdateAuditPlanDTO = req.body;
 
       if (!id) {
@@ -113,10 +114,10 @@ export class AuditPlanController {
   // ============================================================
   // ENVIAR PARA APROVAÇÃO
   // ============================================================
-  async submitForApproval(req: Request, res: Response): Promise<Response> {
+  async submitForApproval(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
-      const userId = (req as any).userId;
+      const userId = req.user?.id;
 
       if (!id) {
         return res.status(400).json({ success: false, message: 'ID não informado' });
@@ -141,10 +142,10 @@ export class AuditPlanController {
   // ============================================================
   // APROVAR PLANO
   // ============================================================
-  async approve(req: Request, res: Response): Promise<Response> {
+  async approve(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
-      const userId = (req as any).userId;
+      const userId = req.user?.id;
 
       if (!id) {
         return res.status(400).json({ success: false, message: 'ID não informado' });
@@ -169,10 +170,10 @@ export class AuditPlanController {
   // ============================================================
   // REJEITAR PLANO
   // ============================================================
-  async reject(req: Request, res: Response): Promise<Response> {
+  async reject(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
-      const userId = (req as any).userId;
+      const userId = req.user?.id;
       const { reason } = req.body;
 
       if (!id) {
@@ -202,10 +203,10 @@ export class AuditPlanController {
   // ============================================================
   // CANCELAR PLANO
   // ============================================================
-  async cancel(req: Request, res: Response): Promise<Response> {
+  async cancel(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
-      const userId = (req as any).userId;
+      const userId = req.user?.id;
 
       if (!id) {
         return res.status(400).json({ success: false, message: 'ID não informado' });
@@ -230,10 +231,10 @@ export class AuditPlanController {
   // ============================================================
   // INICIAR AUDITORIA
   // ============================================================
-  async startAudit(req: Request, res: Response): Promise<Response> {
+  async startAudit(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
-      const userId = (req as any).userId;
+      const userId = req.user?.id;
 
       if (!id) {
         return res.status(400).json({ success: false, message: 'ID não informado' });
@@ -258,10 +259,10 @@ export class AuditPlanController {
   // ============================================================
   // CONCLUIR AUDITORIA
   // ============================================================
-  async completeAudit(req: Request, res: Response): Promise<Response> {
+  async completeAudit(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
-      const userId = (req as any).userId;
+      const userId = req.user?.id;
 
       if (!id) {
         return res.status(400).json({ success: false, message: 'ID não informado' });
@@ -286,9 +287,9 @@ export class AuditPlanController {
   // ============================================================
   // ESTATÍSTICAS
   // ============================================================
-  async getStats(req: Request, res: Response): Promise<Response> {
+  async getStats(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
-      const companyId = (req as any).companyId;
+      const companyId = req.user?.companyId;
 
       if (!companyId) {
         return res.status(400).json({ success: false, message: 'Empresa não identificada' });

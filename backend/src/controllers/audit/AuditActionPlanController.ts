@@ -1,6 +1,7 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import { AuditActionPlanService } from '../../models/audit/services/AuditActionPlanService';
 import { CreateAuditActionPlanDTO, UpdateAuditActionPlanDTO } from '../../models/audit/types/audit.types';
+import { AuthenticatedRequest } from '../../types';
 
 const auditActionPlanService = new AuditActionPlanService();
 
@@ -8,9 +9,9 @@ export class AuditActionPlanController {
   // ============================================================
   // CRIAR PLANO DE AÇÃO
   // ============================================================
-  async create(req: Request, res: Response): Promise<Response> {
+  async create(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
-      const userId = (req as any).userId;
+      const userId = req.user?.id;
 
       if (!userId) {
         return res.status(401).json({ success: false, message: 'Usuário não autenticado' });
@@ -33,7 +34,7 @@ export class AuditActionPlanController {
   // ============================================================
   // LISTAR PLANOS DE AÇÃO POR NC
   // ============================================================
-  async findByFindingId(req: Request, res: Response): Promise<Response> {
+  async findByFindingId(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { findingId } = req.params;
 
@@ -52,7 +53,7 @@ export class AuditActionPlanController {
   // ============================================================
   // LISTAR PLANOS DE AÇÃO POR RESPONSÁVEL
   // ============================================================
-  async findByResponsible(req: Request, res: Response): Promise<Response> {
+  async findByResponsible(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { responsible } = req.params;
 
@@ -71,7 +72,7 @@ export class AuditActionPlanController {
   // ============================================================
   // BUSCAR PLANO DE AÇÃO POR ID
   // ============================================================
-  async findById(req: Request, res: Response): Promise<Response> {
+  async findById(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
 
@@ -94,10 +95,10 @@ export class AuditActionPlanController {
   // ============================================================
   // ATUALIZAR PLANO DE AÇÃO
   // ============================================================
-  async update(req: Request, res: Response): Promise<Response> {
+  async update(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
-      const userId = (req as any).userId;
+      const userId = req.user?.id;
       const data: UpdateAuditActionPlanDTO = req.body;
 
       if (!id) {
@@ -121,12 +122,12 @@ export class AuditActionPlanController {
   }
 
   // ============================================================
-  // MARCAR COMO EM ANDAMENTO
+  // MARCAR COMO EM ANDAMENTO (corresponde a start na rota)
   // ============================================================
-  async startProgress(req: Request, res: Response): Promise<Response> {
+  async startProgress(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
-      const userId = (req as any).userId;
+      const userId = req.user?.id;
 
       if (!id) {
         return res.status(400).json({ success: false, message: 'ID não informado' });
@@ -151,10 +152,10 @@ export class AuditActionPlanController {
   // ============================================================
   // MARCAR COMO CONCLUÍDO
   // ============================================================
-  async complete(req: Request, res: Response): Promise<Response> {
+  async complete(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
-      const userId = (req as any).userId;
+      const userId = req.user?.id;
       const { evidenceIds } = req.body;
 
       if (!id) {
@@ -180,10 +181,10 @@ export class AuditActionPlanController {
   // ============================================================
   // VALIDAR PLANO DE AÇÃO
   // ============================================================
-  async validate(req: Request, res: Response): Promise<Response> {
+  async validate(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
-      const userId = (req as any).userId;
+      const userId = req.user?.id;
       const { status, comment } = req.body;
 
       if (!id) {

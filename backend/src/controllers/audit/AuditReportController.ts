@@ -1,6 +1,7 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import { AuditReportService } from '../../models/audit/services/AuditReportService';
 import { CreateAuditReportDTO, UpdateAuditReportDTO } from '../../models/audit/types/audit.types';
+import { AuthenticatedRequest } from '../../types';
 
 const auditReportService = new AuditReportService();
 
@@ -8,9 +9,9 @@ export class AuditReportController {
   // ============================================================
   // CRIAR RELATÓRIO
   // ============================================================
-  async create(req: Request, res: Response): Promise<Response> {
+  async create(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
-      const userId = (req as any).userId;
+      const userId = req.user?.id;
 
       if (!userId) {
         return res.status(401).json({ success: false, message: 'Usuário não autenticado' });
@@ -33,7 +34,7 @@ export class AuditReportController {
   // ============================================================
   // LISTAR RELATÓRIOS
   // ============================================================
-  async findAll(req: Request, res: Response): Promise<Response> {
+  async findAll(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { auditPlanId, status, createdBy } = req.query;
 
@@ -54,7 +55,7 @@ export class AuditReportController {
   // ============================================================
   // BUSCAR RELATÓRIO POR ID
   // ============================================================
-  async findById(req: Request, res: Response): Promise<Response> {
+  async findById(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
 
@@ -77,7 +78,7 @@ export class AuditReportController {
   // ============================================================
   // BUSCAR RELATÓRIO POR PLANO
   // ============================================================
-  async findByPlanId(req: Request, res: Response): Promise<Response> {
+  async findByPlanId(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { auditPlanId } = req.params;
 
@@ -96,10 +97,10 @@ export class AuditReportController {
   // ============================================================
   // ATUALIZAR RELATÓRIO
   // ============================================================
-  async update(req: Request, res: Response): Promise<Response> {
+  async update(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
-      const userId = (req as any).userId;
+      const userId = req.user?.id;
       const data: UpdateAuditReportDTO = req.body;
 
       if (!id) {
@@ -123,12 +124,12 @@ export class AuditReportController {
   }
 
   // ============================================================
-  // ENVIAR PARA REVISÃO
+  // ENVIAR PARA REVISÃO (corresponde a submit na rota)
   // ============================================================
-  async submitForReview(req: Request, res: Response): Promise<Response> {
+  async submitForReview(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
-      const userId = (req as any).userId;
+      const userId = req.user?.id;
 
       if (!id) {
         return res.status(400).json({ success: false, message: 'ID não informado' });
@@ -153,10 +154,10 @@ export class AuditReportController {
   // ============================================================
   // APROVAR RELATÓRIO
   // ============================================================
-  async approve(req: Request, res: Response): Promise<Response> {
+  async approve(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
-      const userId = (req as any).userId;
+      const userId = req.user?.id;
 
       if (!id) {
         return res.status(400).json({ success: false, message: 'ID não informado' });
@@ -181,10 +182,10 @@ export class AuditReportController {
   // ============================================================
   // REJEITAR RELATÓRIO
   // ============================================================
-  async reject(req: Request, res: Response): Promise<Response> {
+  async reject(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
-      const userId = (req as any).userId;
+      const userId = req.user?.id;
       const { reason } = req.body;
 
       if (!id) {
@@ -212,9 +213,9 @@ export class AuditReportController {
   }
 
   // ============================================================
-  // GERAR RELATÓRIO AUTOMÁTICO
+  // GERAR RELATÓRIO AUTOMÁTICO (corresponde a generate na rota)
   // ============================================================
-  async generateAutoReport(req: Request, res: Response): Promise<Response> {
+  async generateAutoReport(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { auditPlanId } = req.params;
 

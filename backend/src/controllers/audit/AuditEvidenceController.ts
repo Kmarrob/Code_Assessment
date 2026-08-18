@@ -1,5 +1,6 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import { AuditEvidenceService } from '../../models/audit/services/AuditEvidenceService';
+import { AuthenticatedRequest } from '../../types';
 
 const auditEvidenceService = new AuditEvidenceService();
 
@@ -7,9 +8,9 @@ export class AuditEvidenceController {
   // ============================================================
   // UPLOAD DE EVIDÊNCIA
   // ============================================================
-  async upload(req: Request, res: Response): Promise<Response> {
+  async upload(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
-      const userId = (req as any).userId;
+      const userId = req.user?.id;
 
       if (!userId) {
         return res.status(401).json({ success: false, message: 'Usuário não autenticado' });
@@ -49,7 +50,7 @@ export class AuditEvidenceController {
   // ============================================================
   // LISTAR EVIDÊNCIAS POR PLANO
   // ============================================================
-  async findByPlanId(req: Request, res: Response): Promise<Response> {
+  async findByPlanId(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { auditPlanId } = req.params;
 
@@ -68,7 +69,7 @@ export class AuditEvidenceController {
   // ============================================================
   // LISTAR EVIDÊNCIAS POR NC
   // ============================================================
-  async findByFindingId(req: Request, res: Response): Promise<Response> {
+  async findByFindingId(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { findingId } = req.params;
 
@@ -87,7 +88,7 @@ export class AuditEvidenceController {
   // ============================================================
   // BUSCAR EVIDÊNCIA POR ID
   // ============================================================
-  async findById(req: Request, res: Response): Promise<Response> {
+  async findById(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
 
@@ -110,10 +111,10 @@ export class AuditEvidenceController {
   // ============================================================
   // EXCLUIR EVIDÊNCIA
   // ============================================================
-  async delete(req: Request, res: Response): Promise<Response> {
+  async delete(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
-      const userId = (req as any).userId;
+      const userId = req.user?.id;
 
       if (!id) {
         return res.status(400).json({ success: false, message: 'ID não informado' });

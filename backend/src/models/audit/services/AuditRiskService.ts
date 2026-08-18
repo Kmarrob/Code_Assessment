@@ -1,223 +1,191 @@
-import { AuditDocumentReview, IAuditDocumentReview, IDocumentReviewItem } from '../models/AuditDocumentReview';
+import { AuditRisk, IAuditRisk } from '../models/AuditRisk';
 import { AuditPlan } from '../models/AuditPlan';
 
-// Cláusulas da ISO 27001:2022 para revisão
-const ISO_27001_CLAUSES = [
-  { clause: '4.1', requirement: 'Compreender a organização e seu contexto' },
-  { clause: '4.2', requirement: 'Compreender as necessidades e expectativas das partes interessadas' },
-  { clause: '4.3', requirement: 'Determinar o escopo do SGSI' },
-  { clause: '4.4', requirement: 'Sistema de gestão de segurança da informação' },
-  { clause: '5.1', requirement: 'Liderança e comprometimento' },
-  { clause: '5.2', requirement: 'Política' },
-  { clause: '5.3', requirement: 'Papéis, responsabilidades e autoridades organizacionais' },
-  { clause: '6.1.1', requirement: 'Geral (Ação para lidar com riscos e oportunidades)' },
-  { clause: '6.1.2', requirement: 'Avaliação de risco de segurança da informação' },
-  { clause: '6.1.3', requirement: 'Tratamento de riscos de segurança da informação' },
-  { clause: '6.2', requirement: 'Objetivos de segurança da informação e planejamento para alcançá-los' },
-  { clause: '6.3', requirement: 'Planejamento de mudanças' },
-  { clause: '7.1', requirement: 'Recursos' },
-  { clause: '7.2', requirement: 'Competência' },
-  { clause: '7.3', requirement: 'Conscientização' },
-  { clause: '7.4', requirement: 'Comunicação' },
-  { clause: '7.5.1', requirement: 'Geral (Informação documentada)' },
-  { clause: '7.5.2', requirement: 'Criando e atualizando (Informação documentada)' },
-  { clause: '7.5.3', requirement: 'Controle de informações documentadas' },
-  { clause: '8.1', requirement: 'Planejamento e controle operacional' },
-  { clause: '8.2', requirement: 'Avaliação de riscos de segurança da informação' },
-  { clause: '8.3', requirement: 'Tratamento de riscos de segurança da informação' },
-  { clause: '9.1', requirement: 'Monitoramento, medição e análise e avaliação' },
-  { clause: '9.2.1', requirement: 'Geral (Auditorias internas)' },
-  { clause: '9.2.2', requirement: 'Programa de auditoria interna' },
-  { clause: '9.3.1', requirement: 'Geral (Análise crítica pela direção)' },
-  { clause: '9.3.2', requirement: 'Entradas da análise crítica da direção' },
-  { clause: '9.3.3', requirement: 'Resultados da revisão da direção' },
-  { clause: '10.1', requirement: 'Melhoria contínua' },
-  { clause: '10.2', requirement: 'Não conformidade e ação corretiva' },
-];
-
-export class AuditDocumentReviewService {
+export class AuditRiskService {
   /**
-   * Criar nova revisão de documentação
+   * Criar novo risco
    */
-  async create(data: Partial<IAuditDocumentReview>): Promise<IAuditDocumentReview> {
-    // Se não houver documentos, inicializar com todas as cláusulas
-    if (!data.documents || data.documents.length === 0) {
-      data.documents = ISO_27001_CLAUSES.map(clause => ({
-        clause: clause.clause,
-        requirement: clause.requirement,
-        status: '--',
-        observations: '',
-        reviewer: data.createdBy || '',
-        reviewDate: new Date(),
-      }));
+  async create(data: Partial<IAuditRisk>): Promise<IAuditRisk> {
+    // Gerar ID sequencial
+    const count = await AuditRisk.countDocuments({ companyId: data.companyId });
+    const riskId = `R-${String(count + 1).padStart(3, '0')}`;
+    
+    const risk = new AuditRisk({
+      ...data,
+      id: riskId,
+    });
+    
+    return await risk.save();
+  }
+
+  /**
+   * Buscar risco por ID
+   */
+  async findById(id: string): Promise<IAuditRisk | null> {
+    return await AuditRisk.findById(id).lean();
+  }
+
+  /**
+   * Buscar risco por ID (identificador único)
+   */
+  async findByRiskId(companyId: string, riskId: string): Promise<IAuditRisk | null> {
+    return await AuditRisk.findOne({ companyId, id: riskId }).lean();
+  }
+
+  /**
+   * Listar riscos de uma empresa
+   */
+  async findAllByCompany(
+    companyId: string,
+    options?: {
+      status?: string;
+      riskLevel?: string;
+      auditPlanId?: string;
+      limit?: number;
+      skip?: number;
+    }
+  ): Promise<IAuditRisk[]> {
+    const query: any = { companyId };
+    
+    if (options?.status) {
+      query.status = options.status;
+    }
+    if (options?.riskLevel) {
+      query.riskLevel = options.riskLevel;
+    }
+    if (options?.auditPlanId) {
+      query.auditPlanId = options.auditPlanId;
     }
     
-    const review = new AuditDocumentReview(data);
-    review.updateSummary();
-    return await review.save();
-  }
-
-  /**
-   * Buscar revisão por ID
-   */
-  async findById(id: string): Promise<IAuditDocumentReview | null> {
-    return await AuditDocumentReview.findById(id).lean();
-  }
-
-  /**
-   * Buscar revisão por plano de auditoria
-   */
-  async findByAuditPlanId(auditPlanId: string): Promise<IAuditDocumentReview | null> {
-    return await AuditDocumentReview.findOne({ auditPlanId }).lean();
-  }
-
-  /**
-   * Buscar revisões por empresa
-   */
-  async findAllByCompany(companyId: string): Promise<IAuditDocumentReview[]> {
-    return await AuditDocumentReview.find({ companyId })
-      .sort({ createdAt: -1 })
-      .lean();
-  }
-
-  /**
-   * Atualizar revisão
-   */
-  async update(id: string, data: Partial<IAuditDocumentReview>): Promise<IAuditDocumentReview | null> {
-    const review = await AuditDocumentReview.findById(id);
-    if (!review) return null;
+    let findQuery = AuditRisk.find(query).sort({ createdAt: -1 });
     
-    Object.assign(review, data);
-    review.updateSummary();
-    review.updatedAt = new Date();
-    await review.save();
+    if (options?.skip) {
+      findQuery = findQuery.skip(options.skip);
+    }
+    if (options?.limit) {
+      findQuery = findQuery.limit(options.limit);
+    }
     
-    return review.toObject();
+    return await findQuery.lean();
   }
 
   /**
-   * Atualizar um documento específico da revisão
+   * Atualizar risco
    */
-  async updateDocument(
+  async update(id: string, data: Partial<IAuditRisk>): Promise<IAuditRisk | null> {
+    const risk = await AuditRisk.findById(id);
+    if (!risk) return null;
+    
+    Object.assign(risk, data);
+    risk.updatedBy = data.updatedBy || risk.updatedBy;
+    risk.updatedAt = new Date();
+    await risk.save();
+    
+    return risk.toObject();
+  }
+
+  /**
+   * Atualizar avaliação do risco (probabilidade e impacto)
+   */
+  async updateAssessment(
     id: string,
-    clause: string,
-    data: Partial<IDocumentReviewItem>
-  ): Promise<IAuditDocumentReview | null> {
-    const review = await AuditDocumentReview.findById(id);
-    if (!review) return null;
-    
-    const docIndex = review.documents.findIndex(d => d.clause === clause);
-    if (docIndex === -1) {
-      throw new Error(`Cláusula ${clause} não encontrada`);
+    data: {
+      probability: 1 | 2 | 3 | 4 | 5;
+      impact: 1 | 2 | 3 | 4 | 5;
+      updatedBy: string;
     }
+  ): Promise<IAuditRisk | null> {
+    const risk = await AuditRisk.findById(id);
+    if (!risk) return null;
     
-    Object.assign(review.documents[docIndex], data);
-    review.markModified('documents');
-    review.updateSummary();
-    review.updatedAt = new Date();
-    await review.save();
+    risk.probability = data.probability;
+    risk.impact = data.impact;
+    risk.updatedBy = data.updatedBy;
+    risk.updatedAt = new Date();
+    await risk.save();
     
-    return review.toObject();
+    return risk.toObject();
   }
 
   /**
-   * Atualizar status de um documento
+   * Tratar risco (aplicar tratamento)
    */
-  async updateDocumentStatus(
+  async treatRisk(
     id: string,
-    clause: string,
-    status: 'OK' | 'NC_A' | 'NC_B' | 'PI' | 'GP' | 'CM' | '--',
-    observations?: string
-  ): Promise<IAuditDocumentReview | null> {
-    const review = await AuditDocumentReview.findById(id);
-    if (!review) return null;
-    
-    const docIndex = review.documents.findIndex(d => d.clause === clause);
-    if (docIndex === -1) {
-      throw new Error(`Cláusula ${clause} não encontrada`);
+    data: {
+      treatment: 'accept' | 'mitigate' | 'transfer' | 'avoid';
+      treatmentPlan: string;
+      probabilityAfter: 1 | 2 | 3 | 4 | 5;
+      impactAfter: 1 | 2 | 3 | 4 | 5;
+      treatmentDeadline?: Date;
+      treatedBy: string;
     }
+  ): Promise<IAuditRisk | null> {
+    const risk = await AuditRisk.findById(id);
+    if (!risk) return null;
     
-    review.documents[docIndex].status = status;
-    if (observations !== undefined) {
-      review.documents[docIndex].observations = observations;
-    }
+    risk.treatment = data.treatment;
+    risk.treatmentPlan = data.treatmentPlan;
+    risk.probabilityAfter = data.probabilityAfter;
+    risk.impactAfter = data.impactAfter;
+    risk.status = 'treated';
+    risk.treatmentDeadline = data.treatmentDeadline;
+    risk.treatedAt = new Date();
+    risk.treatedBy = data.treatedBy;
+    risk.updatedBy = data.treatedBy;
+    risk.updatedAt = new Date();
+    await risk.save();
     
-    review.markModified('documents');
-    review.updateSummary();
-    review.updatedAt = new Date();
-    await review.save();
-    
-    return review.toObject();
+    return risk.toObject();
   }
 
   /**
-   * Adicionar documento à revisão
+   * Monitorar risco (após tratamento)
    */
-  async addDocument(
+  async monitorRisk(
     id: string,
-    document: IDocumentReviewItem
-  ): Promise<IAuditDocumentReview | null> {
-    const review = await AuditDocumentReview.findById(id);
-    if (!review) return null;
-    
-    // Verificar se a cláusula já existe
-    const existing = review.documents.find(d => d.clause === document.clause);
-    if (existing) {
-      throw new Error(`Cláusula ${document.clause} já existe na revisão`);
+    data: {
+      status: 'monitored' | 'closed';
+      updatedBy: string;
     }
+  ): Promise<IAuditRisk | null> {
+    const risk = await AuditRisk.findById(id);
+    if (!risk) return null;
     
-    review.documents.push(document);
-    review.markModified('documents');
-    review.updateSummary();
-    review.updatedAt = new Date();
-    await review.save();
+    risk.status = data.status;
+    risk.updatedBy = data.updatedBy;
+    risk.updatedAt = new Date();
+    await risk.save();
     
-    return review.toObject();
+    return risk.toObject();
   }
 
   /**
-   * Remover documento da revisão
+   * Reabrir risco
    */
-  async removeDocument(id: string, clause: string): Promise<IAuditDocumentReview | null> {
-    const review = await AuditDocumentReview.findById(id);
-    if (!review) return null;
-    
-    review.documents = review.documents.filter(d => d.clause !== clause);
-    review.markModified('documents');
-    review.updateSummary();
-    review.updatedAt = new Date();
-    await review.save();
-    
-    return review.toObject();
-  }
-
-  /**
-   * Finalizar revisão
-   */
-  async completeReview(
+  async reopenRisk(
     id: string,
-    reviewedBy: string,
-    observations?: string
-  ): Promise<IAuditDocumentReview | null> {
-    const review = await AuditDocumentReview.findById(id);
-    if (!review) return null;
-    
-    review.reviewedBy = reviewedBy;
-    review.reviewedAt = new Date();
-    if (observations) {
-      review.observations = observations;
+    data: {
+      reason: string;
+      updatedBy: string;
     }
-    review.updatedAt = new Date();
-    await review.save();
+  ): Promise<IAuditRisk | null> {
+    const risk = await AuditRisk.findById(id);
+    if (!risk) return null;
     
-    return review.toObject();
+    risk.status = 'identified';
+    risk.updatedBy = data.updatedBy;
+    risk.updatedAt = new Date();
+    await risk.save();
+    
+    return risk.toObject();
   }
 
   /**
-   * Excluir revisão (soft delete)
+   * Excluir risco (soft delete)
    */
-  async delete(id: string): Promise<IAuditDocumentReview | null> {
-    return await AuditDocumentReview.findByIdAndUpdate(
+  async delete(id: string): Promise<IAuditRisk | null> {
+    return await AuditRisk.findByIdAndUpdate(
       id,
       {
         deletedAt: new Date(),
@@ -228,54 +196,89 @@ export class AuditDocumentReviewService {
   }
 
   /**
-   * Obter resumo da revisão
+   * Obter estatísticas de riscos
    */
-  async getSummary(id: string): Promise<any> {
-    const review = await AuditDocumentReview.findById(id);
-    if (!review) return null;
+  async getStatistics(companyId: string): Promise<any> {
+    const total = await AuditRisk.countDocuments({ companyId });
+    const byStatus = await AuditRisk.aggregate([
+      { $match: { companyId, deletedAt: null } },
+      { $group: { _id: '$status', count: { $sum: 1 } } },
+    ]);
     
-    const statusLabels = {
-      OK: 'Conforme',
-      NC_A: 'Não Conformidade Maior',
-      NC_B: 'Não Conformidade Menor',
-      PI: 'Potencial de Melhoria',
-      GP: 'Boas Práticas',
-      CM: 'Comentário',
-      '--': 'Não Avaliado',
-    };
+    const byRiskLevel = await AuditRisk.aggregate([
+      { $match: { companyId, deletedAt: null } },
+      { $group: { _id: '$riskLevel', count: { $sum: 1 } } },
+    ]);
+    
+    const byTreatment = await AuditRisk.aggregate([
+      { $match: { companyId, deletedAt: null } },
+      { $group: { _id: '$treatment', count: { $sum: 1 } } },
+    ]);
+    
+    const byResidualRisk = await AuditRisk.aggregate([
+      { $match: { companyId, deletedAt: null, status: 'treated' } },
+      { $group: { _id: '$residualRisk', count: { $sum: 1 } } },
+    ]);
     
     return {
-      summary: review.summary,
-      documents: review.documents.map(doc => ({
-        ...doc,
-        statusLabel: statusLabels[doc.status as keyof typeof statusLabels] || doc.status,
-      })),
-      totalByStatus: Object.keys(statusLabels).reduce((acc, key) => {
-        acc[key] = review.documents.filter(d => d.status === key).length;
+      total,
+      byStatus: byStatus.reduce((acc, item) => {
+        acc[item._id] = item.count;
         return acc;
-      }, {} as Record<string, number>),
+      }, {}),
+      byRiskLevel: byRiskLevel.reduce((acc, item) => {
+        acc[item._id] = item.count;
+        return acc;
+      }, {}),
+      byTreatment: byTreatment.reduce((acc, item) => {
+        acc[item._id] = item.count;
+        return acc;
+      }, {}),
+      byResidualRisk: byResidualRisk.reduce((acc, item) => {
+        acc[item._id] = item.count;
+        return acc;
+      }, {}),
     };
   }
 
   /**
-   * Obter não conformidades da revisão
+   * Obter riscos críticos (high e critical)
    */
-  async getNonconformities(id: string): Promise<IDocumentReviewItem[]> {
-    const review = await AuditDocumentReview.findById(id);
-    if (!review) return [];
-    
-    return review.documents.filter(d => d.status === 'NC_A' || d.status === 'NC_B');
+  async getCriticalRisks(companyId: string): Promise<IAuditRisk[]> {
+    return await AuditRisk.find({
+      companyId,
+      riskLevel: { $in: ['high', 'critical'] },
+      status: { $ne: 'closed' },
+    }).sort({ riskLevel: -1 }).lean();
   }
 
   /**
-   * Obter recomendações da revisão
+   * Exportar riscos para formato de planilha
    */
-  async getRecommendations(id: string): Promise<IDocumentReviewItem[]> {
-    const review = await AuditDocumentReview.findById(id);
-    if (!review) return [];
+  async exportToSpreadsheet(companyId: string): Promise<any> {
+    const risks = await AuditRisk.find({ companyId }).sort({ id: 1 }).lean();
     
-    return review.documents.filter(d => d.status === 'PI' || d.status === 'OM');
+    return risks.map(risk => ({
+      'ID': risk.id,
+      'Descrição do Risco': risk.description,
+      'Evento ou Ativo': risk.eventOrAsset,
+      'Proprietário do Risco': risk.owner,
+      'Ameaça': risk.threat,
+      'Vulnerabilidade': risk.vulnerability,
+      'Controle Existente': risk.existingControl,
+      'Probabilidade': risk.probability,
+      'Impacto': risk.impact,
+      'Nível do Risco': risk.riskLevel,
+      'Classificação do Risco': risk.riskClassification,
+      'Tratamento': risk.treatment,
+      'Plano de Tratamento': risk.treatmentPlan,
+      'Probabilidade Após': risk.probabilityAfter,
+      'Impacto Após': risk.impactAfter,
+      'Risco Residual': risk.residualRisk,
+      'Status': risk.status,
+      'Prazo': risk.treatmentDeadline?.toLocaleDateString() || '',
+    }));
   }
 }
 
-export const auditDocumentReviewService = new AuditDocumentReviewService();
+export const auditRiskService = new AuditRiskService();

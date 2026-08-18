@@ -1,12 +1,13 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import { auditRiskService } from '../../models/audit/services/AuditRiskService';
+import { AuthenticatedRequest } from '../../types';
 
 export class AuditRiskController {
   /**
    * Criar novo risco
    * POST /api/internal-audit/risks
    */
-  async create(req: Request, res: Response): Promise<Response> {
+  async create(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const {
         companyId,
@@ -31,6 +32,46 @@ export class AuditRiskController {
 
       if (!userId) {
         return res.status(401).json({ error: 'Usuário não autenticado' });
+      }
+
+      if (!companyId) {
+        return res.status(400).json({ error: 'companyId é obrigatório' });
+      }
+
+      if (!description) {
+        return res.status(400).json({ error: 'description é obrigatório' });
+      }
+
+      if (!eventOrAsset) {
+        return res.status(400).json({ error: 'eventOrAsset é obrigatório' });
+      }
+
+      if (!owner) {
+        return res.status(400).json({ error: 'owner é obrigatório' });
+      }
+
+      if (!threat) {
+        return res.status(400).json({ error: 'threat é obrigatório' });
+      }
+
+      if (!vulnerability) {
+        return res.status(400).json({ error: 'vulnerability é obrigatório' });
+      }
+
+      if (!existingControl) {
+        return res.status(400).json({ error: 'existingControl é obrigatório' });
+      }
+
+      if (!probability) {
+        return res.status(400).json({ error: 'probability é obrigatório' });
+      }
+
+      if (!impact) {
+        return res.status(400).json({ error: 'impact é obrigatório' });
+      }
+
+      if (!riskClassification) {
+        return res.status(400).json({ error: 'riskClassification é obrigatório' });
       }
 
       const risk = await auditRiskService.create({
@@ -65,9 +106,14 @@ export class AuditRiskController {
    * Buscar risco por ID
    * GET /api/internal-audit/risks/:id
    */
-  async findById(req: Request, res: Response): Promise<Response> {
+  async findById(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
+
+      if (!id) {
+        return res.status(400).json({ error: 'ID é obrigatório' });
+      }
+
       const risk = await auditRiskService.findById(id);
 
       if (!risk) {
@@ -84,9 +130,18 @@ export class AuditRiskController {
    * Buscar risco por ID (identificador único)
    * GET /api/internal-audit/risks/company/:companyId/risk-id/:riskId
    */
-  async findByRiskId(req: Request, res: Response): Promise<Response> {
+  async findByRiskId(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { companyId, riskId } = req.params;
+
+      if (!companyId) {
+        return res.status(400).json({ error: 'companyId é obrigatório' });
+      }
+
+      if (!riskId) {
+        return res.status(400).json({ error: 'riskId é obrigatório' });
+      }
+
       const risk = await auditRiskService.findByRiskId(companyId, riskId);
 
       if (!risk) {
@@ -103,9 +158,14 @@ export class AuditRiskController {
    * Listar riscos de uma empresa
    * GET /api/internal-audit/risks/company/:companyId
    */
-  async findAllByCompany(req: Request, res: Response): Promise<Response> {
+  async findAllByCompany(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { companyId } = req.params;
+
+      if (!companyId) {
+        return res.status(400).json({ error: 'companyId é obrigatório' });
+      }
+
       const { status, riskLevel, auditPlanId, limit, skip } = req.query;
 
       const risks = await auditRiskService.findAllByCompany(companyId, {
@@ -126,13 +186,17 @@ export class AuditRiskController {
    * Atualizar risco
    * PUT /api/internal-audit/risks/:id
    */
-  async update(req: Request, res: Response): Promise<Response> {
+  async update(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
       const userId = req.user?.id;
 
       if (!userId) {
         return res.status(401).json({ error: 'Usuário não autenticado' });
+      }
+
+      if (!id) {
+        return res.status(400).json({ error: 'ID é obrigatório' });
       }
 
       const data = req.body;
@@ -162,7 +226,7 @@ export class AuditRiskController {
    * Atualizar avaliação do risco
    * PUT /api/internal-audit/risks/:id/assessment
    */
-  async updateAssessment(req: Request, res: Response): Promise<Response> {
+  async updateAssessment(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
       const { probability, impact } = req.body;
@@ -170,6 +234,18 @@ export class AuditRiskController {
 
       if (!userId) {
         return res.status(401).json({ error: 'Usuário não autenticado' });
+      }
+
+      if (!id) {
+        return res.status(400).json({ error: 'ID é obrigatório' });
+      }
+
+      if (!probability) {
+        return res.status(400).json({ error: 'probability é obrigatório' });
+      }
+
+      if (!impact) {
+        return res.status(400).json({ error: 'impact é obrigatório' });
       }
 
       const risk = await auditRiskService.updateAssessment(id, {
@@ -192,7 +268,7 @@ export class AuditRiskController {
    * Tratar risco
    * POST /api/internal-audit/risks/:id/treat
    */
-  async treatRisk(req: Request, res: Response): Promise<Response> {
+  async treatRisk(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
       const {
@@ -206,6 +282,26 @@ export class AuditRiskController {
 
       if (!userId) {
         return res.status(401).json({ error: 'Usuário não autenticado' });
+      }
+
+      if (!id) {
+        return res.status(400).json({ error: 'ID é obrigatório' });
+      }
+
+      if (!treatment) {
+        return res.status(400).json({ error: 'treatment é obrigatório' });
+      }
+
+      if (!treatmentPlan) {
+        return res.status(400).json({ error: 'treatmentPlan é obrigatório' });
+      }
+
+      if (!probabilityAfter) {
+        return res.status(400).json({ error: 'probabilityAfter é obrigatório' });
+      }
+
+      if (!impactAfter) {
+        return res.status(400).json({ error: 'impactAfter é obrigatório' });
       }
 
       const risk = await auditRiskService.treatRisk(id, {
@@ -231,7 +327,7 @@ export class AuditRiskController {
    * Monitorar risco
    * PUT /api/internal-audit/risks/:id/monitor
    */
-  async monitorRisk(req: Request, res: Response): Promise<Response> {
+  async monitorRisk(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
       const { status } = req.body;
@@ -239,6 +335,14 @@ export class AuditRiskController {
 
       if (!userId) {
         return res.status(401).json({ error: 'Usuário não autenticado' });
+      }
+
+      if (!id) {
+        return res.status(400).json({ error: 'ID é obrigatório' });
+      }
+
+      if (!status) {
+        return res.status(400).json({ error: 'status é obrigatório' });
       }
 
       if (status !== 'monitored' && status !== 'closed') {
@@ -264,7 +368,7 @@ export class AuditRiskController {
    * Reabrir risco
    * POST /api/internal-audit/risks/:id/reopen
    */
-  async reopenRisk(req: Request, res: Response): Promise<Response> {
+  async reopenRisk(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
       const { reason } = req.body;
@@ -272,6 +376,14 @@ export class AuditRiskController {
 
       if (!userId) {
         return res.status(401).json({ error: 'Usuário não autenticado' });
+      }
+
+      if (!id) {
+        return res.status(400).json({ error: 'ID é obrigatório' });
+      }
+
+      if (!reason) {
+        return res.status(400).json({ error: 'reason é obrigatório' });
       }
 
       const risk = await auditRiskService.reopenRisk(id, {
@@ -293,9 +405,13 @@ export class AuditRiskController {
    * Excluir risco
    * DELETE /api/internal-audit/risks/:id
    */
-  async delete(req: Request, res: Response): Promise<Response> {
+  async delete(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
+
+      if (!id) {
+        return res.status(400).json({ error: 'ID é obrigatório' });
+      }
 
       const risk = await auditRiskService.delete(id);
 
@@ -313,9 +429,14 @@ export class AuditRiskController {
    * Obter estatísticas de riscos
    * GET /api/internal-audit/risks/company/:companyId/stats
    */
-  async getStatistics(req: Request, res: Response): Promise<Response> {
+  async getStatistics(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { companyId } = req.params;
+
+      if (!companyId) {
+        return res.status(400).json({ error: 'companyId é obrigatório' });
+      }
+
       const stats = await auditRiskService.getStatistics(companyId);
 
       return res.json(stats);
@@ -328,9 +449,14 @@ export class AuditRiskController {
    * Obter riscos críticos
    * GET /api/internal-audit/risks/company/:companyId/critical
    */
-  async getCriticalRisks(req: Request, res: Response): Promise<Response> {
+  async getCriticalRisks(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { companyId } = req.params;
+
+      if (!companyId) {
+        return res.status(400).json({ error: 'companyId é obrigatório' });
+      }
+
       const risks = await auditRiskService.getCriticalRisks(companyId);
 
       return res.json(risks);
@@ -343,9 +469,14 @@ export class AuditRiskController {
    * Exportar riscos para formato de planilha
    * GET /api/internal-audit/risks/company/:companyId/export
    */
-  async exportToSpreadsheet(req: Request, res: Response): Promise<Response> {
+  async exportToSpreadsheet(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { companyId } = req.params;
+
+      if (!companyId) {
+        return res.status(400).json({ error: 'companyId é obrigatório' });
+      }
+
       const data = await auditRiskService.exportToSpreadsheet(companyId);
 
       return res.json(data);
