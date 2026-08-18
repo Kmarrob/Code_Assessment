@@ -27,7 +27,10 @@ export class AuditSoAService {
       soa.controls = controls;
     }
     
-    soa.updateStatistics();
+    // ✅ CORREÇÃO: Verificar se o método existe antes de chamar
+    if (typeof soa.updateStatistics === 'function') {
+      soa.updateStatistics();
+    }
     return await soa.save();
   }
 
@@ -66,7 +69,10 @@ export class AuditSoAService {
     if (!soa) return null;
     
     Object.assign(soa, data);
-    soa.updateStatistics();
+    // ✅ CORREÇÃO: Verificar se o método existe antes de chamar
+    if (typeof soa.updateStatistics === 'function') {
+      soa.updateStatistics();
+    }
     soa.updatedAt = new Date();
     await soa.save();
     
@@ -91,7 +97,10 @@ export class AuditSoAService {
     
     Object.assign(soa.controls[controlIndex], data);
     soa.markModified('controls');
-    soa.updateStatistics();
+    // ✅ CORREÇÃO: Verificar se o método existe antes de chamar
+    if (typeof soa.updateStatistics === 'function') {
+      soa.updateStatistics();
+    }
     soa.updatedAt = new Date();
     await soa.save();
     
@@ -150,13 +159,13 @@ export class AuditSoAService {
     if (!soa) return null;
     
     return {
-      total: soa.statistics.total,
-      applicable: soa.statistics.applicable,
-      notApplicable: soa.statistics.notApplicable,
-      implemented: soa.statistics.implemented,
-      notImplemented: soa.statistics.notImplemented,
-      byCategory: soa.statistics.byCategory,
-      implementationRate: soa.statistics.applicable > 0 
+      total: soa.statistics?.total || 0,
+      applicable: soa.statistics?.applicable || 0,
+      notApplicable: soa.statistics?.notApplicable || 0,
+      implemented: soa.statistics?.implemented || 0,
+      notImplemented: soa.statistics?.notImplemented || 0,
+      byCategory: soa.statistics?.byCategory || { organizational: 0, people: 0, physical: 0, technological: 0 },
+      implementationRate: soa.statistics?.applicable > 0 
         ? (soa.statistics.implemented / soa.statistics.applicable) * 100 
         : 0,
     };
@@ -294,6 +303,9 @@ export class AuditSoAService {
    */
   private getControlObjective(clause: string): string {
     const objectives: Record<string, string> = {
+      // ============================================================
+      // 5. CONTROLES ORGANIZACIONAIS
+      // ============================================================
       '5.1': 'A política de segurança da informação e as políticas específicas de tópicos devem ser definidas, aprovadas pela administração, publicadas, comunicadas e reconhecidas pelo pessoal relevante e pelas partes interessadas relevantes e revisadas em intervalos planejados e se ocorrerem mudanças significativas.',
       '5.2': 'As funções e responsabilidades de segurança da informação devem ser definidas e alocadas de acordo com as necessidades da organização.',
       '5.3': 'Deveres conflitantes e áreas de responsabilidade conflitantes devem ser segregados.',
@@ -331,6 +343,74 @@ export class AuditSoAService {
       '5.35': 'A abordagem da organização para gerenciar a segurança da informação e sua implementação, incluindo pessoas, processos e tecnologias, deve ser revisada de forma independente em intervalos planejados ou quando ocorrerem mudanças significativas.',
       '5.36': 'A conformidade com a política de segurança da informação da organização, políticas específicas de tópicos, regras e padrões deve ser revisada regularmente.',
       '5.37': 'Os procedimentos operacionais para instalações de processamento de informações devem ser documentados e disponibilizados ao pessoal que deles necessita.',
+
+      // ============================================================
+      // 6. CONTROLES DE PESSOAS
+      // ============================================================
+      '6.1': 'As verificações de antecedentes de todos os candidatos a se tornarem funcionários devem ser realizadas antes de ingressar na organização e de forma contínua, levando em consideração as leis, regulamentos e ética aplicáveis, e ser proporcionais aos requisitos do negócio, à classificação das informações a serem acessadas e aos riscos percebidos.',
+      '6.2': 'Os acordos contratuais de trabalho devem indicar as responsabilidades do pessoal e da organização pela segurança da informação.',
+      '6.3': 'O pessoal da organização e as partes interessadas relevantes devem receber conscientização, educação e treinamento de segurança da informação apropriados e atualizações regulares da política de segurança da informação da organização, políticas e procedimentos específicos de tópicos, conforme relevante para sua função de trabalho.',
+      '6.4': 'Um processo disciplinar deve ser formalizado e comunicado para tomar medidas contra o pessoal e outras partes interessadas relevantes que cometeram uma violação da política de segurança da informação.',
+      '6.5': 'As responsabilidades e deveres de segurança da informação que permanecem válidos após a rescisão ou mudança de emprego devem ser definidas, aplicadas e comunicadas ao pessoal relevante e outras partes interessadas.',
+      '6.6': 'Convém que os acordos de confidencialidade ou não divulgação que reflitam as necessidades da organização para a proteção de informações sejam identificados, documentados, revisados regularmente e assinados pelo pessoal e outras partes interessadas relevantes.',
+      '6.7': 'As medidas de segurança devem ser implementadas quando o pessoal estiver trabalhando remotamente para proteger as informações acessadas, processadas ou armazenadas fora das instalações da organização.',
+      '6.8': 'Convém que a organização forneça um mecanismo para o pessoal relatar eventos de segurança da informação observados ou suspeitos por meio de canais apropriados em tempo hábil.',
+
+      // ============================================================
+      // 7. CONTROLES FÍSICOS
+      // ============================================================
+      '7.1': 'Os perímetros de segurança devem ser definidos e usados para proteger as áreas que contêm informações e outros ativos associados.',
+      '7.2': 'As áreas seguras devem ser protegidas por controles de entrada e pontos de acesso apropriados.',
+      '7.3': 'A segurança física para escritórios, salas e instalações deve ser projetada e implementada.',
+      '7.4': 'As instalações devem ser continuamente monitoradas para acesso físico não autorizado.',
+      '7.5': 'A proteção contra ameaças físicas e ambientais, como desastres naturais e outras ameaças físicas intencionais ou não intencionais à infraestrutura, deve ser projetada e implementada.',
+      '7.6': 'Medidas de segurança para trabalhar em áreas seguras devem ser projetadas e implementadas.',
+      '7.7': 'Regras claras de mesa para papéis e mídia de armazenamento removível e regras de tela clara para instalações de processamento de informações devem ser definidas e aplicadas de forma adequada.',
+      '7.8': 'Os equipamentos devem estar localizados de forma segura e protegida.',
+      '7.9': 'Os ativos externos devem ser protegidos.',
+      '7.10': 'A mídia de armazenamento deve ser gerenciada ao longo de seu ciclo de vida de aquisição, uso, transporte e descarte de acordo com o esquema de classificação da organização e os requisitos de manuseio.',
+      '7.11': 'As instalações de processamento de informações devem ser protegidas contra falhas de energia e outras interrupções causadas por falhas nas concessionárias de suporte.',
+      '7.12': 'Os cabos que transportam energia, dados ou serviços de informação de suporte devem ser protegidos contra interceptação, interferência ou danos.',
+      '7.13': 'Os equipamentos devem ser mantidos de forma correta para garantir a disponibilidade, integridade e confidencialidade das informações.',
+      '7.14': 'Os itens do equipamento contendo mídia de armazenamento devem ser verificados para garantir que quaisquer dados confidenciais e software licenciado tenham sido removidos ou substituídos com segurança antes do descarte ou reutilização.',
+
+      // ============================================================
+      // 8. CONTROLES TECNOLÓGICOS
+      // ============================================================
+      '8.1': 'As informações armazenadas, processadas ou acessíveis por meio de dispositivos terminais do usuário devem ser protegidas.',
+      '8.2': 'A alocação e uso de direitos de acesso privilegiado devem ser restritos e gerenciados.',
+      '8.3': 'O acesso a informações e outros ativos associados deve ser restrito de acordo com a política específica de tópico estabelecida sobre controle de acesso.',
+      '8.4': 'O acesso de leitura e gravação ao código-fonte, ferramentas de desenvolvimento e bibliotecas de software deve ser gerenciado adequadamente.',
+      '8.5': 'Tecnologias e procedimentos de autenticação segura devem ser implementados com base nas restrições de acesso às informações e na política específica do tópico sobre controle de acesso.',
+      '8.6': 'O uso de recursos deve ser monitorado e ajustado de acordo com os requisitos de capacidade atuais e esperados.',
+      '8.7': 'A proteção contra malware deve ser implementada e suportada pela conscientização apropriada do usuário.',
+      '8.8': 'Informações sobre vulnerabilidades técnicas dos sistemas de informação em uso devem ser obtidas, a exposição da organização a tais vulnerabilidades deve ser avaliada e medidas apropriadas devem ser tomadas.',
+      '8.9': 'Configurações, incluindo configurações de segurança, de hardware, software, serviços e redes devem ser estabelecidas, documentadas, implementadas, monitoradas e revisadas.',
+      '8.10': 'As informações armazenadas em sistemas de informação, dispositivos ou em qualquer outro meio de armazenamento devem ser excluídas quando não forem mais necessárias.',
+      '8.11': 'O mascaramento de dados deve ser usado de acordo com a política específica de tópico da organização sobre controle de acesso e outras políticas específicas de tópico relacionadas e requisitos de negócios, levando em consideração a legislação aplicável.',
+      '8.12': 'As medidas de prevenção de vazamento de dados devem ser aplicadas a sistemas, redes e quaisquer outros dispositivos que processem, armazenem ou transmitam informações confidenciais.',
+      '8.13': 'Cópias de backup de informações, software e sistemas devem ser mantidas e testadas regularmente de acordo com a política de backup específica do tópico acordada.',
+      '8.14': 'As facilidades de processamento de informações devem ser implementadas com redundância suficiente para atender aos requisitos de disponibilidade.',
+      '8.15': 'Logs que registram atividades, exceções, falhas e outros eventos relevantes devem ser produzidos, armazenados, protegidos e analisados.',
+      '8.16': 'Redes, sistemas e aplicativos devem ser monitorados quanto a comportamento anômalo e ações apropriadas devem ser tomadas para avaliar possíveis incidentes de segurança da informação.',
+      '8.17': 'Os relógios dos sistemas de processamento de informações usados pela organização devem ser sincronizados com as fontes de tempo aprovadas.',
+      '8.18': 'O uso de programas utilitários que podem ser capazes de substituir os controles do sistema e do aplicativo deve ser restrito e rigidamente controlado.',
+      '8.19': 'Procedimentos e medidas devem ser implementados para gerenciar com segurança a instalação de software em sistemas operacionais.',
+      '8.20': 'Redes e dispositivos de rede devem ser protegidos, gerenciados e controlados para proteger as informações em sistemas e aplicativos.',
+      '8.21': 'Mecanismos de segurança, níveis de serviço e requisitos de serviço de serviços de rede devem ser identificados, implementados e monitorados.',
+      '8.22': 'Grupos de serviços de informação, usuários e sistemas de informação devem ser segregados nas redes da organização.',
+      '8.23': 'O acesso a sites externos deve ser gerenciado para reduzir a exposição a conteúdo malicioso.',
+      '8.24': 'As regras para o uso efetivo da criptografia, incluindo o gerenciamento de chaves criptográficas, devem ser definidas e implementadas.',
+      '8.25': 'Regras para o desenvolvimento seguro de software e sistemas devem ser estabelecidas e aplicadas.',
+      '8.26': 'Os requisitos de segurança da informação devem ser identificados, especificados e aprovados ao desenvolver ou adquirir aplicativos.',
+      '8.27': 'Princípios para engenharia de sistemas seguros devem ser estabelecidos, documentados, mantidos e aplicados a quaisquer atividades de desenvolvimento de sistemas de informação.',
+      '8.28': 'Princípios de codificação segura devem ser aplicados ao desenvolvimento de software.',
+      '8.29': 'Os processos de teste de segurança devem ser definidos e implementados no ciclo de vida do desenvolvimento.',
+      '8.30': 'A organização deve dirigir, monitorar e revisar as atividades relacionadas ao desenvolvimento de sistemas terceirizados.',
+      '8.31': 'Os ambientes de desenvolvimento, teste e produção devem ser separados e protegidos.',
+      '8.32': 'As mudanças nas instalações de processamento de informações e nos sistemas de informação devem estar sujeitas a procedimentos de gerenciamento de mudanças.',
+      '8.33': 'As informações de teste devem ser adequadamente selecionadas, protegidas e gerenciadas.',
+      '8.34': 'Testes de auditoria e outras atividades de garantia envolvendo avaliação de sistemas operacionais devem ser planejados e acordados entre o testador e a gerência apropriada.',
     };
     return objectives[clause] || 'Controle ISO 27001:2022';
   }

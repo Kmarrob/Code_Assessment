@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authMiddleware } from '../middleware/auth';
+import { authenticate } from '../middleware/auth';
 import { 
   auditPlanController,
   auditChecklistController,
@@ -18,7 +18,7 @@ const router = Router();
 // ============================================================
 // MIDDLEWARE DE AUTENTICAÇÃO
 // ============================================================
-router.use(authMiddleware);
+router.use(authenticate);
 
 // ============================================================
 // ROTAS DE PLANOS DE AUDITORIA

@@ -1,10 +1,59 @@
-export { AuditPlanController, auditPlanController } from './AuditPlanController';
-export { AuditChecklistController, auditChecklistController } from './AuditChecklistController';
-export { AuditFindingController, auditFindingController } from './AuditFindingController';
-export { AuditEvidenceController, auditEvidenceController } from './AuditEvidenceController';
-export { AuditActionPlanController, auditActionPlanController } from './AuditActionPlanController';
-export { AuditReportController, auditReportController } from './AuditReportController';
-export { AuditProgramController, auditProgramController } from './AuditProgramController';
-export { AuditSoAController, auditSoAController } from './AuditSoAController';
-export { AuditRiskController, auditRiskController } from './AuditRiskController';
-export { AuditDocumentReviewController, auditDocumentReviewController } from './AuditDocumentReviewController';
+// ============================================================
+// Importar as classes (para controllers que exportam apenas a classe)
+// ============================================================
+import { AuditPlanController } from './AuditPlanController';
+import { AuditChecklistController } from './AuditChecklistController';
+import { AuditFindingController } from './AuditFindingController';
+import { AuditEvidenceController } from './AuditEvidenceController';
+import { AuditActionPlanController } from './AuditActionPlanController';
+import { AuditReportController } from './AuditReportController';
+
+// ============================================================
+// Importar as instâncias (para controllers que já exportam instância)
+// ============================================================
+import { auditProgramController } from './AuditProgramController';
+import { auditSoAController } from './AuditSoAController';
+import { auditRiskController } from './AuditRiskController';
+import { auditDocumentReviewController } from './AuditDocumentReviewController';
+
+// ============================================================
+// Criar instâncias para os controllers que NÃO exportam
+// ============================================================
+const auditPlanController = new AuditPlanController();
+const auditChecklistController = new AuditChecklistController();
+const auditFindingController = new AuditFindingController();
+const auditEvidenceController = new AuditEvidenceController();
+const auditActionPlanController = new AuditActionPlanController();
+const auditReportController = new AuditReportController();
+
+// ============================================================
+// Exportar as classes (para uso em outros lugares)
+// ============================================================
+export {
+  AuditPlanController,
+  AuditChecklistController,
+  AuditFindingController,
+  AuditEvidenceController,
+  AuditActionPlanController,
+  AuditReportController,
+};
+
+// Exportar os controllers que já exportam instância
+export {
+  auditProgramController,
+  auditSoAController,
+  auditRiskController,
+  auditDocumentReviewController,
+};
+
+// ============================================================
+// Exportar todas as instâncias (para uso nas rotas)
+// ============================================================
+export {
+  auditPlanController,
+  auditChecklistController,
+  auditFindingController,
+  auditEvidenceController,
+  auditActionPlanController,
+  auditReportController,
+};
