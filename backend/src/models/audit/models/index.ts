@@ -4,8 +4,8 @@ export { AuditFinding } from './AuditFinding';
 export { AuditEvidence } from './AuditEvidence';
 export { AuditActionPlan } from './AuditActionPlan';
 export { AuditReport } from './AuditReport';
-export { AuditQuestion } from './AuditQuestion';
-export { AuditProgram } from './AuditProgram';           // 🆕 NOVO
-export { AuditSoA } from './AuditSoA';                   // 🆕 NOVO
-export { AuditRisk } from './AuditRisk';                 // 🆕 NOVO
-export { AuditDocumentReview } from './AuditDocumentReview'; // 🆕 NOVO
+export { AuditQuestion } from './AuditQuestion';  // ✅ JÁ DEVERIA EXISTIR
+export { AuditProgram } from './AuditProgram';
+export { AuditSoA } from './AuditSoA';
+export { AuditRisk } from './AuditRisk';
+export { AuditDocumentReview } from './AuditDocumentReview';

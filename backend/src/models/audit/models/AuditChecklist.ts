@@ -118,8 +118,8 @@ AuditChecklistSchema.methods.updateStatistics = function () {
     oportunidade: 0,
     naoAplicavel: 0,
   };
-  
-  this.questions.forEach((q: IAuditChecklistQuestion) => {
+    
+  this.questions.forEach((q: any) => {
     switch (q.answer) {
       case 'C': stats.conforme++; break;
       case 'NC': stats.nonConforme++; break;
@@ -128,11 +128,11 @@ AuditChecklistSchema.methods.updateStatistics = function () {
       case 'NA': stats.naoAplicavel++; break;
     }
   });
-  
+    
   this.statistics = stats;
-  
+    
   // Verificar se todas as perguntas foram respondidas
-  const allAnswered = this.questions.every((q: IAuditChecklistQuestion) => q.answer !== 'NA');
+  const allAnswered = this.questions.every((q: any) => q.answer !== 'NA');
   if (allAnswered && this.status !== 'completed') {
     this.status = 'completed';
     this.completedAt = new Date();

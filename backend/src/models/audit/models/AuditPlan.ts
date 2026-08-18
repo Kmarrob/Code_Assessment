@@ -46,7 +46,7 @@ export interface IAuditPlan {
   criteria: string[];
   
   // Status
-  status: 'draft' | 'submitted' | 'approved' | 'rejected' | 'in_progress' | 'completed' | 'cancelled';
+  status: 'draft' | 'submitted' | 'pending_approval' | 'approved' | 'rejected' | 'in_progress' | 'completed' | 'cancelled';
   
   // Aprovação
   createdBy: string;
@@ -100,7 +100,7 @@ const AuditPlanSchema = new Schema<IAuditPlan>(
     
     status: {
       type: String,
-      enum: ['draft', 'submitted', 'approved', 'rejected', 'in_progress', 'completed', 'cancelled'],
+      enum: ['draft', 'submitted', 'pending_approval', 'approved', 'rejected', 'in_progress', 'completed', 'cancelled'],
       default: 'draft',
     },
     
