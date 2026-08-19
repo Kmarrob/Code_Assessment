@@ -152,6 +152,9 @@ class UserService {
             response.scenarioDescription = autoScenarioDescription;
             response.evidence = evidenceString ? [evidenceString] : [];
             response.observations = notes || '';
+            response.progressStatus = index_js_1.ProgressStatus.COMPLETED;
+            response.lastActivityAt = new Date();
+            response.isInterrupted = false;
             await response.save();
         }
         else {
@@ -166,11 +169,22 @@ class UserService {
                 evidence: evidenceString ? [evidenceString] : [],
                 observations: notes || '',
                 submittedAt: new Date(),
+                progressStatus: index_js_1.ProgressStatus.COMPLETED,
+                lastActivityAt: new Date(),
+                isInterrupted: false,
+                partialData: {},
             });
             await response.save();
             // Atualizar status da atribuição
             assignment.status = index_js_1.ResponseStatus.COMPLETED;
             await assignment.save();
+        }
+        // 🔴 CORREÇÃO: Atualizar status da atribuição SEMPRE (dentro ou fora do if/else)
+        // Isso garante que mesmo quando a resposta já existe (atualização), o status seja alterado para COMPLETED
+        if (assignment.status !== index_js_1.ResponseStatus.COMPLETED) {
+            assignment.status = index_js_1.ResponseStatus.COMPLETED;
+            await assignment.save();
+            logger_js_1.logger.info(`✅ Assignment ${assignmentId} atualizado para COMPLETED`);
         }
         logger_js_1.logger.info(`Resposta salva para o usuário ${userId} - Controle: ${assignment.controlId}`);
         // 🔴 NOTIFICAÇÃO: Enviar notificação para o preposto
@@ -208,6 +222,165 @@ class UserService {
             stats,
             controls,
         };
+    }
+    // ============================================
+    // 🆕 NOVOS MÉTODOS PARA PROGRESSO (ADICIONADOS - NADA FOI EXCLUÍDO)
+    // ============================================
+    /**
+     * Salvar progresso parcial de um controle (em andamento)
+     */
+    static async saveProgress(userId, assignmentId, partialData, progressStatus = index_js_1.ProgressStatus.IN_PROGRESS) {
+        // Verificar se a atribuição existe e pertence ao usuário
+        const assignment = await Assignment_js_1.Assignment.findOne({
+            _id: assignmentId,
+            userId,
+        });
+        if (!assignment) {
+            throw new errorHandler_js_1.AppError('Atribuição não encontrada ou não pertence ao usuário', 404);
+        }
+        // Buscar o usuário para obter o companyId
+        const user = await User_js_1.User.findById(userId);
+        if (!user) {
+            throw new errorHandler_js_1.AppError('Usuário não encontrado', 404);
+        }
+        const companyId = user.companyId;
+        // Verificar se já existe uma resposta
+        let response = await Response_js_1.Response.findOne({ assignmentId });
+        if (response) {
+            // Atualizar resposta existente com progresso
+            response.partialData = partialData;
+            response.progressStatus = progressStatus;
+            response.lastActivityAt = new Date();
+            response.isInterrupted = progressStatus === index_js_1.ProgressStatus.INTERRUPTED;
+            // Se ainda não tem maturityLevel no partialData, manter o existente
+            if (partialData.maturityLevel && partialData.maturityLevel !== '') {
+                response.maturityLevel = partialData.maturityLevel;
+            }
+            await response.save();
+        }
+        else {
+            // Criar nova resposta parcial
+            response = new Response_js_1.Response({
+                assignmentId,
+                userId,
+                controlId: assignment.controlId,
+                companyId: companyId,
+                maturityLevel: partialData.maturityLevel || 'N/A',
+                scenarioDescription: partialData.scenarioDescription || '',
+                observations: partialData.notes || '',
+                submittedAt: new Date(),
+                progressStatus: progressStatus,
+                lastActivityAt: new Date(),
+                isInterrupted: progressStatus === index_js_1.ProgressStatus.INTERRUPTED,
+                partialData: partialData,
+            });
+            await response.save();
+        }
+        // Atualizar status da atribuição para IN_PROGRESS (se ainda não estiver)
+        if (assignment.status !== index_js_1.ResponseStatus.IN_PROGRESS) {
+            assignment.status = index_js_1.ResponseStatus.IN_PROGRESS;
+            await assignment.save();
+        }
+        logger_js_1.logger.info(`📝 Progresso salvo para o usuário ${userId} - Controle: ${assignment.controlId} - Status: ${progressStatus}`);
+        return response;
+    }
+    /**
+     * Buscar atividades em andamento/interrompidas do usuário
+     */
+    static async getInProgressActivities(userId) {
+        const user = await User_js_1.User.findById(userId);
+        if (!user) {
+            throw new errorHandler_js_1.NotFoundError('Usuário não encontrado');
+        }
+        const activities = await Response_js_1.Response.getInProgressActivities(userId);
+        // Formatar resposta com informações adicionais
+        const formattedActivities = activities.map((activity) => {
+            const assignment = activity.assignmentId || {};
+            const control = activity.controlId || {};
+            return {
+                assignmentId: activity.assignmentId?._id || activity.assignmentId,
+                controlId: control._id || activity.controlId,
+                controlCode: control.id || 'N/A',
+                controlName: control.nome || 'Controle não identificado',
+                progressStatus: activity.progressStatus,
+                lastActivityAt: activity.lastActivityAt,
+                partialData: activity.partialData || {},
+                isInterrupted: activity.isInterrupted || false,
+                domain: control.dominioDeSI || [],
+            };
+        });
+        return formattedActivities;
+    }
+    /**
+     * Verificar se o usuário tem atividades pendentes
+     */
+    static async hasPendingActivity(userId) {
+        const user = await User_js_1.User.findById(userId);
+        if (!user) {
+            throw new errorHandler_js_1.NotFoundError('Usuário não encontrado');
+        }
+        return Response_js_1.Response.hasPendingActivities(userId);
+    }
+    /**
+     * Buscar progresso de uma atribuição específica
+     */
+    static async getProgressByAssignment(userId, assignmentId) {
+        // Verificar se a atribuição existe e pertence ao usuário
+        const assignment = await Assignment_js_1.Assignment.findOne({
+            _id: assignmentId,
+            userId,
+        });
+        if (!assignment) {
+            throw new errorHandler_js_1.AppError('Atribuição não encontrada ou não pertence ao usuário', 404);
+        }
+        const response = await Response_js_1.Response.getProgressByAssignment(assignmentId);
+        if (!response) {
+            return null;
+        }
+        // Buscar informações do controle
+        const control = await Control_js_1.Control.findById(assignment.controlId).select('id nome dominioDeSI');
+        return {
+            assignmentId: assignmentId,
+            controlId: assignment.controlId,
+            controlCode: control?.id || 'N/A',
+            controlName: control?.nome || 'Controle não identificado',
+            progressStatus: response.progressStatus,
+            lastActivityAt: response.lastActivityAt,
+            partialData: response.partialData || {},
+            isInterrupted: response.isInterrupted || false,
+            existingResponse: {
+                maturityLevel: response.maturityLevel || '',
+                scenarioDescription: response.scenarioDescription || '',
+                observations: response.observations || '',
+            },
+        };
+    }
+    /**
+     * Limpar progresso de uma atividade (quando o usuário conclui ou descarta)
+     */
+    static async clearProgress(userId, assignmentId) {
+        const assignment = await Assignment_js_1.Assignment.findOne({
+            _id: assignmentId,
+            userId,
+        });
+        if (!assignment) {
+            throw new errorHandler_js_1.AppError('Atribuição não encontrada ou não pertence ao usuário', 404);
+        }
+        const response = await Response_js_1.Response.findOne({ assignmentId });
+        if (response) {
+            response.progressStatus = index_js_1.ProgressStatus.NOT_STARTED;
+            response.isInterrupted = false;
+            response.partialData = {};
+            response.lastActivityAt = new Date();
+            await response.save();
+        }
+        // Atualizar status da atribuição para PENDING (se não estiver concluída)
+        if (assignment.status === index_js_1.ResponseStatus.IN_PROGRESS) {
+            assignment.status = index_js_1.ResponseStatus.PENDING;
+            await assignment.save();
+        }
+        logger_js_1.logger.info(`🧹 Progresso limpo para o usuário ${userId} - Controle: ${assignment.controlId}`);
+        return { success: true };
     }
 }
 exports.UserService = UserService;

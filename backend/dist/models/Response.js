@@ -36,6 +36,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.Response = void 0;
 // backend/src/models/Response.ts
 const mongoose_1 = __importStar(require("mongoose"));
+const index_js_1 = require("../types/index.js");
 const responseSchema = new mongoose_1.Schema({
     assignmentId: {
         type: mongoose_1.Schema.Types.ObjectId,
@@ -83,6 +84,26 @@ const responseSchema = new mongoose_1.Schema({
         type: Date,
         default: Date.now,
     },
+    // 🆕 CAMPOS PARA PROGRESSO - USANDO O ENUM ProgressStatus
+    progressStatus: {
+        type: String,
+        enum: Object.values(index_js_1.ProgressStatus),
+        default: index_js_1.ProgressStatus.NOT_STARTED,
+        index: true,
+    },
+    lastActivityAt: {
+        type: Date,
+        default: Date.now,
+        index: true,
+    },
+    isInterrupted: {
+        type: Boolean,
+        default: false,
+    },
+    partialData: {
+        type: mongoose_1.Schema.Types.Mixed,
+        default: {},
+    },
 }, {
     timestamps: true,
 });
@@ -95,6 +116,9 @@ responseSchema.index({ userId: 1, maturityLevel: 1 });
 responseSchema.index({ controlId: 1, maturityLevel: 1 });
 // 🔴 NOVO ÍNDICE
 responseSchema.index({ companyId: 1, userId: 1 });
+// 🆕 NOVOS ÍNDICES PARA PROGRESSO
+responseSchema.index({ userId: 1, progressStatus: 1, lastActivityAt: -1 });
+responseSchema.index({ userId: 1, isInterrupted: 1 });
 // ============================================
 // MÉTODOS ESTÁTICOS
 // ============================================
@@ -141,5 +165,51 @@ responseSchema.statics.getUserStats = function (userId) {
         },
     ]);
 };
+// 🆕 MÉTODOS PARA PROGRESSO
+/**
+ * Buscar atividades em andamento/interrompidas de um usuário
+ */
+responseSchema.statics.getInProgressActivities = function (userId) {
+    return this.find({
+        userId,
+        progressStatus: {
+            $in: [index_js_1.ProgressStatus.IN_PROGRESS, index_js_1.ProgressStatus.INTERRUPTED]
+        },
+    })
+        .populate({
+        path: 'assignmentId',
+        populate: {
+            path: 'controlId',
+            select: 'id nome dominioDeSI',
+        },
+    })
+        .populate('controlId', 'id nome')
+        .sort({ lastActivityAt: -1 })
+        .lean();
+};
+/**
+ * Verificar se o usuário tem atividades pendentes
+ */
+responseSchema.statics.hasPendingActivities = async function (userId) {
+    const count = await this.countDocuments({
+        userId,
+        progressStatus: {
+            $in: [index_js_1.ProgressStatus.IN_PROGRESS, index_js_1.ProgressStatus.INTERRUPTED]
+        },
+    });
+    return count > 0;
+};
+/**
+ * Buscar progresso de uma atribuição específica
+ */
+responseSchema.statics.getProgressByAssignment = function (assignmentId) {
+    return this.findOne({
+        assignmentId,
+        progressStatus: {
+            $in: [index_js_1.ProgressStatus.IN_PROGRESS, index_js_1.ProgressStatus.INTERRUPTED]
+        },
+    }).lean();
+};
+// 🆕 EXPORTAR COM A INTERFACE ESTENDIDA
 exports.Response = mongoose_1.default.model('Response', responseSchema);
 //# sourceMappingURL=Response.js.map

@@ -1,0 +1,52 @@
+[1mdiff --git a/frontend/src/modules/audit/pages/rep/actions/RepAuditActionPlan.tsx b/frontend/src/modules/audit/pages/rep/actions/RepAuditActionPlan.tsx[m
+[1mindex 8eb557da..f12a66a8 100644[m
+[1m--- a/frontend/src/modules/audit/pages/rep/actions/RepAuditActionPlan.tsx[m
+[1m+++ b/frontend/src/modules/audit/pages/rep/actions/RepAuditActionPlan.tsx[m
+[36m@@ -17,7 +17,7 @@[m [mimport {[m
+   Calendar,[m
+ } from 'lucide-react';[m
+ import { useActionsByFinding, useCompleteAction, useValidateAction, useStartAction } from '../../../hooks/useAudit';[m
+[31m-import { AuditActionPlan, AuditActionStatus } from '../../types/audit.types';[m
+[32m+[m[32mimport { AuditActionPlan, AuditActionStatus } from '../../../types/audit.types';[m
+ [m
+ const STATUS_OPTIONS: { value: AuditActionStatus | 'all'; label: string; color: string }[] = [[m
+   { value: 'all', label: 'Todos', color: 'bg-gray-100 text-gray-600' },[m
+[1mdiff --git a/frontend/src/modules/audit/pages/rep/findings/RepAuditFindings.tsx b/frontend/src/modules/audit/pages/rep/findings/RepAuditFindings.tsx[m
+[1mindex 6f319d0c..2663fe3e 100644[m
+[1m--- a/frontend/src/modules/audit/pages/rep/findings/RepAuditFindings.tsx[m
+[1m+++ b/frontend/src/modules/audit/pages/rep/findings/RepAuditFindings.tsx[m
+[36m@@ -17,7 +17,7 @@[m [mimport {[m
+   Search,[m
+ } from 'lucide-react';[m
+ import { useFindings, useFindingStats, useDeleteFinding } from '../../../hooks/useAudit';[m
+[31m-import { AuditFinding, AuditFindingStatus, AuditFindingType } from '../../types/audit.types';[m
+[32m+[m[32mimport { AuditFinding, AuditFindingStatus, AuditFindingType } from '../../../types/audit.types';[m
+ [m
+ const STATUS_OPTIONS: { value: AuditFindingStatus | 'all'; label: string; color: string }[] = [[m
+   { value: 'all', label: 'Todos', color: 'bg-gray-100 text-gray-600' },[m
+[1mdiff --git a/frontend/src/modules/audit/pages/rep/plans/RepAuditPlans.tsx b/frontend/src/modules/audit/pages/rep/plans/RepAuditPlans.tsx[m
+[1mindex 5f71777f..623e45e3 100644[m
+[1m--- a/frontend/src/modules/audit/pages/rep/plans/RepAuditPlans.tsx[m
+[1m+++ b/frontend/src/modules/audit/pages/rep/plans/RepAuditPlans.tsx[m
+[36m@@ -17,7 +17,7 @@[m [mimport {[m
+   AlertCircle,[m
+ } from 'lucide-react';[m
+ import { usePlans, useDeletePlan, useCancelPlan } from '../../../hooks/useAudit';[m
+[31m-import { AuditPlan, AuditStatus } from '../../types/audit.types';[m
+[32m+[m[32mimport { AuditPlan, AuditStatus } from '../../../types/audit.types';[m
+ [m
+ const STATUS_OPTIONS: { value: AuditStatus | 'all'; label: string }[] = [[m
+   { value: 'all', label: 'Todos' },[m
+[1mdiff --git a/frontend/src/modules/audit/pages/rep/reports/RepAuditReport.tsx b/frontend/src/modules/audit/pages/rep/reports/RepAuditReport.tsx[m
+[1mindex c2f1be10..b9f0ba15 100644[m
+[1m--- a/frontend/src/modules/audit/pages/rep/reports/RepAuditReport.tsx[m
+[1m+++ b/frontend/src/modules/audit/pages/rep/reports/RepAuditReport.tsx[m
+[36m@@ -27,7 +27,7 @@[m [mimport {[m
+   useRejectReport,[m
+   useDeleteReport,[m
+ } from '../../../hooks/useAudit';[m
+[31m-import { AuditReport, AuditReportStatus } from '../../types/audit.types';[m
+[32m+[m[32mimport { AuditReport, AuditReportStatus } from '../../../types/audit.types';[m
+ [m
+ const STATUS_OPTIONS: { value: AuditReportStatus | 'all'; label: string; color: string }[] = [[m
+   { value: 'all', label: 'Todos', color: 'bg-gray-100 text-gray-600' },[m

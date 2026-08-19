@@ -10,7 +10,7 @@ import {
   Download, Palette,
   TrendingUp,  // 🔴 NOVO - Funil de Conversão
   BookOpen,    // 🆕 NOVO - Governança
-  // 🆕 NOVO (v42.0) - Auditoria
+  ClipboardCheck, // 🆕 NOVO (v44.0) - Auditoria Interna (SGSI)
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card.js';
 import { AdminBreadcrumbs } from '../components/admin/AdminBreadcrumbs.js';
@@ -79,9 +79,14 @@ export const AdminDashboard: React.FC = () => {
     navigate('/admin/governance');
   }, [navigate]);
 
-  // 🆕 NOVO (v42.0) - Handler para Auditoria
+  // 🆕 NOVO (v42.0) - Handler para Auditoria do Sistema
   const handleNavigateToAudit = useCallback(() => {
     navigate('/admin/audit');
+  }, [navigate]);
+
+  // 🆕 NOVO (v44.0) - Handler para Auditoria Interna (SGSI)
+  const handleNavigateToInternalAudit = useCallback(() => {
+    navigate('/admin/audit/dashboard');
   }, [navigate]);
 
   const handleLogout = useCallback(async () => {
@@ -410,7 +415,7 @@ export const AdminDashboard: React.FC = () => {
               </CardContent>
             </Card>
 
-            {/* 🆕 NOVO (v42.0): Card de Auditoria */}
+            {/* 🆕 NOVO (v42.0): Card de Auditoria do Sistema */}
             <Card 
               className="hover:shadow-lg transition-shadow cursor-pointer"
               onClick={handleNavigateToAudit}
@@ -423,6 +428,24 @@ export const AdminDashboard: React.FC = () => {
                   <div>
                     <h3 className="font-semibold text-gray-900">Auditoria</h3>
                     <p className="text-sm text-gray-500">Visualizar logs do sistema</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 🆕 NOVO (v44.0): Card de Auditoria Interna (SGSI) */}
+            <Card 
+              className="hover:shadow-lg transition-shadow cursor-pointer"
+              onClick={handleNavigateToInternalAudit}
+            >
+              <CardContent className="p-6">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-indigo-100 rounded-lg">
+                    <ClipboardCheck className="h-6 w-6 text-indigo-600" aria-hidden="true" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-gray-900">Auditoria Interna</h3>
+                    <p className="text-sm text-gray-500">Planos, NCs e relatórios SGSI</p>
                   </div>
                 </div>
               </CardContent>

@@ -23,5 +23,33 @@ router.post('/responses', rateLimit_js_1.authenticatedRateLimiter, UserControlle
 // NOVA ROTA: OBTER PERGUNTAS POR CONTROLE
 // ============================================
 router.get('/questions/control/:controlId', rateLimit_js_1.authenticatedRateLimiter, UserController_js_1.UserController.getQuestionsByControl);
+// ============================================
+// 🆕 NOVAS ROTAS PARA PROGRESSO (ADICIONADAS - NADA FOI EXCLUÍDO)
+// ============================================
+/**
+ * Salvar progresso parcial de um controle (em andamento)
+ * POST /api/user/progress
+ */
+router.post('/progress', rateLimit_js_1.authenticatedRateLimiter, UserController_js_1.UserController.saveProgress);
+/**
+ * Buscar atividades em andamento/interrompidas do usuário
+ * GET /api/user/progress/in-progress
+ */
+router.get('/progress/in-progress', rateLimit_js_1.authenticatedRateLimiter, UserController_js_1.UserController.getInProgressActivities);
+/**
+ * Verificar se o usuário tem atividades pendentes
+ * GET /api/user/progress/has-pending
+ */
+router.get('/progress/has-pending', rateLimit_js_1.authenticatedRateLimiter, UserController_js_1.UserController.hasPendingActivity);
+/**
+ * Buscar progresso de uma atribuição específica
+ * GET /api/user/progress/assignment/:assignmentId
+ */
+router.get('/progress/assignment/:assignmentId', rateLimit_js_1.authenticatedRateLimiter, UserController_js_1.UserController.getProgressByAssignment);
+/**
+ * Limpar progresso de uma atividade
+ * DELETE /api/user/progress/assignment/:assignmentId
+ */
+router.delete('/progress/assignment/:assignmentId', rateLimit_js_1.authenticatedRateLimiter, UserController_js_1.UserController.clearProgress);
 exports.default = router;
 //# sourceMappingURL=user.routes.js.map

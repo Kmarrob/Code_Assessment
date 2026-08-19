@@ -49,6 +49,12 @@ export declare enum ResponseStatus {
     EXPIRED = "expired",
     REVOKED = "revoked"
 }
+export declare enum ProgressStatus {
+    NOT_STARTED = "not_started",
+    IN_PROGRESS = "in_progress",
+    INTERRUPTED = "interrupted",
+    COMPLETED = "completed"
+}
 export declare enum MaturityLevel {
     N_A = "N/A",
     LEVEL_0 = "0",
@@ -137,6 +143,10 @@ export interface IResponse {
     submittedAt: Date;
     createdAt: Date;
     updatedAt: Date;
+    progressStatus: ProgressStatus;
+    lastActivityAt: Date;
+    isInterrupted: boolean;
+    partialData: Record<string, any>;
 }
 export interface IJWTPayload {
     id: string;

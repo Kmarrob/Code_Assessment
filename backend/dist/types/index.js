@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.MaturityLevel = exports.ResponseStatus = exports.UserRole = void 0;
+exports.MaturityLevel = exports.ProgressStatus = exports.ResponseStatus = exports.UserRole = void 0;
 // ============================================
 // ENUMS
 // ============================================
@@ -20,6 +20,14 @@ var ResponseStatus;
     ResponseStatus["EXPIRED"] = "expired";
     ResponseStatus["REVOKED"] = "revoked";
 })(ResponseStatus || (exports.ResponseStatus = ResponseStatus = {}));
+// 🆕 NOVO ENUM PARA PROGRESSO
+var ProgressStatus;
+(function (ProgressStatus) {
+    ProgressStatus["NOT_STARTED"] = "not_started";
+    ProgressStatus["IN_PROGRESS"] = "in_progress";
+    ProgressStatus["INTERRUPTED"] = "interrupted";
+    ProgressStatus["COMPLETED"] = "completed";
+})(ProgressStatus || (exports.ProgressStatus = ProgressStatus = {}));
 var MaturityLevel;
 (function (MaturityLevel) {
     MaturityLevel["N_A"] = "N/A";

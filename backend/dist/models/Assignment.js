@@ -37,6 +37,8 @@ exports.Assignment = void 0;
 // backend/src/models/Assignment.ts
 const mongoose_1 = __importStar(require("mongoose"));
 const index_js_1 = require("../types/index.js");
+// 🆕 Array com os valores do enum para evitar problema de importação circular
+const RESPONSE_STATUS_VALUES = ['pending', 'in_progress', 'completed', 'skipped', 'expired', 'revoked'];
 const assignmentSchema = new mongoose_1.Schema({
     userId: {
         type: mongoose_1.Schema.Types.ObjectId,
@@ -62,7 +64,7 @@ const assignmentSchema = new mongoose_1.Schema({
     },
     status: {
         type: String,
-        enum: Object.values(index_js_1.ResponseStatus),
+        enum: RESPONSE_STATUS_VALUES,
         default: index_js_1.ResponseStatus.PENDING,
     },
 }, {

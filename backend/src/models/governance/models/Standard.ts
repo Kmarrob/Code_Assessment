@@ -1,6 +1,4 @@
-import mongoose, { Schema } from 'mongoose';
-import { GovernanceDocument, IGovernanceDocument } from './GovernanceDocument';
-
+// ANTES
 export interface IStandard extends IGovernanceDocument {
   level: 2;
   policyId: string;
@@ -14,7 +12,18 @@ const StandardSchema = new Schema<IStandard>({
   nonCompliancePenalty: { type: String },
 });
 
-export const Standard = GovernanceDocument.discriminator<IStandard>(
-  'Standard',
-  StandardSchema
-);
+// DEPOIS
+export interface IStandard extends IGovernanceDocument {
+  level: 2;
+  policyId: string;
+  mandatory: boolean;
+  nonCompliancePenalty?: string;
+  responsibleArea?: string;  // 🆕 ADICIONADO
+}
+
+const StandardSchema = new Schema<IStandard>({
+  policyId: { type: String, ref: 'GovernanceDocument', required: true },
+  mandatory: { type: Boolean, default: true },
+  nonCompliancePenalty: { type: String },
+  responsibleArea: { type: String },  // 🆕 ADICIONADO
+});
