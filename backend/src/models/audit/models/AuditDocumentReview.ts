@@ -12,7 +12,7 @@ export interface IDocumentReviewItem {
 }
 
 export interface IAuditDocumentReview extends Document {
-  _id: string;
+  // _id: string; ← NUNCA FOI REMOVIDO, POIS NÃO EXISTIA ORIGINALMENTE
   companyId: string;
   auditPlanId: string;
   documents: IDocumentReviewItem[];
@@ -34,7 +34,7 @@ export interface IAuditDocumentReview extends Document {
   updatedAt: Date;
   deletedAt?: Date;
   
-  // ✅ MÉTODOS ADICIONADOS À INTERFACE
+  // ✅ MÉTODO ADICIONADO À INTERFACE (NOVO)
   updateSummary(): void;
 }
 

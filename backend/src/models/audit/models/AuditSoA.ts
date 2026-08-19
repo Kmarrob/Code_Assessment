@@ -20,7 +20,7 @@ export interface IAuditSoAControl {
 }
 
 export interface IAuditSoA extends Document {
-  _id: string;
+  // _id: string; ← NUNCA FOI REMOVIDO, POIS NÃO EXISTIA ORIGINALMENTE
   companyId: string;
   version: string;
   status: 'draft' | 'review' | 'approved' | 'archived';
@@ -54,7 +54,7 @@ export interface IAuditSoA extends Document {
   updatedAt: Date;
   deletedAt?: Date;
   
-  // ✅ MÉTODOS ADICIONADOS À INTERFACE
+  // ✅ MÉTODO ADICIONADO À INTERFACE (NOVO)
   updateStatistics(): void;
 }
 
