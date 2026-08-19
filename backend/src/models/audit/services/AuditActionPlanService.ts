@@ -2,6 +2,25 @@ import { AuditActionPlan } from '../models/AuditActionPlan';
 import { AuditFinding } from '../models/AuditFinding';
 import { IAuditActionPlan, CreateAuditActionPlanDTO, UpdateAuditActionPlanDTO } from '../types/audit.types';
 
+/**
+ * Mapeia documento do MongoDB para IAuditActionPlan com id
+ */
+function mapToIAuditActionPlan(doc: any): IAuditActionPlan {
+  if (!doc) return null as any;
+  return {
+    id: doc._id.toString(),
+    ...doc,
+  };
+}
+
+/**
+ * Mapeia array de documentos para IAuditActionPlan[]
+ */
+function mapToIAuditActionPlanArray(docs: any[]): IAuditActionPlan[] {
+  if (!docs) return [];
+  return docs.map(doc => mapToIAuditActionPlan(doc));
+}
+
 export class AuditActionPlanService {
   // ============================================================
   // CRIAR PLANO DE AÇÃO
@@ -29,28 +48,32 @@ export class AuditActionPlanService {
     await finding.save();
 
     // TODO: Enviar notificação para o responsável
-    return actionPlan.toObject();
+    return mapToIAuditActionPlan(actionPlan.toObject());
   }
 
   // ============================================================
   // LISTAR PLANOS DE AÇÃO POR NC
   // ============================================================
   async findByFindingId(findingId: string): Promise<IAuditActionPlan[]> {
-    return AuditActionPlan.find({ findingId }).sort({ createdAt: -1 }).lean();
+    const docs = await AuditActionPlan.find({ findingId }).sort({ createdAt: -1 }).lean();
+    return mapToIAuditActionPlanArray(docs);
   }
 
   // ============================================================
   // LISTAR PLANOS DE AÇÃO POR RESPONSÁVEL
   // ============================================================
   async findByResponsible(responsible: string): Promise<IAuditActionPlan[]> {
-    return AuditActionPlan.find({ responsible }).sort({ deadline: 1 }).lean();
+    const docs = await AuditActionPlan.find({ responsible }).sort({ deadline: 1 }).lean();
+    return mapToIAuditActionPlanArray(docs);
   }
 
   // ============================================================
   // BUSCAR PLANO DE AÇÃO POR ID
   // ============================================================
   async findById(id: string): Promise<IAuditActionPlan | null> {
-    return AuditActionPlan.findById(id).lean();
+    const doc = await AuditActionPlan.findById(id).lean();
+    if (!doc) return null;
+    return mapToIAuditActionPlan(doc);
   }
 
   // ============================================================
@@ -72,7 +95,7 @@ export class AuditActionPlanService {
     Object.assign(actionPlan, data);
     await actionPlan.save();
 
-    return actionPlan.toObject();
+    return mapToIAuditActionPlan(actionPlan.toObject());
   }
 
   // ============================================================
@@ -93,7 +116,7 @@ export class AuditActionPlanService {
     actionPlan.status = 'in_progress';
     await actionPlan.save();
 
-    return actionPlan.toObject();
+    return mapToIAuditActionPlan(actionPlan.toObject());
   }
 
   // ============================================================
@@ -124,7 +147,7 @@ export class AuditActionPlanService {
     );
 
     // TODO: Enviar notificação para o auditor
-    return actionPlan.toObject();
+    return mapToIAuditActionPlan(actionPlan.toObject());
   }
 
   // ============================================================
@@ -165,6 +188,6 @@ export class AuditActionPlanService {
       );
     }
 
-    return actionPlan.toObject();
+    return mapToIAuditActionPlan(actionPlan.toObject());
   }
 }

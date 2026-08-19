@@ -1,7 +1,26 @@
 import { AuditReport } from '../models/AuditReport';
 import { AuditFinding } from '../models/AuditFinding';
 import { AuditPlan } from '../models/AuditPlan';
-import { IAuditReport, CreateAuditReportDTO, UpdateAuditReportDTO, AuditReportFilters } from '../types/audit.types';
+import { IAuditReport, CreateAuditReportDTO, UpdateAuditReportDTO, AuditReportFilters, IAuditReportFinding } from '../types/audit.types';
+
+/**
+ * Mapeia documento do MongoDB para IAuditReport com id
+ */
+function mapToIAuditReport(doc: any): IAuditReport {
+  if (!doc) return null as any;
+  return {
+    id: doc._id.toString(),
+    ...doc,
+  };
+}
+
+/**
+ * Mapeia array de documentos para IAuditReport[]
+ */
+function mapToIAuditReportArray(docs: any[]): IAuditReport[] {
+  if (!docs) return [];
+  return docs.map(doc => mapToIAuditReport(doc));
+}
 
 export class AuditReportService {
   // ============================================================
@@ -25,10 +44,11 @@ export class AuditReportService {
       ...data,
       createdBy,
       status: 'draft',
+      recommendations: data.recommendations || [],
     });
 
     await report.save();
-    return report.toObject();
+    return mapToIAuditReport(report.toObject());
   }
 
   // ============================================================
@@ -41,21 +61,25 @@ export class AuditReportService {
     if (filters.status) query.status = filters.status;
     if (filters.createdBy) query.createdBy = filters.createdBy;
 
-    return AuditReport.find(query).sort({ createdAt: -1 }).lean();
+    const docs = await AuditReport.find(query).sort({ createdAt: -1 }).lean();
+    return mapToIAuditReportArray(docs);
   }
 
   // ============================================================
   // BUSCAR RELATÓRIO POR ID
   // ============================================================
   async findById(id: string): Promise<IAuditReport | null> {
-    return AuditReport.findById(id).lean();
+    const doc = await AuditReport.findById(id).lean();
+    if (!doc) return null;
+    return mapToIAuditReport(doc);
   }
 
   // ============================================================
   // BUSCAR RELATÓRIO POR PLANO
   // ============================================================
   async findByPlanId(auditPlanId: string): Promise<IAuditReport[]> {
-    return AuditReport.find({ auditPlanId }).sort({ createdAt: -1 }).lean();
+    const docs = await AuditReport.find({ auditPlanId }).sort({ createdAt: -1 }).lean();
+    return mapToIAuditReportArray(docs);
   }
 
   // ============================================================
@@ -77,7 +101,7 @@ export class AuditReportService {
     Object.assign(report, data);
     await report.save();
 
-    return report.toObject();
+    return mapToIAuditReport(report.toObject());
   }
 
   // ============================================================
@@ -99,7 +123,7 @@ export class AuditReportService {
     await report.save();
 
     // TODO: Enviar notificação para o REP
-    return report.toObject();
+    return mapToIAuditReport(report.toObject());
   }
 
   // ============================================================
@@ -124,7 +148,7 @@ export class AuditReportService {
     await report.save();
 
     // TODO: Enviar notificação para o criador do relatório
-    return report.toObject();
+    return mapToIAuditReport(report.toObject());
   }
 
   // ============================================================
@@ -147,7 +171,7 @@ export class AuditReportService {
     await report.save();
 
     // TODO: Enviar notificação para o criador do relatório com o motivo
-    return report.toObject();
+    return mapToIAuditReport(report.toObject());
   }
 
   // ============================================================
@@ -159,8 +183,27 @@ export class AuditReportService {
 
     const findings = await AuditFinding.find({ auditPlanId: planId });
 
+    // Converter findings para IAuditReportFinding[]
+    const reportFindings: IAuditReportFinding[] = findings.map(f => ({
+      id: f._id.toString(),
+      number: f.number || '',
+      type: f.type,
+      title: f.title,
+      description: f.description,
+      area: f.area,
+      process: f.process,
+      clause: f.clause,
+      status: f.status,
+      evidenceIds: f.evidenceIds || [],
+      actionPlanIds: f.actionPlanIds || [],
+      createdBy: f.createdBy,
+      createdAt: f.createdAt,
+      updatedAt: f.updatedAt,
+    }));
+
     const summary = `Auditoria realizada no período de ${new Date(plan.period.startDate).toLocaleDateString('pt-BR')} a ${new Date(plan.period.endDate).toLocaleDateString('pt-BR')}`;
     const conclusion = this.generateConclusion(findings);
+    const recommendations = this.generateRecommendations(findings);
 
     // Verificar se já existe um relatório para este plano
     const existingReport = await AuditReport.findOne({ auditPlanId: planId });
@@ -169,18 +212,21 @@ export class AuditReportService {
       // Atualizar o relatório existente
       existingReport.summary = summary;
       existingReport.conclusion = conclusion;
-      existingReport.findings = findings.map(f => f._id.toString());
+      existingReport.recommendations = recommendations;
+      existingReport.findings = reportFindings;
       await existingReport.save();
-      return existingReport.toObject();
+      return mapToIAuditReport(existingReport.toObject());
     }
 
-    return this.create({
+    const report = await this.create({
       auditPlanId: planId,
       summary,
       conclusion,
-      recommendations: [],
-      findings: findings.map(f => f._id.toString()),
+      recommendations,
+      findings: reportFindings,
     }, plan.team.leadAuditor);
+
+    return report;
   }
 
   // ============================================================
@@ -201,5 +247,37 @@ export class AuditReportService {
     }
 
     return conclusion;
+  }
+
+  // ============================================================
+  // GERAR RECOMENDAÇÕES
+  // ============================================================
+  private generateRecommendations(findings: any[]): string[] {
+    const recommendations: string[] = [];
+
+    const ncA = findings.filter(f => f.type === 'nc_a' && f.status !== 'closed');
+    const ncB = findings.filter(f => f.type === 'nc_b' && f.status !== 'closed');
+
+    if (ncA.length > 0) {
+      recommendations.push(`Corrigir ${ncA.length} não conformidade(s) maior(es) com prioridade crítica`);
+    }
+
+    if (ncB.length > 0) {
+      recommendations.push(`Corrigir ${ncB.length} não conformidade(s) menor(es) com prioridade alta`);
+    }
+
+    if (findings.some(f => f.type === 'observation' && f.status !== 'closed')) {
+      recommendations.push('Considerar as observações registradas para melhoria contínua');
+    }
+
+    if (findings.some(f => f.type === 'opportunity' && f.status !== 'closed')) {
+      recommendations.push('Avaliar as oportunidades de melhoria identificadas');
+    }
+
+    if (recommendations.length === 0) {
+      recommendations.push('Manter as práticas atuais e monitorar continuamente o SGSI');
+    }
+
+    return recommendations;
   }
 }

@@ -28,7 +28,7 @@ export class AuditRiskController {
         treatmentDeadline,
         status,
       } = req.body;
-      const userId = req.user?.id;
+      const userId = req.user?._id?.toString();
 
       if (!userId) {
         return res.status(401).json({ error: 'Usuário não autenticado' });
@@ -189,7 +189,7 @@ export class AuditRiskController {
   async update(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
-      const userId = req.user?.id;
+      const userId = req.user?._id?.toString();
 
       if (!userId) {
         return res.status(401).json({ error: 'Usuário não autenticado' });
@@ -230,7 +230,7 @@ export class AuditRiskController {
     try {
       const { id } = req.params;
       const { probability, impact } = req.body;
-      const userId = req.user?.id;
+      const userId = req.user?._id?.toString();
 
       if (!userId) {
         return res.status(401).json({ error: 'Usuário não autenticado' });
@@ -278,7 +278,7 @@ export class AuditRiskController {
         impactAfter,
         treatmentDeadline,
       } = req.body;
-      const userId = req.user?.id;
+      const userId = req.user?._id?.toString();
 
       if (!userId) {
         return res.status(401).json({ error: 'Usuário não autenticado' });
@@ -331,7 +331,7 @@ export class AuditRiskController {
     try {
       const { id } = req.params;
       const { status } = req.body;
-      const userId = req.user?.id;
+      const userId = req.user?._id?.toString();
 
       if (!userId) {
         return res.status(401).json({ error: 'Usuário não autenticado' });
@@ -372,7 +372,7 @@ export class AuditRiskController {
     try {
       const { id } = req.params;
       const { reason } = req.body;
-      const userId = req.user?.id;
+      const userId = req.user?._id?.toString();
 
       if (!userId) {
         return res.status(401).json({ error: 'Usuário não autenticado' });

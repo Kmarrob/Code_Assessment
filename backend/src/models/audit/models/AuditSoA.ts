@@ -1,4 +1,4 @@
-import mongoose, { Schema } from 'mongoose';
+import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IAuditSoAControl {
   clause: string; // 5.1, 5.2, etc.
@@ -19,7 +19,7 @@ export interface IAuditSoAControl {
   evidence?: string;
 }
 
-export interface IAuditSoA {
+export interface IAuditSoA extends Document {
   _id: string;
   companyId: string;
   version: string;
@@ -53,6 +53,9 @@ export interface IAuditSoA {
   createdAt: Date;
   updatedAt: Date;
   deletedAt?: Date;
+  
+  // ✅ MÉTODOS ADICIONADOS À INTERFACE
+  updateStatistics(): void;
 }
 
 const AuditSoASchema = new Schema<IAuditSoA>(
@@ -134,21 +137,21 @@ AuditSoASchema.pre('findOne', function () {
 // Método para atualizar estatísticas
 AuditSoASchema.methods.updateStatistics = function () {
   const total = this.controls.length;
-  const applicable = this.controls.filter((c: IAuditSoAControl) => c.applicable).length;
-  const implemented = this.controls.filter((c: IAuditSoAControl) => c.implemented).length;
+  const applicable = this.controls.filter((c: any) => c.applicable).length;
+  const implemented = this.controls.filter((c: any) => c.implemented).length;
   
   // Por categoria (baseado no clause prefix)
   const categories = {
-    organizational: this.controls.filter((c: IAuditSoAControl) => 
+    organizational: this.controls.filter((c: any) => 
       c.clause.startsWith('5.')
     ).length,
-    people: this.controls.filter((c: IAuditSoAControl) => 
+    people: this.controls.filter((c: any) => 
       c.clause.startsWith('6.')
     ).length,
-    physical: this.controls.filter((c: IAuditSoAControl) => 
+    physical: this.controls.filter((c: any) => 
       c.clause.startsWith('7.')
     ).length,
-    technological: this.controls.filter((c: IAuditSoAControl) => 
+    technological: this.controls.filter((c: any) => 
       c.clause.startsWith('8.')
     ).length,
   };

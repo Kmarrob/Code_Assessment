@@ -1,20 +1,42 @@
 import { AuditChecklist } from '../models/AuditChecklist';
 import { AuditPlan } from '../models/AuditPlan';
-import { IAuditChecklist, IAuditChecklistItem } from '../types/audit.types';
+import { IAuditChecklist, IAuditChecklistQuestion, IAuditChecklistItem } from '../types/audit.types';
+
+/**
+ * Mapeia documento do MongoDB para IAuditChecklist com id
+ */
+function mapToIAuditChecklist(doc: any): IAuditChecklist {
+  if (!doc) return null as any;
+  return {
+    id: doc._id.toString(),
+    ...doc,
+  };
+}
+
+/**
+ * Mapeia array de documentos para IAuditChecklist[]
+ */
+function mapToIAuditChecklistArray(docs: any[]): IAuditChecklist[] {
+  if (!docs) return [];
+  return docs.map(doc => mapToIAuditChecklist(doc));
+}
 
 export class AuditChecklistService {
   // ============================================================
   // BUSCAR CHECKLIST POR PLANO E CONTROLE
   // ============================================================
   async findByPlanAndControl(auditPlanId: string, controlId: string): Promise<IAuditChecklist | null> {
-    return AuditChecklist.findOne({ auditPlanId, controlId }).lean();
+    const doc = await AuditChecklist.findOne({ auditPlanId, controlId }).lean();
+    if (!doc) return null;
+    return mapToIAuditChecklist(doc);
   }
 
   // ============================================================
   // LISTAR CHECKLISTS POR PLANO
   // ============================================================
   async findByPlanId(auditPlanId: string): Promise<IAuditChecklist[]> {
-    return AuditChecklist.find({ auditPlanId }).lean();
+    const docs = await AuditChecklist.find({ auditPlanId }).lean();
+    return mapToIAuditChecklistArray(docs);
   }
 
   // ============================================================
@@ -40,11 +62,22 @@ export class AuditChecklistService {
       throw new Error('Apenas membros da equipe de auditoria podem atualizar o checklist');
     }
 
-    checklist.questions = questions;
+    // Converter IAuditChecklistItem para IAuditChecklistQuestion
+    const questionsMapped: IAuditChecklistQuestion[] = questions.map(q => ({
+      question: q.question,
+      answer: q.answer || '--',
+      observations: q.observations || '',
+      evidenceIds: q.evidenceIds || [],
+      responsible: q.responsible || '',
+      answeredAt: q.answeredAt || undefined,
+      answeredBy: q.answeredBy || undefined,
+    }));
+
+    checklist.questions = questionsMapped;
     checklist.updatedAt = new Date();
     await checklist.save();
 
-    return checklist.toObject();
+    return mapToIAuditChecklist(checklist.toObject());
   }
 
   // ============================================================
@@ -71,7 +104,7 @@ export class AuditChecklistService {
     checklist.completedAt = new Date();
     await checklist.save();
 
-    return checklist.toObject();
+    return mapToIAuditChecklist(checklist.toObject());
   }
 
   // ============================================================

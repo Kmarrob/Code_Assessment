@@ -2,6 +2,25 @@ import { AuditFinding } from '../models/AuditFinding';
 import { AuditPlan } from '../models/AuditPlan';
 import { IAuditFinding, CreateAuditFindingDTO, UpdateAuditFindingDTO, AuditFindingFilters } from '../types/audit.types';
 
+/**
+ * Mapeia documento do MongoDB para IAuditFinding com id
+ */
+function mapToIAuditFinding(doc: any): IAuditFinding {
+  if (!doc) return null as any;
+  return {
+    id: doc._id.toString(),
+    ...doc,
+  };
+}
+
+/**
+ * Mapeia array de documentos para IAuditFinding[]
+ */
+function mapToIAuditFindingArray(docs: any[]): IAuditFinding[] {
+  if (!docs) return [];
+  return docs.map(doc => mapToIAuditFinding(doc));
+}
+
 export class AuditFindingService {
   // ============================================================
   // CRIAR NC
@@ -31,14 +50,15 @@ export class AuditFindingService {
     });
 
     await finding.save();
-    return finding.toObject();
+    return mapToIAuditFinding(finding.toObject());
   }
 
   // ============================================================
   // LISTAR NCs POR PLANO
   // ============================================================
   async findByPlanId(auditPlanId: string): Promise<IAuditFinding[]> {
-    return AuditFinding.find({ auditPlanId }).sort({ createdAt: -1 }).lean();
+    const docs = await AuditFinding.find({ auditPlanId }).sort({ createdAt: -1 }).lean();
+    return mapToIAuditFindingArray(docs);
   }
 
   // ============================================================
@@ -53,14 +73,17 @@ export class AuditFindingService {
     if (filters.area) query.area = filters.area;
     if (filters.createdBy) query.createdBy = filters.createdBy;
 
-    return AuditFinding.find(query).sort({ createdAt: -1 }).lean();
+    const docs = await AuditFinding.find(query).sort({ createdAt: -1 }).lean();
+    return mapToIAuditFindingArray(docs);
   }
 
   // ============================================================
   // BUSCAR NC POR ID
   // ============================================================
   async findById(id: string): Promise<IAuditFinding | null> {
-    return AuditFinding.findById(id).lean();
+    const doc = await AuditFinding.findById(id).lean();
+    if (!doc) return null;
+    return mapToIAuditFinding(doc);
   }
 
   // ============================================================
@@ -82,7 +105,7 @@ export class AuditFindingService {
     Object.assign(finding, data);
     await finding.save();
 
-    return finding.toObject();
+    return mapToIAuditFinding(finding.toObject());
   }
 
   // ============================================================
@@ -114,7 +137,7 @@ export class AuditFindingService {
     await finding.save();
 
     // TODO: Enviar notificação para o criador da NC
-    return finding.toObject();
+    return mapToIAuditFinding(finding.toObject());
   }
 
   // ============================================================
@@ -136,7 +159,7 @@ export class AuditFindingService {
     finding.status = 'pending_validation';
     await finding.save();
 
-    return finding.toObject();
+    return mapToIAuditFinding(finding.toObject());
   }
 
   // ============================================================

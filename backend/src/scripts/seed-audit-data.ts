@@ -146,24 +146,26 @@ const FINDING_TEMPLATES = [
 ];
 
 // ============================================================
-// FUNÇÕES AUXILIARES
+// FUNÇÕES AUXILIARES (CORRIGIDAS)
 // ============================================================
 
 function getRandomItems<T>(array: T[], count: number): T[] {
+  if (!array || array.length === 0) return [];
   const shuffled = [...array];
   for (let i = shuffled.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
   }
-  return shuffled.slice(0, count);
+  return shuffled.slice(0, Math.min(count, shuffled.length));
 }
 
-function getRandomItem<T>(array: T[]): T {
+function getRandomItem<T>(array: T[]): T | undefined {
+  if (!array || array.length === 0) return undefined;
   return array[Math.floor(Math.random() * array.length)];
 }
 
 function generateAuditCode(companyName: string, year: number, index: number): string {
-  const prefix = companyName.substring(0, 4).toUpperCase();
+  const prefix = companyName ? companyName.substring(0, 4).toUpperCase() : 'AUD';
   return `AUD-${prefix}-${year}-${String(index).padStart(3, '0')}`;
 }
 
@@ -241,10 +243,18 @@ async function seedAuditData() {
 
     for (let companyIndex = 0; companyIndex < targetCompanies.length; companyIndex++) {
       const company = targetCompanies[companyIndex];
+      if (!company) continue; // ✅ CORREÇÃO: verificar se company existe
+      
       console.log(`\n🏢 Processando empresa: ${company.name} (${companyIndex + 1}/${targetCompanies.length})`);
 
       // Encontrar usuários da empresa
-      const companyUsers = users.filter(u => u.companyId === company._id);
+      const companyId = company._id;
+      const companyUsers = users.filter(u => {
+        const userCompanyId = u.companyId ? u.companyId.toString() : '';
+        const targetCompanyId = companyId ? companyId.toString() : '';
+        return userCompanyId === targetCompanyId;
+      });
+      
       const rep = companyUsers.find(u => u.role === 'rep');
       const admin = companyUsers.find(u => u.role === 'admin');
       const auditor = companyUsers.find(u => u.role === 'user') || companyUsers[0];
@@ -335,7 +345,9 @@ async function seedAuditData() {
 
       // Selecionar controles para escopo (30-40% dos controles)
       const selectedControls = getRandomItems(controls, Math.floor(controls.length * 0.35));
-      const controlIds = selectedControls.map(c => c.id);
+      
+      // ✅ CORREÇÃO: Extrair IDs corretamente usando _id
+      const controlIds = selectedControls.map(c => c._id ? c._id.toString() : c.id);
 
       // Selecionar áreas do escopo
       const scopeAreas = ['Desenvolvimento', 'Infraestrutura', 'Governança', 'RH'];
@@ -381,26 +393,33 @@ async function seedAuditData() {
       // ============================================================
       console.log(`  📋 Criando Declaração de Aplicabilidade...`);
 
-      const soaControls = controls.map((control, idx) => ({
-        clause: control.id,
-        title: control.name || `Controle ${control.id}`,
-        objective: control.description || `Implementar controle ${control.id} conforme ISO 27001:2022`,
-        motivators: {
-          business: Math.random() > 0.3,
-          risk: Math.random() > 0.2,
-          legal: Math.random() > 0.4,
-          contract: Math.random() > 0.5,
-        },
-        applicable: Math.random() > 0.15, // 85% aplicável
-        justification: Math.random() > 0.85 ? 'Controle não aplicável devido à natureza do negócio' : '',
-        lastAssessmentDate: new Date(2026, 0, 15),
-        implemented: Math.random() > 0.4,
-        implementationDate: Math.random() > 0.4 ? new Date(2026, 0, 1) : undefined,
-        responsible: responsibleUser.name,
-        evidence: Math.random() > 0.5 ? 'Implementado conforme política interna' : '',
-      }));
+      // ✅ CORREÇÃO: Acessar campos corretos do Control
+      const soaControls = controls.map((control) => {
+        const controlId = control._id ? control._id.toString() : control.id;
+        const controlTitle = control.nome || control.title || `Controle ${controlId}`;
+        const controlDesc = control.descricao || control.description || `Implementar controle ${controlId} conforme ISO 27001:2022`;
+        
+        return {
+          clause: controlId,
+          title: controlTitle,
+          objective: controlDesc,
+          motivators: {
+            business: Math.random() > 0.3,
+            risk: Math.random() > 0.2,
+            legal: Math.random() > 0.4,
+            contract: Math.random() > 0.5,
+          },
+          applicable: Math.random() > 0.15,
+          justification: Math.random() > 0.85 ? 'Controle não aplicável devido à natureza do negócio' : '',
+          lastAssessmentDate: new Date(2026, 0, 15),
+          implemented: Math.random() > 0.4,
+          implementationDate: Math.random() > 0.4 ? new Date(2026, 0, 1) : undefined,
+          responsible: responsibleUser.name,
+          evidence: Math.random() > 0.5 ? 'Implementado conforme política interna' : '',
+        };
+      });
 
-      const soa = await AuditSoA.create({
+      const soa = new AuditSoA({
         companyId: company._id,
         version: '1.0',
         status: 'approved',
@@ -411,7 +430,10 @@ async function seedAuditData() {
         nextReviewDate: new Date(2027, 0, 20),
       });
 
-      soa.updateStatistics();
+      // ✅ CORREÇÃO: Usar instanceof ou verificar método
+      if (typeof soa.updateStatistics === 'function') {
+        soa.updateStatistics();
+      }
       await soa.save();
 
       totalSoAs++;
@@ -466,12 +488,17 @@ async function seedAuditData() {
       console.log(`  📋 Criando checklists...`);
 
       const checklistPromises = controlIds.map(async (controlId) => {
-        const controlQuestions = questions.filter(q => q.controlId === controlId);
+        // ✅ CORREÇÃO: Acessar question corretamente
+        const controlQuestions = questions.filter(q => {
+          const qControlId = q.controlId ? q.controlId.toString() : '';
+          return qControlId === controlId;
+        });
         
         // Se não houver perguntas, criar perguntas genéricas
         const questionList = controlQuestions.length > 0 
           ? controlQuestions.slice(0, 3).map(q => ({
-              question: q.question,
+              // ✅ CORREÇÃO: Acessar o campo 'question' ou 'pergunta'
+              question: (q as any).question || (q as any).pergunta || `Pergunta para controle ${controlId}`,
               answer: 'NA' as const,
               observations: '',
               evidenceIds: [],
@@ -526,7 +553,10 @@ async function seedAuditData() {
           updatedBy: responsibleUser._id,
         });
 
-        checklist.updateStatistics();
+        // ✅ CORREÇÃO: Verificar se método existe
+        if (typeof checklist.updateStatistics === 'function') {
+          checklist.updateStatistics();
+        }
         await checklist.save();
         return checklist;
       });
@@ -542,9 +572,14 @@ async function seedAuditData() {
 
       // Selecionar alguns checklists para criar NCs
       const selectedChecklists = getRandomItems(checklists, Math.min(3, checklists.length));
+      
       const findingPromises = selectedChecklists.map(async (checklist, idx) => {
         const template = FINDING_TEMPLATES[idx % FINDING_TEMPLATES.length];
-        const control = controls.find(c => c.id === checklist.controlId);
+        if (!template) return null; // ✅ CORREÇÃO: verificar template
+        const control = controls.find(c => {
+          const cId = c._id ? c._id.toString() : c.id;
+          return cId === checklist.controlId;
+        });
 
         const finding = await AuditFinding.create({
           auditPlanId: plan._id,
@@ -570,8 +605,9 @@ async function seedAuditData() {
       });
 
       const findings = await Promise.all(findingPromises);
-      totalFindings += findings.length;
-      console.log(`  ✅ ${findings.length} não conformidades criadas`);
+      const validFindings = findings.filter(f => f !== null);
+      totalFindings += validFindings.length;
+      console.log(`  ✅ ${validFindings.length} não conformidades criadas`);
 
       // ============================================================
       // 7. CRIAR REVISÃO DE DOCUMENTAÇÃO
@@ -608,7 +644,7 @@ async function seedAuditData() {
         reviewDate: new Date(2026, 2, 1),
       }));
 
-      const docReview = await AuditDocumentReview.create({
+      const docReview = new AuditDocumentReview({
         companyId: company._id,
         auditPlanId: plan._id,
         documents: documentItems,
@@ -618,7 +654,10 @@ async function seedAuditData() {
         observations: 'Revisão da documentação do SGSI concluída',
       });
 
-      docReview.updateSummary();
+      // ✅ CORREÇÃO: Verificar se método existe
+      if (typeof docReview.updateSummary === 'function') {
+        docReview.updateSummary();
+      }
       await docReview.save();
 
       totalDocReviews++;

@@ -112,6 +112,34 @@ export class AuditPlanController {
   }
 
   // ============================================================
+  // DELETAR PLANO
+  // ============================================================
+  async delete(req: AuthenticatedRequest, res: Response): Promise<Response> {
+    try {
+      const { id } = req.params;
+      const userId = req.user?._id?.toString();
+
+      if (!id) {
+        return res.status(400).json({ success: false, message: 'ID não informado' });
+      }
+
+      if (!userId) {
+        return res.status(401).json({ success: false, message: 'Usuário não autenticado' });
+      }
+
+      const plan = await auditPlanService.cancel(id, userId);
+
+      if (!plan) {
+        return res.status(404).json({ success: false, message: 'Plano não encontrado' });
+      }
+
+      return res.status(200).json({ success: true, data: plan });
+    } catch (error: any) {
+      return res.status(400).json({ success: false, message: error.message });
+    }
+  }
+
+  // ============================================================
   // ENVIAR PARA APROVAÇÃO
   // ============================================================
   async submitForApproval(req: AuthenticatedRequest, res: Response): Promise<Response> {

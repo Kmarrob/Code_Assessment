@@ -11,7 +11,7 @@ export class AuditProgramController {
   async create(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { companyId, year, sectors, supplierAudits, externalAudit, otherActivities, observations } = req.body;
-      const userId = req.user?.id;
+      const userId = req.user?._id?.toString();
 
       if (!userId) {
         return res.status(401).json({ error: 'Usuário não autenticado' });
@@ -163,12 +163,11 @@ export class AuditProgramController {
 
   /**
    * Aprovar programa
-   * POST /api/internal-audit/program/:id/approve
-   */
+   * POST /api/internal-audit/program/:id/approve   */
   async approve(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
-      const userId = req.user?.id;
+      const userId = req.user?._id?.toString();
 
       if (!userId) {
         return res.status(401).json({ error: 'Usuário não autenticado' });

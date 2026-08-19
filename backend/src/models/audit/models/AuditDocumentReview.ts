@@ -1,4 +1,4 @@
-import mongoose, { Schema } from 'mongoose';
+import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IDocumentReviewItem {
   clause: string;
@@ -11,7 +11,7 @@ export interface IDocumentReviewItem {
   documentName?: string;
 }
 
-export interface IAuditDocumentReview {
+export interface IAuditDocumentReview extends Document {
   _id: string;
   companyId: string;
   auditPlanId: string;
@@ -33,6 +33,9 @@ export interface IAuditDocumentReview {
   createdAt: Date;
   updatedAt: Date;
   deletedAt?: Date;
+  
+  // ✅ MÉTODOS ADICIONADOS À INTERFACE
+  updateSummary(): void;
 }
 
 const AuditDocumentReviewSchema = new Schema<IAuditDocumentReview>(

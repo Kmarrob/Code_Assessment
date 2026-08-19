@@ -2,6 +2,25 @@ import { AuditPlan } from '../models/AuditPlan';
 import { AuditChecklist } from '../models/AuditChecklist';
 import { IAuditPlan, CreateAuditPlanDTO, UpdateAuditPlanDTO, AuditFilters } from '../types/audit.types';
 
+/**
+ * Mapeia documento do MongoDB para IAuditPlan com id
+ */
+function mapToIAuditPlan(doc: any): IAuditPlan {
+  if (!doc) return null as any;
+  return {
+    id: doc._id.toString(),
+    ...doc,
+  };
+}
+
+/**
+ * Mapeia array de documentos para IAuditPlan[]
+ */
+function mapToIAuditPlanArray(docs: any[]): IAuditPlan[] {
+  if (!docs) return [];
+  return docs.map(doc => mapToIAuditPlan(doc));
+}
+
 export class AuditPlanService {
   // ============================================================
   // CRIAR PLANO DE AUDITORIA
@@ -26,7 +45,7 @@ export class AuditPlanService {
       await this.generateChecklist(plan._id.toString(), data.scope.controls);
     }
 
-    return plan.toObject();
+    return mapToIAuditPlan(plan.toObject());
   }
 
   // ============================================================
@@ -76,16 +95,20 @@ export class AuditPlanService {
       ];
     }
 
-    return AuditPlan.find(query)
+    const docs = await AuditPlan.find(query)
       .sort({ 'period.startDate': -1 })
       .lean();
+
+    return mapToIAuditPlanArray(docs);
   }
 
   // ============================================================
   // BUSCAR PLANO POR ID
   // ============================================================
   async findById(id: string): Promise<IAuditPlan | null> {
-    return AuditPlan.findById(id).lean();
+    const doc = await AuditPlan.findById(id).lean();
+    if (!doc) return null;
+    return mapToIAuditPlan(doc);
   }
 
   // ============================================================
@@ -104,7 +127,7 @@ export class AuditPlanService {
     Object.assign(plan, data);
     await plan.save();
 
-    return plan.toObject();
+    return mapToIAuditPlan(plan.toObject());
   }
 
   // ============================================================
@@ -126,7 +149,7 @@ export class AuditPlanService {
     await plan.save();
 
     // TODO: Enviar notificação para o leadAuditor
-    return plan.toObject();
+    return mapToIAuditPlan(plan.toObject());
   }
 
   // ============================================================
@@ -156,7 +179,7 @@ export class AuditPlanService {
     await plan.save();
 
     // TODO: Enviar notificação para o criador do plano
-    return plan.toObject();
+    return mapToIAuditPlan(plan.toObject());
   }
 
   // ============================================================
@@ -185,7 +208,7 @@ export class AuditPlanService {
     await plan.save();
 
     // TODO: Enviar notificação para o criador do plano com o motivo
-    return plan.toObject();
+    return mapToIAuditPlan(plan.toObject());
   }
 
   // ============================================================
@@ -201,7 +224,7 @@ export class AuditPlanService {
     plan.status = 'cancelled';
     await plan.save();
 
-    return plan.toObject();
+    return mapToIAuditPlan(plan.toObject());
   }
 
   // ============================================================
@@ -227,7 +250,7 @@ export class AuditPlanService {
     plan.status = 'in_progress';
     await plan.save();
 
-    return plan.toObject();
+    return mapToIAuditPlan(plan.toObject());
   }
 
   // ============================================================
@@ -249,7 +272,7 @@ export class AuditPlanService {
     plan.status = 'completed';
     await plan.save();
 
-    return plan.toObject();
+    return mapToIAuditPlan(plan.toObject());
   }
 
   // ============================================================

@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { AuditFindingService } from '../../models/audit/services/AuditFindingService';
 import { CreateAuditFindingDTO, UpdateAuditFindingDTO } from '../../models/audit/types/audit.types';
 import { AuthenticatedRequest } from '../../types';
+import { AuditFinding } from '../../models/audit/models/AuditFinding';
 
 const auditFindingService = new AuditFindingService();
 
@@ -120,6 +121,45 @@ export class AuditFindingController {
       }
 
       return res.status(200).json({ success: true, data: finding });
+    } catch (error: any) {
+      return res.status(400).json({ success: false, message: error.message });
+    }
+  }
+
+  // ============================================================
+  // DELETAR NC (SOFT DELETE)
+  // ============================================================
+  async delete(req: AuthenticatedRequest, res: Response): Promise<Response> {
+    try {
+      const { id } = req.params;
+      const userId = req.user?._id?.toString();
+
+      if (!id) {
+        return res.status(400).json({ success: false, message: 'ID não informado' });
+      }
+
+      if (!userId) {
+        return res.status(401).json({ success: false, message: 'Usuário não autenticado' });
+      }
+
+      // Buscar a NC para verificar se existe e se o usuário tem permissão
+      const finding = await AuditFinding.findById(id);
+      if (!finding) {
+        return res.status(404).json({ success: false, message: 'NC não encontrada' });
+      }
+
+      // Apenas o criador ou um usuário com permissão pode excluir
+      if (finding.createdBy !== userId) {
+        // TODO: Verificar se o usuário é ADMIN ou REP
+        // Por enquanto, permitir apenas o criador
+        return res.status(403).json({ success: false, message: 'Apenas o criador pode excluir esta NC' });
+      }
+
+      // Soft delete: marcar como excluído
+      finding.deletedAt = new Date();
+      await finding.save();
+
+      return res.status(200).json({ success: true, message: 'NC excluída com sucesso' });
     } catch (error: any) {
       return res.status(400).json({ success: false, message: error.message });
     }
