@@ -32,8 +32,8 @@ export class AuditReportService {
     if (!plan) throw new Error('Plano de auditoria não encontrado');
 
     // Verificar se o criador faz parte da equipe de auditoria
-    const isTeamMember = 
-      plan.team.leadAuditor === createdBy || 
+    const isTeamMember =
+      plan.team.leadAuditor === createdBy ||
       plan.team.auditors.includes(createdBy);
 
     if (!isTeamMember) {
@@ -187,7 +187,7 @@ export class AuditReportService {
     const reportFindings: IAuditReportFinding[] = findings.map(f => ({
       id: f._id.toString(),
       number: f.number || '',
-      type: f.type,
+      type: f.type as any,
       title: f.title,
       description: f.description,
       area: f.area,
@@ -195,11 +195,11 @@ export class AuditReportService {
       clause: f.clause,
       status: f.status,
       evidenceIds: f.evidenceIds || [],
-      actionPlanIds: f.actionPlanIds || [],
+      actionPlanIds: (f as any).actionPlanIds || [],
       createdBy: f.createdBy,
       createdAt: f.createdAt,
       updatedAt: f.updatedAt,
-    }));
+    })) as unknown as IAuditReportFinding[];
 
     const summary = `Auditoria realizada no período de ${new Date(plan.period.startDate).toLocaleDateString('pt-BR')} a ${new Date(plan.period.endDate).toLocaleDateString('pt-BR')}`;
     const conclusion = this.generateConclusion(findings);
@@ -212,8 +212,8 @@ export class AuditReportService {
       // Atualizar o relatório existente
       existingReport.summary = summary;
       existingReport.conclusion = conclusion;
-      existingReport.recommendations = recommendations;
-      existingReport.findings = reportFindings;
+      (existingReport as any).recommendations = recommendations;
+      existingReport.findings = reportFindings as any;
       await existingReport.save();
       return mapToIAuditReport(existingReport.toObject());
     }

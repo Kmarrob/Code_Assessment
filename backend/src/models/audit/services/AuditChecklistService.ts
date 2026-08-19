@@ -21,6 +21,43 @@ function mapToIAuditChecklistArray(docs: any[]): IAuditChecklist[] {
   return docs.map(doc => mapToIAuditChecklist(doc));
 }
 
+/**
+ * Converte respostas legadas/frontend para o padrão utilizado
+ * pelo modelo AuditChecklist.
+ */
+function mapAnswer(answer: any): IAuditChecklistQuestion['answer'] {
+  switch (answer) {
+    case 'C':
+    case 'conforme':
+      return 'C';
+
+    case 'NC':
+    case 'nao_conforme':
+      return 'NC';
+
+    case 'OB':
+    case 'observacao':
+      return 'OB';
+
+    case 'OM':
+    case 'oportunidade':
+      return 'OM';
+
+    case 'NA':
+    case 'nao_aplicavel':
+      return 'NA';
+
+    case '--':
+    case undefined:
+    case null:
+    case '':
+      return '--';
+
+    default:
+      return '--';
+  }
+}
+
 export class AuditChecklistService {
   // ============================================================
   // BUSCAR CHECKLIST POR PLANO E CONTROLE
@@ -54,8 +91,8 @@ export class AuditChecklistService {
     const plan = await AuditPlan.findById(checklist.auditPlanId);
     if (!plan) throw new Error('Plano de auditoria não encontrado');
 
-    const isTeamMember = 
-      plan.team.leadAuditor === userId || 
+    const isTeamMember =
+      plan.team.leadAuditor === userId ||
       plan.team.auditors.includes(userId);
 
     if (!isTeamMember) {
@@ -65,7 +102,7 @@ export class AuditChecklistService {
     // Converter IAuditChecklistItem para IAuditChecklistQuestion
     const questionsMapped: IAuditChecklistQuestion[] = questions.map(q => ({
       question: q.question,
-      answer: q.answer || '--',
+      answer: mapAnswer(q.answer),
       observations: q.observations || '',
       evidenceIds: q.evidenceIds || [],
       responsible: q.responsible || '',
@@ -75,6 +112,8 @@ export class AuditChecklistService {
 
     checklist.questions = questionsMapped;
     checklist.updatedAt = new Date();
+    checklist.updatedBy = userId;
+
     await checklist.save();
 
     return mapToIAuditChecklist(checklist.toObject());
@@ -91,8 +130,8 @@ export class AuditChecklistService {
     const plan = await AuditPlan.findById(checklist.auditPlanId);
     if (!plan) throw new Error('Plano de auditoria não encontrado');
 
-    const isTeamMember = 
-      plan.team.leadAuditor === userId || 
+    const isTeamMember =
+      plan.team.leadAuditor === userId ||
       plan.team.auditors.includes(userId);
 
     if (!isTeamMember) {
@@ -102,6 +141,8 @@ export class AuditChecklistService {
     checklist.status = 'completed';
     checklist.completedBy = userId;
     checklist.completedAt = new Date();
+    checklist.updatedBy = userId;
+
     await checklist.save();
 
     return mapToIAuditChecklist(checklist.toObject());
@@ -116,6 +157,12 @@ export class AuditChecklistService {
     const inProgress = await AuditChecklist.countDocuments({ auditPlanId, status: 'in_progress' });
     const pending = await AuditChecklist.countDocuments({ auditPlanId, status: 'pending' });
 
-    return { total, completed, inProgress, pending, completionRate: total > 0 ? (completed / total) * 100 : 0 };
+    return {
+      total,
+      completed,
+      inProgress,
+      pending,
+      completionRate: total > 0 ? (completed / total) * 100 : 0,
+    };
   }
 }

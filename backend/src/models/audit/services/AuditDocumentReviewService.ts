@@ -13,7 +13,7 @@ export class AuditDocumentReviewService {
     return {
       id: doc._id.toString(),
       ...doc,
-    } as IAuditDocumentReview;
+    } as unknown as IAuditDocumentReview;
   }
 
   async findByAuditPlanId(auditPlanId: string): Promise<IAuditDocumentReview | null> {
@@ -22,7 +22,7 @@ export class AuditDocumentReviewService {
     return {
       id: doc._id.toString(),
       ...doc,
-    } as IAuditDocumentReview;
+    } as unknown as IAuditDocumentReview;
   }
 
   async findAllByCompany(companyId: string): Promise<IAuditDocumentReview[]> {
@@ -30,7 +30,7 @@ export class AuditDocumentReviewService {
     return docs.map(doc => ({
       id: doc._id.toString(),
       ...doc,
-    })) as IAuditDocumentReview[];
+    })) as unknown as IAuditDocumentReview[];
   }
 
   async update(id: string, data: Partial<IAuditDocumentReview>): Promise<IAuditDocumentReview | null> {
@@ -39,7 +39,7 @@ export class AuditDocumentReviewService {
     return {
       id: doc._id.toString(),
       ...doc,
-    } as IAuditDocumentReview;
+    } as unknown as IAuditDocumentReview;
   }
 
   async updateDocument(id: string, clause: string, data: any): Promise<IAuditDocumentReview | null> {
@@ -49,7 +49,10 @@ export class AuditDocumentReviewService {
     const docIndex = review.documents.findIndex((d: any) => d.clause === clause);
     if (docIndex === -1) throw new Error(`Cláusula ${clause} não encontrada`);
 
-    Object.assign(review.documents[docIndex], data);
+    const document = review.documents[docIndex];
+    if (!document) throw new Error(`Documento da cláusula ${clause} não encontrado`);
+
+    Object.assign(document, data);
     review.markModified('documents');
     await review.save();
     return review.toObject();
@@ -62,8 +65,11 @@ export class AuditDocumentReviewService {
     const docIndex = review.documents.findIndex((d: any) => d.clause === clause);
     if (docIndex === -1) throw new Error(`Cláusula ${clause} não encontrada`);
 
-    review.documents[docIndex].status = status as any;
-    if (observations) review.documents[docIndex].observations = observations;
+    const document = review.documents[docIndex];
+    if (!document) throw new Error(`Documento da cláusula ${clause} não encontrado`);
+
+    document.status = status as any;
+    if (observations) document.observations = observations;
     review.markModified('documents');
     await review.save();
     return review.toObject();
@@ -109,7 +115,7 @@ export class AuditDocumentReviewService {
     return {
       id: doc._id.toString(),
       ...doc,
-    } as IAuditDocumentReview;
+    } as unknown as IAuditDocumentReview;
   }
 
   async getSummary(id: string): Promise<any> {
