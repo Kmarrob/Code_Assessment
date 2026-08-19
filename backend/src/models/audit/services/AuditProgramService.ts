@@ -8,21 +8,32 @@ export class AuditProgramService {
    */
   async create(data: Partial<IAuditProgram>): Promise<IAuditProgram> {
     const program = new AuditProgram(data);
-    return await program.save();
+    await program.save();
+    return program.toObject();
   }
 
   /**
    * Buscar programa por ID
    */
   async findById(id: string): Promise<IAuditProgram | null> {
-    return await AuditProgram.findById(id).lean();
+    const doc = await AuditProgram.findById(id).lean();
+    if (!doc) return null;
+    return {
+      id: doc._id.toString(),
+      ...doc,
+    } as IAuditProgram;
   }
 
   /**
    * Buscar programa por empresa e ano
    */
   async findByCompanyAndYear(companyId: string, year: number): Promise<IAuditProgram | null> {
-    return await AuditProgram.findOne({ companyId, year }).lean();
+    const doc = await AuditProgram.findOne({ companyId, year }).lean();
+    if (!doc) return null;
+    return {
+      id: doc._id.toString(),
+      ...doc,
+    } as IAuditProgram;
   }
 
   /**
@@ -43,25 +54,34 @@ export class AuditProgramService {
       findQuery = findQuery.limit(options.limit);
     }
     
-    return await findQuery.lean();
+    const docs = await findQuery.lean();
+    return docs.map(doc => ({
+      id: doc._id.toString(),
+      ...doc,
+    })) as IAuditProgram[];
   }
 
   /**
    * Atualizar programa
    */
   async update(id: string, data: Partial<IAuditProgram>): Promise<IAuditProgram | null> {
-    return await AuditProgram.findByIdAndUpdate(
+    const doc = await AuditProgram.findByIdAndUpdate(
       id,
       { ...data, updatedAt: new Date() },
       { new: true, runValidators: true }
     ).lean();
+    if (!doc) return null;
+    return {
+      id: doc._id.toString(),
+      ...doc,
+    } as IAuditProgram;
   }
 
   /**
    * Aprovar programa
    */
   async approve(id: string, approvedBy: string): Promise<IAuditProgram | null> {
-    return await AuditProgram.findByIdAndUpdate(
+    const doc = await AuditProgram.findByIdAndUpdate(
       id,
       {
         status: 'approved',
@@ -71,13 +91,18 @@ export class AuditProgramService {
       },
       { new: true }
     ).lean();
+    if (!doc) return null;
+    return {
+      id: doc._id.toString(),
+      ...doc,
+    } as IAuditProgram;
   }
 
   /**
    * Ativar programa (iniciar execução)
    */
   async activate(id: string): Promise<IAuditProgram | null> {
-    return await AuditProgram.findByIdAndUpdate(
+    const doc = await AuditProgram.findByIdAndUpdate(
       id,
       {
         status: 'active',
@@ -85,13 +110,18 @@ export class AuditProgramService {
       },
       { new: true }
     ).lean();
+    if (!doc) return null;
+    return {
+      id: doc._id.toString(),
+      ...doc,
+    } as IAuditProgram;
   }
 
   /**
    * Arquivar programa
    */
   async archive(id: string): Promise<IAuditProgram | null> {
-    return await AuditProgram.findByIdAndUpdate(
+    const doc = await AuditProgram.findByIdAndUpdate(
       id,
       {
         status: 'archived',
@@ -99,6 +129,11 @@ export class AuditProgramService {
       },
       { new: true }
     ).lean();
+    if (!doc) return null;
+    return {
+      id: doc._id.toString(),
+      ...doc,
+    } as IAuditProgram;
   }
 
   /**
@@ -116,9 +151,14 @@ export class AuditProgramService {
       nextAuditDate?: Date;
     }
   ): Promise<IAuditProgram | null> {
-    const totalScore = sector.scoreA + sector.scoreB;
+    // ✅ CORREÇÃO: Verificar se sector existe
+    if (!sector) {
+      throw new Error('Dados do setor são obrigatórios');
+    }
     
-    return await AuditProgram.findByIdAndUpdate(
+    const totalScore = (sector.scoreA || 0) + (sector.scoreB || 0);
+    
+    const doc = await AuditProgram.findByIdAndUpdate(
       id,
       {
         $push: {
@@ -132,6 +172,11 @@ export class AuditProgramService {
       },
       { new: true, runValidators: true }
     ).lean();
+    if (!doc) return null;
+    return {
+      id: doc._id.toString(),
+      ...doc,
+    } as IAuditProgram;
   }
 
   /**
@@ -161,6 +206,10 @@ export class AuditProgramService {
     }
     
     const sector = program.sectors[sectorIndex];
+    if (!sector) {  // ✅ CORREÇÃO: verificar se sector existe
+      throw new Error('Setor não encontrado');
+    }
+    
     Object.assign(sector, data);
     
     // Recalcular totalScore se scoreA ou scoreB foram alterados
@@ -187,7 +236,12 @@ export class AuditProgramService {
       scope: string;
     }
   ): Promise<IAuditProgram | null> {
-    return await AuditProgram.findByIdAndUpdate(
+    // ✅ CORREÇÃO: Verificar se supplierAudit existe
+    if (!supplierAudit) {
+      throw new Error('Dados da auditoria de fornecedor são obrigatórios');
+    }
+    
+    const doc = await AuditProgram.findByIdAndUpdate(
       id,
       {
         $push: {
@@ -200,6 +254,11 @@ export class AuditProgramService {
       },
       { new: true, runValidators: true }
     ).lean();
+    if (!doc) return null;
+    return {
+      id: doc._id.toString(),
+      ...doc,
+    } as IAuditProgram;
   }
 
   /**
@@ -225,6 +284,10 @@ export class AuditProgramService {
     }
     
     const supplierAudit = program.supplierAudits[supplierIndex];
+    if (!supplierAudit) {  // ✅ CORREÇÃO: verificar se existe
+      throw new Error('Auditoria de fornecedor não encontrada');
+    }
+    
     Object.assign(supplierAudit, data);
     
     program.markModified('supplierAudits');
@@ -269,7 +332,12 @@ export class AuditProgramService {
       scheduledDate: Date;
     }
   ): Promise<IAuditProgram | null> {
-    return await AuditProgram.findByIdAndUpdate(
+    // ✅ CORREÇÃO: Verificar se activity existe
+    if (!activity) {
+      throw new Error('Dados da atividade são obrigatórios');
+    }
+    
+    const doc = await AuditProgram.findByIdAndUpdate(
       id,
       {
         $push: {
@@ -282,6 +350,11 @@ export class AuditProgramService {
       },
       { new: true, runValidators: true }
     ).lean();
+    if (!doc) return null;
+    return {
+      id: doc._id.toString(),
+      ...doc,
+    } as IAuditProgram;
   }
 
   /**
@@ -306,6 +379,10 @@ export class AuditProgramService {
     }
     
     const activity = program.otherActivities[activityIndex];
+    if (!activity) {  // ✅ CORREÇÃO: verificar se existe
+      throw new Error('Atividade não encontrada');
+    }
+    
     Object.assign(activity, data);
     
     program.markModified('otherActivities');
@@ -319,7 +396,7 @@ export class AuditProgramService {
    * Excluir programa (soft delete)
    */
   async delete(id: string): Promise<IAuditProgram | null> {
-    return await AuditProgram.findByIdAndUpdate(
+    const doc = await AuditProgram.findByIdAndUpdate(
       id,
       {
         deletedAt: new Date(),
@@ -327,6 +404,11 @@ export class AuditProgramService {
       },
       { new: true }
     ).lean();
+    if (!doc) return null;
+    return {
+      id: doc._id.toString(),
+      ...doc,
+    } as IAuditProgram;
   }
 
   /**
@@ -379,6 +461,7 @@ export class AuditProgramService {
     
     // Para cada setor, calcular próxima auditoria
     for (const sector of program.sectors) {
+      if (!sector) continue;  // ✅ CORREÇÃO: verificar se sector existe
       if (sector.status === 'completed' && sector.nextAuditDate) {
         nextAudits.push({
           type: 'sector',
@@ -402,6 +485,7 @@ export class AuditProgramService {
       .sort((a, b) => a.auditDate.getTime() - b.auditDate.getTime());
     
     for (const supplier of nextSupplierAudits) {
+      if (!supplier) continue;  // ✅ CORREÇÃO: verificar se supplier existe
       nextAudits.push({
         type: 'supplier',
         name: supplier.supplierName,

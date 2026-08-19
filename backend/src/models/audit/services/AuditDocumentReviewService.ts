@@ -3,23 +3,43 @@ import { AuditDocumentReview, IAuditDocumentReview } from '../models/AuditDocume
 export class AuditDocumentReviewService {
   async create(data: Partial<IAuditDocumentReview>): Promise<IAuditDocumentReview> {
     const review = new AuditDocumentReview(data);
-    return await review.save();
+    await review.save();
+    return review.toObject();
   }
 
   async findById(id: string): Promise<IAuditDocumentReview | null> {
-    return await AuditDocumentReview.findById(id).lean();
+    const doc = await AuditDocumentReview.findById(id).lean();
+    if (!doc) return null;
+    return {
+      id: doc._id.toString(),
+      ...doc,
+    } as IAuditDocumentReview;
   }
 
   async findByAuditPlanId(auditPlanId: string): Promise<IAuditDocumentReview | null> {
-    return await AuditDocumentReview.findOne({ auditPlanId }).lean();
+    const doc = await AuditDocumentReview.findOne({ auditPlanId }).lean();
+    if (!doc) return null;
+    return {
+      id: doc._id.toString(),
+      ...doc,
+    } as IAuditDocumentReview;
   }
 
   async findAllByCompany(companyId: string): Promise<IAuditDocumentReview[]> {
-    return await AuditDocumentReview.find({ companyId }).sort({ createdAt: -1 }).lean();
+    const docs = await AuditDocumentReview.find({ companyId }).sort({ createdAt: -1 }).lean();
+    return docs.map(doc => ({
+      id: doc._id.toString(),
+      ...doc,
+    })) as IAuditDocumentReview[];
   }
 
   async update(id: string, data: Partial<IAuditDocumentReview>): Promise<IAuditDocumentReview | null> {
-    return await AuditDocumentReview.findByIdAndUpdate(id, data, { new: true }).lean();
+    const doc = await AuditDocumentReview.findByIdAndUpdate(id, data, { new: true }).lean();
+    if (!doc) return null;
+    return {
+      id: doc._id.toString(),
+      ...doc,
+    } as IAuditDocumentReview;
   }
 
   async updateDocument(id: string, clause: string, data: any): Promise<IAuditDocumentReview | null> {
@@ -42,7 +62,7 @@ export class AuditDocumentReviewService {
     const docIndex = review.documents.findIndex((d: any) => d.clause === clause);
     if (docIndex === -1) throw new Error(`Cláusula ${clause} não encontrada`);
 
-    review.documents[docIndex].status = status;
+    review.documents[docIndex].status = status as any;
     if (observations) review.documents[docIndex].observations = observations;
     review.markModified('documents');
     await review.save();
@@ -84,7 +104,12 @@ export class AuditDocumentReviewService {
   }
 
   async delete(id: string): Promise<IAuditDocumentReview | null> {
-    return await AuditDocumentReview.findByIdAndUpdate(id, { deletedAt: new Date() }, { new: true }).lean();
+    const doc = await AuditDocumentReview.findByIdAndUpdate(id, { deletedAt: new Date() }, { new: true }).lean();
+    if (!doc) return null;
+    return {
+      id: doc._id.toString(),
+      ...doc,
+    } as IAuditDocumentReview;
   }
 
   async getSummary(id: string): Promise<any> {

@@ -52,6 +52,21 @@ export interface IAuditChecklistItem {
   answer: 'conforme' | 'nao_conforme' | 'nao_aplicavel';
   observations: string;
   evidenceIds: string[];
+  // ✅ ADICIONADO: Campos para rastreamento de responsável
+  responsible?: string;        // ID do responsável pela pergunta
+  answeredAt?: Date;           // Data da resposta
+  answeredBy?: string;         // ID de quem respondeu
+}
+
+// 🆕 NOVO: Interface para perguntas do checklist (compatível com o service)
+export interface IAuditChecklistQuestion {
+  question: string;
+  answer: 'C' | 'NC' | 'NA' | 'OB' | 'OM' | '--';
+  observations: string;
+  evidenceIds: string[];
+  responsible: string;
+  answeredAt?: Date;
+  answeredBy?: string;
 }
 
 export interface IAuditChecklist {
@@ -59,12 +74,13 @@ export interface IAuditChecklist {
   id: string;
   auditPlanId: string;
   controlId: string;           // Controle ISO 27001
-  questions: IAuditChecklistItem[];
+  questions: IAuditChecklistQuestion[];  // ✅ USAR A NOVA INTERFACE
   status: AuditChecklistStatus;
   completedBy: string;
   completedAt: Date;
   createdAt: Date;
   updatedAt: Date;
+  deletedAt?: Date;
 }
 
 // ============================================================
@@ -75,17 +91,25 @@ export interface IAuditFinding {
   _id: string;
   id: string;
   auditPlanId: string;
+  checklistId?: string;
+  number: string;
   type: AuditFindingType;
   title: string;
   description: string;
   area: string;                // Área/processo responsável
+  process: string;             // Processo específico
   clause: string;              // Cláusula ISO 27001 (ex: "A.5.1")
+  controlId?: string;
   evidenceIds: string[];
+  // ✅ ADICIONADO: IDs dos planos de ação relacionados
+  actionPlanIds: string[];
+  deadline?: Date;
   status: AuditFindingStatus;
   createdBy: string;           // ID do AUDITOR que criou
   createdAt: Date;
   validatedBy: string;         // ID do REP ou AUDITOR LÍDER que validou (diferente de createdBy)
   validatedAt: Date;
+  validationComment?: string;
   updatedAt: Date;
   deletedAt?: Date;
 }
@@ -106,6 +130,7 @@ export interface IAuditEvidence {
   description: string;
   uploadedBy: string;
   uploadedAt: Date;
+  deletedAt?: Date;
 }
 
 // ============================================================
@@ -116,7 +141,10 @@ export interface IAuditActionPlan {
   _id: string;
   id: string;
   findingId: string;
+  auditPlanId: string;
+  companyId: string;
   action: string;
+  description?: string;
   responsible: string;         // ID do USER responsável
   deadline: Date;
   evidenceIds: string[];
@@ -127,19 +155,52 @@ export interface IAuditActionPlan {
   validatedAt: Date;
   validationComment: string;
   updatedAt: Date;
+  updatedBy?: string;
+  deletedAt?: Date;
 }
 
 // ============================================================
 // RELATÓRIO DE AUDITORIA
 // ============================================================
 
+// 🆕 NOVO: Interface para itens do relatório (findings com detalhes)
+export interface IAuditReportFinding {
+  id: string;
+  number: string;
+  type: AuditFindingType;
+  title: string;
+  description: string;
+  area: string;
+  process: string;
+  clause: string;
+  status: AuditFindingStatus;
+  evidenceIds: string[];
+  actionPlanIds: string[];
+  createdBy: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface IAuditReport {
   _id: string;
   id: string;
   auditPlanId: string;
+  companyId: string;
+  version: string;
+  organization: {
+    legalName: string;
+    corporateGroup?: string;
+    address: string;
+    country: string;
+    contact: string;
+    website?: string;
+    industry: string;
+  };
   summary: string;
   conclusion: string;
-  findings: string[];          // IDs das NCs
+  // ✅ CORRIGIDO: usar IAuditReportFinding[] em vez de string[]
+  findings: IAuditReportFinding[];
+  // ✅ ADICIONADO: recommendations já existe na interface
   recommendations: string[];
   status: AuditReportStatus;
   createdBy: string;           // ID do AUDITOR que criou
@@ -148,6 +209,7 @@ export interface IAuditReport {
   approvedAt: Date;
   rejectionReason?: string;
   updatedAt: Date;
+  deletedAt?: Date;
 }
 
 // ============================================================
@@ -200,28 +262,35 @@ export interface CreateAuditFindingDTO {
   title: string;
   description: string;
   area: string;
+  process: string;
   clause: string;
+  controlId?: string;
   evidenceIds?: string[];
+  deadline?: Date;
 }
 
 export interface UpdateAuditFindingDTO {
   title?: string;
   description?: string;
   area?: string;
+  process?: string;
   clause?: string;
   evidenceIds?: string[];
   status?: AuditFindingStatus;
+  deadline?: Date;
 }
 
 export interface CreateAuditActionPlanDTO {
   findingId: string;
   action: string;
+  description?: string;
   responsible: string;
   deadline: Date;
 }
 
 export interface UpdateAuditActionPlanDTO {
   action?: string;
+  description?: string;
   responsible?: string;
   deadline?: Date;
   evidenceIds?: string[];
@@ -233,14 +302,14 @@ export interface CreateAuditReportDTO {
   summary: string;
   conclusion: string;
   recommendations: string[];
-  findings: string[];
+  findings: IAuditReportFinding[];
 }
 
 export interface UpdateAuditReportDTO {
   summary?: string;
   conclusion?: string;
   recommendations?: string[];
-  findings?: string[];
+  findings?: IAuditReportFinding[];
   status?: AuditReportStatus;
 }
 
