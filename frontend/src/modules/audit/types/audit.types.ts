@@ -2,16 +2,13 @@
 // TIPOS DO MÓDULO DE AUDITORIA INTERNA (SGSI)
 // ============================================================
 
-// ============================================================
-// ENUMS
-// ============================================================
-
 export type AuditStatus = 'draft' | 'pending_approval' | 'approved' | 'in_progress' | 'completed' | 'cancelled';
 export type AuditFindingType = 'nc_a' | 'nc_b' | 'comment' | 'opportunity' | 'positive';
 export type AuditFindingStatus = 'open' | 'in_progress' | 'pending_validation' | 'closed' | 'reopened';
 export type AuditActionStatus = 'pending' | 'in_progress' | 'completed' | 'rejected';
 export type AuditReportStatus = 'draft' | 'pending_review' | 'approved' | 'rejected';
 export type AuditChecklistStatus = 'pending' | 'in_progress' | 'completed';
+export type AuditChecklistAnswer = 'C' | 'NC' | 'OB' | 'OM' | 'NA' | '--';
 
 // ============================================================
 // PLANO DE AUDITORIA
@@ -23,20 +20,9 @@ export interface AuditPlan {
   companyId: string;
   title: string;
   description: string;
-  scope: {
-    controls: string[];
-    processes: string[];
-    areas: string[];
-  };
-  period: {
-    startDate: string;
-    endDate: string;
-  };
-  team: {
-    leadAuditor: string;
-    auditors: string[];
-    observers: string[];
-  };
+  scope: { controls: string[]; processes: string[]; areas: string[] };
+  period: { startDate: string; endDate: string };
+  team: { leadAuditor: string; auditors: string[]; observers: string[] };
   criteria: string[];
   status: AuditStatus;
   createdBy: string;
@@ -52,9 +38,12 @@ export interface AuditPlan {
 
 export interface AuditChecklistItem {
   question: string;
-  answer: 'conforme' | 'nao_conforme' | 'nao_aplicavel';
+  answer: AuditChecklistAnswer;
   observations: string;
   evidenceIds: string[];
+  responsible?: string;
+  answeredAt?: string;
+  answeredBy?: string;
 }
 
 export interface AuditChecklist {
@@ -71,7 +60,7 @@ export interface AuditChecklist {
 }
 
 // ============================================================
-// NÃO CONFORMIDADE (FINDING)
+// NÃO CONFORMIDADE
 // ============================================================
 
 export interface AuditFinding {
@@ -153,46 +142,24 @@ export interface AuditReport {
 }
 
 // ============================================================
-// DTOs (Data Transfer Objects)
+// DTOs
 // ============================================================
 
 export interface CreateAuditPlanDTO {
   title: string;
   description: string;
-  scope: {
-    controls: string[];
-    processes: string[];
-    areas: string[];
-  };
-  period: {
-    startDate: string;
-    endDate: string;
-  };
-  team: {
-    leadAuditor: string;
-    auditors: string[];
-    observers?: string[];
-  };
+  scope: { controls: string[]; processes: string[]; areas: string[] };
+  period: { startDate: string; endDate: string };
+  team: { leadAuditor: string; auditors: string[]; observers?: string[] };
   criteria: string[];
 }
 
 export interface UpdateAuditPlanDTO {
   title?: string;
   description?: string;
-  scope?: {
-    controls?: string[];
-    processes?: string[];
-    areas?: string[];
-  };
-  period?: {
-    startDate?: string;
-    endDate?: string;
-  };
-  team?: {
-    leadAuditor?: string;
-    auditors?: string[];
-    observers?: string[];
-  };
+  scope?: { controls?: string[]; processes?: string[]; areas?: string[] };
+  period?: { startDate?: string; endDate?: string };
+  team?: { leadAuditor?: string; auditors?: string[]; observers?: string[] };
   criteria?: string[];
   status?: AuditStatus;
 }
