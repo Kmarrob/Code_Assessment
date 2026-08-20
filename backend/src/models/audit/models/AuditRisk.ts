@@ -130,11 +130,6 @@ AuditRiskSchema.index({ companyId: 1, id: 1 }, { unique: true });
 AuditRiskSchema.index({ companyId: 1, status: 1 });
 AuditRiskSchema.index({ companyId: 1, riskLevel: 1 });
 
-// Virtual
-AuditRiskSchema.virtual('id').get(function () {
-  return this._id.toString();
-});
-
 // Middleware para soft delete
 AuditRiskSchema.pre('find', function () {
   this.where({ deletedAt: null });
