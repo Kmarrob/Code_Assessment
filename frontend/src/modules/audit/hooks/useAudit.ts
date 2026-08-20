@@ -38,6 +38,12 @@ export const auditKeys = {
   evidence: (planId: string) => [...auditKeys.all, 'evidence', planId] as const,
   reports: (planId?: string) => [...auditKeys.all, 'reports', planId] as const,
   report: (id: string) => [...auditKeys.all, 'report', id] as const,
+  // 🆕 NOVO (v46.0) - Query Keys para funcionalidades adicionais
+  risks: (planId: string) => [...auditKeys.all, 'risks', planId] as const,
+  risk: (id: string) => [...auditKeys.all, 'risk', id] as const,
+  soa: (planId: string) => [...auditKeys.all, 'soa', planId] as const,
+  program: (planId: string) => [...auditKeys.all, 'program', planId] as const,
+  documentReview: (planId: string) => [...auditKeys.all, 'document-review', planId] as const,
 };
 
 // ============================================================
@@ -502,6 +508,165 @@ export function useGenerateReport() {
     onSuccess: (_, planId) => {
       queryClient.invalidateQueries({ queryKey: auditKeys.reports(planId) });
       queryClient.invalidateQueries({ queryKey: auditKeys.reports() });
+    },
+  });
+}
+
+// ============================================================
+// 🆕 NOVO (v46.0) - HOOKS — RISCOS
+// ============================================================
+
+export function useRisksByPlan(planId: string) {
+  return useQuery({
+    queryKey: auditKeys.risks(planId),
+    queryFn: () => auditService.listRisksByPlan(planId),
+    enabled: !!planId,
+  });
+}
+
+export function useRisk(id: string) {
+  return useQuery({
+    queryKey: auditKeys.risk(id),
+    queryFn: () => auditService.getRisk(id),
+    enabled: !!id,
+  });
+}
+
+export function useCreateRisk() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ planId, data }: { planId: string; data: any }) =>
+      auditService.createRisk(planId, data),
+    onSuccess: (_, { planId }) => {
+      queryClient.invalidateQueries({ queryKey: auditKeys.risks(planId) });
+    },
+  });
+}
+
+export function useUpdateRisk() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) =>
+      auditService.updateRisk(id, data),
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: auditKeys.risk(id) });
+    },
+  });
+}
+
+export function useDeleteRisk() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => auditService.deleteRisk(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: auditKeys.risks('') });
+    },
+  });
+}
+
+// ============================================================
+// 🆕 NOVO (v46.0) - HOOKS — SoA (Statement of Applicability)
+// ============================================================
+
+export function useSoAByPlan(planId: string) {
+  return useQuery({
+    queryKey: auditKeys.soa(planId),
+    queryFn: () => auditService.getSoAByPlan(planId),
+    enabled: !!planId,
+  });
+}
+
+export function useUpdateSoAControl() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ soaId, clause, data }: { soaId: string; clause: string; data: any }) =>
+      auditService.updateSoAControl(soaId, clause, data),
+    onSuccess: (_, { soaId }) => {
+      queryClient.invalidateQueries({ queryKey: auditKeys.soa('') });
+    },
+  });
+}
+
+export function useExportSoA() {
+  return useMutation({
+    mutationFn: (soaId: string) => auditService.exportSoA(soaId),
+  });
+}
+
+// ============================================================
+// 🆕 NOVO (v46.0) - HOOKS — PROGRAMA DE AUDITORIA
+// ============================================================
+
+export function useProgramByPlan(planId: string) {
+  return useQuery({
+    queryKey: auditKeys.program(planId),
+    queryFn: () => auditService.getProgramByPlan(planId),
+    enabled: !!planId,
+  });
+}
+
+export function useCreateProgramActivity() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ programId, data }: { programId: string; data: any }) =>
+      auditService.createProgramActivity(programId, data),
+    onSuccess: (_, { programId }) => {
+      queryClient.invalidateQueries({ queryKey: auditKeys.program(programId) });
+    },
+  });
+}
+
+export function useUpdateProgramActivity() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ programId, activityId, data }: { programId: string; activityId: string; data: any }) =>
+      auditService.updateProgramActivity(programId, activityId, data),
+    onSuccess: (_, { programId }) => {
+      queryClient.invalidateQueries({ queryKey: auditKeys.program(programId) });
+    },
+  });
+}
+
+export function useDeleteProgramActivity() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ programId, activityId }: { programId: string; activityId: string }) =>
+      auditService.deleteProgramActivity(programId, activityId),
+    onSuccess: (_, { programId }) => {
+      queryClient.invalidateQueries({ queryKey: auditKeys.program(programId) });
+    },
+  });
+}
+
+// ============================================================
+// 🆕 NOVO (v46.0) - HOOKS — REVISÃO DOCUMENTAL
+// ============================================================
+
+export function useDocumentReviewByPlan(planId: string) {
+  return useQuery({
+    queryKey: auditKeys.documentReview(planId),
+    queryFn: () => auditService.getDocumentReviewByPlan(planId),
+    enabled: !!planId,
+  });
+}
+
+export function useUpdateDocumentReview() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ reviewId, clause, data }: { reviewId: string; clause: string; data: any }) =>
+      auditService.updateDocumentReview(reviewId, clause, data),
+    onSuccess: (_, { reviewId }) => {
+      queryClient.invalidateQueries({ queryKey: auditKeys.documentReview('') });
+    },
+  });
+}
+
+export function useCompleteDocumentReview() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (reviewId: string) => auditService.completeDocumentReview(reviewId),
+    onSuccess: (_, reviewId) => {
+      queryClient.invalidateQueries({ queryKey: auditKeys.documentReview('') });
     },
   });
 }

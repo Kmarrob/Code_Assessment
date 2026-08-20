@@ -14,6 +14,17 @@ export type AuditReportStatus = 'draft' | 'pending_review' | 'approved' | 'rejec
 export type AuditChecklistStatus = 'pending' | 'in_progress' | 'completed';
 
 // ============================================================
+// 🆕 NOVO (v46.0) - ENUMS PARA FUNCIONALIDADES ADICIONAIS
+// ============================================================
+
+export type AuditRiskLevel = 'baixo' | 'medio' | 'alto' | 'critico';
+export type AuditRiskStatus = 'identified' | 'assessed' | 'treated' | 'monitored' | 'closed' | 'reopened';
+export type AuditSoAStatus = 'draft' | 'approved' | 'archived';
+export type AuditProgramStatus = 'draft' | 'approved' | 'active' | 'archived';
+export type AuditDocumentReviewStatus = 'in_progress' | 'completed';
+export type AuditDocumentStatus = 'pendente' | 'conforme' | 'nao_conforme' | 'parcial' | 'nao_aplicavel';
+
+// ============================================================
 // PLANO DE AUDITORIA
 // ============================================================
 
@@ -153,6 +164,150 @@ export interface AuditReport {
 }
 
 // ============================================================
+// 🆕 NOVO (v46.0) - RISCOS
+// ============================================================
+
+export interface AuditRisk {
+  _id: string;
+  id: string;
+  companyId: string;
+  auditPlanId: string;
+  riskId: string;
+  description: string;
+  owner: string;
+  threat: string;
+  vulnerability: string;
+  probability: 'baixa' | 'media' | 'alta' | 'critica';
+  impact: 'baixo' | 'medio' | 'alto' | 'critico';
+  riskLevel: AuditRiskLevel;
+  treatment: string;
+  residualRisk: string;
+  status: AuditRiskStatus;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AuditRiskStats {
+  total: number;
+  critico: number;
+  alto: number;
+  medio: number;
+  baixo: number;
+  tratados: number;
+  abertos: number;
+}
+
+// ============================================================
+// 🆕 NOVO (v46.0) - SoA (Statement of Applicability)
+// ============================================================
+
+export interface AuditSoAControl {
+  clause: string;
+  title: string;
+  objective: string;
+  motivators: string[];
+  applicable: boolean;
+  justification: string;
+  status: AuditDocumentStatus;
+  evidenceIds: string[];
+}
+
+export interface AuditSoA {
+  _id: string;
+  id: string;
+  companyId: string;
+  version: string;
+  controls: AuditSoAControl[];
+  status: AuditSoAStatus;
+  statistics: {
+    total: number;
+    applicable: number;
+    notApplicable: number;
+    conforme: number;
+    naoConforme: number;
+    parcial: number;
+    pendente: number;
+  };
+  createdBy: string;
+  createdAt: string;
+  approvedBy?: string;
+  approvedAt?: string;
+  updatedAt: string;
+}
+
+// ============================================================
+// 🆕 NOVO (v46.0) - PROGRAMA DE AUDITORIA
+// ============================================================
+
+export interface AuditProgramActivity {
+  id: string;
+  title: string;
+  description: string;
+  startTime: string;
+  endTime: string;
+  responsible: string;
+  location: string;
+}
+
+export interface AuditProgram {
+  _id: string;
+  id: string;
+  companyId: string;
+  year: number;
+  activities: AuditProgramActivity[];
+  sectors: string[];
+  supplierAudits: Array<{
+    supplierName: string;
+    date: string;
+    status: 'planned' | 'in_progress' | 'completed' | 'cancelled';
+  }>;
+  externalAudit: {
+    date: string;
+    auditor: string;
+    status: 'planned' | 'in_progress' | 'completed' | 'cancelled';
+  };
+  status: AuditProgramStatus;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ============================================================
+// 🆕 NOVO (v46.0) - REVISÃO DOCUMENTAL
+// ============================================================
+
+export interface AuditDocumentReviewItem {
+  clause: string;
+  requirement: string;
+  status: AuditDocumentStatus;
+  observations: string;
+  evidenceIds: string[];
+}
+
+export interface AuditDocumentReview {
+  _id: string;
+  id: string;
+  companyId: string;
+  auditPlanId: string;
+  documents: AuditDocumentReviewItem[];
+  summary: {
+    total: number;
+    conforme: number;
+    naoConforme: number;
+    parcial: number;
+    naoAplicavel: number;
+    pendente: number;
+  };
+  status: AuditDocumentReviewStatus;
+  createdBy: string;
+  createdAt: string;
+  completedBy?: string;
+  completedAt?: string;
+  updatedAt: string;
+}
+
+// ============================================================
 // DTOs (Data Transfer Objects)
 // ============================================================
 
@@ -244,6 +399,93 @@ export interface UpdateAuditReportDTO {
   recommendations?: string[];
   findings?: string[];
   status?: AuditReportStatus;
+}
+
+// ============================================================
+// 🆕 NOVO (v46.0) - DTOs - RISCOS
+// ============================================================
+
+export interface CreateAuditRiskDTO {
+  description: string;
+  owner: string;
+  threat: string;
+  vulnerability: string;
+  probability: 'baixa' | 'media' | 'alta' | 'critica';
+  impact: 'baixo' | 'medio' | 'alto' | 'critico';
+  treatment?: string;
+  residualRisk?: string;
+}
+
+export interface UpdateAuditRiskDTO {
+  description?: string;
+  owner?: string;
+  threat?: string;
+  vulnerability?: string;
+  probability?: 'baixa' | 'media' | 'alta' | 'critica';
+  impact?: 'baixo' | 'medio' | 'alto' | 'critico';
+  treatment?: string;
+  residualRisk?: string;
+  status?: AuditRiskStatus;
+}
+
+// ============================================================
+// 🆕 NOVO (v46.0) - DTOs - SoA
+// ============================================================
+
+export interface CreateAuditSoADTO {
+  version: string;
+  controls: Omit<AuditSoAControl, 'status'>[];
+}
+
+export interface UpdateAuditSoADTO {
+  version?: string;
+  controls?: Partial<AuditSoAControl>[];
+  status?: AuditSoAStatus;
+}
+
+// ============================================================
+// 🆕 NOVO (v46.0) - DTOs - PROGRAMA
+// ============================================================
+
+export interface CreateAuditProgramDTO {
+  year: number;
+  sectors: string[];
+}
+
+export interface UpdateAuditProgramDTO {
+  sectors?: string[];
+  status?: AuditProgramStatus;
+}
+
+export interface CreateAuditProgramActivityDTO {
+  title: string;
+  description: string;
+  startTime: string;
+  endTime: string;
+  responsible: string;
+  location?: string;
+}
+
+export interface UpdateAuditProgramActivityDTO {
+  title?: string;
+  description?: string;
+  startTime?: string;
+  endTime?: string;
+  responsible?: string;
+  location?: string;
+}
+
+// ============================================================
+// 🆕 NOVO (v46.0) - DTOs - REVISÃO DOCUMENTAL
+// ============================================================
+
+export interface CreateAuditDocumentReviewDTO {
+  documents: Omit<AuditDocumentReviewItem, 'status'>[];
+}
+
+export interface UpdateAuditDocumentReviewDTO {
+  documents?: Partial<AuditDocumentReviewItem>[];
+  status?: AuditDocumentReviewStatus;
 }
 
 // ============================================================

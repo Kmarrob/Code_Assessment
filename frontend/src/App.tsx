@@ -19,11 +19,8 @@ import AdminConsultants from './pages/AdminConsultants.js';
 import AdminConsultantForm from './pages/AdminConsultantForm.js';
 import UserAnswer from './pages/UserAnswer.js';
 import AdminConsultantView from './pages/AdminConsultantView.js';
-// 🔴 NOVO: Import da página de detalhes da empresa
 import AdminCompanyDetail from './pages/AdminCompanyDetail.js';
-// 🔴 NOVO: Import da página de branding (corrigido)
 import AdminBranding from './pages/AdminBranding.js';
-// 🔴 NOVO: Import da página de controles do preposto
 import RepMyControls from './pages/RepMyControls.js';
 
 // ============================================
@@ -34,25 +31,14 @@ import AdminPolicyEditor from './modules/governance/pages/admin/AdminPolicyEdito
 import AdminStandardEditor from './modules/governance/pages/admin/AdminStandardEditor.js';
 import AdminProcedureEditor from './modules/governance/pages/admin/AdminProcedureEditor.js';
 import AdminWorkInstructionEditor from './modules/governance/pages/admin/AdminWorkInstructionEditor.js';
-
-// 🆕 NOVO (v42) - Import do Editor Estruturado de Políticas
 import AdminPolicyEditorV2 from './modules/governance/pages/admin/AdminPolicyEditorV2.js';
-
-// 🆕 NOVO (v44) - Import do Editor Estruturado de Normas
 import AdminNormEditorV2 from './modules/governance/pages/admin/AdminNormEditorV2.js';
-
-// 🆕 NOVO (v44) - Import do Editor Estruturado de Procedimentos
 import AdminProcedureEditorV2 from './modules/governance/pages/admin/AdminProcedureEditorV2.js';
-
-// 🆕 NOVO (v41) - Import da página de listagem do Rep (Governança)
 import RepGovernance from './modules/governance/pages/rep/RepGovernance.js';
-
-// 🆕 NOVO (v40) - Import da página de visualização do Rep
 import RepPolicyView from './modules/governance/pages/rep/RepPolicyView.js';
 
 // ============================================
 // 🆕 NOVO (v44.0) - IMPORTAÇÕES DO MÓDULO DE AUDITORIA INTERNA (SGSI)
-// 🔧 CORREÇÃO: usar named imports em vez de default imports
 // ============================================
 import { AdminAuditDashboard } from './modules/audit/pages/admin/dashboard/AdminAuditDashboard.js';
 import { AdminAuditReports } from './modules/audit/pages/admin/reports/AdminAuditReports.js';
@@ -64,6 +50,16 @@ import { RepAuditFindings } from './modules/audit/pages/rep/findings/RepAuditFin
 import { RepAuditFindingForm } from './modules/audit/pages/rep/findings/RepAuditFindingForm.js';
 import { RepAuditActionPlan } from './modules/audit/pages/rep/actions/RepAuditActionPlan.js';
 import { RepAuditReport } from './modules/audit/pages/rep/reports/RepAuditReport.js';
+
+// ============================================
+// 🆕 NOVO (v46.0) - IMPORTAÇÕES ADICIONAIS - AUDITORIA INTERNA (SGSI)
+// ============================================
+import { RepAuditChecklist } from './modules/audit/pages/rep/checklist/RepAuditChecklist.js';
+import { RepAuditEvidence } from './modules/audit/pages/rep/evidence/RepAuditEvidence.js';
+import { RepAuditRisks } from './modules/audit/pages/rep/risks/RepAuditRisks.js';
+import { RepAuditSoA } from './modules/audit/pages/rep/soa/RepAuditSoA.js';
+import { RepAuditProgram } from './modules/audit/pages/rep/program/RepAuditProgram.js';
+import { RepAuditDocumentReview } from './modules/audit/pages/rep/document-review/RepAuditDocumentReview.js';
 
 // ============================================
 // IMPORTAÇÕES DO DASHBOARD (DIRETAS - CORRIGIDO)
@@ -96,7 +92,6 @@ import ReportView from './pages/ReportView.js';
 import AdminReports from './pages/AdminReports.js';
 import AdminRecommendations from './pages/AdminRecommendations.js';
 
-// 🔴 NOVO: Import do Layout
 import { Layout } from './components/Layout.js';
 
 // ============================================
@@ -110,13 +105,8 @@ import { BillingPage } from './pages/BillingPage.js';
 // ============================================
 import { CheckoutPage } from './pages/CheckoutPage.js';
 
-// 🔴 NOVO: Import do Funil de Conversão
 import AdminFunnelAnalytics from './pages/admin/AdminFunnelAnalytics.js';
-
-// 🔴 NOVO: FASE 8 - Import da página de detalhes do cliente
 import AdminClientDetails from './pages/admin/AdminClientDetails.js';
-
-// 🆕 NOVO (v42.0) - Import da página de Auditoria
 import AdminAuditLogs from './pages/admin/AdminAuditLogs.js';
 
 const queryClient = new QueryClient({
@@ -170,7 +160,6 @@ function App() {
                       ROTAS PÚBLICAS - PLANOS E CHECKOUT
                       ============================================ */}
                   <Route path="/plans" element={<PlansPage />} />
-                  {/* 🔴 NOVO: Rota pública de checkout (sem autenticação necessária) */}
                   <Route path="/checkout" element={<CheckoutPage />} />
 
                   { /* ============================================
@@ -182,7 +171,6 @@ function App() {
                         <ProfilePage />
                       </Layout>
                     } />
-                    {/* 🔴 NOVO: Rota de faturamento */}
                     <Route path="/billing" element={
                       <Layout>
                         <BillingPage />
@@ -215,7 +203,6 @@ function App() {
                         <AdminCompanies />
                       </Layout>
                     } />
-                    {/* 🔴 NOVO: Rota para detalhes da empresa */}
                     <Route path="/admin/empresas/:companyId/detalhes" element={
                       <Layout>
                         <AdminCompanyDetail />
@@ -251,7 +238,6 @@ function App() {
                         <AdminReports />
                       </Layout>
                     } />
-                    {/* 🔴 NOVO: Rota para visualizar um relatório específico no admin */}
                     <Route path="/admin/relatorios/:companyId" element={
                       <Layout>
                         <ReportView />
@@ -262,21 +248,16 @@ function App() {
                         <AdminRecommendations />
                       </Layout>
                     } />
-                    {/* 🔴 NOVO: Rota para gerenciamento de branding (logo e favicon) */}
                     <Route path="/admin/branding" element={
                       <Layout>
                         <AdminBranding />
                       </Layout>
                     } />
-                    
-                    {/* 🔴 NOVO: Rota para Funil de Conversão */}
                     <Route path="/admin/analytics" element={
                       <Layout>
                         <AdminFunnelAnalytics />
                       </Layout>
                     } />
-
-                    {/* 🔴 NOVO: FASE 8 - Rota para detalhes do cliente no Funil de Conversão */}
                     <Route path="/admin/analytics/clients/:clientId" element={
                       <Layout>
                         <AdminClientDetails />
@@ -348,13 +329,11 @@ function App() {
                         <AdminWorkInstructionEditor />
                       </Layout>
                     } />
-                    {/* 🆕 NOVO (v42) - Rota para o Editor Estruturado de Políticas */}
                     <Route path="/admin/governance/policy/new-v2" element={
                       <Layout>
                         <AdminPolicyEditorV2 />
                       </Layout>
                     } />
-                    {/* 🆕 NOVO (v44) - Rota para o Editor Estruturado de Normas */}
                     <Route path="/admin/governance/standard/new-v2" element={
                       <Layout>
                         <AdminNormEditorV2 />
@@ -365,7 +344,6 @@ function App() {
                         <AdminNormEditorV2 />
                       </Layout>
                     } />
-                    {/* 🆕 NOVO (v44) - Rota para o Editor Estruturado de Procedimentos */}
                     <Route path="/admin/governance/procedure/new-v2" element={
                       <Layout>
                         <AdminProcedureEditorV2 />
@@ -453,13 +431,11 @@ function App() {
                         <ReportView />
                       </Layout>
                     } />
-                    {/* 🔴 NOVO: Rota para branding (Personalizar Identidade Visual) */}
                     <Route path="/rep/branding" element={
                       <Layout>
                         <AdminBranding />
                       </Layout>
                     } />
-                    {/* 🔴 NOVO: Rota para Meus Controles (preposto responder) */}
                     <Route path="/rep/my-controls" element={
                       <Layout>
                         <RepMyControls />
@@ -467,7 +443,7 @@ function App() {
                     } />
 
                     {/* ============================================
-                        🆕 NOVO (v41) - ROTA REP - GOVERNANÇA (CORRIGIDA)
+                        🆕 NOVO (v41) - ROTA REP - GOVERNANÇA
                         ============================================ */}
                     <Route path="/rep/governance" element={
                       <Layout>
@@ -475,9 +451,6 @@ function App() {
                       </Layout>
                     } />
 
-                    {/* ============================================
-                        🆕 NOVO (v40) - ROTA REP - VISUALIZAR DOCUMENTO
-                        ============================================ */}
                     <Route path="/rep/governance/document/:id" element={
                       <Layout>
                         <RepPolicyView />
@@ -552,6 +525,48 @@ function App() {
                     <Route path="/rep/audit/execution/:planId" element={
                       <Layout>
                         <RepAuditExecution />
+                      </Layout>
+                    } />
+
+                    {/* Checklist - 🆕 NOVO (v46.0) */}
+                    <Route path="/rep/audit/checklist/:planId" element={
+                      <Layout>
+                        <RepAuditChecklist />
+                      </Layout>
+                    } />
+
+                    {/* Evidências - 🆕 NOVO (v46.0) */}
+                    <Route path="/rep/audit/evidence/:planId" element={
+                      <Layout>
+                        <RepAuditEvidence />
+                      </Layout>
+                    } />
+
+                    {/* Riscos - 🆕 NOVO (v46.0) */}
+                    <Route path="/rep/audit/risks/:planId" element={
+                      <Layout>
+                        <RepAuditRisks />
+                      </Layout>
+                    } />
+
+                    {/* SoA - 🆕 NOVO (v46.0) */}
+                    <Route path="/rep/audit/soa/:planId" element={
+                      <Layout>
+                        <RepAuditSoA />
+                      </Layout>
+                    } />
+
+                    {/* Programa - 🆕 NOVO (v46.0) */}
+                    <Route path="/rep/audit/program/:planId" element={
+                      <Layout>
+                        <RepAuditProgram />
+                      </Layout>
+                    } />
+
+                    {/* Revisão Documental - 🆕 NOVO (v46.0) */}
+                    <Route path="/rep/audit/document-review/:planId" element={
+                      <Layout>
+                        <RepAuditDocumentReview />
                       </Layout>
                     } />
 

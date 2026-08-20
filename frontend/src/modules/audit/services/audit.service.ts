@@ -440,4 +440,140 @@ export const auditService = {
     const response = await api.post(`${BASE_URL}/reports/plan/${planId}/generate`);
     return response.data.data;
   },
+
+  // ============================================================
+  // 🆕 NOVO (v46.0) - RISCOS
+  // ============================================================
+
+  /**
+   * Listar riscos por plano de auditoria
+   */
+  async listRisksByPlan(planId: string): Promise<any[]> {
+    const response = await api.get(`${BASE_URL}/risks/plan/${planId}`);
+    return response.data.data;
+  },
+
+  /**
+   * Buscar um risco por ID
+   */
+  async getRisk(id: string): Promise<any> {
+    const response = await api.get(`${BASE_URL}/risks/${id}`);
+    return response.data.data;
+  },
+
+  /**
+   * Criar um novo risco
+   */
+  async createRisk(planId: string, data: any): Promise<any> {
+    const response = await api.post(`${BASE_URL}/risks`, { ...data, auditPlanId: planId });
+    return response.data.data;
+  },
+
+  /**
+   * Atualizar um risco existente
+   */
+  async updateRisk(id: string, data: any): Promise<any> {
+    const response = await api.put(`${BASE_URL}/risks/${id}`, data);
+    return response.data.data;
+  },
+
+  /**
+   * Excluir um risco
+   */
+  async deleteRisk(id: string): Promise<void> {
+    await api.delete(`${BASE_URL}/risks/${id}`);
+  },
+
+  // ============================================================
+  // 🆕 NOVO (v46.0) - SoA (Statement of Applicability)
+  // ============================================================
+
+  /**
+   * Buscar SoA por plano de auditoria
+   */
+  async getSoAByPlan(planId: string): Promise<any> {
+    const response = await api.get(`${BASE_URL}/soa/plan/${planId}`);
+    return response.data.data;
+  },
+
+  /**
+   * Atualizar um controle da SoA
+   */
+  async updateSoAControl(soaId: string, clause: string, data: any): Promise<any> {
+    const response = await api.put(`${BASE_URL}/soa/${soaId}/control/${clause}`, data);
+    return response.data.data;
+  },
+
+  /**
+   * Exportar SoA (Excel/PDF)
+   */
+  async exportSoA(soaId: string): Promise<Blob> {
+    const response = await api.get(`${BASE_URL}/soa/${soaId}/export`, {
+      responseType: 'blob',
+    });
+    return response.data;
+  },
+
+  // ============================================================
+  // 🆕 NOVO (v46.0) - PROGRAMA DE AUDITORIA
+  // ============================================================
+
+  /**
+   * Buscar programa por plano de auditoria
+   */
+  async getProgramByPlan(planId: string): Promise<any> {
+    const response = await api.get(`${BASE_URL}/program/plan/${planId}`);
+    return response.data.data;
+  },
+
+  /**
+   * Criar uma atividade no programa
+   */
+  async createProgramActivity(programId: string, data: any): Promise<any> {
+    const response = await api.post(`${BASE_URL}/program/${programId}/activity`, data);
+    return response.data.data;
+  },
+
+  /**
+   * Atualizar uma atividade do programa
+   */
+  async updateProgramActivity(programId: string, activityId: string, data: any): Promise<any> {
+    const response = await api.put(`${BASE_URL}/program/${programId}/activity/${activityId}`, data);
+    return response.data.data;
+  },
+
+  /**
+   * Excluir uma atividade do programa
+   */
+  async deleteProgramActivity(programId: string, activityId: string): Promise<void> {
+    await api.delete(`${BASE_URL}/program/${programId}/activity/${activityId}`);
+  },
+
+  // ============================================================
+  // 🆕 NOVO (v46.0) - REVISÃO DOCUMENTAL
+  // ============================================================
+
+  /**
+   * Buscar revisão documental por plano de auditoria
+   */
+  async getDocumentReviewByPlan(planId: string): Promise<any> {
+    const response = await api.get(`${BASE_URL}/document-review/plan/${planId}`);
+    return response.data.data;
+  },
+
+  /**
+   * Atualizar um documento da revisão documental
+   */
+  async updateDocumentReview(reviewId: string, clause: string, data: any): Promise<any> {
+    const response = await api.put(`${BASE_URL}/document-review/${reviewId}/document/${clause}`, data);
+    return response.data.data;
+  },
+
+  /**
+   * Concluir a revisão documental
+   */
+  async completeDocumentReview(reviewId: string): Promise<any> {
+    const response = await api.post(`${BASE_URL}/document-review/${reviewId}/complete`);
+    return response.data.data;
+  },
 };
