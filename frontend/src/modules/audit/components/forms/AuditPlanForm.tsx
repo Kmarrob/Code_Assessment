@@ -5,6 +5,7 @@ import { useAuth } from '../../../../contexts/AuthContext.js';
 import { useUsers } from '../../../../hooks/useAdmin.js';
 import { CreateAuditPlanDTO, UpdateAuditPlanDTO, AuditPlan } from '../../types/audit.types';
 import { toast } from 'react-hot-toast';
+import { controlService } from '../../../../services/control.service.js';
 
 interface AuditPlanFormProps {
   initialData?: AuditPlan;
@@ -48,35 +49,6 @@ const PROCESS_OPTIONS = [
   'Outros',
 ];
 
-const CONTROL_OPTIONS = [
-  '5.1 - Políticas de segurança da informação',
-  '5.2 - Papéis e responsabilidades',
-  '5.3 - Segregação de funções',
-  '5.4 - Responsabilidades da direção',
-  '5.9 - Inventário de ativos',
-  '5.10 - Uso aceitável de ativos',
-  '5.12 - Classificação das informações',
-  '5.15 - Controle de acesso',
-  '5.16 - Gestão de identidade',
-  '5.18 - Direitos de acesso',
-  '5.24 - Gestão de incidentes',
-  '5.29 - Segurança durante disrupção',
-  '6.3 - Conscientização e treinamento',
-  '7.1 - Perímetros de segurança física',
-  '7.2 - Entrada física',
-  '8.1 - Dispositivos endpoint',
-  '8.2 - Direitos de acesso privilegiado',
-  '8.3 - Restrição de acesso à informação',
-  '8.5 - Autenticação segura',
-  '8.7 - Proteção contra malware',
-  '8.8 - Gestão de vulnerabilidades',
-  '8.13 - Backup',
-  '8.15 - Logs',
-  '8.20 - Segurança de redes',
-  '8.22 - Segregação de redes',
-  '8.24 - Uso de criptografia',
-];
-
 export function AuditPlanForm({
   initialData,
   isEditing = false,
@@ -93,7 +65,12 @@ export function AuditPlanForm({
   const [manualAuditors, setManualAuditors] = useState<Array<{ id: string; name: string; email: string }>>([]);
   const [showManualAuditorInput, setShowManualAuditorInput] = useState(false);
 
+  // 🆕 Estado para controles do backend
+  const [controls, setControls] = useState<Array<{ id: string; name: string; controlId: string }>>([]);
+  const [isLoadingControls, setIsLoadingControls] = useState(true);
+
   const [formData, setFormData] = useState<Partial<CreateAuditPlanDTO>>({
+    code: '',
     title: '',
     description: '',
     scope: {
@@ -104,6 +81,7 @@ export function AuditPlanForm({
     period: {
       startDate: new Date().toISOString().split('T')[0],
       endDate: new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString().split('T')[0],
+      estimatedDays: 30,
     },
     team: {
       leadAuditor: '',
@@ -119,16 +97,37 @@ export function AuditPlanForm({
   const [selectedProcesses, setSelectedProcesses] = useState<string[]>([]);
   const [selectedAreas, setSelectedAreas] = useState<string[]>([]);
 
+  // Buscar controles do backend
+  useEffect(() => {
+    const fetchControls = async () => {
+      setIsLoadingControls(true);
+      try {
+        const response = await controlService.listControls();
+        // Assume que a resposta tem a lista de controles
+        const controlList = response.data || response || [];
+        setControls(controlList);
+      } catch (err) {
+        console.error('Erro ao carregar controles:', err);
+        toast.error('Erro ao carregar lista de controles');
+      } finally {
+        setIsLoadingControls(false);
+      }
+    };
+    fetchControls();
+  }, []);
+
   // Carregar dados iniciais para edição
   useEffect(() => {
     if (initialData) {
       setFormData({
+        code: initialData.code || '',
         title: initialData.title,
         description: initialData.description,
         scope: initialData.scope || { controls: [], processes: [], areas: [] },
         period: {
           startDate: initialData.period.startDate.split('T')[0],
           endDate: initialData.period.endDate.split('T')[0],
+          estimatedDays: initialData.period.estimatedDays || 30,
         },
         team: initialData.team || { leadAuditor: '', auditors: [], observers: [] },
         criteria: initialData.criteria || [],
@@ -222,7 +221,6 @@ export function AuditPlanForm({
       return;
     }
 
-    // Verificar se já existe um auditor com este nome
     const exists = manualAuditors.some(
       (a) => a.name.toLowerCase() === manualAuditorName.trim().toLowerCase()
     );
@@ -241,7 +239,6 @@ export function AuditPlanForm({
     setManualAuditors(updatedAuditors);
     saveManualAuditors(updatedAuditors);
 
-    // Adicionar o auditor à lista de auditores selecionados
     handleTeamChange('auditors', [...(formData.team?.auditors || []), newAuditor.id]);
 
     setManualAuditorName('');
@@ -257,7 +254,6 @@ export function AuditPlanForm({
     setManualAuditors(updatedAuditors);
     saveManualAuditors(updatedAuditors);
 
-    // Remover da lista de selecionados
     handleTeamChange(
       'auditors',
       (formData.team?.auditors || []).filter((a) => a !== id)
@@ -269,6 +265,9 @@ export function AuditPlanForm({
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
 
+    if (!formData.code?.trim()) {
+      newErrors.code = 'Código do plano é obrigatório';
+    }
     if (!formData.title?.trim()) {
       newErrors.title = 'Título é obrigatório';
     }
@@ -304,6 +303,7 @@ export function AuditPlanForm({
     if (!validate()) return;
 
     const data: CreateAuditPlanDTO = {
+      code: formData.code || `AUD-${Date.now().toString().slice(-6)}`,
       title: formData.title!,
       description: formData.description!,
       scope: {
@@ -314,6 +314,7 @@ export function AuditPlanForm({
       period: {
         startDate: new Date(formData.period!.startDate!),
         endDate: new Date(formData.period!.endDate!),
+        estimatedDays: formData.period?.estimatedDays || 30,
       },
       team: {
         leadAuditor: formData.team!.leadAuditor!,
@@ -344,8 +345,13 @@ export function AuditPlanForm({
     })),
   ];
 
-  // Verificar se há opções disponíveis
   const hasOptions = allAuditorOptions.length > 0;
+
+  // 🆕 Opções de controles dinâmicos
+  const controlOptions = controls.map((c) => ({
+    value: c.controlId || c.id,
+    label: c.name || c.controlId,
+  }));
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -353,6 +359,25 @@ export function AuditPlanForm({
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Informações Básicas</h2>
         <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Código do Plano <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={formData.code || ''}
+              onChange={(e) => handleChange('code', e.target.value)}
+              placeholder="Ex: AUD-2026-001"
+              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
+                errors.code ? 'border-red-500' : 'border-gray-300'
+              }`}
+            />
+            {errors.code && <p className="text-sm text-red-500 mt-1">{errors.code}</p>}
+            <p className="text-xs text-gray-400 mt-1">
+              Deixe em branco para gerar automaticamente (ex: AUD-123456)
+            </p>
+          </div>
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Título <span className="text-red-500">*</span>
@@ -368,6 +393,7 @@ export function AuditPlanForm({
             />
             {errors.title && <p className="text-sm text-red-500 mt-1">{errors.title}</p>}
           </div>
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Descrição <span className="text-red-500">*</span>
@@ -390,40 +416,49 @@ export function AuditPlanForm({
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Escopo da Auditoria</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Controles */}
+          {/* Controles - Buscados do backend */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Controles ISO 27001 <span className="text-red-500">*</span>
             </label>
             <div className="flex flex-wrap gap-2 mb-2">
-              {selectedControls.map((control) => (
-                <span
-                  key={control}
-                  className="flex items-center gap-1 px-2 py-0.5 bg-indigo-100 text-indigo-700 text-xs rounded-full"
-                >
-                  {control}
-                  <button
-                    type="button"
-                    onClick={() => handleScopeChange('controls', control)}
-                    className="hover:text-red-500"
+              {selectedControls.map((control) => {
+                const controlLabel = controls.find((c) => (c.controlId || c.id) === control)?.name || control;
+                return (
+                  <span
+                    key={control}
+                    className="flex items-center gap-1 px-2 py-0.5 bg-indigo-100 text-indigo-700 text-xs rounded-full"
                   >
-                    <X className="w-3 h-3" />
-                  </button>
-                </span>
-              ))}
+                    {controlLabel}
+                    <button
+                      type="button"
+                      onClick={() => handleScopeChange('controls', control)}
+                      className="hover:text-red-500"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                );
+              })}
             </div>
-            <select
-              value=""
-              onChange={(e) => handleScopeChange('controls', e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-            >
-              <option value="">Selecione um controle...</option>
-              {CONTROL_OPTIONS.filter((c) => !selectedControls.includes(c)).map((control) => (
-                <option key={control} value={control}>
-                  {control}
-                </option>
-              ))}
-            </select>
+            {isLoadingControls ? (
+              <div className="text-sm text-gray-500 py-2">Carregando controles...</div>
+            ) : (
+              <select
+                value=""
+                onChange={(e) => handleScopeChange('controls', e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              >
+                <option value="">Selecione um controle...</option>
+                {controlOptions
+                  .filter((c) => !selectedControls.includes(c.value))
+                  .map((control) => (
+                    <option key={control.value} value={control.value}>
+                      {control.label}
+                    </option>
+                  ))}
+              </select>
+            )}
             {errors.controls && <p className="text-sm text-red-500 mt-1">{errors.controls}</p>}
           </div>
 
@@ -510,7 +545,6 @@ export function AuditPlanForm({
           Equipe de Auditoria
         </h2>
 
-        {/* Auditores Manuais - Lista */}
         {manualAuditors.length > 0 && (
           <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
             <p className="text-sm font-medium text-blue-700 mb-2 flex items-center gap-2">
@@ -620,7 +654,6 @@ export function AuditPlanForm({
           </div>
         </div>
 
-        {/* Botão para adicionar auditor manual */}
         <div className="mt-4 pt-4 border-t border-gray-200">
           {showManualAuditorInput ? (
             <div className="flex flex-col gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
@@ -681,7 +714,7 @@ export function AuditPlanForm({
           <Calendar className="w-5 h-5 text-gray-500" />
           Período
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Data de Início <span className="text-red-500">*</span>
@@ -719,6 +752,26 @@ export function AuditPlanForm({
               }`}
             />
             {errors.endDate && <p className="text-sm text-red-500 mt-1">{errors.endDate}</p>}
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Dias Estimados
+            </label>
+            <input
+              type="number"
+              value={formData.period?.estimatedDays || 30}
+              onChange={(e) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  period: { ...prev.period!, estimatedDays: parseInt(e.target.value) || 30 },
+                }))
+              }
+              min={1}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            />
+            <p className="text-xs text-gray-400 mt-1">
+              Número estimado de dias para a auditoria
+            </p>
           </div>
         </div>
       </div>
