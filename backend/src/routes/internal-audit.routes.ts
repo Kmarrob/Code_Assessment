@@ -11,6 +11,8 @@ import {
   auditSoAController,
   auditRiskController,
   auditDocumentReviewController,
+  // 🆕 NOVO (v47.0) - Controller de perguntas
+  auditQuestionController,
 } from '../controllers/audit';
 
 const router = Router();
@@ -176,5 +178,116 @@ router.put('/document-review/:id/document/:clause', auditDocumentReviewControlle
 router.put('/document-review/:id/document/:clause/status', auditDocumentReviewController.updateDocumentStatus);
 router.post('/document-review/:id/document', auditDocumentReviewController.addDocument);
 router.delete('/document-review/:id/document/:clause', auditDocumentReviewController.removeDocument);
+
+// ============================================================
+// 🆕 NOVO (v47.0) - ROTAS DE PERGUNTAS DO CHECKLIST
+// ============================================================
+
+// ============================================================
+// ROTAS PÚBLICAS (READ) - Qualquer usuário autenticado pode visualizar
+// ============================================================
+
+/**
+ * GET /api/internal-audit/questions/clause/:clause
+ * Buscar perguntas por cláusula
+ */
+router.get(
+  '/questions/clause/:clause',
+  async (req, res) => {
+    await auditQuestionController.findByClause(req, res);
+  }
+);
+
+/**
+ * GET /api/internal-audit/questions/section/:section
+ * Buscar perguntas por seção
+ */
+router.get(
+  '/questions/section/:section',
+  async (req, res) => {
+    await auditQuestionController.findBySection(req, res);
+  }
+);
+
+/**
+ * GET /api/internal-audit/questions/stats
+ * Obter estatísticas das perguntas
+ */
+router.get(
+  '/questions/stats',
+  async (req, res) => {
+    await auditQuestionController.getStats(req, res);
+  }
+);
+
+// ============================================================
+// ROTAS ADMIN (CRUD) - Apenas ADMIN
+// ============================================================
+
+/**
+ * GET /api/internal-audit/questions
+ * Listar perguntas com filtros
+ */
+router.get(
+  '/questions',
+  async (req, res) => {
+    await auditQuestionController.findAll(req, res);
+  }
+);
+
+/**
+ * GET /api/internal-audit/questions/:id
+ * Buscar pergunta por ID
+ */
+router.get(
+  '/questions/:id',
+  async (req, res) => {
+    await auditQuestionController.findById(req, res);
+  }
+);
+
+/**
+ * POST /api/internal-audit/questions
+ * Criar pergunta
+ */
+router.post(
+  '/questions',
+  async (req, res) => {
+    await auditQuestionController.create(req, res);
+  }
+);
+
+/**
+ * PUT /api/internal-audit/questions/:id
+ * Atualizar pergunta
+ */
+router.put(
+  '/questions/:id',
+  async (req, res) => {
+    await auditQuestionController.update(req, res);
+  }
+);
+
+/**
+ * PATCH /api/internal-audit/questions/:id/toggle
+ * Ativar/Desativar pergunta
+ */
+router.patch(
+  '/questions/:id/toggle',
+  async (req, res) => {
+    await auditQuestionController.toggleStatus(req, res);
+  }
+);
+
+/**
+ * DELETE /api/internal-audit/questions/:id
+ * Excluir pergunta
+ */
+router.delete(
+  '/questions/:id',
+  async (req, res) => {
+    await auditQuestionController.delete(req, res);
+  }
+);
 
 export default router;

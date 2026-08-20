@@ -11,6 +11,8 @@ import {
   ChevronRight,
   Users,
   Building,
+  Plus,
+  ListChecks,
 } from 'lucide-react';
 // 🔧 CORREÇÃO: Caminho corrigido de '../../hooks/useAudit' para '../../../hooks/useAudit'
 import { usePlans, usePlanStats } from '../../../hooks/useAudit';
@@ -77,7 +79,15 @@ export function AdminAuditDashboard() {
             Visão geral das auditorias internas do SGSI
           </p>
         </div>
-        <div className="flex gap-3 mt-4 md:mt-0">
+        <div className="flex flex-wrap gap-3 mt-4 md:mt-0">
+          {/* 🆕 NOVO (v47.0): Botão Gerenciar Perguntas */}
+          <button
+            onClick={() => navigate('/admin/audit/questions')}
+            className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+          >
+            <ListChecks className="w-4 h-4" />
+            Gerenciar Perguntas
+          </button>
           <button
             onClick={() => navigate('/admin/audit/reports')}
             className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
