@@ -59,7 +59,6 @@ export function RepAuditDashboard() {
   // Navegação para as funcionalidades (requerem um planId selecionado)
   const navigateToFeature = (feature: string, planId?: string) => {
     if (!planId) {
-      // Se não tiver plano selecionado, vai para a lista de planos
       navigate('/rep/audit/plans');
       return;
     }
@@ -307,6 +306,34 @@ export function RepAuditDashboard() {
             </div>
           </div>
           <ChevronRight className="w-4 h-4 text-rose-400 mt-2" />
+          {!firstPlanId && (
+            <p className="text-xs text-gray-400 mt-1">Crie um plano primeiro</p>
+          )}
+        </div>
+
+        {/* 🆕 Relatório de Auditoria */}
+        <div
+          onClick={() => {
+            if (firstPlanId) {
+              navigate(`/rep/audit/reports/${firstPlanId}`);
+            } else {
+              navigate('/rep/audit/plans');
+            }
+          }}
+          className={`bg-white border-2 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer ${
+            firstPlanId ? 'border-red-300' : 'border-gray-200 opacity-60'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-medium text-red-700">Consolidar</p>
+              <p className="text-sm font-bold text-red-700">Relatório</p>
+            </div>
+            <div className="p-2 bg-red-100 rounded-full">
+              <FileText className="w-5 h-5 text-red-600" />
+            </div>
+          </div>
+          <ChevronRight className="w-4 h-4 text-red-400 mt-2" />
           {!firstPlanId && (
             <p className="text-xs text-gray-400 mt-1">Crie um plano primeiro</p>
           )}

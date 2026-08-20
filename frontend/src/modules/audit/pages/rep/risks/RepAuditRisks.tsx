@@ -19,14 +19,20 @@ interface Risk {
   _id: string;
   riskId: string;
   description: string;
+  eventOrAsset: string;
   owner: string;
   threat: string;
   vulnerability: string;
+  existingControl: string;
   probability: 'baixa' | 'media' | 'alta' | 'critica';
   impact: 'baixo' | 'medio' | 'alto' | 'critico';
   riskLevel: 'baixo' | 'medio' | 'alto' | 'critico';
-  treatment: string;
-  residualRisk: string;
+  riskClassification: string;
+  treatment: 'accept' | 'mitigate' | 'transfer' | 'avoid';
+  treatmentPlan: string;
+  probabilityAfter: 'baixa' | 'media' | 'alta' | 'critica';
+  impactAfter: 'baixo' | 'medio' | 'alto' | 'critico';
+  residualRisk: 'baixo' | 'medio' | 'alto' | 'critico';
   status: 'identified' | 'assessed' | 'treated' | 'monitored' | 'closed' | 'reopened';
   createdAt: string;
   updatedAt: string;
@@ -132,6 +138,22 @@ export function RepAuditRisks() {
     }
   };
 
+  // Label para tratamento
+  const getTreatmentLabel = (treatment: string) => {
+    switch (treatment) {
+      case 'accept':
+        return 'Aceitar';
+      case 'mitigate':
+        return 'Mitigar';
+      case 'transfer':
+        return 'Transferir';
+      case 'avoid':
+        return 'Evitar';
+      default:
+        return treatment;
+    }
+  };
+
   // Loading state
   if (isLoading) {
     return (
@@ -195,7 +217,7 @@ export function RepAuditRisks() {
       </div>
 
       {/* Estatísticas */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
         <div className="bg-white rounded-lg border border-gray-200 p-4">
           <p className="text-sm text-gray-500">Total de Riscos</p>
           <p className="text-2xl font-bold text-gray-900">{risks.length}</p>
@@ -216,6 +238,12 @@ export function RepAuditRisks() {
           <p className="text-sm text-gray-500">Tratados</p>
           <p className="text-2xl font-bold text-green-600">
             {risks.filter((r: Risk) => r.status === 'treated' || r.status === 'closed').length}
+          </p>
+        </div>
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <p className="text-sm text-gray-500">Risco Residual</p>
+          <p className="text-2xl font-bold text-yellow-600">
+            {risks.filter((r: Risk) => r.residualRisk === 'alto' || r.residualRisk === 'critico').length}
           </p>
         </div>
       </div>
@@ -249,7 +277,7 @@ export function RepAuditRisks() {
             >
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 flex-wrap">
                     <span className="text-sm font-mono text-gray-500">
                       {risk.riskId}
                     </span>
@@ -270,31 +298,57 @@ export function RepAuditRisks() {
                        risk.status === 'closed' ? 'Fechado' :
                        risk.status === 'reopened' ? 'Reaberto' : risk.status}
                     </span>
+                    <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-full">
+                      {getTreatmentLabel(risk.treatment)}
+                    </span>
                   </div>
                   <h3 className="text-lg font-medium text-gray-900 mt-2">
                     {risk.description}
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mt-2 text-sm text-gray-600">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mt-2 text-sm text-gray-600">
+                    <div>
+                      <span className="font-medium">Evento/Ativo:</span> {risk.eventOrAsset}
+                    </div>
+                    <div>
+                      <span className="font-medium">Responsável:</span> {risk.owner}
+                    </div>
                     <div>
                       <span className="font-medium">Ameaça:</span> {risk.threat}
                     </div>
                     <div>
                       <span className="font-medium">Vulnerabilidade:</span> {risk.vulnerability}
                     </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mt-1 text-sm text-gray-600">
                     <div>
-                      <span className="font-medium">Responsável:</span> {risk.owner}
+                      <span className="font-medium">Controle Existente:</span> {risk.existingControl}
+                    </div>
+                    <div>
+                      <span className="font-medium">Classificação:</span> {risk.riskClassification}
+                    </div>
+                    <div>
+                      <span className="font-medium">Probabilidade:</span> {risk.probability}
                     </div>
                   </div>
-                  {risk.treatment && (
+                  {risk.treatmentPlan && (
                     <div className="mt-2 text-sm text-gray-600">
-                      <span className="font-medium">Tratamento:</span> {risk.treatment}
+                      <span className="font-medium">Plano de Tratamento:</span> {risk.treatmentPlan}
                     </div>
                   )}
-                  {risk.residualRisk && (
-                    <div className="mt-1 text-sm text-gray-600">
-                      <span className="font-medium">Risco Residual:</span> {risk.residualRisk}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mt-1 text-sm text-gray-600">
+                    <div>
+                      <span className="font-medium">Probabilidade Pós:</span> {risk.probabilityAfter}
                     </div>
-                  )}
+                    <div>
+                      <span className="font-medium">Impacto Pós:</span> {risk.impactAfter}
+                    </div>
+                    <div>
+                      <span className="font-medium">Risco Residual:</span>{' '}
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getRiskLevelColor(risk.residualRisk)}`}>
+                        {risk.residualRisk}
+                      </span>
+                    </div>
+                  </div>
                 </div>
                 <div className="flex gap-1 flex-shrink-0 ml-4">
                   <button
@@ -398,13 +452,18 @@ interface RiskFormProps {
 function RiskForm({ initialData, onSubmit, onCancel, isSubmitting }: RiskFormProps) {
   const [formData, setFormData] = useState({
     description: initialData?.description || '',
+    eventOrAsset: initialData?.eventOrAsset || '',
     owner: initialData?.owner || '',
     threat: initialData?.threat || '',
     vulnerability: initialData?.vulnerability || '',
+    existingControl: initialData?.existingControl || '',
     probability: initialData?.probability || 'media',
     impact: initialData?.impact || 'medio',
-    treatment: initialData?.treatment || '',
-    residualRisk: initialData?.residualRisk || '',
+    riskClassification: initialData?.riskClassification || '',
+    treatment: initialData?.treatment || 'mitigate',
+    treatmentPlan: initialData?.treatmentPlan || '',
+    probabilityAfter: initialData?.probabilityAfter || 'media',
+    impactAfter: initialData?.impactAfter || 'medio',
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -414,6 +473,7 @@ function RiskForm({ initialData, onSubmit, onCancel, isSubmitting }: RiskFormPro
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {/* Descrição */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
           Descrição do Risco *
@@ -428,7 +488,21 @@ function RiskForm({ initialData, onSubmit, onCancel, isSubmitting }: RiskFormPro
         />
       </div>
 
+      {/* Evento/Ativo e Responsável */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Evento ou Ativo *
+          </label>
+          <input
+            type="text"
+            value={formData.eventOrAsset}
+            onChange={(e) => setFormData({ ...formData, eventOrAsset: e.target.value })}
+            placeholder="Ex: Sistema de Gestão, Banco de Dados..."
+            required
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+          />
+        </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Responsável *
@@ -442,13 +516,78 @@ function RiskForm({ initialData, onSubmit, onCancel, isSubmitting }: RiskFormPro
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
           />
         </div>
+      </div>
+
+      {/* Ameaça e Vulnerabilidade */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Probabilidade
+            Ameaça *
+          </label>
+          <input
+            type="text"
+            value={formData.threat}
+            onChange={(e) => setFormData({ ...formData, threat: e.target.value })}
+            placeholder="Identifique a ameaça"
+            required
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Vulnerabilidade *
+          </label>
+          <input
+            type="text"
+            value={formData.vulnerability}
+            onChange={(e) => setFormData({ ...formData, vulnerability: e.target.value })}
+            placeholder="Identifique a vulnerabilidade"
+            required
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+          />
+        </div>
+      </div>
+
+      {/* Controle Existente e Classificação */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Controle Existente *
+          </label>
+          <input
+            type="text"
+            value={formData.existingControl}
+            onChange={(e) => setFormData({ ...formData, existingControl: e.target.value })}
+            placeholder="Ex: Firewall, Antivírus, Política de Acesso..."
+            required
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Classificação do Risco *
+          </label>
+          <input
+            type="text"
+            value={formData.riskClassification}
+            onChange={(e) => setFormData({ ...formData, riskClassification: e.target.value })}
+            placeholder="Ex: Crítico, Alto, Médio, Baixo"
+            required
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+          />
+        </div>
+      </div>
+
+      {/* Probabilidade e Impacto */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Probabilidade *
           </label>
           <select
             value={formData.probability}
             onChange={(e) => setFormData({ ...formData, probability: e.target.value as any })}
+            required
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
           >
             <option value="baixa">Baixa</option>
@@ -457,43 +596,14 @@ function RiskForm({ initialData, onSubmit, onCancel, isSubmitting }: RiskFormPro
             <option value="critica">Crítica</option>
           </select>
         </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Ameaça
-          </label>
-          <input
-            type="text"
-            value={formData.threat}
-            onChange={(e) => setFormData({ ...formData, threat: e.target.value })}
-            placeholder="Identifique a ameaça"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Vulnerabilidade
-          </label>
-          <input
-            type="text"
-            value={formData.vulnerability}
-            onChange={(e) => setFormData({ ...formData, vulnerability: e.target.value })}
-            placeholder="Identifique a vulnerabilidade"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-          />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Impacto
+            Impacto *
           </label>
           <select
             value={formData.impact}
             onChange={(e) => setFormData({ ...formData, impact: e.target.value as any })}
+            required
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
           >
             <option value="baixo">Baixo</option>
@@ -502,31 +612,75 @@ function RiskForm({ initialData, onSubmit, onCancel, isSubmitting }: RiskFormPro
             <option value="critico">Crítico</option>
           </select>
         </div>
+      </div>
+
+      {/* Tratamento e Plano de Tratamento */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Tratamento
+            Tratamento *
+          </label>
+          <select
+            value={formData.treatment}
+            onChange={(e) => setFormData({ ...formData, treatment: e.target.value as any })}
+            required
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+          >
+            <option value="accept">Aceitar</option>
+            <option value="mitigate">Mitigar</option>
+            <option value="transfer">Transferir</option>
+            <option value="avoid">Evitar</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Plano de Tratamento *
           </label>
           <input
             type="text"
-            value={formData.treatment}
-            onChange={(e) => setFormData({ ...formData, treatment: e.target.value })}
-            placeholder="Plano de tratamento"
+            value={formData.treatmentPlan}
+            onChange={(e) => setFormData({ ...formData, treatmentPlan: e.target.value })}
+            placeholder="Descreva o plano de tratamento..."
+            required
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
           />
         </div>
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Risco Residual
-        </label>
-        <input
-          type="text"
-          value={formData.residualRisk}
-          onChange={(e) => setFormData({ ...formData, residualRisk: e.target.value })}
-          placeholder="Descreva o risco residual após o tratamento"
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-        />
+      {/* Pós-Tratamento */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Probabilidade Após Tratamento *
+          </label>
+          <select
+            value={formData.probabilityAfter}
+            onChange={(e) => setFormData({ ...formData, probabilityAfter: e.target.value as any })}
+            required
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+          >
+            <option value="baixa">Baixa</option>
+            <option value="media">Média</option>
+            <option value="alta">Alta</option>
+            <option value="critica">Crítica</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Impacto Após Tratamento *
+          </label>
+          <select
+            value={formData.impactAfter}
+            onChange={(e) => setFormData({ ...formData, impactAfter: e.target.value as any })}
+            required
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+          >
+            <option value="baixo">Baixo</option>
+            <option value="medio">Médio</option>
+            <option value="alto">Alto</option>
+            <option value="critico">Crítico</option>
+          </select>
+        </div>
       </div>
 
       <div className="flex gap-2 justify-end pt-4 border-t border-gray-200">
