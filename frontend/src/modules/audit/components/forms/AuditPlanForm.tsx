@@ -65,7 +65,7 @@ export function AuditPlanForm({
   const [manualAuditors, setManualAuditors] = useState<Array<{ id: string; name: string; email: string }>>([]);
   const [showManualAuditorInput, setShowManualAuditorInput] = useState(false);
 
-  // 🆕 Estado para controles do backend
+  // Estado para controles do backend
   const [controls, setControls] = useState<Array<{ id: string; name: string; controlId: string }>>([]);
   const [isLoadingControls, setIsLoadingControls] = useState(true);
 
@@ -97,17 +97,18 @@ export function AuditPlanForm({
   const [selectedProcesses, setSelectedProcesses] = useState<string[]>([]);
   const [selectedAreas, setSelectedAreas] = useState<string[]>([]);
 
-  // Buscar controles do backend
+  // Buscar controles do backend usando getAllControls()
   useEffect(() => {
     const fetchControls = async () => {
       setIsLoadingControls(true);
       try {
-        const response = await controlService.listControls();
-        // Assume que a resposta tem a lista de controles
-        const controlList = response.data || response || [];
+        console.log('🔍 Buscando controles do backend...');
+        // Usar getAllControls que retorna um array diretamente
+        const controlList = await controlService.getAllControls();
+        console.log('📦 Controles carregados:', controlList.length);
         setControls(controlList);
       } catch (err) {
-        console.error('Erro ao carregar controles:', err);
+        console.error('❌ Erro ao carregar controles:', err);
         toast.error('Erro ao carregar lista de controles');
       } finally {
         setIsLoadingControls(false);
@@ -347,7 +348,7 @@ export function AuditPlanForm({
 
   const hasOptions = allAuditorOptions.length > 0;
 
-  // 🆕 Opções de controles dinâmicos
+  // Opções de controles dinâmicos
   const controlOptions = controls.map((c) => ({
     value: c.controlId || c.id,
     label: c.name || c.controlId,
