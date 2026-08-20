@@ -12,6 +12,7 @@ export type AuditFindingStatus = 'open' | 'in_progress' | 'pending_validation' |
 export type AuditActionStatus = 'pending' | 'in_progress' | 'completed' | 'rejected';
 export type AuditReportStatus = 'draft' | 'pending_review' | 'approved' | 'rejected';
 export type AuditChecklistStatus = 'pending' | 'in_progress' | 'completed';
+export type AuditChecklistAnswer = 'C' | 'NC' | 'OB' | 'OM' | 'NA' | '--';
 
 // ============================================================
 // 🆕 NOVO (v46.0) - ENUMS PARA FUNCIONALIDADES ADICIONAIS
@@ -34,20 +35,9 @@ export interface AuditPlan {
   companyId: string;
   title: string;
   description: string;
-  scope: {
-    controls: string[];
-    processes: string[];
-    areas: string[];
-  };
-  period: {
-    startDate: string;
-    endDate: string;
-  };
-  team: {
-    leadAuditor: string;
-    auditors: string[];
-    observers: string[];
-  };
+  scope: { controls: string[]; processes: string[]; areas: string[] };
+  period: { startDate: string; endDate: string };
+  team: { leadAuditor: string; auditors: string[]; observers: string[] };
   criteria: string[];
   status: AuditStatus;
   createdBy: string;
@@ -63,9 +53,12 @@ export interface AuditPlan {
 
 export interface AuditChecklistItem {
   question: string;
-  answer: 'conforme' | 'nao_conforme' | 'nao_aplicavel';
+  answer: AuditChecklistAnswer;
   observations: string;
   evidenceIds: string[];
+  responsible?: string;
+  answeredAt?: string;
+  answeredBy?: string;
 }
 
 export interface AuditChecklist {
@@ -82,7 +75,7 @@ export interface AuditChecklist {
 }
 
 // ============================================================
-// NÃO CONFORMIDADE (FINDING)
+// NÃO CONFORMIDADE
 // ============================================================
 
 export interface AuditFinding {
@@ -314,40 +307,18 @@ export interface AuditDocumentReview {
 export interface CreateAuditPlanDTO {
   title: string;
   description: string;
-  scope: {
-    controls: string[];
-    processes: string[];
-    areas: string[];
-  };
-  period: {
-    startDate: string;
-    endDate: string;
-  };
-  team: {
-    leadAuditor: string;
-    auditors: string[];
-    observers?: string[];
-  };
+  scope: { controls: string[]; processes: string[]; areas: string[] };
+  period: { startDate: string; endDate: string };
+  team: { leadAuditor: string; auditors: string[]; observers?: string[] };
   criteria: string[];
 }
 
 export interface UpdateAuditPlanDTO {
   title?: string;
   description?: string;
-  scope?: {
-    controls?: string[];
-    processes?: string[];
-    areas?: string[];
-  };
-  period?: {
-    startDate?: string;
-    endDate?: string;
-  };
-  team?: {
-    leadAuditor?: string;
-    auditors?: string[];
-    observers?: string[];
-  };
+  scope?: { controls?: string[]; processes?: string[]; areas?: string[] };
+  period?: { startDate?: string; endDate?: string };
+  team?: { leadAuditor?: string; auditors?: string[]; observers?: string[] };
   criteria?: string[];
   status?: AuditStatus;
 }
