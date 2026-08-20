@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Loader2, AlertCircle } from 'lucide-react';
-import { useAudit } from '../../hooks/useAudit';
-import { AuditChecklist } from '../../components/AuditChecklist';
-import { AuditChecklistItem } from '../../types/audit.types';
+import { useAudit } from '../../../hooks/useAudit';
+import { AuditChecklist } from '../../../components/AuditChecklist';
+import { AuditChecklistItem } from '../../../types/audit.types';
 import { toast } from 'react-hot-toast';
 
 export function RepAuditChecklist() {

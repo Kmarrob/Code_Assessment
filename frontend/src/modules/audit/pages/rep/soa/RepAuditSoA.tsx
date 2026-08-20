@@ -12,7 +12,7 @@ import {
   RefreshCw,
   Search
 } from 'lucide-react';
-import { useAudit } from '../../hooks/useAudit';
+import { useAudit } from '../../../hooks/useAudit';
 import { toast } from 'react-hot-toast';
 
 interface SoAControl {

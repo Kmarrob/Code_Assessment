@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, Users, FileText, X, Plus, AlertCircle, UserPlus } from 'lucide-react';
+import { Calendar, Users, FileText, X, Plus, AlertCircle, UserPlus, UserCheck } from 'lucide-react';
 import { useAuth } from '../../../../contexts/AuthContext.js';
 import { useUsers } from '../../../../hooks/useAdmin.js';
 import { CreateAuditPlanDTO, UpdateAuditPlanDTO, AuditPlan } from '../../types/audit.types';
+import { toast } from 'react-hot-toast';
 
 interface AuditPlanFormProps {
   initialData?: AuditPlan;
@@ -86,7 +87,7 @@ export function AuditPlanForm({
   const { user } = useAuth();
   const { data: users = [], isLoading: isLoadingUsers } = useUsers();
 
-  // Estado para auditores inseridos manualmente
+  // Estado para auditores manuais
   const [manualAuditorName, setManualAuditorName] = useState('');
   const [manualAuditorEmail, setManualAuditorEmail] = useState('');
   const [manualAuditors, setManualAuditors] = useState<Array<{ id: string; name: string; email: string }>>([]);
@@ -143,7 +144,10 @@ export function AuditPlanForm({
     try {
       const saved = localStorage.getItem('manualAuditors');
       if (saved) {
-        setManualAuditors(JSON.parse(saved));
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setManualAuditors(parsed);
+        }
       }
     } catch (e) {
       console.warn('Erro ao carregar auditores manuais:', e);
@@ -218,6 +222,15 @@ export function AuditPlanForm({
       return;
     }
 
+    // Verificar se já existe um auditor com este nome
+    const exists = manualAuditors.some(
+      (a) => a.name.toLowerCase() === manualAuditorName.trim().toLowerCase()
+    );
+    if (exists) {
+      toast.error('Este auditor já foi adicionado');
+      return;
+    }
+
     const newAuditor = {
       id: `manual_${Date.now()}`,
       name: manualAuditorName.trim(),
@@ -229,19 +242,13 @@ export function AuditPlanForm({
     saveManualAuditors(updatedAuditors);
 
     // Adicionar o auditor à lista de auditores selecionados
-    setFormData((prev) => ({
-      ...prev,
-      team: {
-        ...prev.team!,
-        auditors: [...(prev.team?.auditors || []), newAuditor.id],
-      },
-    }));
+    handleTeamChange('auditors', [...(formData.team?.auditors || []), newAuditor.id]);
 
     setManualAuditorName('');
     setManualAuditorEmail('');
     setShowManualAuditorInput(false);
 
-    toast.success('Auditor adicionado com sucesso!');
+    toast.success(`Auditor "${newAuditor.name}" adicionado com sucesso!`);
   };
 
   // Remover auditor manual
@@ -251,13 +258,10 @@ export function AuditPlanForm({
     saveManualAuditors(updatedAuditors);
 
     // Remover da lista de selecionados
-    setFormData((prev) => ({
-      ...prev,
-      team: {
-        ...prev.team!,
-        auditors: (prev.team?.auditors || []).filter((a) => a !== id),
-      },
-    }));
+    handleTeamChange(
+      'auditors',
+      (formData.team?.auditors || []).filter((a) => a !== id)
+    );
 
     toast.success('Auditor removido');
   };
@@ -323,12 +327,11 @@ export function AuditPlanForm({
   };
 
   // Combinar usuários do sistema + auditores manuais
-  const systemUsers = users || [];
   const allAuditorOptions = [
-    ...systemUsers
+    ...(users || [])
       .filter((u: any) => u.role === 'rep' || u.role === 'admin')
       .map((u: any) => ({
-        id: u._id,
+        id: u._id || u.id,
         name: u.name,
         email: u.email,
         isManual: false,
@@ -341,8 +344,8 @@ export function AuditPlanForm({
     })),
   ];
 
-  // Filtrar usuários para auditores (REP e ADMIN)
-  const auditorUsers = systemUsers.filter((u: any) => u.role === 'rep' || u.role === 'admin');
+  // Verificar se há opções disponíveis
+  const hasOptions = allAuditorOptions.length > 0;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -510,7 +513,10 @@ export function AuditPlanForm({
         {/* Auditores Manuais - Lista */}
         {manualAuditors.length > 0 && (
           <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-            <p className="text-sm font-medium text-blue-700 mb-2">Auditores cadastrados:</p>
+            <p className="text-sm font-medium text-blue-700 mb-2 flex items-center gap-2">
+              <UserCheck className="w-4 h-4" />
+              Auditores cadastrados manualmente:
+            </p>
             <div className="flex flex-wrap gap-2">
               {manualAuditors.map((auditor) => (
                 <span
@@ -536,60 +542,80 @@ export function AuditPlanForm({
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Auditor Líder <span className="text-red-500">*</span>
             </label>
-            <select
-              value={formData.team?.leadAuditor || ''}
-              onChange={(e) => handleTeamChange('leadAuditor', e.target.value)}
-              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
-                errors.leadAuditor ? 'border-red-500' : 'border-gray-300'
-              }`}
-            >
-              <option value="">Selecione...</option>
-              {allAuditorOptions.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.name} ({u.email}) {u.isManual ? '📝' : ''}
-                </option>
-              ))}
-            </select>
+            {hasOptions ? (
+              <select
+                value={formData.team?.leadAuditor || ''}
+                onChange={(e) => handleTeamChange('leadAuditor', e.target.value)}
+                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
+                  errors.leadAuditor ? 'border-red-500' : 'border-gray-300'
+                }`}
+              >
+                <option value="">Selecione...</option>
+                {allAuditorOptions.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.name} ({u.email}) {u.isManual ? '📝' : ''}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div className="text-sm text-gray-500 p-2 border border-dashed border-gray-300 rounded-lg">
+                Nenhum auditor disponível. Adicione um manualmente abaixo.
+              </div>
+            )}
             {errors.leadAuditor && <p className="text-sm text-red-500 mt-1">{errors.leadAuditor}</p>}
           </div>
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Auditores</label>
-            <select
-              multiple
-              value={formData.team?.auditors || []}
-              onChange={(e) => {
-                const values = Array.from(e.target.selectedOptions, (option) => option.value);
-                handleTeamChange('auditors', values);
-              }}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-              size={4}
-            >
-              {allAuditorOptions.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.name} ({u.email}) {u.isManual ? '📝' : ''}
-                </option>
-              ))}
-            </select>
+            {hasOptions ? (
+              <select
+                multiple
+                value={formData.team?.auditors || []}
+                onChange={(e) => {
+                  const values = Array.from(e.target.selectedOptions, (option) => option.value);
+                  handleTeamChange('auditors', values);
+                }}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                size={4}
+              >
+                {allAuditorOptions.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.name} ({u.email}) {u.isManual ? '📝' : ''}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div className="text-sm text-gray-500 p-2 border border-dashed border-gray-300 rounded-lg">
+                Nenhum auditor disponível. Adicione um manualmente abaixo.
+              </div>
+            )}
             <p className="text-xs text-gray-400 mt-1">Segure Ctrl para selecionar múltiplos</p>
           </div>
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Observadores</label>
-            <select
-              multiple
-              value={formData.team?.observers || []}
-              onChange={(e) => {
-                const values = Array.from(e.target.selectedOptions, (option) => option.value);
-                handleTeamChange('observers', values);
-              }}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-              size={4}
-            >
-              {allAuditorOptions.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.name} ({u.email}) {u.isManual ? '📝' : ''}
-                </option>
-              ))}
-            </select>
+            {hasOptions ? (
+              <select
+                multiple
+                value={formData.team?.observers || []}
+                onChange={(e) => {
+                  const values = Array.from(e.target.selectedOptions, (option) => option.value);
+                  handleTeamChange('observers', values);
+                }}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                size={4}
+              >
+                {allAuditorOptions.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.name} ({u.email}) {u.isManual ? '📝' : ''}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div className="text-sm text-gray-500 p-2 border border-dashed border-gray-300 rounded-lg">
+                Nenhum observador disponível. Adicione um manualmente abaixo.
+              </div>
+            )}
             <p className="text-xs text-gray-400 mt-1">Segure Ctrl para selecionar múltiplos</p>
           </div>
         </div>
@@ -598,12 +624,13 @@ export function AuditPlanForm({
         <div className="mt-4 pt-4 border-t border-gray-200">
           {showManualAuditorInput ? (
             <div className="flex flex-col gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
-              <div className="flex gap-2">
+              <p className="text-sm font-medium text-gray-700">Adicionar Auditor Manual</p>
+              <div className="flex flex-col sm:flex-row gap-2">
                 <input
                   type="text"
                   value={manualAuditorName}
                   onChange={(e) => setManualAuditorName(e.target.value)}
-                  placeholder="Nome do auditor..."
+                  placeholder="Nome completo do auditor..."
                   className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 />
                 <input
@@ -642,6 +669,9 @@ export function AuditPlanForm({
               Adicionar auditor manualmente
             </button>
           )}
+          <p className="text-xs text-gray-400 mt-2">
+            Use esta opção se o auditor não estiver cadastrado no sistema.
+          </p>
         </div>
       </div>
 
@@ -770,6 +800,3 @@ export function AuditPlanForm({
     </form>
   );
 }
-
-// Adicionar toast para notificações
-import { toast } from 'react-hot-toast';

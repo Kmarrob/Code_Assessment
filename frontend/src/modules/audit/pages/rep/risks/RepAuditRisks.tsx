@@ -12,7 +12,7 @@ import {
   AlertTriangle,
   Info
 } from 'lucide-react';
-import { useAudit } from '../../hooks/useAudit';
+import { useAudit } from '../../../hooks/useAudit';
 import { toast } from 'react-hot-toast';
 
 interface Risk {
@@ -553,5 +553,27 @@ function RiskForm({ initialData, onSubmit, onCancel, isSubmitting }: RiskFormPro
         </button>
       </div>
     </form>
+  );
+}
+
+// Componente XCircle (adicionado para resolver referência)
+function XCircle(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      {...props}
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="12" cy="12" r="10" />
+      <line x1="15" y1="9" x2="9" y2="15" />
+      <line x1="9" y1="9" x2="15" y2="15" />
+    </svg>
   );
 }

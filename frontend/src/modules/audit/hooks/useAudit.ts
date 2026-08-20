@@ -631,3 +631,88 @@ export function useCompleteDocumentReview() {
     },
   });
 }
+
+// ============================================================
+// EXPORTAÇÃO DO OBJETO useAudit (para compatibilidade com as páginas)
+// ============================================================
+
+export const useAudit = {
+  // Planos
+  usePlans,
+  usePlan,
+  usePlanStats,
+  useCreatePlan,
+  useUpdatePlan,
+  useSubmitPlan,
+  useApprovePlan,
+  useRejectPlan,
+  useStartPlan,
+  useCompletePlan,
+  useCancelPlan,
+  useDeletePlan,
+
+  // Checklists
+  useChecklists,
+  useChecklist,
+  useChecklistStats,
+  useUpdateChecklist,
+  useCompleteChecklist,
+
+  // Findings
+  useFindings,
+  useFinding,
+  useFindingStats,
+  useCreateFinding,
+  useUpdateFinding,
+  useSubmitFinding,
+  useValidateFinding,
+  useDeleteFinding,
+
+  // Actions
+  useActionsByFinding,
+  useAction,
+  useCreateAction,
+  useUpdateAction,
+  useStartAction,
+  useCompleteAction,
+  useValidateAction,
+
+  // Evidence
+  useEvidenceByPlan,
+  useUploadEvidence,
+  useDeleteEvidence,
+
+  // Reports
+  useReports,
+  useReport,
+  useCreateReport,
+  useUpdateReport,
+  useSubmitReport,
+  useApproveReport,
+  useRejectReport,
+  useDeleteReport,
+  useGenerateReport,
+
+  // 🆕 Riscos
+  useRisksByPlan,
+  useRisk,
+  useCreateRisk,
+  useUpdateRisk,
+  useDeleteRisk,
+
+  // 🆕 SoA
+  useSoAByPlan,
+  useUpdateSoAControl,
+  useExportSoA,
+
+  // 🆕 Programa
+  useProgramByPlan,
+  useCreateProgramActivity,
+  useUpdateProgramActivity,
+  useDeleteProgramActivity,
+
+  // 🆕 Revisão Documental
+  useDocumentReviewByPlan,
+  useUpdateDocumentReview,
+  useCompleteDocumentReview,
+};

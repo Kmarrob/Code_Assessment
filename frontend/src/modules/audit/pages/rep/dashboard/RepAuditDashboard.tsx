@@ -10,6 +10,12 @@ import {
   Plus,
   Eye,
   ChevronRight,
+  FileText,
+  Upload,
+  AlertCircle,
+  BarChart3,
+  BookOpen,
+  ClipboardCheck,
 } from 'lucide-react';
 import { usePlans, usePlanStats } from '../../../hooks/useAudit';
 import { AuditPlan } from '../../../types/audit.types';
@@ -50,6 +56,19 @@ export function RepAuditDashboard() {
 
   const isLoading = isLoadingPlans || isLoadingStats;
 
+  // Navegação para as funcionalidades (requerem um planId selecionado)
+  const navigateToFeature = (feature: string, planId?: string) => {
+    if (!planId) {
+      // Se não tiver plano selecionado, vai para a lista de planos
+      navigate('/rep/audit/plans');
+      return;
+    }
+    navigate(`/rep/audit/${feature}/${planId}`);
+  };
+
+  // Pega o primeiro plano disponível para navegação rápida
+  const firstPlanId = plans.length > 0 ? plans[0]._id : null;
+
   return (
     <div className="container mx-auto px-4 py-8">
       {/* Header */}
@@ -75,6 +94,222 @@ export function RepAuditDashboard() {
             <Plus className="w-4 h-4" />
             Novo Plano
           </button>
+        </div>
+      </div>
+
+      {/* Cards de Navegação Rápida */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mb-8">
+        {/* Planos */}
+        <div
+          onClick={() => navigate('/rep/audit/plans')}
+          className="bg-white border-2 border-indigo-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-medium text-indigo-600">Gerenciar</p>
+              <p className="text-sm font-bold text-indigo-900">Planos</p>
+            </div>
+            <div className="p-2 bg-indigo-100 rounded-full">
+              <ClipboardList className="w-5 h-5 text-indigo-600" />
+            </div>
+          </div>
+          <ChevronRight className="w-4 h-4 text-indigo-400 mt-2" />
+        </div>
+
+        {/* Checklist */}
+        <div
+          onClick={() => {
+            if (firstPlanId) {
+              navigate(`/rep/audit/checklist/${firstPlanId}`);
+            } else {
+              navigate('/rep/audit/plans');
+            }
+          }}
+          className={`bg-white border-2 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer ${
+            firstPlanId ? 'border-green-200' : 'border-gray-200 opacity-60'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-medium text-green-600">Executar</p>
+              <p className="text-sm font-bold text-green-900">Checklist</p>
+            </div>
+            <div className="p-2 bg-green-100 rounded-full">
+              <FileCheck className="w-5 h-5 text-green-600" />
+            </div>
+          </div>
+          <ChevronRight className="w-4 h-4 text-green-400 mt-2" />
+          {!firstPlanId && (
+            <p className="text-xs text-gray-400 mt-1">Crie um plano primeiro</p>
+          )}
+        </div>
+
+        {/* Evidências */}
+        <div
+          onClick={() => {
+            if (firstPlanId) {
+              navigate(`/rep/audit/evidence/${firstPlanId}`);
+            } else {
+              navigate('/rep/audit/plans');
+            }
+          }}
+          className={`bg-white border-2 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer ${
+            firstPlanId ? 'border-blue-200' : 'border-gray-200 opacity-60'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-medium text-blue-600">Gerenciar</p>
+              <p className="text-sm font-bold text-blue-900">Evidências</p>
+            </div>
+            <div className="p-2 bg-blue-100 rounded-full">
+              <Upload className="w-5 h-5 text-blue-600" />
+            </div>
+          </div>
+          <ChevronRight className="w-4 h-4 text-blue-400 mt-2" />
+          {!firstPlanId && (
+            <p className="text-xs text-gray-400 mt-1">Crie um plano primeiro</p>
+          )}
+        </div>
+
+        {/* Achados (Não Conformidades) */}
+        <div
+          onClick={() => {
+            if (firstPlanId) {
+              navigate(`/rep/audit/findings/${firstPlanId}`);
+            } else {
+              navigate('/rep/audit/plans');
+            }
+          }}
+          className={`bg-white border-2 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer ${
+            firstPlanId ? 'border-red-200' : 'border-gray-200 opacity-60'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-medium text-red-600">Registrar</p>
+              <p className="text-sm font-bold text-red-900">Achados</p>
+            </div>
+            <div className="p-2 bg-red-100 rounded-full">
+              <AlertCircle className="w-5 h-5 text-red-600" />
+            </div>
+          </div>
+          <ChevronRight className="w-4 h-4 text-red-400 mt-2" />
+          {!firstPlanId && (
+            <p className="text-xs text-gray-400 mt-1">Crie um plano primeiro</p>
+          )}
+        </div>
+
+        {/* Riscos */}
+        <div
+          onClick={() => {
+            if (firstPlanId) {
+              navigate(`/rep/audit/risks/${firstPlanId}`);
+            } else {
+              navigate('/rep/audit/plans');
+            }
+          }}
+          className={`bg-white border-2 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer ${
+            firstPlanId ? 'border-yellow-200' : 'border-gray-200 opacity-60'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-medium text-yellow-600">Avaliar</p>
+              <p className="text-sm font-bold text-yellow-900">Riscos</p>
+            </div>
+            <div className="p-2 bg-yellow-100 rounded-full">
+              <AlertTriangle className="w-5 h-5 text-yellow-600" />
+            </div>
+          </div>
+          <ChevronRight className="w-4 h-4 text-yellow-400 mt-2" />
+          {!firstPlanId && (
+            <p className="text-xs text-gray-400 mt-1">Crie um plano primeiro</p>
+          )}
+        </div>
+
+        {/* Plano de Ação */}
+        <div
+          onClick={() => {
+            if (firstPlanId) {
+              navigate(`/rep/audit/actions/${firstPlanId}`);
+            } else {
+              navigate('/rep/audit/plans');
+            }
+          }}
+          className={`bg-white border-2 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer ${
+            firstPlanId ? 'border-purple-200' : 'border-gray-200 opacity-60'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-medium text-purple-600">Acompanhar</p>
+              <p className="text-sm font-bold text-purple-900">Plano de Ação</p>
+            </div>
+            <div className="p-2 bg-purple-100 rounded-full">
+              <ClipboardCheck className="w-5 h-5 text-purple-600" />
+            </div>
+          </div>
+          <ChevronRight className="w-4 h-4 text-purple-400 mt-2" />
+          {!firstPlanId && (
+            <p className="text-xs text-gray-400 mt-1">Crie um plano primeiro</p>
+          )}
+        </div>
+
+        {/* SoA */}
+        <div
+          onClick={() => {
+            if (firstPlanId) {
+              navigate(`/rep/audit/soa/${firstPlanId}`);
+            } else {
+              navigate('/rep/audit/plans');
+            }
+          }}
+          className={`bg-white border-2 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer ${
+            firstPlanId ? 'border-teal-200' : 'border-gray-200 opacity-60'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-medium text-teal-600">Visualizar</p>
+              <p className="text-sm font-bold text-teal-900">SoA</p>
+            </div>
+            <div className="p-2 bg-teal-100 rounded-full">
+              <FileText className="w-5 h-5 text-teal-600" />
+            </div>
+          </div>
+          <ChevronRight className="w-4 h-4 text-teal-400 mt-2" />
+          {!firstPlanId && (
+            <p className="text-xs text-gray-400 mt-1">Crie um plano primeiro</p>
+          )}
+        </div>
+
+        {/* Programa */}
+        <div
+          onClick={() => {
+            if (firstPlanId) {
+              navigate(`/rep/audit/program/${firstPlanId}`);
+            } else {
+              navigate('/rep/audit/plans');
+            }
+          }}
+          className={`bg-white border-2 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer ${
+            firstPlanId ? 'border-rose-200' : 'border-gray-200 opacity-60'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-medium text-rose-600">Planejar</p>
+              <p className="text-sm font-bold text-rose-900">Programa</p>
+            </div>
+            <div className="p-2 bg-rose-100 rounded-full">
+              <Calendar className="w-5 h-5 text-rose-600" />
+            </div>
+          </div>
+          <ChevronRight className="w-4 h-4 text-rose-400 mt-2" />
+          {!firstPlanId && (
+            <p className="text-xs text-gray-400 mt-1">Crie um plano primeiro</p>
+          )}
         </div>
       </div>
 
