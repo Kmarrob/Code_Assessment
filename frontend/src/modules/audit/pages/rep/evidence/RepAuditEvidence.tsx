@@ -12,7 +12,7 @@ import {
   Trash2,
   Plus
 } from 'lucide-react';
-import { useAudit } from '../../hooks/useAudit';
+import { useAudit } from '../../../hooks/useAudit';
 import { toast } from 'react-hot-toast';
 
 interface Evidence {
