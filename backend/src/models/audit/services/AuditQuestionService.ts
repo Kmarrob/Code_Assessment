@@ -52,49 +52,55 @@ export class AuditQuestionService {
       ];
     }
 
-    return await AuditQuestion.find(query)
+    const results = await AuditQuestion.find(query)
       .sort({ section: 1, order: 1, clause: 1 })
-      .lean();
+      .exec();
+
+    return results.map((doc) => doc.toObject() as IAuditQuestion);
   }
 
   /**
    * Buscar pergunta por ID
    */
   async findById(id: string): Promise<IAuditQuestion | null> {
-    return await AuditQuestion.findOne({ _id: id, deletedAt: null }).lean();
+    const result = await AuditQuestion.findOne({ _id: id, deletedAt: null }).exec();
+    return result ? (result.toObject() as IAuditQuestion) : null;
   }
 
   /**
    * Atualizar pergunta
    */
   async update(id: string, data: Partial<IAuditQuestion>, userId: string): Promise<IAuditQuestion | null> {
-    return await AuditQuestion.findOneAndUpdate(
+    const result = await AuditQuestion.findOneAndUpdate(
       { _id: id, deletedAt: null },
       { ...data, updatedBy: userId },
       { new: true, runValidators: true }
-    ).lean();
+    ).exec();
+    return result ? (result.toObject() as IAuditQuestion) : null;
   }
 
   /**
    * Ativar/Desativar pergunta
    */
   async toggleStatus(id: string, isActive: boolean, userId: string): Promise<IAuditQuestion | null> {
-    return await AuditQuestion.findOneAndUpdate(
+    const result = await AuditQuestion.findOneAndUpdate(
       { _id: id, deletedAt: null },
       { isActive, updatedBy: userId },
       { new: true }
-    ).lean();
+    ).exec();
+    return result ? (result.toObject() as IAuditQuestion) : null;
   }
 
   /**
    * Excluir pergunta (soft delete)
    */
   async delete(id: string, userId: string): Promise<IAuditQuestion | null> {
-    return await AuditQuestion.findOneAndUpdate(
+    const result = await AuditQuestion.findOneAndUpdate(
       { _id: id, deletedAt: null },
       { deletedAt: new Date(), updatedBy: userId },
       { new: true }
-    ).lean();
+    ).exec();
+    return result ? (result.toObject() as IAuditQuestion) : null;
   }
 
   /**
@@ -105,9 +111,10 @@ export class AuditQuestionService {
     if (onlyActive) {
       query.isActive = true;
     }
-    return await AuditQuestion.find(query)
+    const results = await AuditQuestion.find(query)
       .sort({ order: 1 })
-      .lean();
+      .exec();
+    return results.map((doc) => doc.toObject() as IAuditQuestion);
   }
 
   /**
@@ -118,9 +125,10 @@ export class AuditQuestionService {
     if (onlyActive) {
       query.isActive = true;
     }
-    return await AuditQuestion.find(query)
+    const results = await AuditQuestion.find(query)
       .sort({ clause: 1, order: 1 })
-      .lean();
+      .exec();
+    return results.map((doc) => doc.toObject() as IAuditQuestion);
   }
 
   /**
@@ -131,9 +139,10 @@ export class AuditQuestionService {
     if (onlyActive) {
       query.isActive = true;
     }
-    return await AuditQuestion.find(query)
+    const results = await AuditQuestion.find(query)
       .sort({ order: 1 })
-      .lean();
+      .exec();
+    return results.map((doc) => doc.toObject() as IAuditQuestion);
   }
 
   /**

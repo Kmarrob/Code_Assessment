@@ -17,7 +17,6 @@ export class AuditQuestionController {
 
       const { text, clause, category, controlId, isActive, answerType, order, section } = req.body;
 
-      // Validações básicas
       if (!text || !clause || !category || !section) {
         res.status(400).json({
           success: false,
@@ -67,6 +66,12 @@ export class AuditQuestionController {
    */
   async findAll(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
+      const userId = req.user?._id?.toString();
+      if (!userId) {
+        res.status(401).json({ success: false, message: 'Usuário não autenticado' });
+        return;
+      }
+
       const { search, category, isActive, clause, section } = req.query;
 
       const filters = {
@@ -78,14 +83,6 @@ export class AuditQuestionController {
       };
 
       const questions = await auditQuestionService.findAll(filters);
-
-      // 🔹 Buscar nomes dos controles para enriquecer os dados
-      const controlIds = questions
-        .filter((q) => q.category === 'control' && q.controlId)
-        .map((q) => q.controlId);
-
-      // (Opcional) Buscar nomes dos controles se necessário
-      // const controls = await Control.find({ _id: { $in: controlIds } }).lean();
 
       res.status(200).json({
         success: true,
@@ -106,7 +103,21 @@ export class AuditQuestionController {
    */
   async findById(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
+      const userId = req.user?._id?.toString();
+      if (!userId) {
+        res.status(401).json({ success: false, message: 'Usuário não autenticado' });
+        return;
+      }
+
       const { id } = req.params;
+
+      if (!id) {
+        res.status(400).json({
+          success: false,
+          message: 'ID da pergunta é obrigatório',
+        });
+        return;
+      }
 
       const question = await auditQuestionService.findById(id);
 
@@ -136,11 +147,19 @@ export class AuditQuestionController {
    */
   async update(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
-      const { id } = req.params;
       const userId = req.user?._id?.toString();
-
       if (!userId) {
         res.status(401).json({ success: false, message: 'Usuário não autenticado' });
+        return;
+      }
+
+      const { id } = req.params;
+
+      if (!id) {
+        res.status(400).json({
+          success: false,
+          message: 'ID da pergunta é obrigatório',
+        });
         return;
       }
 
@@ -188,14 +207,23 @@ export class AuditQuestionController {
    */
   async toggleStatus(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
-      const { id } = req.params;
-      const { isActive } = req.body;
       const userId = req.user?._id?.toString();
-
       if (!userId) {
         res.status(401).json({ success: false, message: 'Usuário não autenticado' });
         return;
       }
+
+      const { id } = req.params;
+
+      if (!id) {
+        res.status(400).json({
+          success: false,
+          message: 'ID da pergunta é obrigatório',
+        });
+        return;
+      }
+
+      const { isActive } = req.body;
 
       if (isActive === undefined) {
         res.status(400).json({
@@ -234,11 +262,19 @@ export class AuditQuestionController {
    */
   async delete(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
-      const { id } = req.params;
       const userId = req.user?._id?.toString();
-
       if (!userId) {
         res.status(401).json({ success: false, message: 'Usuário não autenticado' });
+        return;
+      }
+
+      const { id } = req.params;
+
+      if (!id) {
+        res.status(400).json({
+          success: false,
+          message: 'ID da pergunta é obrigatório',
+        });
         return;
       }
 
@@ -270,7 +306,22 @@ export class AuditQuestionController {
    */
   async findByClause(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
+      const userId = req.user?._id?.toString();
+      if (!userId) {
+        res.status(401).json({ success: false, message: 'Usuário não autenticado' });
+        return;
+      }
+
       const { clause } = req.params;
+
+      if (!clause) {
+        res.status(400).json({
+          success: false,
+          message: 'Cláusula é obrigatória',
+        });
+        return;
+      }
+
       const { onlyActive } = req.query;
 
       const questions = await auditQuestionService.findByClause(
@@ -297,7 +348,22 @@ export class AuditQuestionController {
    */
   async findBySection(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
+      const userId = req.user?._id?.toString();
+      if (!userId) {
+        res.status(401).json({ success: false, message: 'Usuário não autenticado' });
+        return;
+      }
+
       const { section } = req.params;
+
+      if (!section) {
+        res.status(400).json({
+          success: false,
+          message: 'Seção é obrigatória',
+        });
+        return;
+      }
+
       const { onlyActive } = req.query;
 
       const questions = await auditQuestionService.findBySection(
@@ -324,6 +390,12 @@ export class AuditQuestionController {
    */
   async getStats(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
+      const userId = req.user?._id?.toString();
+      if (!userId) {
+        res.status(401).json({ success: false, message: 'Usuário não autenticado' });
+        return;
+      }
+
       const stats = await auditQuestionService.getStats();
 
       res.status(200).json({
