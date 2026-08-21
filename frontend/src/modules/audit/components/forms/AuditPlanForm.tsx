@@ -452,14 +452,11 @@ export function AuditPlanForm({
                 value=""
                 onChange={(e) => handleScopeChange('controls', e.target.value)}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                style={{ color: '#1f2937 !important', backgroundColor: '#ffffff !important' }}
-              >
-                <option value="" style={{ color: '#1f2937 !important' }}>Selecione um controle...</option>
-                {controlOptions
+style={{ color: '#1f2937', backgroundColor: '#ffffff' }}              >
+<option value="" style={{ color: '#1f2937', backgroundColor: '#ffffff' }}>Selecione um controle...</option>                {controlOptions
                   .filter((c) => !selectedControls.includes(c.value))
                   .map((control) => (
-                    <option key={control.value} value={control.value} style={{ color: '#1f2937 !important' }}>
-                      {control.label}
+<option key={control.value} value={control.value} style={{ color: '#1f2937', backgroundColor: '#ffffff' }}>                      {control.label}
                     </option>
                   ))}
               </select>
