@@ -848,3 +848,54 @@ select option[value=""] {
   color: #1f2937 !important;
   background-color: #ffffff !important;
 }
+
+/* ============================================
+   🔥 CORREÇÃO: Modal de seleção (dropdown nativo)
+   ============================================ */
+
+/* Forçar cor no modal de seleção do navegador */
+select option,
+select optgroup,
+select option:focus,
+select optgroup:focus,
+select option:active,
+select optgroup:active,
+select option:hover,
+select optgroup:hover,
+select option:checked,
+select optgroup:checked,
+select option[selected],
+select optgroup[selected] {
+  color: #1f2937 !important;
+  background-color: #ffffff !important;
+}
+
+/* Para navegadores baseados em WebKit (Chrome, Edge, Safari) */
+select:-internal-autofill-selected,
+select:-internal-autofill-previewed {
+  background-color: #ffffff !important;
+  color: #1f2937 !important;
+}
+
+/* Para Firefox */
+select option:checked,
+select option:focus {
+  background-color: #e5e7eb !important;
+  color: #1f2937 !important;
+}
+
+/* Para o modal de seleção em geral */
+select option,
+select optgroup {
+  background-color: #ffffff !important;
+  color: #1f2937 !important;
+}
+
+/* Forçar cor quando o dropdown está aberto */
+select:focus option,
+select:active option,
+select option:focus,
+select option:hover {
+  background-color: #f3f4f6 !important;
+  color: #1f2937 !important;
+}
