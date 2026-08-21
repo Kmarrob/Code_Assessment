@@ -47,6 +47,9 @@ import internalAuditRoutes from './routes/internal-audit.routes.js';
 
 const app = express();
 
+// ✅ CORREÇÃO: Configurar trust proxy para rate limit funcionar atrás de proxy (Render)
+app.set('trust proxy', 1);
+
 app.use(compression({
   level: 6,
   filter: (req, res) => {
