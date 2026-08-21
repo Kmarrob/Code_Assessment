@@ -5,7 +5,6 @@ import { useAuth } from '../../../../contexts/AuthContext.js';
 import { useUsers } from '../../../../hooks/useAdmin.js';
 import { CreateAuditPlanDTO, UpdateAuditPlanDTO, AuditPlan } from '../../types/audit.types';
 import { toast } from 'react-hot-toast';
-// ✅ CORRIGIDO: Importação padrão (export default)
 import api from '../../../../services/api.js';
 
 interface AuditPlanFormProps {
@@ -449,13 +448,13 @@ export function AuditPlanForm({
               <select
                 value=""
                 onChange={(e) => handleScopeChange('controls', e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 bg-white"
               >
-                <option value="">Selecione um controle...</option>
+                <option value="" className="text-gray-900">Selecione um controle...</option>
                 {controlOptions
                   .filter((c) => !selectedControls.includes(c.value))
                   .map((control) => (
-                    <option key={control.value} value={control.value}>
+                    <option key={control.value} value={control.value} className="text-gray-900">
                       {control.label}
                     </option>
                   ))}
@@ -489,11 +488,11 @@ export function AuditPlanForm({
             <select
               value=""
               onChange={(e) => handleScopeChange('processes', e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 bg-white"
             >
-              <option value="">Selecione um processo...</option>
+              <option value="" className="text-gray-900">Selecione um processo...</option>
               {PROCESS_OPTIONS.filter((p) => !selectedProcesses.includes(p)).map((process) => (
-                <option key={process} value={process}>
+                <option key={process} value={process} className="text-gray-900">
                   {process}
                 </option>
               ))}
@@ -526,11 +525,11 @@ export function AuditPlanForm({
             <select
               value=""
               onChange={(e) => handleScopeChange('areas', e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 bg-white"
             >
-              <option value="">Selecione uma área...</option>
+              <option value="" className="text-gray-900">Selecione uma área...</option>
               {AREA_OPTIONS.filter((a) => !selectedAreas.includes(a)).map((area) => (
-                <option key={area} value={area}>
+                <option key={area} value={area} className="text-gray-900">
                   {area}
                 </option>
               ))}
@@ -582,13 +581,13 @@ export function AuditPlanForm({
               <select
                 value={formData.team?.leadAuditor || ''}
                 onChange={(e) => handleTeamChange('leadAuditor', e.target.value)}
-                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
+                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 bg-white ${
                   errors.leadAuditor ? 'border-red-500' : 'border-gray-300'
                 }`}
               >
-                <option value="">Selecione...</option>
+                <option value="" className="text-gray-900">Selecione...</option>
                 {allAuditorOptions.map((u) => (
-                  <option key={u.id} value={u.id}>
+                  <option key={u.id} value={u.id} className="text-gray-900">
                     {u.name} ({u.email}) {u.isManual ? '📝' : ''}
                   </option>
                 ))}
@@ -611,11 +610,11 @@ export function AuditPlanForm({
                   const values = Array.from(e.target.selectedOptions, (option) => option.value);
                   handleTeamChange('auditors', values);
                 }}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 bg-white"
                 size={4}
               >
                 {allAuditorOptions.map((u) => (
-                  <option key={u.id} value={u.id}>
+                  <option key={u.id} value={u.id} className="text-gray-900">
                     {u.name} ({u.email}) {u.isManual ? '📝' : ''}
                   </option>
                 ))}
@@ -638,11 +637,11 @@ export function AuditPlanForm({
                   const values = Array.from(e.target.selectedOptions, (option) => option.value);
                   handleTeamChange('observers', values);
                 }}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 bg-white"
                 size={4}
               >
                 {allAuditorOptions.map((u) => (
-                  <option key={u.id} value={u.id}>
+                  <option key={u.id} value={u.id} className="text-gray-900">
                     {u.name} ({u.email}) {u.isManual ? '📝' : ''}
                   </option>
                 ))}
@@ -666,14 +665,14 @@ export function AuditPlanForm({
                   value={manualAuditorName}
                   onChange={(e) => setManualAuditorName(e.target.value)}
                   placeholder="Nome completo do auditor..."
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 bg-white"
                 />
                 <input
                   type="email"
                   value={manualAuditorEmail}
                   onChange={(e) => setManualAuditorEmail(e.target.value)}
                   placeholder="Email (opcional)..."
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 bg-white"
                 />
               </div>
               <div className="flex gap-2 justify-end">
@@ -730,7 +729,7 @@ export function AuditPlanForm({
                   period: { ...prev.period!, startDate: e.target.value },
                 }))
               }
-              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
+              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 bg-white ${
                 errors.startDate ? 'border-red-500' : 'border-gray-300'
               }`}
             />
@@ -749,7 +748,7 @@ export function AuditPlanForm({
                   period: { ...prev.period!, endDate: e.target.value },
                 }))
               }
-              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
+              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 bg-white ${
                 errors.endDate ? 'border-red-500' : 'border-gray-300'
               }`}
             />
@@ -769,7 +768,7 @@ export function AuditPlanForm({
                 }))
               }
               min={1}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 bg-white"
             />
             <p className="text-xs text-gray-400 mt-1">
               Número estimado de dias para a auditoria
@@ -803,7 +802,7 @@ export function AuditPlanForm({
             value={newCriteria}
             onChange={(e) => setNewCriteria(e.target.value)}
             placeholder="Ex: ISO 27001:2022, Política de SI, Requisitos Legais"
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 bg-white"
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
                 e.preventDefault();
