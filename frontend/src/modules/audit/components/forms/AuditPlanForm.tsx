@@ -5,7 +5,8 @@ import { useAuth } from '../../../../contexts/AuthContext.js';
 import { useUsers } from '../../../../hooks/useAdmin.js';
 import { CreateAuditPlanDTO, UpdateAuditPlanDTO, AuditPlan } from '../../types/audit.types';
 import { toast } from 'react-hot-toast';
-import { controlService } from '../../../../services/control.service.js';
+// 🔴 CORRIGIDO: Importar api diretamente
+import { api } from '../../../../services/api.js';
 
 interface AuditPlanFormProps {
   initialData?: AuditPlan;
@@ -97,14 +98,14 @@ export function AuditPlanForm({
   const [selectedProcesses, setSelectedProcesses] = useState<string[]>([]);
   const [selectedAreas, setSelectedAreas] = useState<string[]>([]);
 
-  // Buscar controles do backend usando getAllControls()
+  // 🔴 CORRIGIDO: Buscar controles da empresa via rota /rep/controls
   useEffect(() => {
     const fetchControls = async () => {
       setIsLoadingControls(true);
       try {
-        console.log('🔍 Buscando controles do backend...');
-        // Usar getAllControls que retorna um array diretamente
-        const controlList = await controlService.getAllControls();
+        console.log('🔍 Buscando controles da empresa (REP)...');
+        const response = await api.get('/rep/controls');
+        const controlList = response.data.data || [];
         console.log('📦 Controles carregados:', controlList.length);
         setControls(controlList);
       } catch (err) {
@@ -417,7 +418,7 @@ export function AuditPlanForm({
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Escopo da Auditoria</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Controles - Buscados do backend */}
+          {/* Controles - Buscados do backend via rota REP */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Controles ISO 27001 <span className="text-red-500">*</span>
