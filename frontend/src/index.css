@@ -774,3 +774,77 @@ textarea {
     display: none !important;
   }
 }
+
+/* ============================================
+   🔥 CORREÇÃO: Garantir que selects e options sejam legíveis
+   ============================================ */
+
+/* Forçar cor preta em todos os selects e options */
+select,
+select option,
+select:focus,
+select option:focus,
+select:active,
+select option:active,
+select:hover,
+select option:hover {
+  color: #1f2937 !important;
+  background-color: #ffffff !important;
+}
+
+/* Para selects com múltipla seleção */
+select[multiple],
+select[multiple] option,
+select[multiple]:focus,
+select[multiple] option:focus {
+  color: #1f2937 !important;
+  background-color: #ffffff !important;
+}
+
+/* Para todos os selects dentro de formulários */
+form select,
+form select option,
+form select:focus,
+form select option:focus {
+  color: #1f2937 !important;
+  background-color: #ffffff !important;
+}
+
+/* Para selects dentro de containers específicos */
+.bg-white select,
+.bg-white select option,
+.bg-white select:focus,
+.bg-white select option:focus {
+  color: #1f2937 !important;
+  background-color: #ffffff !important;
+}
+
+/* Forçar cor das opções quando o dropdown está aberto */
+select option,
+select optgroup {
+  color: #1f2937 !important;
+  background-color: #ffffff !important;
+}
+
+/* Para navegadores WebKit (Chrome, Edge, Safari) */
+select:-webkit-autofill,
+select:-webkit-autofill:hover,
+select:-webkit-autofill:focus {
+  -webkit-text-fill-color: #1f2937 !important;
+  -webkit-box-shadow: 0 0 0px 1000px #ffffff inset !important;
+  background-color: #ffffff !important;
+}
+
+/* Para selects desabilitados */
+select:disabled,
+select option:disabled {
+  color: #6b7280 !important;
+  background-color: #f3f4f6 !important;
+}
+
+/* Garantir que o primeiro option (placeholder) também seja visível */
+select option:first-child,
+select option[value=""] {
+  color: #1f2937 !important;
+  background-color: #ffffff !important;
+}
