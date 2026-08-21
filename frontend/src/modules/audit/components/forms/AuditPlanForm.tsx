@@ -372,6 +372,7 @@ export function AuditPlanForm({
               className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
                 errors.code ? 'border-red-500' : 'border-gray-300'
               }`}
+              style={{ color: '#1f2937', backgroundColor: '#ffffff' }}
             />
             {errors.code && <p className="text-sm text-red-500 mt-1">{errors.code}</p>}
             <p className="text-xs text-gray-400 mt-1">
@@ -391,6 +392,7 @@ export function AuditPlanForm({
               className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
                 errors.title ? 'border-red-500' : 'border-gray-300'
               }`}
+              style={{ color: '#1f2937', backgroundColor: '#ffffff' }}
             />
             {errors.title && <p className="text-sm text-red-500 mt-1">{errors.title}</p>}
           </div>
@@ -407,6 +409,7 @@ export function AuditPlanForm({
               className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
                 errors.description ? 'border-red-500' : 'border-gray-300'
               }`}
+              style={{ color: '#1f2937', backgroundColor: '#ffffff' }}
             />
             {errors.description && <p className="text-sm text-red-500 mt-1">{errors.description}</p>}
           </div>
@@ -448,13 +451,14 @@ export function AuditPlanForm({
               <select
                 value=""
                 onChange={(e) => handleScopeChange('controls', e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 bg-white"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                style={{ color: '#1f2937', backgroundColor: '#ffffff' }}
               >
-                <option value="" className="text-gray-900">Selecione um controle...</option>
+                <option value="" style={{ color: '#1f2937' }}>Selecione um controle...</option>
                 {controlOptions
                   .filter((c) => !selectedControls.includes(c.value))
                   .map((control) => (
-                    <option key={control.value} value={control.value} className="text-gray-900">
+                    <option key={control.value} value={control.value} style={{ color: '#1f2937' }}>
                       {control.label}
                     </option>
                   ))}
@@ -488,11 +492,12 @@ export function AuditPlanForm({
             <select
               value=""
               onChange={(e) => handleScopeChange('processes', e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 bg-white"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              style={{ color: '#1f2937', backgroundColor: '#ffffff' }}
             >
-              <option value="" className="text-gray-900">Selecione um processo...</option>
+              <option value="" style={{ color: '#1f2937' }}>Selecione um processo...</option>
               {PROCESS_OPTIONS.filter((p) => !selectedProcesses.includes(p)).map((process) => (
-                <option key={process} value={process} className="text-gray-900">
+                <option key={process} value={process} style={{ color: '#1f2937' }}>
                   {process}
                 </option>
               ))}
@@ -525,11 +530,12 @@ export function AuditPlanForm({
             <select
               value=""
               onChange={(e) => handleScopeChange('areas', e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 bg-white"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              style={{ color: '#1f2937', backgroundColor: '#ffffff' }}
             >
-              <option value="" className="text-gray-900">Selecione uma área...</option>
+              <option value="" style={{ color: '#1f2937' }}>Selecione uma área...</option>
               {AREA_OPTIONS.filter((a) => !selectedAreas.includes(a)).map((area) => (
-                <option key={area} value={area} className="text-gray-900">
+                <option key={area} value={area} style={{ color: '#1f2937' }}>
                   {area}
                 </option>
               ))}
@@ -581,13 +587,14 @@ export function AuditPlanForm({
               <select
                 value={formData.team?.leadAuditor || ''}
                 onChange={(e) => handleTeamChange('leadAuditor', e.target.value)}
-                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 bg-white ${
+                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
                   errors.leadAuditor ? 'border-red-500' : 'border-gray-300'
                 }`}
+                style={{ color: '#1f2937', backgroundColor: '#ffffff' }}
               >
-                <option value="" className="text-gray-900">Selecione...</option>
+                <option value="" style={{ color: '#1f2937' }}>Selecione...</option>
                 {allAuditorOptions.map((u) => (
-                  <option key={u.id} value={u.id} className="text-gray-900">
+                  <option key={u.id} value={u.id} style={{ color: '#1f2937' }}>
                     {u.name} ({u.email}) {u.isManual ? '📝' : ''}
                   </option>
                 ))}
@@ -610,11 +617,12 @@ export function AuditPlanForm({
                   const values = Array.from(e.target.selectedOptions, (option) => option.value);
                   handleTeamChange('auditors', values);
                 }}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 bg-white"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                style={{ color: '#1f2937', backgroundColor: '#ffffff' }}
                 size={4}
               >
                 {allAuditorOptions.map((u) => (
-                  <option key={u.id} value={u.id} className="text-gray-900">
+                  <option key={u.id} value={u.id} style={{ color: '#1f2937' }}>
                     {u.name} ({u.email}) {u.isManual ? '📝' : ''}
                   </option>
                 ))}
@@ -637,11 +645,12 @@ export function AuditPlanForm({
                   const values = Array.from(e.target.selectedOptions, (option) => option.value);
                   handleTeamChange('observers', values);
                 }}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 bg-white"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                style={{ color: '#1f2937', backgroundColor: '#ffffff' }}
                 size={4}
               >
                 {allAuditorOptions.map((u) => (
-                  <option key={u.id} value={u.id} className="text-gray-900">
+                  <option key={u.id} value={u.id} style={{ color: '#1f2937' }}>
                     {u.name} ({u.email}) {u.isManual ? '📝' : ''}
                   </option>
                 ))}
@@ -665,14 +674,16 @@ export function AuditPlanForm({
                   value={manualAuditorName}
                   onChange={(e) => setManualAuditorName(e.target.value)}
                   placeholder="Nome completo do auditor..."
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 bg-white"
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  style={{ color: '#1f2937', backgroundColor: '#ffffff' }}
                 />
                 <input
                   type="email"
                   value={manualAuditorEmail}
                   onChange={(e) => setManualAuditorEmail(e.target.value)}
                   placeholder="Email (opcional)..."
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 bg-white"
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  style={{ color: '#1f2937', backgroundColor: '#ffffff' }}
                 />
               </div>
               <div className="flex gap-2 justify-end">
@@ -729,9 +740,10 @@ export function AuditPlanForm({
                   period: { ...prev.period!, startDate: e.target.value },
                 }))
               }
-              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 bg-white ${
+              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
                 errors.startDate ? 'border-red-500' : 'border-gray-300'
               }`}
+              style={{ color: '#1f2937', backgroundColor: '#ffffff' }}
             />
             {errors.startDate && <p className="text-sm text-red-500 mt-1">{errors.startDate}</p>}
           </div>
@@ -748,9 +760,10 @@ export function AuditPlanForm({
                   period: { ...prev.period!, endDate: e.target.value },
                 }))
               }
-              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 bg-white ${
+              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
                 errors.endDate ? 'border-red-500' : 'border-gray-300'
               }`}
+              style={{ color: '#1f2937', backgroundColor: '#ffffff' }}
             />
             {errors.endDate && <p className="text-sm text-red-500 mt-1">{errors.endDate}</p>}
           </div>
@@ -768,7 +781,8 @@ export function AuditPlanForm({
                 }))
               }
               min={1}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 bg-white"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              style={{ color: '#1f2937', backgroundColor: '#ffffff' }}
             />
             <p className="text-xs text-gray-400 mt-1">
               Número estimado de dias para a auditoria
@@ -802,7 +816,8 @@ export function AuditPlanForm({
             value={newCriteria}
             onChange={(e) => setNewCriteria(e.target.value)}
             placeholder="Ex: ISO 27001:2022, Política de SI, Requisitos Legais"
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 bg-white"
+            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            style={{ color: '#1f2937', backgroundColor: '#ffffff' }}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
                 e.preventDefault();
