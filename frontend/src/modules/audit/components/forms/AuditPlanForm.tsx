@@ -67,7 +67,7 @@ export function AuditPlanForm({
   const [showManualAuditorInput, setShowManualAuditorInput] = useState(false);
 
   // Estado para controles do backend
-  const [controls, setControls] = useState<Array<{ id: string; name: string; controlId: string }>>([]);
+  const [controls, setControls] = useState<Array<any>>([]);
   const [isLoadingControls, setIsLoadingControls] = useState(true);
 
   const [formData, setFormData] = useState<Partial<CreateAuditPlanDTO>>({
@@ -105,8 +105,8 @@ export function AuditPlanForm({
       try {
         console.log('🔍 Buscando controles da empresa (REP)...');
         const response = await api.get('/rep/controls');
-        const controlList = response.data.data || [];
-        console.log('📦 Controles carregados:', controlList.length);
+        const controlList = response.data.data || response.data || [];
+        console.log('📦 Controles carregados:', controlList.length, controlList);
         setControls(controlList);
       } catch (err) {
         console.error('❌ Erro ao carregar controles:', err);
@@ -349,11 +349,24 @@ export function AuditPlanForm({
 
   const hasOptions = allAuditorOptions.length > 0;
 
-  // Opções de controles dinâmicos
-  const controlOptions = controls.map((c) => ({
-    value: c.controlId || c.id,
-    label: c.name || c.controlId,
-  }));
+  // Opções de controles dinâmicos com Fallbacks para evitar textos vazios/undefined
+  const controlOptions = controls.map((c) => {
+    const val = c.controlId || c.code || c.id || c._id;
+    const nameStr = c.name || c.title || c.description || '';
+    const codeStr = c.controlId || c.code || '';
+    
+    let label = '';
+    if (codeStr && nameStr) {
+      label = `${codeStr} - ${nameStr}`;
+    } else {
+      label = codeStr || nameStr || val;
+    }
+
+    return {
+      value: String(val),
+      label: String(label),
+    };
+  });
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -427,17 +440,18 @@ export function AuditPlanForm({
               Controles ISO 27001 <span className="text-red-500">*</span>
             </label>
             <div className="flex flex-wrap gap-2 mb-2">
-              {selectedControls.map((control) => {
-                const controlLabel = controls.find((c) => (c.controlId || c.id) === control)?.name || control;
+              {selectedControls.map((controlVal) => {
+                const option = controlOptions.find((opt) => opt.value === controlVal);
+                const controlLabel = option ? option.label : controlVal;
                 return (
                   <span
-                    key={control}
+                    key={controlVal}
                     className="flex items-center gap-1 px-2 py-0.5 bg-indigo-100 text-indigo-700 text-xs rounded-full"
                   >
                     {controlLabel}
                     <button
                       type="button"
-                      onClick={() => handleScopeChange('controls', control)}
+                      onClick={() => handleScopeChange('controls', controlVal)}
                       className="hover:text-red-500"
                     >
                       <X className="w-3 h-3" />
