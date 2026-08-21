@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CheckCircle, XCircle, MinusCircle, AlertCircle, Upload } from 'lucide-react';
+import { CheckCircle, XCircle, MinusCircle, AlertCircle, Upload, Wand2 } from 'lucide-react';
 import { AuditChecklist as AuditChecklistType, AuditChecklistItem } from '../types/audit.types';
 
 interface AuditChecklistProps {
@@ -8,6 +8,12 @@ interface AuditChecklistProps {
   onComplete: () => Promise<void>;
   isSubmitting?: boolean;
   isReadOnly?: boolean;
+  companyResponses?: Array<{
+    controlId: string;
+    maturityLevel: string;
+    scenarioDescription?: string;
+    observations?: string;
+  }>;
 }
 
 const ANSWER_OPTIONS = [
@@ -24,6 +30,7 @@ export function AuditChecklist({
   onComplete,
   isSubmitting = false,
   isReadOnly = false,
+  companyResponses = [],
 }: AuditChecklistProps) {
   const [questions, setQuestions] = useState<AuditChecklistItem[]>([]);
   const [isDirty, setIsDirty] = useState(false);
@@ -31,9 +38,43 @@ export function AuditChecklist({
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    setQuestions(checklist.questions || []);
+    let initialQuestions = checklist.questions || [];
+
+    // Preenchimento e mapeamento automático com base no maturityLevel do banco de dados
+    if (companyResponses && companyResponses.length > 0 && initialQuestions.length > 0) {
+      const response = companyResponses.find(
+        (r) => String(r.controlId) === String(checklist.controlId)
+      );
+
+      if (response && response.maturityLevel !== undefined) {
+        const level = String(response.maturityLevel);
+        let autoAnswer: 'NC' | 'OB' | 'C' = 'C';
+
+        if (level === '0') {
+          autoAnswer = 'NC'; // Não Implementado -> Não Conforme
+        } else if (level === '1') {
+          autoAnswer = 'OB'; // Parcialmente Implementado -> Observação
+        } else {
+          autoAnswer = 'C';  // Implementado -> Conforme
+        }
+
+        initialQuestions = initialQuestions.map((q) => {
+          // Só aplica automaticamente se ainda não tiver sido respondido manualmente
+          if (!q.answer || q.answer === '--') {
+            return {
+              ...q,
+              answer: autoAnswer,
+              observations: q.observations || response.scenarioDescription || response.observations || '',
+            };
+          }
+          return q;
+        });
+      }
+    }
+
+    setQuestions(initialQuestions);
     setIsDirty(false);
-  }, [checklist]);
+  }, [checklist, companyResponses]);
 
   const handleAnswerChange = (index: number, field: keyof AuditChecklistItem, value: any) => {
     if (isReadOnly) return;
@@ -42,6 +83,36 @@ export function AuditChecklist({
     setQuestions(newQuestions);
     setIsDirty(true);
     setError(null);
+  };
+
+  const handleAutoFill = () => {
+    if (isReadOnly || !companyResponses || companyResponses.length === 0) return;
+
+    const response = companyResponses.find(
+      (r) => String(r.controlId) === String(checklist.controlId)
+    );
+
+    if (!response || response.maturityLevel === undefined) return;
+
+    const level = String(response.maturityLevel);
+    let autoAnswer: 'NC' | 'OB' | 'C' = 'C';
+
+    if (level === '0') {
+      autoAnswer = 'NC';
+    } else if (level === '1') {
+      autoAnswer = 'OB';
+    } else {
+      autoAnswer = 'C';
+    }
+
+    const updated = questions.map((q) => ({
+      ...q,
+      answer: autoAnswer,
+      observations: q.observations || response.scenarioDescription || response.observations || '',
+    }));
+
+    setQuestions(updated);
+    setIsDirty(true);
   };
 
   const handleSave = async () => {
@@ -98,7 +169,18 @@ export function AuditChecklist({
             <h3 className="text-lg font-semibold text-gray-900">Checklist - Controle {checklist.controlId}</h3>
             <p className="text-sm text-gray-500">{totalQuestions} perguntas • {answeredQuestions} respondidas</p>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {!isReadOnly && companyResponses.length > 0 && (
+              <button
+                type="button"
+                onClick={handleAutoFill}
+                className="flex items-center gap-1 px-2.5 py-1 bg-purple-100 text-purple-700 hover:bg-purple-200 rounded-lg text-xs font-medium transition-colors mr-2"
+                title="Preencher respostas automaticamente com base na maturidade do assessment"
+              >
+                <Wand2 className="w-3.5 h-3.5" />
+                Sincronizar Maturidade
+              </button>
+            )}
             <div className="flex items-center gap-1 px-2 py-1 bg-green-50 rounded-lg"><CheckCircle className="w-4 h-4 text-green-600" /><span className="text-xs font-medium text-green-600">{conforming}</span></div>
             <div className="flex items-center gap-1 px-2 py-1 bg-red-50 rounded-lg"><XCircle className="w-4 h-4 text-red-600" /><span className="text-xs font-medium text-red-600">{nonConforming}</span></div>
             <div className="flex items-center gap-1 px-2 py-1 bg-yellow-50 rounded-lg"><AlertCircle className="w-4 h-4 text-yellow-600" /><span className="text-xs font-medium text-yellow-600">{observations}</span></div>
