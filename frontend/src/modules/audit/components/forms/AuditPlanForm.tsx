@@ -6,8 +6,7 @@ import { useUsers } from '../../../../hooks/useAdmin.js';
 import { CreateAuditPlanDTO, UpdateAuditPlanDTO, AuditPlan } from '../../types/audit.types';
 import { toast } from 'react-hot-toast';
 import api from '../../../../services/api.js';
-// 🆕 NOVO - Import do CustomSelect
-import { CustomSelect } from '../../../../components/ui/CustomSelect.js';
+import { CustomSelect } from '../../../../components/ui/CustomSelect';
 
 interface AuditPlanFormProps {
   initialData?: AuditPlan;
