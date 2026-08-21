@@ -5,8 +5,8 @@ import { useAuth } from '../../../../contexts/AuthContext.js';
 import { useUsers } from '../../../../hooks/useAdmin.js';
 import { CreateAuditPlanDTO, UpdateAuditPlanDTO, AuditPlan } from '../../types/audit.types';
 import { toast } from 'react-hot-toast';
-// 🔴 CORRIGIDO: Importar api diretamente
-import { api } from '../../../../services/api.js';
+// ✅ CORRIGIDO: Importação padrão (export default)
+import api from '../../../../services/api.js';
 
 interface AuditPlanFormProps {
   initialData?: AuditPlan;
@@ -98,7 +98,7 @@ export function AuditPlanForm({
   const [selectedProcesses, setSelectedProcesses] = useState<string[]>([]);
   const [selectedAreas, setSelectedAreas] = useState<string[]>([]);
 
-  // 🔴 CORRIGIDO: Buscar controles da empresa via rota /rep/controls
+  // Buscar controles da empresa via rota /rep/controls
   useEffect(() => {
     const fetchControls = async () => {
       setIsLoadingControls(true);
