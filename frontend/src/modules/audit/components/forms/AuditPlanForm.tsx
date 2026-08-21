@@ -349,18 +349,16 @@ export function AuditPlanForm({
 
   const hasOptions = allAuditorOptions.length > 0;
 
-  // Opções de controles dinâmicos com Fallbacks para evitar textos vazios/undefined
+  // Opções de controles dinâmicos mapeando diretamente id (código) e nome (descrição)
   const controlOptions = controls.map((c) => {
-    const val = c.controlId || c.code || c.id || c._id;
-    const nameStr = c.name || c.title || c.description || '';
-    const codeStr = c.controlId || c.code || '';
+    const code = c.id || c.controlId || c.code || '';
+    const name = c.nome || c.name || c.title || '';
     
-    let label = '';
-    if (codeStr && nameStr) {
-      label = `${codeStr} - ${nameStr}`;
-    } else {
-      label = codeStr || nameStr || val;
-    }
+    // Valor único para identificação
+    const val = code || c._id;
+    
+    // Rótulo exibido no dropdown: "8.31 - Separação dos ambientes..."
+    const label = code && name ? `${code} - ${name}` : code || name || String(val);
 
     return {
       value: String(val),
