@@ -117,5 +117,34 @@ export declare class DashboardService {
     static groupByCapability(controls: any[]): {
         [k: string]: any;
     };
+    /**
+     * Busca todos os controles com maturidade Nível 0 (Não Implementado)
+     * ou Nível 1 (Parcial) para uma empresa específica.
+     *
+     * Estes controles devem ser priorizados em auditorias internas.
+     *
+     * @param companyId - ID da empresa
+     * @returns Lista de controles críticos com respostas dos usuários
+     */
+    static getCriticalControlsForAudit(companyId: string): Promise<{
+        controls: Array<{
+            controlId: string;
+            controlName: string;
+            controlCategory: string;
+            maturityLevel: '0' | '1';
+            maturityLabel: string;
+            scenarioDescription: string;
+            observations: string;
+            assignedUsers: string[];
+            responsesCount: number;
+            lastResponseDate: Date | null;
+        }>;
+        summary: {
+            total: number;
+            level0: number;
+            level1: number;
+            byCategory: Record<string, number>;
+        };
+    }>;
 }
 //# sourceMappingURL=DashboardService.d.ts.map

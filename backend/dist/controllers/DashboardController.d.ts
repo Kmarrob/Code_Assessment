@@ -49,5 +49,17 @@ export declare class DashboardController {
      * Acesso: REP ou ADMIN
      */
     static generateDomainsPDF(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void>;
+    /**
+     * GET /api/dashboard/critical-controls
+     * Busca controles com maturidade Nível 0 ou 1 para priorizar na auditoria
+     *
+     * Esta rota é utilizada pelo módulo de auditoria para:
+     * - Alertar o REP sobre controles críticos
+     * - Pré-selecionar controles para novos planos de auditoria
+     * - Gerar recomendações automáticas de escopo
+     *
+     * Acesso: REP ou ADMIN
+     */
+    static getCriticalControls(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void>;
 }
 //# sourceMappingURL=DashboardController.d.ts.map
