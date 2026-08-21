@@ -66,7 +66,7 @@ export function AuditPlanForm({
   const [manualAuditors, setManualAuditors] = useState<Array<{ id: string; name: string; email: string }>>([]);
   const [showManualAuditorInput, setShowManualAuditorInput] = useState(false);
 
-  // Estado para controles do backend
+  // Estado para controles do backend enriquecidos com respostas
   const [controls, setControls] = useState<Array<any>>([]);
   const [isLoadingControls, setIsLoadingControls] = useState(true);
 
@@ -98,16 +98,46 @@ export function AuditPlanForm({
   const [selectedProcesses, setSelectedProcesses] = useState<string[]>([]);
   const [selectedAreas, setSelectedAreas] = useState<string[]>([]);
 
-  // Buscar controles da empresa via rota /rep/controls
+  // Buscar controles da empresa via rota /rep/controls E respostas salvas via /rep/responses
   useEffect(() => {
-    const fetchControls = async () => {
+    const fetchControlsAndResponses = async () => {
       setIsLoadingControls(true);
       try {
-        console.log('🔍 Buscando controles da empresa (REP)...');
-        const response = await api.get('/rep/controls');
-        const controlList = response.data.data || response.data || [];
-        console.log('📦 Controles carregados:', controlList.length, controlList);
-        setControls(controlList);
+        console.log('🔍 Buscando controles e respostas da empresa (REP)...');
+        
+        // 1. Busca controles
+        const controlsRes = await api.get('/rep/controls');
+        const controlList = controlsRes.data.data || controlsRes.data || [];
+
+        // 2. Busca respostas de maturidade salvas no banco
+        let responsesList: any[] = [];
+        try {
+          const responsesRes = await api.get('/rep/responses');
+          responsesList = responsesRes.data.data || responsesRes.data || [];
+        } catch (e) {
+          console.warn('⚠️ Erro ao carregar respostas de /rep/responses:', e);
+        }
+
+        // 3. Cruzamento de dados entre Controles e Respostas de Maturidade
+        const enrichedControls = controlList.map((c: any) => {
+          const ctrlCode = c.id || c.controlId || c.code;
+          const ctrlDbId = c._id;
+
+          const savedResp = responsesList.find(
+            (r: any) =>
+              String(r.controlId) === String(ctrlCode) ||
+              String(r.controlId) === String(ctrlDbId)
+          );
+
+          return {
+            ...c,
+            maturityLevel: savedResp ? String(savedResp.maturityLevel) : c.maturityLevel,
+            scenarioDescription: savedResp ? savedResp.scenarioDescription : c.scenarioDescription,
+          };
+        });
+
+        console.log('📦 Controles carregados e enriquecidos:', enrichedControls.length);
+        setControls(enrichedControls);
       } catch (err) {
         console.error('❌ Erro ao carregar controles:', err);
         toast.error('Erro ao carregar lista de controles');
@@ -115,7 +145,7 @@ export function AuditPlanForm({
         setIsLoadingControls(false);
       }
     };
-    fetchControls();
+    fetchControlsAndResponses();
   }, []);
 
   // Carregar dados iniciais para edição
@@ -349,20 +379,28 @@ export function AuditPlanForm({
 
   const hasOptions = allAuditorOptions.length > 0;
 
-  // Opções de controles dinâmicos mapeando diretamente id (código) e nome (descrição)
+  // Opções de controles dinâmicos mapeando id (código) e nome (descrição) com badges coloridas de maturidade
   const controlOptions = controls.map((c) => {
     const code = c.id || c.controlId || c.code || '';
     const name = c.nome || c.name || c.title || '';
-    
-    // Valor único para identificação
     const val = code || c._id;
-    
-    // Rótulo exibido no dropdown: "8.31 - Separação dos ambientes..."
     const label = code && name ? `${code} - ${name}` : code || name || String(val);
+
+    const level = String(c.maturityLevel ?? '');
+    let badge = undefined;
+
+    if (level === '0') {
+      badge = { label: 'Não Implementado', bg: '#ef4444', color: '#ffffff' };
+    } else if (level === '1') {
+      badge = { label: 'Parcialmente Implementado', bg: '#eab308', color: '#1f2937' };
+    } else if (parseInt(level) >= 2) {
+      badge = { label: 'Implementado', bg: '#22c55e', color: '#ffffff' };
+    }
 
     return {
       value: String(val),
       label: String(label),
+      badge,
     };
   });
 
