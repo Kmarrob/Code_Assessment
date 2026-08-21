@@ -43,6 +43,8 @@ const auditMiddleware_js_1 = require("./middleware/auditMiddleware.js");
 const governance_routes_js_1 = __importDefault(require("./models/governance/routes/governance.routes.js"));
 // 🆕 NOVO (v42.0) - Importação do módulo de auditoria
 const audit_routes_js_1 = __importDefault(require("./routes/audit.routes.js"));
+// 🆕 NOVO (v44.0) - Import do módulo de auditoria interna (planos, checklists, NCs, relatórios)
+const internal_audit_routes_js_1 = __importDefault(require("./routes/internal-audit.routes.js"));
 const app = (0, express_1.default)();
 app.use((0, compression_1.default)({
     level: 6,
@@ -158,6 +160,8 @@ app.use('/api/admin/analytics', analytics_routes_js_1.default);
 app.use('/api/governance', governance_routes_js_1.default);
 // 🆕 NOVO (v42.0) - Rotas de Auditoria (Admin)
 app.use('/api/admin/audit', audit_routes_js_1.default);
+// 🆕 NOVO (v44.0) - Rotas de Auditoria Interna (Planos, Checklists, NCs, Relatórios)
+app.use('/api/internal-audit', internal_audit_routes_js_1.default);
 app.get('/health', cache_js_1.noCache, (_req, res) => {
     res.json({
         status: 'ok',
@@ -234,6 +238,8 @@ async function startServer() {
             logger_js_1.logger.info(`📋 Governance Routes: http://localhost:${PORT}/api/governance`);
             // 🆕 NOVO (v42.0) - Audit Routes
             logger_js_1.logger.info(`📋 Audit Routes: http://localhost:${PORT}/api/admin/audit`);
+            // 🆕 NOVO (v44.0) - Internal Audit Routes
+            logger_js_1.logger.info(`📋 Internal Audit Routes: http://localhost:${PORT}/api/internal-audit`);
             logger_js_1.logger.info(`📁 Uploads servidos em: http://localhost:${PORT}/uploads`);
         });
     }

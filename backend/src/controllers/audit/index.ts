@@ -9,11 +9,6 @@ import { AuditActionPlanController } from './AuditActionPlanController';
 import { AuditReportController } from './AuditReportController';
 
 // ============================================================
-// 🆕 NOVO (v47.0) - Importar o controller de perguntas
-// ============================================================
-import { AuditQuestionController } from './AuditQuestionController';
-
-// ============================================================
 // Importar as instâncias (para controllers que já exportam instância)
 // ============================================================
 import { auditProgramController } from './AuditProgramController';
@@ -32,11 +27,6 @@ const auditActionPlanController = new AuditActionPlanController();
 const auditReportController = new AuditReportController();
 
 // ============================================================
-// 🆕 NOVO (v47.0) - Criar instância do controller de perguntas
-// ============================================================
-const auditQuestionController = new AuditQuestionController();
-
-// ============================================================
 // Exportar as classes (para uso em outros lugares)
 // ============================================================
 export {
@@ -46,8 +36,6 @@ export {
   AuditEvidenceController,
   AuditActionPlanController,
   AuditReportController,
-  // 🆕 NOVO (v47.0)
-  AuditQuestionController,
 };
 
 // Exportar os controllers que já exportam instância
@@ -68,6 +56,4 @@ export {
   auditEvidenceController,
   auditActionPlanController,
   auditReportController,
-  // 🆕 NOVO (v47.0)
-  auditQuestionController,
 };

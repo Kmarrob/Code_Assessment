@@ -1,6 +1,9 @@
 import { AuditChecklist } from '../models/AuditChecklist';
 import { AuditPlan } from '../models/AuditPlan';
 import { IAuditChecklist, IAuditChecklistQuestion, IAuditChecklistItem } from '../types/audit.types';
+import { Response } from '../../Response';
+import { Assignment } from '../../Assignment';
+import { Types } from 'mongoose';
 
 /**
  * Mapeia documento do MongoDB para IAuditChecklist com id
@@ -58,6 +61,38 @@ function mapAnswer(answer: any): IAuditChecklistQuestion['answer'] {
   }
 }
 
+/**
+ * Converte maturityLevel do usuário para resposta do checklist
+ * 
+ * Nível 2 (Implementado) → C (Conforme)
+ * Nível 1 (Parcial) → OB (Observação)
+ * Nível 0 (Não Implementado) → NC (Não Conforme)
+ */
+function mapMaturityToChecklistAnswer(maturityLevel: string): IAuditChecklistQuestion['answer'] {
+  switch (maturityLevel) {
+    case '2':
+      return 'C';
+    case '1':
+      return 'OB';
+    case '0':
+      return 'NC';
+    default:
+      return '--';
+  }
+}
+
+/**
+ * Retorna o label do nível de maturidade
+ */
+function getMaturityLabel(maturityLevel: string): string {
+  switch (maturityLevel) {
+    case '2': return 'Implementado';
+    case '1': return 'Parcial';
+    case '0': return 'Não Implementado';
+    default: return 'Não respondido';
+  }
+}
+
 export class AuditChecklistService {
   // ============================================================
   // BUSCAR CHECKLIST POR PLANO E CONTROLE
@@ -74,6 +109,129 @@ export class AuditChecklistService {
   async findByPlanId(auditPlanId: string): Promise<IAuditChecklist[]> {
     const docs = await AuditChecklist.find({ auditPlanId }).lean();
     return mapToIAuditChecklistArray(docs);
+  }
+
+  // ============================================================
+  // POPULAR CHECKLIST COM RESPOSTAS DOS USUÁRIOS
+  // ============================================================
+  async populateWithUserResponses(
+    auditPlanId: string,
+    controlId: string,
+    userId: string
+  ): Promise<IAuditChecklist | null> {
+    // 1. Buscar o checklist
+    const checklist = await AuditChecklist.findOne({ auditPlanId, controlId });
+    if (!checklist) {
+      throw new Error(`Checklist não encontrado para o controle ${controlId}`);
+    }
+
+    // 2. Buscar todas as atribuições para este controle
+    const assignments = await Assignment.find({
+      'control.id': controlId,
+    }).lean();
+
+    if (assignments.length === 0) {
+      console.log(`ℹ️ Nenhuma atribuição encontrada para o controle ${controlId}`);
+      return mapToIAuditChecklist(checklist.toObject());
+    }
+
+    // 3. Buscar as respostas dos usuários para estas atribuições
+    const assignmentIds = assignments.map(a => a._id.toString());
+    const responses = await Response.find({
+      assignmentId: { $in: assignmentIds },
+    }).lean();
+
+    // Criar um mapa de assignmentId → response para acesso rápido
+    const responseMap = new Map();
+    responses.forEach(r => {
+      responseMap.set(r.assignmentId, r);
+    });
+
+    // 4. Para cada pergunta no checklist, tentar encontrar a resposta correspondente
+    let updatedCount = 0;
+
+    // ✅ CORRIGIDO: usar for tradicional com índice e verificação explícita
+    for (let i = 0; i < checklist.questions.length; i++) {
+      // ✅ Verificação explícita: garantir que a pergunta existe
+      const question = checklist.questions[i];
+      if (!question) {
+        continue;
+      }
+
+      // Tentar encontrar uma resposta que corresponda a esta pergunta
+      for (const assignment of assignments) {
+        const response = responseMap.get(assignment._id.toString());
+        if (response && response.maturityLevel) {
+          // Se já encontramos uma resposta para esta pergunta, pulamos
+          if (question.answer !== '--') {
+            break;
+          }
+
+          // Mapear maturidade para resposta do checklist
+          const answer = mapMaturityToChecklistAnswer(response.maturityLevel);
+          
+          // Copiar scenarioDescription para observations se existir
+          const observations = response.scenarioDescription || 
+                               `Cenário identificado: ${getMaturityLabel(response.maturityLevel)}`;
+
+          // ✅ CORRIGIDO: converter ObjectId para string com .toString()
+          const responsible = assignment.userId 
+            ? (assignment.userId instanceof Types.ObjectId ? assignment.userId.toString() : String(assignment.userId))
+            : '';
+
+          // Atualizar a pergunta no checklist
+          checklist.questions[i] = {
+            ...question,
+            answer: answer,
+            observations: observations,
+            responsible: responsible,
+            answeredAt: new Date(),
+            answeredBy: userId,
+          };
+          
+          updatedCount++;
+          break;
+        }
+      }
+    }
+
+    // 5. Atualizar estatísticas
+    // ✅ CORRIGIDO: verificar se o método existe antes de chamar
+    if (typeof (checklist as any).updateStatistics === 'function') {
+      await (checklist as any).updateStatistics();
+    }
+    checklist.updatedBy = userId;
+    await checklist.save();
+
+    console.log(`✅ Checklist populado: ${updatedCount} perguntas atualizadas para o controle ${controlId}`);
+
+    return mapToIAuditChecklist(checklist.toObject());
+  }
+
+  // ============================================================
+  // POPULAR TODOS OS CHECKLISTS DE UM PLANO
+  // ============================================================
+  async populateAllChecklists(auditPlanId: string, userId: string): Promise<number> {
+    const checklists = await AuditChecklist.find({ auditPlanId });
+    
+    if (checklists.length === 0) {
+      throw new Error(`Nenhum checklist encontrado para o plano ${auditPlanId}`);
+    }
+
+    let populatedCount = 0;
+    for (const checklist of checklists) {
+      const result = await this.populateWithUserResponses(
+        auditPlanId,
+        checklist.controlId,
+        userId
+      );
+      if (result) {
+        populatedCount++;
+      }
+    }
+
+    console.log(`✅ ${populatedCount} checklists populados para o plano ${auditPlanId}`);
+    return populatedCount;
   }
 
   // ============================================================
@@ -114,6 +272,10 @@ export class AuditChecklistService {
     checklist.updatedAt = new Date();
     checklist.updatedBy = userId;
 
+    // ✅ CORRIGIDO: verificar se o método existe antes de chamar
+    if (typeof (checklist as any).updateStatistics === 'function') {
+      await (checklist as any).updateStatistics();
+    }
     await checklist.save();
 
     return mapToIAuditChecklist(checklist.toObject());

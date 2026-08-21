@@ -1,0 +1,20 @@
+import { AuditPlanService } from './AuditPlanService';
+import { AuditChecklistService } from './AuditChecklistService';
+import { AuditFindingService } from './AuditFindingService';
+import { AuditEvidenceService } from './AuditEvidenceService';
+import { AuditActionPlanService } from './AuditActionPlanService';
+import { AuditReportService } from './AuditReportService';
+import { auditProgramService } from './AuditProgramService';
+import { auditSoAService } from './AuditSoAService';
+import { auditRiskService } from './AuditRiskService';
+import { auditDocumentReviewService } from './AuditDocumentReviewService';
+declare const auditPlanService: AuditPlanService;
+declare const auditChecklistService: AuditChecklistService;
+declare const auditFindingService: AuditFindingService;
+declare const auditEvidenceService: AuditEvidenceService;
+declare const auditActionPlanService: AuditActionPlanService;
+declare const auditReportService: AuditReportService;
+export { AuditPlanService, AuditChecklistService, AuditFindingService, AuditEvidenceService, AuditActionPlanService, AuditReportService, };
+export { auditProgramService, auditSoAService, auditRiskService, auditDocumentReviewService, };
+export { auditPlanService, auditChecklistService, auditFindingService, auditEvidenceService, auditActionPlanService, auditReportService, };
+//# sourceMappingURL=index.d.ts.map

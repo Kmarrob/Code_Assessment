@@ -2,6 +2,7 @@ import { AuditPlan } from '../models/AuditPlan';
 import { AuditChecklist } from '../models/AuditChecklist';
 import { Question } from '../../Question';
 import { IAuditPlan, CreateAuditPlanDTO, UpdateAuditPlanDTO, AuditFilters } from '../types/audit.types';
+import { AuditChecklistService } from './AuditChecklistService';
 
 /**
  * Mapeia documento do MongoDB para IAuditPlan com id
@@ -23,6 +24,12 @@ function mapToIAuditPlanArray(docs: any[]): IAuditPlan[] {
 }
 
 export class AuditPlanService {
+  private checklistService: AuditChecklistService;
+
+  constructor() {
+    this.checklistService = new AuditChecklistService();
+  }
+
   // ============================================================
   // CRIAR PLANO DE AUDITORIA
   // ============================================================
@@ -44,6 +51,19 @@ export class AuditPlanService {
     // Gerar checklist automaticamente baseado nos controles selecionados
     if (data.scope.controls && data.scope.controls.length > 0) {
       await this.generateChecklist(plan._id.toString(), data.scope.controls, createdBy);
+      
+      // 🆕 POPULAR COM RESPOSTAS DOS USUÁRIOS
+      // Após gerar os checklists, popula com as respostas existentes dos usuários
+      try {
+        const populatedCount = await this.checklistService.populateAllChecklists(
+          plan._id.toString(),
+          createdBy
+        );
+        console.log(`✅ ${populatedCount} checklists populados com respostas dos usuários`);
+      } catch (populateError) {
+        console.error('⚠️ Erro ao popular checklists com respostas dos usuários:', populateError);
+        // Não interrompe o fluxo - o auditor pode popular manualmente depois
+      }
     }
 
     return mapToIAuditPlan(plan.toObject());

@@ -1,5 +1,6 @@
 import { AuditSoA, IAuditSoA, IAuditSoAControl } from '../models/AuditSoA';
-import { AuditQuestion } from '../models/AuditQuestion';
+// ✅ CORRIGIDO: usar Question do sistema principal em vez de AuditQuestion
+import { Question } from '../../Question';
 
 export class AuditSoAService {
   /**
@@ -10,7 +11,8 @@ export class AuditSoAService {
 
     // Inicializar controles a partir das perguntas existentes
     if (!data.controls || data.controls.length === 0) {
-      const questions = await AuditQuestion.find().distinct('controlId');
+      // ✅ CORRIGIDO: usar Question.find() em vez de AuditQuestion.find()
+      const questions = await Question.find({ active: true }).distinct('controlId');
       const controls = questions.map((controlId: string) => ({
         clause: controlId,
         title: this.getControlTitle(controlId),
@@ -395,9 +397,6 @@ export class AuditSoAService {
    */
   private getControlObjective(clause: string): string {
     const objectives: Record<string, string> = {
-      // ============================================================
-      // 5. CONTROLES ORGANIZACIONAIS
-      // ============================================================
       '5.1': 'A política de segurança da informação e as políticas específicas de tópicos devem ser definidas, aprovadas pela administração, publicadas, comunicadas e reconhecidas pelo pessoal relevante e pelas partes interessadas relevantes e revisadas em intervalos planejados e se ocorrerem mudanças significativas.',
       '5.2': 'As funções e responsabilidades de segurança da informação devem ser definidas e alocadas de acordo com as necessidades da organização.',
       '5.3': 'Deveres conflitantes e áreas de responsabilidade conflitantes devem ser segregados.',
@@ -435,10 +434,6 @@ export class AuditSoAService {
       '5.35': 'A abordagem da organização para gerenciar a segurança da informação e sua implementação, incluindo pessoas, processos e tecnologias, deve ser revisada de forma independente em intervalos planejados ou quando ocorrerem mudanças significativas.',
       '5.36': 'A conformidade com a política de segurança da informação da organização, políticas específicas de tópicos, regras e padrões deve ser revisada regularmente.',
       '5.37': 'Os procedimentos operacionais para instalações de processamento de informações devem ser documentados e disponibilizados ao pessoal que deles necessita.',
-
-      // ============================================================
-      // 6. CONTROLES DE PESSOAS
-      // ============================================================
       '6.1': 'As verificações de antecedentes de todos os candidatos a se tornarem funcionários devem ser realizadas antes de ingressar na organização e de forma contínua, levando em consideração as leis, regulamentos e ética aplicáveis, e ser proporcionais aos requisitos do negócio, à classificação das informações a serem acessadas e aos riscos percebidos.',
       '6.2': 'Os acordos contratuais de trabalho devem indicar as responsabilidades do pessoal e da organização pela segurança da informação.',
       '6.3': 'O pessoal da organização e as partes interessadas relevantes devem receber conscientização, educação e treinamento de segurança da informação apropriados e atualizações regulares da política de segurança da informação da organização, políticas e procedimentos específicos de tópicos, conforme relevante para sua função de trabalho.',
@@ -447,10 +442,6 @@ export class AuditSoAService {
       '6.6': 'Convém que os acordos de confidencialidade ou não divulgação que reflitam as necessidades da organização para a proteção de informações sejam identificados, documentados, revisados regularmente e assinados pelo pessoal e outras partes interessadas relevantes.',
       '6.7': 'As medidas de segurança devem ser implementadas quando o pessoal estiver trabalhando remotamente para proteger as informações acessadas, processadas ou armazenadas fora das instalações da organização.',
       '6.8': 'Convém que a organização forneça um mecanismo para o pessoal relatar eventos de segurança da informação observados ou suspeitos por meio de canais apropriados em tempo hábil.',
-
-      // ============================================================
-      // 7. CONTROLES FÍSICOS
-      // ============================================================
       '7.1': 'Os perímetros de segurança devem ser definidos e usados para proteger as áreas que contêm informações e outros ativos associados.',
       '7.2': 'As áreas seguras devem ser protegidas por controles de entrada e pontos de acesso apropriados.',
       '7.3': 'A segurança física para escritórios, salas e instalações deve ser projetada e implementada.',
@@ -465,10 +456,6 @@ export class AuditSoAService {
       '7.12': 'Os cabos que transportam energia, dados ou serviços de informação de suporte devem ser protegidos contra interceptação, interferência ou danos.',
       '7.13': 'Os equipamentos devem ser mantidos de forma correta para garantir a disponibilidade, integridade e confidencialidade das informações.',
       '7.14': 'Os itens do equipamento contendo mídia de armazenamento devem ser verificados para garantir que quaisquer dados confidenciais e software licenciado tenham sido removidos ou substituídos com segurança antes do descarte ou reutilização.',
-
-      // ============================================================
-      // 8. CONTROLES TECNOLÓGICOS
-      // ============================================================
       '8.1': 'As informações armazenadas, processadas ou acessíveis por meio de dispositivos terminais do usuário devem ser protegidas.',
       '8.2': 'A alocação e uso de direitos de acesso privilegiado devem ser restritos e gerenciados.',
       '8.3': 'O acesso a informações e outros ativos associados deve ser restrito de acordo com a política específica de tópico estabelecida sobre controle de acesso.',

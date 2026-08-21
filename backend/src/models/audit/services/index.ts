@@ -13,7 +13,7 @@ import { AuditReportService } from './AuditReportService';
 // ============================================================
 import { auditProgramService } from './AuditProgramService';
 import { auditSoAService } from './AuditSoAService';
-import { auditRiskService } from './AuditRiskService';      // ✅ CORRIGIDO
+import { auditRiskService } from './AuditRiskService';
 import { auditDocumentReviewService } from './AuditDocumentReviewService';
 
 // ============================================================
