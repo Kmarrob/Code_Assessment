@@ -126,27 +126,36 @@ export function CustomSelect({
           aria-label={placeholder}
         >
           {options.length === 0 ? (
-            <li className="px-4 py-2 text-sm text-gray-400">Nenhuma opção disponível</li>
+            <li className="px-4 py-2 text-sm text-gray-400">
+              <span style={{ color: '#9ca3af', opacity: 1 }}>Nenhuma opção disponível</span>
+            </li>
           ) : (
             options.map((option) => (
               <li
-  key={option.value}
-  onClick={() => handleSelect(option.value)}
-  className={`
-    px-4 py-2 text-sm cursor-pointer
-    hover:bg-indigo-50 hover:text-indigo-700
-    transition-colors
-    ${option.value === value ? 'bg-indigo-100 text-indigo-700 font-medium' : ''}
-  `}
-  style={{
-    color: option.value === value ? '#4338ca' : '#111827',
-    backgroundColor: option.value === value ? '#e0e7ff' : '#ffffff',
-  }}
-  role="option"
-  aria-selected={option.value === value}
->
-  {option.label}
-</li>
+                key={option.value}
+                onClick={() => handleSelect(option.value)}
+                className={`
+                  px-4 py-2 text-sm cursor-pointer
+                  hover:bg-indigo-50 hover:text-indigo-700
+                  transition-colors
+                  ${option.value === value ? 'bg-indigo-100 text-indigo-700 font-medium' : ''}
+                `}
+                style={{
+                  backgroundColor: option.value === value ? '#e0e7ff' : '#ffffff',
+                }}
+                role="option"
+                aria-selected={option.value === value}
+              >
+                <span
+                  style={{
+                    color: option.value === value ? '#4338ca' : '#111827',
+                    opacity: 1,
+                    display: 'block',
+                  }}
+                >
+                  {option.label}
+                </span>
+              </li>
             ))
           )}
         </ul>
