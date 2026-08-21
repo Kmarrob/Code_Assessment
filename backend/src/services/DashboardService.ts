@@ -438,4 +438,171 @@ export class DashboardService {
 
     return Object.fromEntries(result);
   }
+
+    // ============================================================
+  // 🆕 NOVO (v47.0) - BUSCAR CONTROLES CRÍTICOS PARA AUDITORIA
+  // ============================================================
+  /**
+   * Busca todos os controles com maturidade Nível 0 (Não Implementado) 
+   * ou Nível 1 (Parcial) para uma empresa específica.
+   * 
+   * Estes controles devem ser priorizados em auditorias internas.
+   * 
+   * @param companyId - ID da empresa
+   * @returns Lista de controles críticos com respostas dos usuários
+   */
+  static async getCriticalControlsForAudit(companyId: string): Promise<{
+    controls: Array<{
+      controlId: string;
+      controlName: string;
+      controlCategory: string;
+      maturityLevel: '0' | '1';
+      maturityLabel: string;
+      scenarioDescription: string;
+      observations: string;
+      assignedUsers: string[];
+      responsesCount: number;
+      lastResponseDate: Date | null;
+    }>;
+    summary: {
+      total: number;
+      level0: number;
+      level1: number;
+      byCategory: Record<string, number>;
+    };
+  }> {
+    // 1. Verificar se a empresa existe
+    const company = await Company.findById(companyId);
+    if (!company) {
+      throw new NotFoundError('Empresa não encontrada');
+    }
+
+    // 2. Buscar usuários da empresa
+    const userFilter: any = {
+      $or: [
+        { companyId: new mongoose.Types.ObjectId(companyId) },
+        { company: company.name }
+      ],
+      isActive: true
+    };
+
+    const users = await User.find(userFilter).select('_id');
+    const userIds = users.map(u => u._id);
+
+    if (userIds.length === 0) {
+      return {
+        controls: [],
+        summary: { total: 0, level0: 0, level1: 0, byCategory: {} }
+      };
+    }
+
+    // 3. Buscar todas as atribuições dos usuários
+    const assignments = await Assignment.find({
+      userId: { $in: userIds }
+    }).populate('controlId').lean();
+
+    if (assignments.length === 0) {
+      return {
+        controls: [],
+        summary: { total: 0, level0: 0, level1: 0, byCategory: {} }
+      };
+    }
+
+    // 4. Buscar respostas com Nível 0 ou 1
+    const assignmentIds = assignments.map(a => a._id.toString());
+    const responses = await Response.find({
+      assignmentId: { $in: assignmentIds },
+      maturityLevel: { $in: ['0', '1'] }
+    }).lean();
+
+    if (responses.length === 0) {
+      return {
+        controls: [],
+        summary: { total: 0, level0: 0, level1: 0, byCategory: {} }
+      };
+    }
+
+    // 5. Agrupar respostas por controlId
+    const controlMap = new Map<string, {
+      controlId: string;
+      controlName: string;
+      controlCategory: string;
+      maturityLevel: '0' | '1';
+      maturityLabel: string;
+      scenarioDescription: string;
+      observations: string;
+      assignedUsers: string[];
+      responsesCount: number;
+      lastResponseDate: Date | null;
+      category: string;
+    }>();
+
+    for (const response of responses) {
+      // ✅ CORRIGIDO: converter response.assignmentId para string
+      const assignment = assignments.find(a => a._id.toString() === response.assignmentId.toString());
+      if (!assignment) continue;
+
+      const control = assignment.controlId as any;
+      if (!control) continue;
+
+      const controlId = control.id || control._id?.toString() || '';
+      const controlName = control.nome || control.name || '';
+      const controlCategory = control.categoria || control.category || '';
+
+      const key = controlId;
+
+      if (!controlMap.has(key)) {
+        controlMap.set(key, {
+          controlId,
+          controlName,
+          controlCategory,
+          maturityLevel: response.maturityLevel as '0' | '1',
+          maturityLabel: response.maturityLevel === '0' ? 'Não Implementado' : 'Parcial',
+          scenarioDescription: response.scenarioDescription || '',
+          observations: response.observations || '',
+          assignedUsers: [],
+          responsesCount: 0,
+          lastResponseDate: null,
+          category: controlCategory,
+        });
+      }
+
+      const entry = controlMap.get(key)!;
+      
+      const userId = assignment.userId?.toString() || '';
+      if (userId && !entry.assignedUsers.includes(userId)) {
+        entry.assignedUsers.push(userId);
+      }
+      
+      entry.responsesCount++;
+      
+      if (response.updatedAt && (!entry.lastResponseDate || response.updatedAt > entry.lastResponseDate)) {
+        entry.lastResponseDate = response.updatedAt;
+      }
+    }
+
+    // 6. Converter para array e ordenar
+    const controls = Array.from(controlMap.values())
+      .sort((a, b) => {
+        if (a.maturityLevel !== b.maturityLevel) {
+          return a.maturityLevel === '0' ? -1 : 1;
+        }
+        return a.controlId.localeCompare(b.controlId, undefined, { numeric: true });
+      });
+
+    // 7. Calcular resumo
+    const summary = {
+      total: controls.length,
+      level0: controls.filter(c => c.maturityLevel === '0').length,
+      level1: controls.filter(c => c.maturityLevel === '1').length,
+      byCategory: {} as Record<string, number>,
+    };
+
+    controls.forEach(c => {
+      const cat = c.controlCategory || 'Não categorizado';
+      summary.byCategory[cat] = (summary.byCategory[cat] || 0) + 1;
+    });
+
+    return { controls, summary };
+  }
 }

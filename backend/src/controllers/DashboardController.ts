@@ -766,4 +766,61 @@ const pdfData = {
       next(error);
     }
   }
+
+  // ============================================================
+  // 🆕 NOVO (v47.0) - BUSCAR CONTROLES CRÍTICOS PARA AUDITORIA
+  // ============================================================
+  /**
+   * GET /api/dashboard/critical-controls
+   * Busca controles com maturidade Nível 0 ou 1 para priorizar na auditoria
+   * 
+   * Esta rota é utilizada pelo módulo de auditoria para:
+   * - Alertar o REP sobre controles críticos
+   * - Pré-selecionar controles para novos planos de auditoria
+   * - Gerar recomendações automáticas de escopo
+   * 
+   * Acesso: REP ou ADMIN
+   */
+  static async getCriticalControls(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const userId = req.userId;
+      if (!userId) {
+        throw new AppError('Usuário não autenticado', 401);
+      }
+
+      // Buscar o usuário para obter a companyId
+      const user = await User.findById(userId);
+      if (!user) {
+        throw new AppError('Usuário não encontrado', 404);
+      }
+
+      const companyId = user.companyId?.toString();
+      if (!companyId) {
+        throw new AppError('Empresa não encontrada no perfil do usuário', 400);
+      }
+
+      // Se for REP, garantir que ele só vê a própria empresa
+      if (user.role === 'rep') {
+        // Já estamos usando a companyId do usuário
+      }
+
+      const result = await DashboardService.getCriticalControlsForAudit(companyId);
+
+      res.json({
+        success: true,
+        data: result,
+        message: `Encontrados ${result.summary.total} controles críticos (${result.summary.level0} não implementados, ${result.summary.level1} parciais)`,
+        statusCode: 200,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      logger.error('❌ Erro ao buscar controles críticos para auditoria:', error);
+      next(error);
+    }
+  }
+
 }

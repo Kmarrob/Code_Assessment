@@ -207,6 +207,27 @@ router.get(
 );
 
 // ============================================
+// 🆕 NOVO (v47.0) - BUSCAR CONTROLES CRÍTICOS PARA AUDITORIA
+// ============================================
+
+/**
+ * 🆕 NOVO: Buscar controles com maturidade Nível 0 ou 1 para priorizar na auditoria
+ * GET /api/rep/dashboard/critical-controls
+ * 
+ * Esta rota é utilizada pelo módulo de auditoria para:
+ * - Alertar o REP sobre controles críticos
+ * - Pré-selecionar controles para novos planos de auditoria
+ * - Gerar recomendações automáticas de escopo
+ * 
+ * Acesso: REP ou ADMIN
+ */
+router.get(
+  '/dashboard/critical-controls',
+  authenticatedRateLimiter,
+  DashboardController.getCriticalControls
+);
+
+// ============================================
 // ROTA: Obter controles da empresa do preposto
 // ============================================
 router.get(
