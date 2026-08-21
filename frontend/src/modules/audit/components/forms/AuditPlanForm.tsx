@@ -6,6 +6,8 @@ import { useUsers } from '../../../../hooks/useAdmin.js';
 import { CreateAuditPlanDTO, UpdateAuditPlanDTO, AuditPlan } from '../../types/audit.types';
 import { toast } from 'react-hot-toast';
 import api from '../../../../services/api.js';
+// 🆕 NOVO - Import do CustomSelect
+import { CustomSelect } from '../../../../components/ui/CustomSelect.js';
 
 interface AuditPlanFormProps {
   initialData?: AuditPlan;
@@ -420,7 +422,7 @@ export function AuditPlanForm({
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Escopo da Auditoria</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Controles - Buscados do backend via rota REP */}
+          {/* Controles - Usando CustomSelect */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Controles ISO 27001 <span className="text-red-500">*</span>
@@ -448,18 +450,13 @@ export function AuditPlanForm({
             {isLoadingControls ? (
               <div className="text-sm text-gray-500 py-2">Carregando controles...</div>
             ) : (
-              <select
+              <CustomSelect
                 value=""
-                onChange={(e) => handleScopeChange('controls', e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-style={{ color: '#1f2937', backgroundColor: '#ffffff' }}              >
-<option value="" style={{ color: '#1f2937', backgroundColor: '#ffffff' }}>Selecione um controle...</option>                {controlOptions
-                  .filter((c) => !selectedControls.includes(c.value))
-                  .map((control) => (
-<option key={control.value} value={control.value} style={{ color: '#1f2937', backgroundColor: '#ffffff' }}>                      {control.label}
-                    </option>
-                  ))}
-              </select>
+                onChange={(val) => handleScopeChange('controls', val)}
+                options={controlOptions.filter((c) => !selectedControls.includes(c.value))}
+                placeholder="Selecione um controle..."
+                className="w-full"
+              />
             )}
             {errors.controls && <p className="text-sm text-red-500 mt-1">{errors.controls}</p>}
           </div>
@@ -489,12 +486,11 @@ style={{ color: '#1f2937', backgroundColor: '#ffffff' }}              >
             <select
               value=""
               onChange={(e) => handleScopeChange('processes', e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-              style={{ color: '#1f2937 !important', backgroundColor: '#ffffff !important' }}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 bg-white"
             >
-              <option value="" style={{ color: '#1f2937 !important' }}>Selecione um processo...</option>
+              <option value="" className="text-gray-900">Selecione um processo...</option>
               {PROCESS_OPTIONS.filter((p) => !selectedProcesses.includes(p)).map((process) => (
-                <option key={process} value={process} style={{ color: '#1f2937 !important' }}>
+                <option key={process} value={process} className="text-gray-900">
                   {process}
                 </option>
               ))}
@@ -527,12 +523,11 @@ style={{ color: '#1f2937', backgroundColor: '#ffffff' }}              >
             <select
               value=""
               onChange={(e) => handleScopeChange('areas', e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-              style={{ color: '#1f2937 !important', backgroundColor: '#ffffff !important' }}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 bg-white"
             >
-              <option value="" style={{ color: '#1f2937 !important' }}>Selecione uma área...</option>
+              <option value="" className="text-gray-900">Selecione uma área...</option>
               {AREA_OPTIONS.filter((a) => !selectedAreas.includes(a)).map((area) => (
-                <option key={area} value={area} style={{ color: '#1f2937 !important' }}>
+                <option key={area} value={area} className="text-gray-900">
                   {area}
                 </option>
               ))}
@@ -587,11 +582,11 @@ style={{ color: '#1f2937', backgroundColor: '#ffffff' }}              >
                 className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
                   errors.leadAuditor ? 'border-red-500' : 'border-gray-300'
                 }`}
-                style={{ color: '#1f2937 !important', backgroundColor: '#ffffff !important' }}
+                style={{ color: '#1f2937', backgroundColor: '#ffffff' }}
               >
-                <option value="" style={{ color: '#1f2937 !important' }}>Selecione...</option>
+                <option value="" style={{ color: '#1f2937' }}>Selecione...</option>
                 {allAuditorOptions.map((u) => (
-                  <option key={u.id} value={u.id} style={{ color: '#1f2937 !important' }}>
+                  <option key={u.id} value={u.id} style={{ color: '#1f2937' }}>
                     {u.name} ({u.email}) {u.isManual ? '📝' : ''}
                   </option>
                 ))}
@@ -615,11 +610,11 @@ style={{ color: '#1f2937', backgroundColor: '#ffffff' }}              >
                   handleTeamChange('auditors', values);
                 }}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                style={{ color: '#1f2937 !important', backgroundColor: '#ffffff !important' }}
+                style={{ color: '#1f2937', backgroundColor: '#ffffff' }}
                 size={4}
               >
                 {allAuditorOptions.map((u) => (
-                  <option key={u.id} value={u.id} style={{ color: '#1f2937 !important' }}>
+                  <option key={u.id} value={u.id} style={{ color: '#1f2937' }}>
                     {u.name} ({u.email}) {u.isManual ? '📝' : ''}
                   </option>
                 ))}
@@ -643,11 +638,11 @@ style={{ color: '#1f2937', backgroundColor: '#ffffff' }}              >
                   handleTeamChange('observers', values);
                 }}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                style={{ color: '#1f2937 !important', backgroundColor: '#ffffff !important' }}
+                style={{ color: '#1f2937', backgroundColor: '#ffffff' }}
                 size={4}
               >
                 {allAuditorOptions.map((u) => (
-                  <option key={u.id} value={u.id} style={{ color: '#1f2937 !important' }}>
+                  <option key={u.id} value={u.id} style={{ color: '#1f2937' }}>
                     {u.name} ({u.email}) {u.isManual ? '📝' : ''}
                   </option>
                 ))}
@@ -672,7 +667,7 @@ style={{ color: '#1f2937', backgroundColor: '#ffffff' }}              >
                   onChange={(e) => setManualAuditorName(e.target.value)}
                   placeholder="Nome completo do auditor..."
                   className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                  style={{ color: '#1f2937 !important', backgroundColor: '#ffffff !important' }}
+                  style={{ color: '#1f2937', backgroundColor: '#ffffff' }}
                 />
                 <input
                   type="email"
@@ -680,7 +675,7 @@ style={{ color: '#1f2937', backgroundColor: '#ffffff' }}              >
                   onChange={(e) => setManualAuditorEmail(e.target.value)}
                   placeholder="Email (opcional)..."
                   className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                  style={{ color: '#1f2937 !important', backgroundColor: '#ffffff !important' }}
+                  style={{ color: '#1f2937', backgroundColor: '#ffffff' }}
                 />
               </div>
               <div className="flex gap-2 justify-end">
@@ -740,7 +735,7 @@ style={{ color: '#1f2937', backgroundColor: '#ffffff' }}              >
               className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
                 errors.startDate ? 'border-red-500' : 'border-gray-300'
               }`}
-              style={{ color: '#1f2937 !important', backgroundColor: '#ffffff !important' }}
+              style={{ color: '#1f2937', backgroundColor: '#ffffff' }}
             />
             {errors.startDate && <p className="text-sm text-red-500 mt-1">{errors.startDate}</p>}
           </div>
@@ -760,7 +755,7 @@ style={{ color: '#1f2937', backgroundColor: '#ffffff' }}              >
               className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
                 errors.endDate ? 'border-red-500' : 'border-gray-300'
               }`}
-              style={{ color: '#1f2937 !important', backgroundColor: '#ffffff !important' }}
+              style={{ color: '#1f2937', backgroundColor: '#ffffff' }}
             />
             {errors.endDate && <p className="text-sm text-red-500 mt-1">{errors.endDate}</p>}
           </div>
@@ -779,7 +774,7 @@ style={{ color: '#1f2937', backgroundColor: '#ffffff' }}              >
               }
               min={1}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-              style={{ color: '#1f2937 !important', backgroundColor: '#ffffff !important' }}
+              style={{ color: '#1f2937', backgroundColor: '#ffffff' }}
             />
             <p className="text-xs text-gray-400 mt-1">
               Número estimado de dias para a auditoria
@@ -814,7 +809,7 @@ style={{ color: '#1f2937', backgroundColor: '#ffffff' }}              >
             onChange={(e) => setNewCriteria(e.target.value)}
             placeholder="Ex: ISO 27001:2022, Política de SI, Requisitos Legais"
             className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-            style={{ color: '#1f2937 !important', backgroundColor: '#ffffff !important' }}
+            style={{ color: '#1f2937', backgroundColor: '#ffffff' }}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
                 e.preventDefault();
