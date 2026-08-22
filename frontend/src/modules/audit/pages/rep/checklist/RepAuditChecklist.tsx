@@ -10,6 +10,13 @@ export function RepAuditChecklist() {
   const { planId } = useParams<{ planId: string }>();
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // 🆕 Estado para armazenar as respostas da empresa
+  const [companyResponses, setCompanyResponses] = useState<Array<{
+    controlId: string;
+    maturityLevel: string;
+    scenarioDescription?: string;
+    observations?: string;
+  }>>([]);
 
   // Hooks do React Query
   const {
@@ -26,6 +33,9 @@ export function RepAuditChecklist() {
     refetch,
   } = useChecklistsByPlan(planId || '');
 
+  // 🆕 Buscar respostas dos usuários para este plano
+  const { data: responsesData, isLoading: isLoadingResponses } = useAudit().usePlanResponses?.(planId || '') || { data: null, isLoading: false };
+
   // Mutations
   const updateChecklistMutation = useUpdateChecklist();
   const completeChecklistMutation = useCompleteChecklist();
@@ -33,6 +43,20 @@ export function RepAuditChecklist() {
   // Estado local para o checklist atual
   const [currentChecklist, setCurrentChecklist] = useState<any>(null);
   const [checklistItems, setChecklistItems] = useState<AuditChecklistItem[]>([]);
+
+  // 🆕 Quando as respostas chegarem, processá-las para o formato esperado
+  useEffect(() => {
+    if (responsesData?.data) {
+      // Mapear respostas para o formato esperado pelo AuditChecklist
+      const formattedResponses = responsesData.data.map((r: any) => ({
+        controlId: r.controlId || r.control?.id || '',
+        maturityLevel: r.maturityLevel || 'N/A',
+        scenarioDescription: r.scenarioDescription || '',
+        observations: r.observations || '',
+      }));
+      setCompanyResponses(formattedResponses);
+    }
+  }, [responsesData]);
 
   // Atualizar quando os dados chegarem
   useEffect(() => {
@@ -82,7 +106,7 @@ export function RepAuditChecklist() {
   };
 
   // Loading state
-  if (isLoading) {
+  if (isLoading || isLoadingResponses) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
@@ -169,13 +193,14 @@ export function RepAuditChecklist() {
         </div>
       </div>
 
-      {/* Componente de Checklist */}
+      {/* 🆕 Componente de Checklist COM companyResponses */}
       <AuditChecklist
         checklist={currentChecklist}
         onUpdate={handleUpdateChecklist}
         onComplete={handleCompleteChecklist}
         isSubmitting={isSubmitting}
         isReadOnly={currentChecklist.status === 'completed'}
+        companyResponses={companyResponses}
       />
 
       {/* Informações adicionais */}
@@ -185,6 +210,11 @@ export function RepAuditChecklist() {
           Total de perguntas: {checklistItems.length} • 
           Respondidas: {checklistItems.filter((q: AuditChecklistItem) => q.answer !== undefined).length}
         </p>
+        {companyResponses.length > 0 && (
+          <p className="text-xs text-green-600 mt-1">
+            ✅ {companyResponses.length} resposta(s) de usuários disponíveis para sincronização
+          </p>
+        )}
       </div>
     </div>
   );

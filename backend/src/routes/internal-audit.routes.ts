@@ -35,6 +35,9 @@ router.post('/plans/:id/reject', auditPlanController.reject);
 router.post('/plans/:id/start', auditPlanController.startAudit);
 router.post('/plans/:id/complete', auditPlanController.completeAudit);
 
+// 🆕 NOVO (v47.0) - Buscar respostas dos usuários por plano
+router.get('/plans/:planId/responses', auditPlanController.getResponsesByPlan);
+
 // ============================================================
 // ROTAS DE CHECKLISTS
 // ============================================================

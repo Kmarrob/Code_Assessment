@@ -40,6 +40,8 @@ export const auditKeys = {
   soa: (planId: string) => [...auditKeys.all, 'soa', planId] as const,
   program: (planId: string) => [...auditKeys.all, 'program', planId] as const,
   documentReview: (planId: string) => [...auditKeys.all, 'document-review', planId] as const,
+  // 🆕 NOVO (v47.0) - Query Key para respostas dos usuários por plano
+  responses: (planId: string) => [...auditKeys.all, 'responses', planId] as const,
 };
 
 export function usePlans(filters?: AuditFilters) {
@@ -633,6 +635,27 @@ export function useCompleteDocumentReview() {
 }
 
 // ============================================================
+// 🆕 NOVO (v47.0) - HOOKS — RESPOSTAS DOS USUÁRIOS POR PLANO
+// ============================================================
+
+/**
+ * Hook para buscar respostas dos usuários vinculadas a um plano de auditoria
+ * 
+ * Esta query retorna todas as respostas dos usuários para os controles
+ * que fazem parte do escopo do plano.
+ * 
+ * @param planId - ID do plano de auditoria
+ * @returns Query com as respostas dos usuários
+ */
+export function useResponsesByPlan(planId: string) {
+  return useQuery({
+    queryKey: auditKeys.responses(planId),
+    queryFn: () => auditService.getResponsesByPlan(planId),
+    enabled: !!planId,
+  });
+}
+
+// ============================================================
 // EXPORTAÇÃO DO OBJETO useAudit (para compatibilidade com as páginas)
 // ============================================================
 
@@ -715,4 +738,7 @@ export const useAudit = {
   useDocumentReviewByPlan,
   useUpdateDocumentReview,
   useCompleteDocumentReview,
+
+  // 🆕 (v47.0) - Respostas dos usuários
+  useResponsesByPlan,
 };

@@ -576,4 +576,18 @@ export const auditService = {
     const response = await api.post(`${BASE_URL}/document-review/${reviewId}/complete`);
     return response.data.data;
   },
+
+  // ============================================================
+  // 🆕 NOVO (v47.0) - RESPOSTAS DOS USUÁRIOS POR PLANO
+  // ============================================================
+
+  /**
+   * Buscar respostas dos usuários para um plano de auditoria
+   * Esta rota retorna todas as respostas dos usuários para os controles
+   * que fazem parte do escopo do plano.
+   */
+  async getResponsesByPlan(planId: string): Promise<any[]> {
+    const response = await api.get(`${BASE_URL}/plans/${planId}/responses`);
+    return response.data.data;
+  },
 };
