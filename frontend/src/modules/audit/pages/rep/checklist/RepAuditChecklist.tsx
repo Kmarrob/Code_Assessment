@@ -5,7 +5,8 @@ import { useAudit } from '../../../hooks/useAudit';
 import { AuditChecklist } from '../../../components/AuditChecklist';
 import { AuditChecklistItem } from '../../../types/audit.types';
 import { toast } from 'react-hot-toast';
-import api from '../../../../../../services/api';
+import api from '../../../../../services/api';
+
 
 export function RepAuditChecklist() {
   const { planId } = useParams<{ planId: string }>();
