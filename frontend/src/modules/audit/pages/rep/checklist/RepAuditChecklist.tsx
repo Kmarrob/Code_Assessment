@@ -5,7 +5,6 @@ import { useAudit } from '../../../hooks/useAudit';
 import { AuditChecklist } from '../../../components/AuditChecklist';
 import { AuditChecklistItem } from '../../../types/audit.types';
 import { toast } from 'react-hot-toast';
-// ✅ CORRIGIDO: caminho correto para api
 import api from '../../../../services/api';
 
 export function RepAuditChecklist() {
@@ -20,12 +19,14 @@ export function RepAuditChecklist() {
   }>>([]);
   const [isLoadingResponses, setIsLoadingResponses] = useState(true);
 
+  // Hooks do React Query
   const {
     useChecklistsByPlan,
     useUpdateChecklist,
     useCompleteChecklist,
   } = useAudit();
 
+  // Buscar checklists do plano
   const {
     data: checklistsData,
     isLoading,
@@ -57,12 +58,15 @@ export function RepAuditChecklist() {
     fetchResponses();
   }, [planId]);
 
+  // Mutations
   const updateChecklistMutation = useUpdateChecklist();
   const completeChecklistMutation = useCompleteChecklist();
 
+  // Estado local para o checklist atual
   const [currentChecklist, setCurrentChecklist] = useState<any>(null);
   const [checklistItems, setChecklistItems] = useState<AuditChecklistItem[]>([]);
 
+  // Atualizar quando os dados chegarem
   useEffect(() => {
     if (checklistsData?.data && checklistsData.data.length > 0) {
       const firstChecklist = checklistsData.data[0];
