@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Loader2, AlertCircle } from 'lucide-react';
-import { useAudit } from '../../../hooks/useAudit';
+import { useAudit, useResponsesByPlan } from '../../../hooks/useAudit';
 import { AuditChecklist } from '../../../components/AuditChecklist';
 import { AuditChecklistItem } from '../../../types/audit.types';
 import { toast } from 'react-hot-toast';
@@ -33,8 +33,8 @@ export function RepAuditChecklist() {
     refetch,
   } = useChecklistsByPlan(planId || '');
 
-  // 🆕 Buscar respostas dos usuários para este plano
-  const { data: responsesData, isLoading: isLoadingResponses } = useAudit().usePlanResponses?.(planId || '') || { data: null, isLoading: false };
+  // ✅ CORRIGIDO: Usar o hook correto useResponsesByPlan
+  const { data: responsesData, isLoading: isLoadingResponses } = useResponsesByPlan(planId || '');
 
   // Mutations
   const updateChecklistMutation = useUpdateChecklist();
