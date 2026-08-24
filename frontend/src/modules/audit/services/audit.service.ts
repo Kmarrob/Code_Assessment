@@ -450,7 +450,7 @@ export const auditService = {
    */
   async listRisksByPlan(planId: string): Promise<any[]> {
     const response = await api.get(`${BASE_URL}/risks/plan/${planId}`);
-    return response.data.data;
+    return response.data;
   },
 
   /**
