@@ -38,7 +38,7 @@ export class AuditRiskService {
       return 'R-001';
     }
 
-    const currentNumber = parseInt(match[1], 10);
+    const currentNumber = parseInt(match[1]!, 10);
 
     return `R-${String(currentNumber + 1).padStart(3, '0')}`;
   }

@@ -461,11 +461,11 @@ export class AuditChecklistService {
      * atribuições que não possuam um identificador válido.
      */
 
-    const validAssignments =
-      assignments.filter(
-        (assignment: any) =>
-          normalizeId(assignment?._id)
-      );
+    const validAssignments: any[] =
+  assignments.filter(
+    (assignment: any) =>
+      normalizeId(assignment?._id)
+  );
 
     if (
       validAssignments.length === 0
