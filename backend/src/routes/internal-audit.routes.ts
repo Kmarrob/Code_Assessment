@@ -151,6 +151,7 @@ router.put('/soa/:id/control/:clause', auditSoAController.updateControl);
 // ROTAS DE GESTÃO DE RISCOS
 // ============================================================
 router.post('/risks', auditRiskController.create);
+router.get('/risks/plan/:planId', auditRiskController.findAllByPlan);
 router.get('/risks/company/:companyId', auditRiskController.findAllByCompany);
 router.get('/risks/company/:companyId/stats', auditRiskController.getStatistics);
 router.get('/risks/company/:companyId/critical', auditRiskController.getCriticalRisks);

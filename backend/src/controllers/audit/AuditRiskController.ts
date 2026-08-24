@@ -425,6 +425,49 @@ export class AuditRiskController {
    * GET /risks/company/:companyId
    * ============================================================
    */
+  /**
+   * ============================================================
+   * LISTAR RISCOS DE UM PLANO DE AUDITORIA
+   * GET /risks/plan/:planId
+   * ============================================================
+   */
+  async findAllByPlan(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<Response> {
+    try {
+      const { planId } = req.params;
+
+      if (!planId) {
+        return res.status(400).json({
+          error: 'planId é obrigatório',
+        });
+      }
+
+      const companyId = this.resolveCompanyId(req);
+
+      if (!companyId) {
+        return res.status(403).json({
+          error:
+            'Empresa do usuário não identificada',
+        });
+      }
+
+      const risks =
+        await auditRiskService.findAllByCompany(
+          companyId,
+          {
+            auditPlanId: planId,
+          }
+        );
+
+      return res.json(risks);
+    } catch (error: any) {
+      return res.status(500).json({
+        error: error.message,
+      });
+    }
+  }
   async findAllByCompany(
     req: AuthenticatedRequest,
     res: Response
