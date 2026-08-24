@@ -51,7 +51,7 @@ export function RepAuditRisks() {
     useCreateRisk,
     useUpdateRisk,
     useDeleteRisk,
-  } = useAudit();
+  } = useAudit;
 
   // Buscar riscos do plano
   const {
