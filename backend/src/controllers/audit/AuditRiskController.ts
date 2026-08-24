@@ -3,6 +3,22 @@ import { auditRiskService } from '../../models/audit/services/AuditRiskService';
 import { AuthenticatedRequest } from '../../types';
 
 export class AuditRiskController {
+  constructor() {
+    this.create = this.create.bind(this);
+    this.findById = this.findById.bind(this);
+    this.findByRiskId = this.findByRiskId.bind(this);
+    this.findAllByPlan = this.findAllByPlan.bind(this);
+    this.findAllByCompany = this.findAllByCompany.bind(this);
+    this.update = this.update.bind(this);
+    this.updateAssessment = this.updateAssessment.bind(this);
+    this.treatRisk = this.treatRisk.bind(this);
+    this.monitorRisk = this.monitorRisk.bind(this);
+    this.reopenRisk = this.reopenRisk.bind(this);
+    this.delete = this.delete.bind(this);
+    this.getStatistics = this.getStatistics.bind(this);
+    this.getCriticalRisks = this.getCriticalRisks.bind(this);
+    this.exportToSpreadsheet = this.exportToSpreadsheet.bind(this);
+  }
   /**
    * ============================================================
    * OBTÉM O COMPANY ID DO USUÁRIO AUTENTICADO
