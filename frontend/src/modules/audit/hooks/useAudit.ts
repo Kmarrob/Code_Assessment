@@ -16,6 +16,8 @@ import {
   UpdateAuditActionPlanDTO,
   CreateAuditReportDTO,
   UpdateAuditReportDTO,
+  CreateAuditRiskDTO,
+  UpdateAuditRiskDTO,
 } from '../types/audit.types';
 
 export const auditKeys = {
@@ -34,12 +36,14 @@ export const auditKeys = {
   evidence: (planId: string) => [...auditKeys.all, 'evidence', planId] as const,
   reports: (planId?: string) => [...auditKeys.all, 'reports', planId] as const,
   report: (id: string) => [...auditKeys.all, 'report', id] as const,
+
   // 🆕 NOVO (v46.0) - Query Keys para funcionalidades adicionais
   risks: (planId: string) => [...auditKeys.all, 'risks', planId] as const,
   risk: (id: string) => [...auditKeys.all, 'risk', id] as const,
   soa: (planId: string) => [...auditKeys.all, 'soa', planId] as const,
   program: (planId: string) => [...auditKeys.all, 'program', planId] as const,
   documentReview: (planId: string) => [...auditKeys.all, 'document-review', planId] as const,
+
   // 🆕 NOVO (v47.0) - Query Key para respostas dos usuários por plano
   responses: (planId: string) => [...auditKeys.all, 'responses', planId] as const,
 };
@@ -68,6 +72,7 @@ export function usePlanStats() {
 
 export function useCreatePlan() {
   const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: (data: CreateAuditPlanDTO) => auditService.createPlan(data),
     onSuccess: () => {
@@ -79,8 +84,10 @@ export function useCreatePlan() {
 
 export function useUpdatePlan() {
   const queryClient = useQueryClient();
+
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: UpdateAuditPlanDTO }) => auditService.updatePlan(id, data),
+    mutationFn: ({ id, data }: { id: string; data: UpdateAuditPlanDTO }) =>
+      auditService.updatePlan(id, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: auditKeys.plans() });
       queryClient.invalidateQueries({ queryKey: auditKeys.plan(variables.id) });
@@ -91,6 +98,7 @@ export function useUpdatePlan() {
 
 export function useSubmitPlan() {
   const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: (id: string) => auditService.submitPlan(id),
     onSuccess: (_, id) => {
@@ -102,6 +110,7 @@ export function useSubmitPlan() {
 
 export function useApprovePlan() {
   const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: (id: string) => auditService.approvePlan(id),
     onSuccess: (_, id) => {
@@ -114,8 +123,10 @@ export function useApprovePlan() {
 
 export function useRejectPlan() {
   const queryClient = useQueryClient();
+
   return useMutation({
-    mutationFn: ({ id, reason }: { id: string; reason: string }) => auditService.rejectPlan(id, reason),
+    mutationFn: ({ id, reason }: { id: string; reason: string }) =>
+      auditService.rejectPlan(id, reason),
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: auditKeys.plans() });
       queryClient.invalidateQueries({ queryKey: auditKeys.plan(id) });
@@ -125,6 +136,7 @@ export function useRejectPlan() {
 
 export function useStartPlan() {
   const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: (id: string) => auditService.startPlan(id),
     onSuccess: (_, id) => {
@@ -137,6 +149,7 @@ export function useStartPlan() {
 
 export function useCompletePlan() {
   const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: (id: string) => auditService.completePlan(id),
     onSuccess: (_, id) => {
@@ -149,6 +162,7 @@ export function useCompletePlan() {
 
 export function useCancelPlan() {
   const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: (id: string) => auditService.cancelPlan(id),
     onSuccess: (_, id) => {
@@ -161,6 +175,7 @@ export function useCancelPlan() {
 
 export function useDeletePlan() {
   const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: (id: string) => auditService.deletePlan(id),
     onSuccess: () => {
@@ -200,9 +215,18 @@ export function useChecklistStats(planId: string) {
 
 export function useUpdateChecklist() {
   const queryClient = useQueryClient();
+
   return useMutation({
-    mutationFn: ({ id, planId, questions }: { id: string; planId: string; questions: AuditChecklist['questions'] }) =>
-      auditService.updateChecklist(id, questions),
+    mutationFn: ({
+      id,
+      planId,
+      questions,
+    }: {
+      id: string;
+      planId: string;
+      questions: AuditChecklist['questions'];
+    }) => auditService.updateChecklist(id, questions),
+
     onSuccess: (_, { id, planId }) => {
       queryClient.invalidateQueries({ queryKey: auditKeys.checklists(planId) });
       queryClient.invalidateQueries({ queryKey: auditKeys.checklistStats(planId) });
@@ -213,8 +237,16 @@ export function useUpdateChecklist() {
 
 export function useCompleteChecklist() {
   const queryClient = useQueryClient();
+
   return useMutation({
-    mutationFn: ({ id, planId }: { id: string; planId: string }) => auditService.completeChecklist(id),
+    mutationFn: ({
+      id,
+      planId,
+    }: {
+      id: string;
+      planId: string;
+    }) => auditService.completeChecklist(id),
+
     onSuccess: (_, { id, planId }) => {
       queryClient.invalidateQueries({ queryKey: auditKeys.checklists(planId) });
       queryClient.invalidateQueries({ queryKey: auditKeys.checklistStats(planId) });
@@ -227,7 +259,10 @@ export function useCompleteChecklist() {
 // NÃO CONFORMIDADES
 // ============================================================
 
-export function useFindings(planId: string, filters?: AuditFindingFilters) {
+export function useFindings(
+  planId: string,
+  filters?: AuditFindingFilters
+) {
   return useQuery({
     queryKey: auditKeys.findings(planId),
     queryFn: () => auditService.listFindings(planId, filters),
@@ -253,46 +288,95 @@ export function useFindingStats(planId: string) {
 
 export function useCreateFinding() {
   const queryClient = useQueryClient();
+
   return useMutation({
-    mutationFn: ({ planId, data }: { planId: string; data: CreateAuditFindingDTO }) => auditService.createFinding(planId, data),
+    mutationFn: ({
+      planId,
+      data,
+    }: {
+      planId: string;
+      data: CreateAuditFindingDTO;
+    }) => auditService.createFinding(planId, data),
+
     onSuccess: (_, { planId }) => {
-      queryClient.invalidateQueries({ queryKey: auditKeys.findings(planId) });
-      queryClient.invalidateQueries({ queryKey: auditKeys.findingStats(planId) });
+      queryClient.invalidateQueries({
+        queryKey: auditKeys.findings(planId),
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: auditKeys.findingStats(planId),
+      });
     },
   });
 }
 
 export function useUpdateFinding() {
   const queryClient = useQueryClient();
+
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: UpdateAuditFindingDTO }) => auditService.updateFinding(id, data),
-    onSuccess: (_, { id }) => queryClient.invalidateQueries({ queryKey: auditKeys.finding(id) }),
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: UpdateAuditFindingDTO;
+    }) => auditService.updateFinding(id, data),
+
+    onSuccess: (_, { id }) =>
+      queryClient.invalidateQueries({
+        queryKey: auditKeys.finding(id),
+      }),
   });
 }
 
 export function useSubmitFinding() {
   const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: (id: string) => auditService.submitFinding(id),
-    onSuccess: (_, id) => queryClient.invalidateQueries({ queryKey: auditKeys.finding(id) }),
+
+    onSuccess: (_, id) =>
+      queryClient.invalidateQueries({
+        queryKey: auditKeys.finding(id),
+      }),
   });
 }
 
 export function useValidateFinding() {
   const queryClient = useQueryClient();
+
   return useMutation({
-    mutationFn: ({ id, status, comment }: { id: string; status: 'closed' | 'reopened'; comment?: string }) => auditService.validateFinding(id, status, comment),
-    onSuccess: (_, { id }) => queryClient.invalidateQueries({ queryKey: auditKeys.finding(id) }),
+    mutationFn: ({
+      id,
+      status,
+      comment,
+    }: {
+      id: string;
+      status: 'closed' | 'reopened';
+      comment?: string;
+    }) => auditService.validateFinding(id, status, comment),
+
+    onSuccess: (_, { id }) =>
+      queryClient.invalidateQueries({
+        queryKey: auditKeys.finding(id),
+      }),
   });
 }
 
 export function useDeleteFinding() {
   const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: (id: string) => auditService.deleteFinding(id),
+
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: auditKeys.findings('') });
-      queryClient.invalidateQueries({ queryKey: auditKeys.findingStats('') });
+      queryClient.invalidateQueries({
+        queryKey: auditKeys.findings(''),
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: auditKeys.findingStats(''),
+      });
     },
   });
 }
@@ -319,41 +403,87 @@ export function useAction(id: string) {
 
 export function useCreateAction() {
   const queryClient = useQueryClient();
+
   return useMutation({
-    mutationFn: (data: CreateAuditActionPlanDTO) => auditService.createAction(data),
-    onSuccess: (_, data) => queryClient.invalidateQueries({ queryKey: auditKeys.actions(data.findingId) }),
+    mutationFn: (data: CreateAuditActionPlanDTO) =>
+      auditService.createAction(data),
+
+    onSuccess: (_, data) =>
+      queryClient.invalidateQueries({
+        queryKey: auditKeys.actions(data.findingId),
+      }),
   });
 }
 
 export function useUpdateAction() {
   const queryClient = useQueryClient();
+
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: UpdateAuditActionPlanDTO }) => auditService.updateAction(id, data),
-    onSuccess: (_, { id }) => queryClient.invalidateQueries({ queryKey: auditKeys.action(id) }),
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: UpdateAuditActionPlanDTO;
+    }) => auditService.updateAction(id, data),
+
+    onSuccess: (_, { id }) =>
+      queryClient.invalidateQueries({
+        queryKey: auditKeys.action(id),
+      }),
   });
 }
 
 export function useStartAction() {
   const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: (id: string) => auditService.startAction(id),
-    onSuccess: (_, id) => queryClient.invalidateQueries({ queryKey: auditKeys.action(id) }),
+
+    onSuccess: (_, id) =>
+      queryClient.invalidateQueries({
+        queryKey: auditKeys.action(id),
+      }),
   });
 }
 
 export function useCompleteAction() {
   const queryClient = useQueryClient();
+
   return useMutation({
-    mutationFn: ({ id, evidenceIds }: { id: string; evidenceIds?: string[] }) => auditService.completeAction(id, evidenceIds),
-    onSuccess: (_, { id }) => queryClient.invalidateQueries({ queryKey: auditKeys.action(id) }),
+    mutationFn: ({
+      id,
+      evidenceIds,
+    }: {
+      id: string;
+      evidenceIds?: string[];
+    }) => auditService.completeAction(id, evidenceIds),
+
+    onSuccess: (_, { id }) =>
+      queryClient.invalidateQueries({
+        queryKey: auditKeys.action(id),
+      }),
   });
 }
 
 export function useValidateAction() {
   const queryClient = useQueryClient();
+
   return useMutation({
-    mutationFn: ({ id, status, comment }: { id: string; status: 'completed' | 'rejected'; comment?: string }) => auditService.validateAction(id, status, comment),
-    onSuccess: (_, { id }) => queryClient.invalidateQueries({ queryKey: auditKeys.action(id) }),
+    mutationFn: ({
+      id,
+      status,
+      comment,
+    }: {
+      id: string;
+      status: 'completed' | 'rejected';
+      comment?: string;
+    }) => auditService.validateAction(id, status, comment),
+
+    onSuccess: (_, { id }) =>
+      queryClient.invalidateQueries({
+        queryKey: auditKeys.action(id),
+      }),
   });
 }
 
@@ -371,17 +501,43 @@ export function useEvidenceByPlan(planId: string) {
 
 export function useUploadEvidence() {
   const queryClient = useQueryClient();
+
   return useMutation({
-    mutationFn: ({ auditPlanId, file, findingId, description }: { auditPlanId: string; file: File; findingId?: string; description?: string }) => auditService.uploadEvidence(auditPlanId, file, findingId, description),
-    onSuccess: (_, { auditPlanId }) => queryClient.invalidateQueries({ queryKey: auditKeys.evidence(auditPlanId) }),
+    mutationFn: ({
+      auditPlanId,
+      file,
+      findingId,
+      description,
+    }: {
+      auditPlanId: string;
+      file: File;
+      findingId?: string;
+      description?: string;
+    }) =>
+      auditService.uploadEvidence(
+        auditPlanId,
+        file,
+        findingId,
+        description
+      ),
+
+    onSuccess: (_, { auditPlanId }) =>
+      queryClient.invalidateQueries({
+        queryKey: auditKeys.evidence(auditPlanId),
+      }),
   });
 }
 
 export function useDeleteEvidence() {
   const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: (id: string) => auditService.deleteEvidence(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: auditKeys.evidence('') }),
+
+    onSuccess: () =>
+      queryClient.invalidateQueries({
+        queryKey: auditKeys.evidence(''),
+      }),
   });
 }
 
@@ -406,71 +562,125 @@ export function useReport(id: string) {
 
 export function useCreateReport() {
   const queryClient = useQueryClient();
+
   return useMutation({
-    mutationFn: (data: CreateAuditReportDTO) => auditService.createReport(data),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: auditKeys.reports() }),
+    mutationFn: (data: CreateAuditReportDTO) =>
+      auditService.createReport(data),
+
+    onSuccess: () =>
+      queryClient.invalidateQueries({
+        queryKey: auditKeys.reports(),
+      }),
   });
 }
 
 export function useUpdateReport() {
   const queryClient = useQueryClient();
+
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: UpdateAuditReportDTO }) => auditService.updateReport(id, data),
-    onSuccess: (_, { id }) => queryClient.invalidateQueries({ queryKey: auditKeys.report(id) }),
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: UpdateAuditReportDTO;
+    }) => auditService.updateReport(id, data),
+
+    onSuccess: (_, { id }) =>
+      queryClient.invalidateQueries({
+        queryKey: auditKeys.report(id),
+      }),
   });
 }
 
 export function useSubmitReport() {
   const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: (id: string) => auditService.submitReport(id),
+
     onSuccess: (_, id) => {
-      queryClient.invalidateQueries({ queryKey: auditKeys.report(id) });
-      queryClient.invalidateQueries({ queryKey: auditKeys.reports() });
+      queryClient.invalidateQueries({
+        queryKey: auditKeys.report(id),
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: auditKeys.reports(),
+      });
     },
   });
 }
 
 export function useApproveReport() {
   const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: (id: string) => auditService.approveReport(id),
+
     onSuccess: (_, id) => {
-      queryClient.invalidateQueries({ queryKey: auditKeys.report(id) });
-      queryClient.invalidateQueries({ queryKey: auditKeys.reports() });
+      queryClient.invalidateQueries({
+        queryKey: auditKeys.report(id),
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: auditKeys.reports(),
+      });
     },
   });
 }
 
 export function useRejectReport() {
   const queryClient = useQueryClient();
+
   return useMutation({
-    mutationFn: ({ id, reason }: { id: string; reason: string }) =>
-      auditService.rejectReport(id, reason),
+    mutationFn: ({
+      id,
+      reason,
+    }: {
+      id: string;
+      reason: string;
+    }) => auditService.rejectReport(id, reason),
+
     onSuccess: (_, { id }) => {
-      queryClient.invalidateQueries({ queryKey: auditKeys.report(id) });
-      queryClient.invalidateQueries({ queryKey: auditKeys.reports() });
+      queryClient.invalidateQueries({
+        queryKey: auditKeys.report(id),
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: auditKeys.reports(),
+      });
     },
   });
 }
 
 export function useDeleteReport() {
   const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: (id: string) => auditService.deleteReport(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: auditKeys.reports() });
-    },
+
+    onSuccess: () =>
+      queryClient.invalidateQueries({
+        queryKey: auditKeys.reports(),
+      }),
   });
 }
 
 export function useGenerateReport() {
   const queryClient = useQueryClient();
+
   return useMutation({
-    mutationFn: (planId: string) => auditService.generateReport(planId),
+    mutationFn: (planId: string) =>
+      auditService.generateReport(planId),
+
     onSuccess: (_, planId) => {
-      queryClient.invalidateQueries({ queryKey: auditKeys.reports(planId) });
-      queryClient.invalidateQueries({ queryKey: auditKeys.reports() });
+      queryClient.invalidateQueries({
+        queryKey: auditKeys.reports(planId),
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: auditKeys.reports(),
+      });
     },
   });
 }
@@ -497,32 +707,54 @@ export function useRisk(id: string) {
 
 export function useCreateRisk() {
   const queryClient = useQueryClient();
+
   return useMutation({
-    mutationFn: ({ planId, data }: { planId: string; data: any }) =>
-      auditService.createRisk(planId, data),
+    mutationFn: ({
+      planId,
+      data,
+    }: {
+      planId: string;
+      data: CreateAuditRiskDTO;
+    }) => auditService.createRisk(planId, data),
+
     onSuccess: (_, { planId }) => {
-      queryClient.invalidateQueries({ queryKey: auditKeys.risks(planId) });
+      queryClient.invalidateQueries({
+        queryKey: auditKeys.risks(planId),
+      });
     },
   });
 }
 
 export function useUpdateRisk() {
   const queryClient = useQueryClient();
+
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: any }) =>
-      auditService.updateRisk(id, data),
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: UpdateAuditRiskDTO;
+    }) => auditService.updateRisk(id, data),
+
     onSuccess: (_, { id }) => {
-      queryClient.invalidateQueries({ queryKey: auditKeys.risk(id) });
+      queryClient.invalidateQueries({
+        queryKey: auditKeys.risk(id),
+      });
     },
   });
 }
 
 export function useDeleteRisk() {
   const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: (id: string) => auditService.deleteRisk(id),
+
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: auditKeys.risks('') });
+      queryClient.invalidateQueries({
+        queryKey: auditKeys.risks(''),
+      });
     },
   });
 }
@@ -541,11 +773,22 @@ export function useSoAByPlan(planId: string) {
 
 export function useUpdateSoAControl() {
   const queryClient = useQueryClient();
+
   return useMutation({
-    mutationFn: ({ soaId, clause, data }: { soaId: string; clause: string; data: any }) =>
-      auditService.updateSoAControl(soaId, clause, data),
+    mutationFn: ({
+      soaId,
+      clause,
+      data,
+    }: {
+      soaId: string;
+      clause: string;
+      data: any;
+    }) => auditService.updateSoAControl(soaId, clause, data),
+
     onSuccess: (_, { soaId }) => {
-      queryClient.invalidateQueries({ queryKey: auditKeys.soa('') });
+      queryClient.invalidateQueries({
+        queryKey: auditKeys.soa(''),
+      });
     },
   });
 }
@@ -570,33 +813,62 @@ export function useProgramByPlan(planId: string) {
 
 export function useCreateProgramActivity() {
   const queryClient = useQueryClient();
+
   return useMutation({
-    mutationFn: ({ programId, data }: { programId: string; data: any }) =>
-      auditService.createProgramActivity(programId, data),
+    mutationFn: ({
+      programId,
+      data,
+    }: {
+      programId: string;
+      data: any;
+    }) => auditService.createProgramActivity(programId, data),
+
     onSuccess: (_, { programId }) => {
-      queryClient.invalidateQueries({ queryKey: auditKeys.program(programId) });
+      queryClient.invalidateQueries({
+        queryKey: auditKeys.program(programId),
+      });
     },
   });
 }
 
 export function useUpdateProgramActivity() {
   const queryClient = useQueryClient();
+
   return useMutation({
-    mutationFn: ({ programId, activityId, data }: { programId: string; activityId: string; data: any }) =>
-      auditService.updateProgramActivity(programId, activityId, data),
+    mutationFn: ({
+      programId,
+      activityId,
+      data,
+    }: {
+      programId: string;
+      activityId: string;
+      data: any;
+    }) => auditService.updateProgramActivity(programId, activityId, data),
+
     onSuccess: (_, { programId }) => {
-      queryClient.invalidateQueries({ queryKey: auditKeys.program(programId) });
+      queryClient.invalidateQueries({
+        queryKey: auditKeys.program(programId),
+      });
     },
   });
 }
 
 export function useDeleteProgramActivity() {
   const queryClient = useQueryClient();
+
   return useMutation({
-    mutationFn: ({ programId, activityId }: { programId: string; activityId: string }) =>
-      auditService.deleteProgramActivity(programId, activityId),
+    mutationFn: ({
+      programId,
+      activityId,
+    }: {
+      programId: string;
+      activityId: string;
+    }) => auditService.deleteProgramActivity(programId, activityId),
+
     onSuccess: (_, { programId }) => {
-      queryClient.invalidateQueries({ queryKey: auditKeys.program(programId) });
+      queryClient.invalidateQueries({
+        queryKey: auditKeys.program(programId),
+      });
     },
   });
 }
@@ -615,21 +887,37 @@ export function useDocumentReviewByPlan(planId: string) {
 
 export function useUpdateDocumentReview() {
   const queryClient = useQueryClient();
+
   return useMutation({
-    mutationFn: ({ reviewId, clause, data }: { reviewId: string; clause: string; data: any }) =>
-      auditService.updateDocumentReview(reviewId, clause, data),
+    mutationFn: ({
+      reviewId,
+      clause,
+      data,
+    }: {
+      reviewId: string;
+      clause: string;
+      data: any;
+    }) => auditService.updateDocumentReview(reviewId, clause, data),
+
     onSuccess: (_, { reviewId }) => {
-      queryClient.invalidateQueries({ queryKey: auditKeys.documentReview('') });
+      queryClient.invalidateQueries({
+        queryKey: auditKeys.documentReview(''),
+      });
     },
   });
 }
 
 export function useCompleteDocumentReview() {
   const queryClient = useQueryClient();
+
   return useMutation({
-    mutationFn: (reviewId: string) => auditService.completeDocumentReview(reviewId),
+    mutationFn: (reviewId: string) =>
+      auditService.completeDocumentReview(reviewId),
+
     onSuccess: (_, reviewId) => {
-      queryClient.invalidateQueries({ queryKey: auditKeys.documentReview('') });
+      queryClient.invalidateQueries({
+        queryKey: auditKeys.documentReview(''),
+      });
     },
   });
 }
@@ -640,10 +928,10 @@ export function useCompleteDocumentReview() {
 
 /**
  * Hook para buscar respostas dos usuários vinculadas a um plano de auditoria
- * 
+ *
  * Esta query retorna todas as respostas dos usuários para os controles
  * que fazem parte do escopo do plano.
- * 
+ *
  * @param planId - ID do plano de auditoria
  * @returns Query com as respostas dos usuários
  */
