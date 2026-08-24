@@ -4,13 +4,118 @@ import { AuthenticatedRequest } from '../../types';
 
 export class AuditRiskController {
   /**
-   * Criar novo risco
-   * POST /api/internal-audit/risks
+   * ============================================================
+   * OBTÉM O COMPANY ID DO USUÁRIO AUTENTICADO
+   * ============================================================
+   *
+   * Regra:
+   *
+   * - Usuários vinculados a empresa:
+   *   sempre utilizam req.user.companyId.
+   *
+   * - ADMIN:
+   *   pode operar sobre uma empresa informada explicitamente,
+   *   caso a arquitetura atual permita administração global.
+   *
+   * Para usuários comuns, companyId enviado pelo frontend
+   * nunca deve substituir o companyId da sessão.
    */
-  async create(req: AuthenticatedRequest, res: Response): Promise<Response> {
+  private getAuthenticatedCompanyId(
+    req: AuthenticatedRequest
+  ): string | null {
+    return req.user?.companyId?.toString() || null;
+  }
+
+  /**
+   * Verifica se o usuário pode operar sobre determinada empresa.
+   *
+   * ADMIN é tratado como usuário de plataforma.
+   *
+   * Para qualquer outro perfil, o companyId deve ser exatamente
+   * igual ao companyId presente no token/sessão.
+   */
+  private canAccessCompany(
+    req: AuthenticatedRequest,
+    companyId: string
+  ): boolean {
+    const user = req.user;
+
+    if (!user) {
+      return false;
+    }
+
+    /**
+     * Administradores da plataforma podem operar sobre empresas
+     * administradas pelo sistema.
+     */
+    if (user.role === 'admin') {
+      return true;
+    }
+
+    const authenticatedCompanyId =
+      this.getAuthenticatedCompanyId(req);
+
+    if (!authenticatedCompanyId) {
+      return false;
+    }
+
+    return authenticatedCompanyId === companyId;
+  }
+
+  /**
+   * Obtém o tenant efetivo.
+   *
+   * Para usuários comuns:
+   *   tenant = empresa da sessão.
+   *
+   * Para ADMIN:
+   *   pode utilizar companyId fornecido na requisição.
+   */
+  private resolveCompanyId(
+    req: AuthenticatedRequest,
+    requestedCompanyId?: string
+  ): string | null {
+    const user = req.user;
+
+    if (!user) {
+      return null;
+    }
+
+    /**
+     * Administrador da plataforma.
+     *
+     * Para manter compatibilidade com as rotas administrativas,
+     * permite selecionar a empresa explicitamente.
+     */
+    if (user.role === 'admin') {
+      return (
+        requestedCompanyId ||
+        this.getAuthenticatedCompanyId(req)
+      );
+    }
+
+    /**
+     * Usuário de empresa.
+     *
+     * Ignora qualquer companyId enviado pelo cliente e usa
+     * exclusivamente o companyId autenticado.
+     */
+    return this.getAuthenticatedCompanyId(req);
+  }
+
+  /**
+   * ============================================================
+   * CRIAR NOVO RISCO
+   * POST /api/internal-audit/risks
+   * ============================================================
+   */
+  async create(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<Response> {
     try {
       const {
-        companyId,
+        companyId: requestedCompanyId,
         auditPlanId,
         description,
         eventOrAsset,
@@ -28,249 +133,573 @@ export class AuditRiskController {
         treatmentDeadline,
         status,
       } = req.body;
-      const userId = req.user?._id?.toString();
+
+      const userId =
+        req.user?._id?.toString();
 
       if (!userId) {
-        return res.status(401).json({ error: 'Usuário não autenticado' });
+        return res.status(401).json({
+          error: 'Usuário não autenticado',
+        });
       }
 
+      const companyId =
+        this.resolveCompanyId(
+          req,
+          requestedCompanyId
+        );
+
       if (!companyId) {
-        return res.status(400).json({ error: 'companyId é obrigatório' });
+        return res.status(403).json({
+          error:
+            'Usuário não está vinculado a uma empresa',
+        });
+      }
+
+      /**
+       * Proteção adicional:
+       *
+       * Se um usuário comum tentar enviar outro companyId,
+       * bloqueamos explicitamente.
+       */
+      if (
+        requestedCompanyId &&
+        req.user?.role !== 'admin' &&
+        requestedCompanyId.toString() !== companyId
+      ) {
+        return res.status(403).json({
+          error:
+            'Acesso à empresa solicitada não autorizado',
+        });
       }
 
       if (!description) {
-        return res.status(400).json({ error: 'description é obrigatório' });
+        return res.status(400).json({
+          error: 'description é obrigatório',
+        });
       }
 
       if (!eventOrAsset) {
-        return res.status(400).json({ error: 'eventOrAsset é obrigatório' });
+        return res.status(400).json({
+          error: 'eventOrAsset é obrigatório',
+        });
       }
 
       if (!owner) {
-        return res.status(400).json({ error: 'owner é obrigatório' });
+        return res.status(400).json({
+          error: 'owner é obrigatório',
+        });
       }
 
       if (!threat) {
-        return res.status(400).json({ error: 'threat é obrigatório' });
+        return res.status(400).json({
+          error: 'threat é obrigatório',
+        });
       }
 
       if (!vulnerability) {
-        return res.status(400).json({ error: 'vulnerability é obrigatório' });
+        return res.status(400).json({
+          error: 'vulnerability é obrigatório',
+        });
       }
 
       if (!existingControl) {
-        return res.status(400).json({ error: 'existingControl é obrigatório' });
+        return res.status(400).json({
+          error: 'existingControl é obrigatório',
+        });
       }
 
-      if (!probability) {
-        return res.status(400).json({ error: 'probability é obrigatório' });
+      if (
+        probability === undefined ||
+        probability === null
+      ) {
+        return res.status(400).json({
+          error: 'probability é obrigatório',
+        });
       }
 
-      if (!impact) {
-        return res.status(400).json({ error: 'impact é obrigatório' });
+      if (
+        impact === undefined ||
+        impact === null
+      ) {
+        return res.status(400).json({
+          error: 'impact é obrigatório',
+        });
       }
 
       if (!riskClassification) {
-        return res.status(400).json({ error: 'riskClassification é obrigatório' });
+        return res.status(400).json({
+          error: 'riskClassification é obrigatório',
+        });
       }
 
-      const risk = await auditRiskService.create({
-        companyId,
-        auditPlanId,
-        description,
-        eventOrAsset,
-        owner,
-        threat,
-        vulnerability,
-        existingControl,
-        probability,
-        impact,
-        riskClassification,
-        treatment: treatment || 'mitigate',
-        treatmentPlan: treatmentPlan || '',
-        probabilityAfter: probabilityAfter || probability,
-        impactAfter: impactAfter || impact,
-        treatmentDeadline: treatmentDeadline ? new Date(treatmentDeadline) : undefined,
-        status: status || 'identified',
-        createdBy: userId,
-        updatedBy: userId,
-      });
+      /**
+       * IMPORTANTE:
+       *
+       * companyId não vem do body.
+       * Ele é definido pelo tenant autenticado.
+       */
+      const risk =
+        await auditRiskService.create({
+          companyId,
+
+          auditPlanId,
+
+          description,
+          eventOrAsset,
+          owner,
+          threat,
+          vulnerability,
+          existingControl,
+
+          probability,
+          impact,
+
+          riskClassification,
+
+          treatment:
+            treatment || 'mitigate',
+
+          treatmentPlan:
+            treatmentPlan || '',
+
+          probabilityAfter:
+            probabilityAfter || probability,
+
+          impactAfter:
+            impactAfter || impact,
+
+          treatmentDeadline:
+            treatmentDeadline
+              ? new Date(treatmentDeadline)
+              : undefined,
+
+          status:
+            status || 'identified',
+
+          createdBy: userId,
+          updatedBy: userId,
+        });
 
       return res.status(201).json(risk);
     } catch (error: any) {
-      return res.status(500).json({ error: error.message });
+      return res.status(500).json({
+        error: error.message,
+      });
     }
   }
 
   /**
-   * Buscar risco por ID
+   * ============================================================
+   * BUSCAR RISCO POR ID
    * GET /api/internal-audit/risks/:id
+   * ============================================================
    */
-  async findById(req: AuthenticatedRequest, res: Response): Promise<Response> {
+  async findById(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<Response> {
     try {
       const { id } = req.params;
 
       if (!id) {
-        return res.status(400).json({ error: 'ID é obrigatório' });
+        return res.status(400).json({
+          error: 'ID é obrigatório',
+        });
       }
 
-      const risk = await auditRiskService.findById(id);
+      const companyId =
+        this.resolveCompanyId(req);
+
+      if (!companyId) {
+        return res.status(403).json({
+          error:
+            'Usuário não está vinculado a uma empresa',
+        });
+      }
+
+      /**
+       * A consulta utiliza simultaneamente:
+       *
+       * _id
+       * companyId
+       *
+       * Portanto um risco de outra empresa não será retornado.
+       */
+      const risk =
+        await auditRiskService.findById(
+          companyId,
+          id
+        );
 
       if (!risk) {
-        return res.status(404).json({ error: 'Risco não encontrado' });
+        return res.status(404).json({
+          error: 'Risco não encontrado',
+        });
       }
 
       return res.json(risk);
     } catch (error: any) {
-      return res.status(500).json({ error: error.message });
+      return res.status(500).json({
+        error: error.message,
+      });
     }
   }
 
   /**
-   * Buscar risco por ID (identificador único)
-   * GET /api/internal-audit/risks/company/:companyId/risk-id/:riskId
+   * ============================================================
+   * BUSCAR RISCO PELO ID FUNCIONAL
+   * GET /risks/company/:companyId/risk-id/:riskId
+   * ============================================================
    */
-  async findByRiskId(req: AuthenticatedRequest, res: Response): Promise<Response> {
+  async findByRiskId(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<Response> {
     try {
-      const { companyId, riskId } = req.params;
+      const {
+        companyId: requestedCompanyId,
+        riskId,
+      } = req.params;
 
-      if (!companyId) {
-        return res.status(400).json({ error: 'companyId é obrigatório' });
+      if (!requestedCompanyId) {
+        return res.status(400).json({
+          error: 'companyId é obrigatório',
+        });
       }
 
       if (!riskId) {
-        return res.status(400).json({ error: 'riskId é obrigatório' });
+        return res.status(400).json({
+          error: 'riskId é obrigatório',
+        });
       }
 
-      const risk = await auditRiskService.findByRiskId(companyId, riskId);
+      if (
+        !this.canAccessCompany(
+          req,
+          requestedCompanyId
+        )
+      ) {
+        return res.status(403).json({
+          error:
+            'Acesso à empresa solicitada não autorizado',
+        });
+      }
+
+      const companyId =
+        this.resolveCompanyId(
+          req,
+          requestedCompanyId
+        );
+
+      if (!companyId) {
+        return res.status(403).json({
+          error:
+            'Empresa do usuário não identificada',
+        });
+      }
+
+      const risk =
+        await auditRiskService.findByRiskId(
+          companyId,
+          riskId
+        );
 
       if (!risk) {
-        return res.status(404).json({ error: 'Risco não encontrado' });
+        return res.status(404).json({
+          error: 'Risco não encontrado',
+        });
       }
 
       return res.json(risk);
     } catch (error: any) {
-      return res.status(500).json({ error: error.message });
+      return res.status(500).json({
+        error: error.message,
+      });
     }
   }
 
   /**
-   * Listar riscos de uma empresa
-   * GET /api/internal-audit/risks/company/:companyId
+   * ============================================================
+   * LISTAR RISCOS DE UMA EMPRESA
+   * GET /risks/company/:companyId
+   * ============================================================
    */
-  async findAllByCompany(req: AuthenticatedRequest, res: Response): Promise<Response> {
+  async findAllByCompany(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<Response> {
     try {
-      const { companyId } = req.params;
+      const {
+        companyId: requestedCompanyId,
+      } = req.params;
 
-      if (!companyId) {
-        return res.status(400).json({ error: 'companyId é obrigatório' });
+      if (!requestedCompanyId) {
+        return res.status(400).json({
+          error: 'companyId é obrigatório',
+        });
       }
 
-      const { status, riskLevel, auditPlanId, limit, skip } = req.query;
+      /**
+       * Impede que Empresa A consulte Empresa B.
+       */
+      if (
+        !this.canAccessCompany(
+          req,
+          requestedCompanyId
+        )
+      ) {
+        return res.status(403).json({
+          error:
+            'Acesso à empresa solicitada não autorizado',
+        });
+      }
 
-      const risks = await auditRiskService.findAllByCompany(companyId, {
-        status: status as string,
-        riskLevel: riskLevel as string,
-        auditPlanId: auditPlanId as string,
-        limit: limit ? parseInt(limit as string) : undefined,
-        skip: skip ? parseInt(skip as string) : undefined,
-      });
+      const companyId =
+        this.resolveCompanyId(
+          req,
+          requestedCompanyId
+        );
+
+      if (!companyId) {
+        return res.status(403).json({
+          error:
+            'Empresa do usuário não identificada',
+        });
+      }
+
+      const {
+        status,
+        riskLevel,
+        auditPlanId,
+        limit,
+        skip,
+      } = req.query;
+
+      const parsedLimit =
+        limit !== undefined
+          ? parseInt(limit as string, 10)
+          : undefined;
+
+      const parsedSkip =
+        skip !== undefined
+          ? parseInt(skip as string, 10)
+          : undefined;
+
+      const risks =
+        await auditRiskService.findAllByCompany(
+          companyId,
+          {
+            status: status as string,
+            riskLevel: riskLevel as string,
+            auditPlanId: auditPlanId as string,
+
+            limit:
+              parsedLimit &&
+              parsedLimit > 0
+                ? Math.min(parsedLimit, 100)
+                : undefined,
+
+            skip:
+              parsedSkip !== undefined &&
+              parsedSkip >= 0
+                ? parsedSkip
+                : undefined,
+          }
+        );
 
       return res.json(risks);
     } catch (error: any) {
-      return res.status(500).json({ error: error.message });
+      return res.status(500).json({
+        error: error.message,
+      });
     }
   }
 
   /**
-   * Atualizar risco
+   * ============================================================
+   * ATUALIZAR RISCO
    * PUT /api/internal-audit/risks/:id
+   * ============================================================
    */
-  async update(req: AuthenticatedRequest, res: Response): Promise<Response> {
+  async update(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<Response> {
     try {
       const { id } = req.params;
-      const userId = req.user?._id?.toString();
+
+      const userId =
+        req.user?._id?.toString();
 
       if (!userId) {
-        return res.status(401).json({ error: 'Usuário não autenticado' });
+        return res.status(401).json({
+          error: 'Usuário não autenticado',
+        });
       }
 
       if (!id) {
-        return res.status(400).json({ error: 'ID é obrigatório' });
+        return res.status(400).json({
+          error: 'ID é obrigatório',
+        });
       }
 
-      const data = req.body;
-      data.updatedBy = userId;
+      const companyId =
+        this.resolveCompanyId(req);
 
-      // Converter datas
+      if (!companyId) {
+        return res.status(403).json({
+          error:
+            'Usuário não está vinculado a uma empresa',
+        });
+      }
+
+      /**
+       * Criamos uma cópia para não modificar diretamente
+       * req.body.
+       */
+      const data = {
+        ...req.body,
+        updatedBy: userId,
+      };
+
+      /**
+       * Nunca permitir que o frontend altere o tenant.
+       */
+      delete data.companyId;
+      delete data._id;
+      delete data.id;
+
       if (data.treatmentDeadline) {
-        data.treatmentDeadline = new Date(data.treatmentDeadline);
-      }
-      if (data.treatedAt) {
-        data.treatedAt = new Date(data.treatedAt);
+        data.treatmentDeadline =
+          new Date(data.treatmentDeadline);
       }
 
-      const risk = await auditRiskService.update(id, data);
+      if (data.treatedAt) {
+        data.treatedAt =
+          new Date(data.treatedAt);
+      }
+
+      const risk =
+        await auditRiskService.update(
+          companyId,
+          id,
+          data
+        );
 
       if (!risk) {
-        return res.status(404).json({ error: 'Risco não encontrado' });
+        return res.status(404).json({
+          error: 'Risco não encontrado',
+        });
       }
 
       return res.json(risk);
     } catch (error: any) {
-      return res.status(500).json({ error: error.message });
+      return res.status(500).json({
+        error: error.message,
+      });
     }
   }
 
   /**
-   * Atualizar avaliação do risco
-   * PUT /api/internal-audit/risks/:id/assessment
+   * ============================================================
+   * ATUALIZAR AVALIAÇÃO
+   * PUT /risks/:id/assessment
+   * ============================================================
    */
-  async updateAssessment(req: AuthenticatedRequest, res: Response): Promise<Response> {
+  async updateAssessment(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<Response> {
     try {
       const { id } = req.params;
-      const { probability, impact } = req.body;
-      const userId = req.user?._id?.toString();
 
-      if (!userId) {
-        return res.status(401).json({ error: 'Usuário não autenticado' });
-      }
-
-      if (!id) {
-        return res.status(400).json({ error: 'ID é obrigatório' });
-      }
-
-      if (!probability) {
-        return res.status(400).json({ error: 'probability é obrigatório' });
-      }
-
-      if (!impact) {
-        return res.status(400).json({ error: 'impact é obrigatório' });
-      }
-
-      const risk = await auditRiskService.updateAssessment(id, {
+      const {
         probability,
         impact,
-        updatedBy: userId,
-      });
+      } = req.body;
+
+      const userId =
+        req.user?._id?.toString();
+
+      if (!userId) {
+        return res.status(401).json({
+          error: 'Usuário não autenticado',
+        });
+      }
+
+      if (!id) {
+        return res.status(400).json({
+          error: 'ID é obrigatório',
+        });
+      }
+
+      if (
+        probability === undefined ||
+        probability === null
+      ) {
+        return res.status(400).json({
+          error: 'probability é obrigatório',
+        });
+      }
+
+      if (
+        impact === undefined ||
+        impact === null
+      ) {
+        return res.status(400).json({
+          error: 'impact é obrigatório',
+        });
+      }
+
+      const companyId =
+        this.resolveCompanyId(req);
+
+      if (!companyId) {
+        return res.status(403).json({
+          error:
+            'Usuário não está vinculado a uma empresa',
+        });
+      }
+
+      const risk =
+        await auditRiskService.updateAssessment(
+          companyId,
+          id,
+          {
+            probability,
+            impact,
+            updatedBy: userId,
+          }
+        );
 
       if (!risk) {
-        return res.status(404).json({ error: 'Risco não encontrado' });
+        return res.status(404).json({
+          error: 'Risco não encontrado',
+        });
       }
 
       return res.json(risk);
     } catch (error: any) {
-      return res.status(500).json({ error: error.message });
+      return res.status(500).json({
+        error: error.message,
+      });
     }
   }
 
   /**
-   * Tratar risco
-   * POST /api/internal-audit/risks/:id/treat
+   * ============================================================
+   * TRATAR RISCO
+   * POST /risks/:id/treat
+   * ============================================================
    */
-  async treatRisk(req: AuthenticatedRequest, res: Response): Promise<Response> {
+  async treatRisk(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<Response> {
     try {
       const { id } = req.params;
+
       const {
         treatment,
         treatmentPlan,
@@ -278,212 +707,475 @@ export class AuditRiskController {
         impactAfter,
         treatmentDeadline,
       } = req.body;
-      const userId = req.user?._id?.toString();
+
+      const userId =
+        req.user?._id?.toString();
 
       if (!userId) {
-        return res.status(401).json({ error: 'Usuário não autenticado' });
+        return res.status(401).json({
+          error: 'Usuário não autenticado',
+        });
       }
 
       if (!id) {
-        return res.status(400).json({ error: 'ID é obrigatório' });
+        return res.status(400).json({
+          error: 'ID é obrigatório',
+        });
       }
 
       if (!treatment) {
-        return res.status(400).json({ error: 'treatment é obrigatório' });
+        return res.status(400).json({
+          error: 'treatment é obrigatório',
+        });
       }
 
       if (!treatmentPlan) {
-        return res.status(400).json({ error: 'treatmentPlan é obrigatório' });
+        return res.status(400).json({
+          error: 'treatmentPlan é obrigatório',
+        });
       }
 
-      if (!probabilityAfter) {
-        return res.status(400).json({ error: 'probabilityAfter é obrigatório' });
+      if (
+        probabilityAfter === undefined ||
+        probabilityAfter === null
+      ) {
+        return res.status(400).json({
+          error:
+            'probabilityAfter é obrigatório',
+        });
       }
 
-      if (!impactAfter) {
-        return res.status(400).json({ error: 'impactAfter é obrigatório' });
+      if (
+        impactAfter === undefined ||
+        impactAfter === null
+      ) {
+        return res.status(400).json({
+          error:
+            'impactAfter é obrigatório',
+        });
       }
 
-      const risk = await auditRiskService.treatRisk(id, {
-        treatment,
-        treatmentPlan,
-        probabilityAfter,
-        impactAfter,
-        treatmentDeadline: treatmentDeadline ? new Date(treatmentDeadline) : undefined,
-        treatedBy: userId,
-      });
+      const companyId =
+        this.resolveCompanyId(req);
+
+      if (!companyId) {
+        return res.status(403).json({
+          error:
+            'Usuário não está vinculado a uma empresa',
+        });
+      }
+
+      const risk =
+        await auditRiskService.treatRisk(
+          companyId,
+          id,
+          {
+            treatment,
+            treatmentPlan,
+            probabilityAfter,
+            impactAfter,
+
+            treatmentDeadline:
+              treatmentDeadline
+                ? new Date(
+                    treatmentDeadline
+                  )
+                : undefined,
+
+            treatedBy: userId,
+          }
+        );
 
       if (!risk) {
-        return res.status(404).json({ error: 'Risco não encontrado' });
+        return res.status(404).json({
+          error: 'Risco não encontrado',
+        });
       }
 
       return res.json(risk);
     } catch (error: any) {
-      return res.status(500).json({ error: error.message });
+      return res.status(500).json({
+        error: error.message,
+      });
     }
   }
 
   /**
-   * Monitorar risco
-   * PUT /api/internal-audit/risks/:id/monitor
+   * ============================================================
+   * MONITORAR RISCO
+   * PUT /risks/:id/monitor
+   * ============================================================
    */
-  async monitorRisk(req: AuthenticatedRequest, res: Response): Promise<Response> {
+  async monitorRisk(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<Response> {
     try {
       const { id } = req.params;
       const { status } = req.body;
-      const userId = req.user?._id?.toString();
+
+      const userId =
+        req.user?._id?.toString();
 
       if (!userId) {
-        return res.status(401).json({ error: 'Usuário não autenticado' });
+        return res.status(401).json({
+          error: 'Usuário não autenticado',
+        });
       }
 
       if (!id) {
-        return res.status(400).json({ error: 'ID é obrigatório' });
+        return res.status(400).json({
+          error: 'ID é obrigatório',
+        });
       }
 
       if (!status) {
-        return res.status(400).json({ error: 'status é obrigatório' });
+        return res.status(400).json({
+          error: 'status é obrigatório',
+        });
       }
 
-      if (status !== 'monitored' && status !== 'closed') {
-        return res.status(400).json({ error: 'Status inválido. Use "monitored" ou "closed"' });
+      if (
+        status !== 'monitored' &&
+        status !== 'closed'
+      ) {
+        return res.status(400).json({
+          error:
+            'Status inválido. Use "monitored" ou "closed"',
+        });
       }
 
-      const risk = await auditRiskService.monitorRisk(id, {
-        status,
-        updatedBy: userId,
-      });
+      const companyId =
+        this.resolveCompanyId(req);
+
+      if (!companyId) {
+        return res.status(403).json({
+          error:
+            'Usuário não está vinculado a uma empresa',
+        });
+      }
+
+      const risk =
+        await auditRiskService.monitorRisk(
+          companyId,
+          id,
+          {
+            status,
+            updatedBy: userId,
+          }
+        );
 
       if (!risk) {
-        return res.status(404).json({ error: 'Risco não encontrado' });
+        return res.status(404).json({
+          error: 'Risco não encontrado',
+        });
       }
 
       return res.json(risk);
     } catch (error: any) {
-      return res.status(500).json({ error: error.message });
+      return res.status(500).json({
+        error: error.message,
+      });
     }
   }
 
   /**
-   * Reabrir risco
-   * POST /api/internal-audit/risks/:id/reopen
+   * ============================================================
+   * REABRIR RISCO
+   * POST /risks/:id/reopen
+   * ============================================================
    */
-  async reopenRisk(req: AuthenticatedRequest, res: Response): Promise<Response> {
+  async reopenRisk(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<Response> {
     try {
       const { id } = req.params;
       const { reason } = req.body;
-      const userId = req.user?._id?.toString();
+
+      const userId =
+        req.user?._id?.toString();
 
       if (!userId) {
-        return res.status(401).json({ error: 'Usuário não autenticado' });
+        return res.status(401).json({
+          error: 'Usuário não autenticado',
+        });
       }
 
       if (!id) {
-        return res.status(400).json({ error: 'ID é obrigatório' });
+        return res.status(400).json({
+          error: 'ID é obrigatório',
+        });
       }
 
       if (!reason) {
-        return res.status(400).json({ error: 'reason é obrigatório' });
+        return res.status(400).json({
+          error: 'reason é obrigatório',
+        });
       }
 
-      const risk = await auditRiskService.reopenRisk(id, {
-        reason,
-        updatedBy: userId,
-      });
+      const companyId =
+        this.resolveCompanyId(req);
+
+      if (!companyId) {
+        return res.status(403).json({
+          error:
+            'Usuário não está vinculado a uma empresa',
+        });
+      }
+
+      const risk =
+        await auditRiskService.reopenRisk(
+          companyId,
+          id,
+          {
+            reason,
+            updatedBy: userId,
+          }
+        );
 
       if (!risk) {
-        return res.status(404).json({ error: 'Risco não encontrado' });
+        return res.status(404).json({
+          error: 'Risco não encontrado',
+        });
       }
 
       return res.json(risk);
     } catch (error: any) {
-      return res.status(500).json({ error: error.message });
+      return res.status(500).json({
+        error: error.message,
+      });
     }
   }
 
   /**
-   * Excluir risco
-   * DELETE /api/internal-audit/risks/:id
+   * ============================================================
+   * EXCLUIR RISCO
+   * DELETE /risks/:id
+   * ============================================================
    */
-  async delete(req: AuthenticatedRequest, res: Response): Promise<Response> {
+  async delete(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<Response> {
     try {
       const { id } = req.params;
 
       if (!id) {
-        return res.status(400).json({ error: 'ID é obrigatório' });
+        return res.status(400).json({
+          error: 'ID é obrigatório',
+        });
       }
 
-      const risk = await auditRiskService.delete(id);
+      const companyId =
+        this.resolveCompanyId(req);
+
+      if (!companyId) {
+        return res.status(403).json({
+          error:
+            'Usuário não está vinculado a uma empresa',
+        });
+      }
+
+      const risk =
+        await auditRiskService.delete(
+          companyId,
+          id
+        );
 
       if (!risk) {
-        return res.status(404).json({ error: 'Risco não encontrado' });
+        return res.status(404).json({
+          error: 'Risco não encontrado',
+        });
       }
 
-      return res.json({ message: 'Risco excluído com sucesso' });
+      return res.json({
+        message: 'Risco excluído com sucesso',
+      });
     } catch (error: any) {
-      return res.status(500).json({ error: error.message });
+      return res.status(500).json({
+        error: error.message,
+      });
     }
   }
 
   /**
-   * Obter estatísticas de riscos
-   * GET /api/internal-audit/risks/company/:companyId/stats
+   * ============================================================
+   * ESTATÍSTICAS
+   * GET /risks/company/:companyId/stats
+   * ============================================================
    */
-  async getStatistics(req: AuthenticatedRequest, res: Response): Promise<Response> {
+  async getStatistics(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<Response> {
     try {
-      const { companyId } = req.params;
+      const {
+        companyId: requestedCompanyId,
+      } = req.params;
 
-      if (!companyId) {
-        return res.status(400).json({ error: 'companyId é obrigatório' });
+      if (!requestedCompanyId) {
+        return res.status(400).json({
+          error: 'companyId é obrigatório',
+        });
       }
 
-      const stats = await auditRiskService.getStatistics(companyId);
+      if (
+        !this.canAccessCompany(
+          req,
+          requestedCompanyId
+        )
+      ) {
+        return res.status(403).json({
+          error:
+            'Acesso à empresa solicitada não autorizado',
+        });
+      }
+
+      const companyId =
+        this.resolveCompanyId(
+          req,
+          requestedCompanyId
+        );
+
+      if (!companyId) {
+        return res.status(403).json({
+          error:
+            'Empresa do usuário não identificada',
+        });
+      }
+
+      const stats =
+        await auditRiskService.getStatistics(
+          companyId
+        );
 
       return res.json(stats);
     } catch (error: any) {
-      return res.status(500).json({ error: error.message });
+      return res.status(500).json({
+        error: error.message,
+      });
     }
   }
 
   /**
-   * Obter riscos críticos
-   * GET /api/internal-audit/risks/company/:companyId/critical
+   * ============================================================
+   * RISCOS CRÍTICOS
+   * GET /risks/company/:companyId/critical
+   * ============================================================
    */
-  async getCriticalRisks(req: AuthenticatedRequest, res: Response): Promise<Response> {
+  async getCriticalRisks(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<Response> {
     try {
-      const { companyId } = req.params;
+      const {
+        companyId: requestedCompanyId,
+      } = req.params;
 
-      if (!companyId) {
-        return res.status(400).json({ error: 'companyId é obrigatório' });
+      if (!requestedCompanyId) {
+        return res.status(400).json({
+          error: 'companyId é obrigatório',
+        });
       }
 
-      const risks = await auditRiskService.getCriticalRisks(companyId);
+      if (
+        !this.canAccessCompany(
+          req,
+          requestedCompanyId
+        )
+      ) {
+        return res.status(403).json({
+          error:
+            'Acesso à empresa solicitada não autorizado',
+        });
+      }
+
+      const companyId =
+        this.resolveCompanyId(
+          req,
+          requestedCompanyId
+        );
+
+      if (!companyId) {
+        return res.status(403).json({
+          error:
+            'Empresa do usuário não identificada',
+        });
+      }
+
+      const risks =
+        await auditRiskService.getCriticalRisks(
+          companyId
+        );
 
       return res.json(risks);
     } catch (error: any) {
-      return res.status(500).json({ error: error.message });
+      return res.status(500).json({
+        error: error.message,
+      });
     }
   }
 
   /**
-   * Exportar riscos para formato de planilha
-   * GET /api/internal-audit/risks/company/:companyId/export
+   * ============================================================
+   * EXPORTAR RISCOS
+   * GET /risks/company/:companyId/export
+   * ============================================================
    */
-  async exportToSpreadsheet(req: AuthenticatedRequest, res: Response): Promise<Response> {
+  async exportToSpreadsheet(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<Response> {
     try {
-      const { companyId } = req.params;
+      const {
+        companyId: requestedCompanyId,
+      } = req.params;
 
-      if (!companyId) {
-        return res.status(400).json({ error: 'companyId é obrigatório' });
+      if (!requestedCompanyId) {
+        return res.status(400).json({
+          error: 'companyId é obrigatório',
+        });
       }
 
-      const data = await auditRiskService.exportToSpreadsheet(companyId);
+      if (
+        !this.canAccessCompany(
+          req,
+          requestedCompanyId
+        )
+      ) {
+        return res.status(403).json({
+          error:
+            'Acesso à empresa solicitada não autorizado',
+        });
+      }
+
+      const companyId =
+        this.resolveCompanyId(
+          req,
+          requestedCompanyId
+        );
+
+      if (!companyId) {
+        return res.status(403).json({
+          error:
+            'Empresa do usuário não identificada',
+        });
+      }
+
+      const data =
+        await auditRiskService.exportToSpreadsheet(
+          companyId
+        );
 
       return res.json(data);
     } catch (error: any) {
-      return res.status(500).json({ error: error.message });
+      return res.status(500).json({
+        error: error.message,
+      });
     }
   }
 }
 
-export const auditRiskController = new AuditRiskController();
+export const auditRiskController =
+  new AuditRiskController();
