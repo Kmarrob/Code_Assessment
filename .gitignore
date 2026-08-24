@@ -1,1 +1,4 @@
 DOCUMENTAÇÃO/*.txt
+
+# Build do frontend
+frontend/dist/
