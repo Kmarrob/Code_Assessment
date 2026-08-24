@@ -1,4 +1,3 @@
-```typescript
 import mongoose from 'mongoose';
 import { AuditPlan } from '../models/AuditPlan';
 import { AuditChecklist } from '../models/AuditChecklist';
@@ -1370,4 +1369,4 @@ export class AuditPlanService {
     };
   }
 }
-```
+
