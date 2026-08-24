@@ -20,10 +20,10 @@ export function RepAuditChecklist() {
 
   // Hooks do React Query
   const {
-    useChecklistsByPlan,
-    useUpdateChecklist,
-    useCompleteChecklist,
-  } = useAudit();
+  useChecklists,
+  useUpdateChecklist,
+  useCompleteChecklist,
+} = useAudit;
 
   // Buscar checklists do plano
   const {
@@ -31,8 +31,7 @@ export function RepAuditChecklist() {
     isLoading,
     error,
     refetch,
-  } = useChecklistsByPlan(planId || '');
-
+} = useChecklists(planId || '');
   // Buscar respostas dos usuários diretamente
   useEffect(() => {
     const fetchResponses = async () => {
