@@ -61,6 +61,14 @@ export class AuditPlanService {
   // MÉTODOS AUXILIARES — FONTE DOS CONTROLES DA EMPRESA
   // ============================================================
 
+  /**
+   * Busca os controles atribuídos à empresa.
+   *
+   * Fonte: Company.assignedControls (ObjectId[] referenciando Control).
+   * Quando a empresa é criada, os 93 controles ISO 27001 são
+   * atribuídos automaticamente. Este método retorna os IDs
+   * desses controles no formato string.
+   */
   async getAllCompanyControls(companyId: string): Promise<string[]> {
     if (!companyId) {
       throw new Error('ID da empresa é obrigatório para buscar controles');
@@ -91,6 +99,9 @@ export class AuditPlanService {
     );
   }
 
+  /**
+   * Conta o total de controles atribuídos à empresa.
+   */
   async getTotalAvailableControls(companyId: string): Promise<number> {
     const controls = await this.getAllCompanyControls(companyId);
     return controls.length;
@@ -190,10 +201,10 @@ export class AuditPlanService {
     let effectiveControls: string[];
 
     if (requestedMode === 'custom') {
-      const requestedControls = Array.isArray(data.scope?.controls)
-        ? data.scope.controls
+      const requestedControls: string[] = Array.isArray(data.scope?.controls)
+        ? (data.scope.controls as unknown[])
             .filter(Boolean)
-            .map((c) => String(c).trim())
+            .map((c: unknown) => String(c).trim())
         : [];
 
       if (requestedControls.length === 0) {
@@ -700,10 +711,10 @@ export class AuditPlanService {
 
         const companyControlSet = new Set(allCompanyControls);
 
-        const requestedControls = Array.isArray(incomingScope.controls)
-          ? incomingScope.controls
+        const requestedControls: string[] = Array.isArray(incomingScope.controls)
+          ? (incomingScope.controls as unknown[])
               .filter(Boolean)
-              .map((c: string) => String(c).trim())
+              .map((c: unknown) => String(c).trim())
           : [];
 
         const invalidControls = requestedControls.filter(
@@ -1059,6 +1070,10 @@ export class AuditPlanService {
     }
 
     const exclusion = plan.scope.excludedControls[exclusionIndex];
+
+    if (!exclusion) {
+      throw new Error('Exclusão não encontrada para este controle');
+    }
 
     const isAuthor = exclusion.excludedBy === userId;
     const isLeadAuditor = plan.team.leadAuditor === userId;
