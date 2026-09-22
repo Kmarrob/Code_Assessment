@@ -1,5 +1,9 @@
 // ============================================================
-// TIPOS DO MÓDULO DE AUDITORIA INTERNA (FRONTEND)
+// TIPOS DO MÓDULO DE AUDITORIA INTERNA
+// ============================================================
+
+// ============================================================
+// TIPOS BASE
 // ============================================================
 
 export type AuditStatus =
@@ -12,22 +16,6 @@ export type AuditStatus =
   | 'completed'
   | 'cancelled';
 
-/**
- * Tipo de constatação de auditoria.
- *
- * Valores alinhados com:
- *   - Modelo AuditFinding.ts (enum MongoDB)
- *   - Schema Zod (createAuditFindingSchema)
- *   - Documento "Exemplo - RELATÓRIO DE AUDITORIA.docx"
- *   - ISO 19011:2018
- *
- * Siglas:
- *   NC_A = Não Conformidade Maior
- *   NC_B = Não Conformidade Menor
- *   CM   = Comentário
- *   OM   = Oportunidade de Melhoria
- *   AP   = Boas Práticas / Aspecto Positivo
- */
 export type AuditFindingType =
   | 'NC_A'
   | 'NC_B'
@@ -59,27 +47,255 @@ export type AuditChecklistStatus =
   | 'in_progress'
   | 'completed';
 
-// ============================================================
-// TIPOS DE ESCOPO E EXCLUSÃO (Opção C)
-// ============================================================
-
-/**
- * Modo de definição do escopo do plano de auditoria.
- *
- * - 'all'    → Todos os controles da empresa entram no escopo.
- *              Exclusões são feitas via excludedControls.
- *
- * - 'custom' → Apenas os controles informados em scope.controls
- *              entram no escopo. Não permite excludedControls.
- */
 export type AuditScopeMode = 'all' | 'custom';
 
-/**
- * Registro de exclusão de controle do escopo.
- *
- * Mantido no plano para rastreabilidade (ISO 19011:2018).
- * Toda exclusão exige justificativa e aprovação do Auditor Líder.
- */
+// ============================================================
+// TIPOS — PROGRAMA DE AUDITORIAS
+// ============================================================
+
+export type AuditProgramStatus =
+  | 'draft'
+  | 'approved'
+  | 'active'
+  | 'archived';
+
+export type SectorImportance = 'critical' | 'standard';
+
+export type SectorFrequency = 'annual' | 'semiannual' | 'quarterly';
+
+export type ExternalAuditStatus =
+  | 'not_planned'
+  | 'scheduled'
+  | 'in_progress'
+  | 'completed'
+  | 'cancelled';
+
+export interface IAuditProgramSector {
+  name: string;
+  processes: string[];
+  importance: SectorImportance;
+  scoreA: number;
+  scoreB: number;
+  frequency: SectorFrequency;
+  nextAuditDate?: Date;
+}
+
+export interface IAuditProgramSupplierAudit {
+  supplierName: string;
+  supplierId?: string;
+  auditDate: Date;
+  scope: string;
+}
+
+export interface IAuditProgramExternalAudit {
+  plannedDate?: Date;
+  certificationBody?: string;
+  scope?: string;
+  status: ExternalAuditStatus;
+}
+
+export interface IAuditProgramActivity {
+  name: string;
+  description?: string;
+  scheduledDate: Date;
+}
+
+export interface IAuditProgram {
+  _id: string;
+  id: string;
+
+  companyId: string;
+  year: number;
+
+  sectors: IAuditProgramSector[];
+  supplierAudits: IAuditProgramSupplierAudit[];
+  externalAudit: IAuditProgramExternalAudit;
+  otherActivities: IAuditProgramActivity[];
+
+  observations?: string;
+
+  status: AuditProgramStatus;
+
+  createdBy: string;
+  createdAt: Date;
+  updatedAt: Date;
+
+  deletedAt?: Date;
+}
+
+// ============================================================
+// TIPOS — DECLARAÇÃO DE APLICABILIDADE (SoA)
+// ============================================================
+
+export interface IAuditSoAMotivators {
+  business: boolean;
+  risk: boolean;
+  legal: boolean;
+  contract: boolean;
+}
+
+export interface IAuditSoAControl {
+  clause: string;
+  title: string;
+  objective: string;
+  motivators: IAuditSoAMotivators;
+  applicable: boolean;
+  justification?: string;
+  lastAssessmentDate?: Date;
+  implemented: boolean;
+  implementationDate?: Date;
+  responsible?: string;
+  evidence?: string;
+}
+
+export interface IAuditSoAStatistics {
+  total: number;
+  applicable: number;
+  notApplicable: number;
+  implemented: number;
+  notImplemented: number;
+}
+
+export interface IAuditSoA {
+  _id: string;
+  id: string;
+
+  companyId: string;
+  version: string;
+
+  controls: IAuditSoAControl[];
+
+  statistics: IAuditSoAStatistics;
+
+  observations?: string;
+
+  status: 'draft' | 'approved' | 'archived';
+
+  createdBy: string;
+  approvedBy?: string;
+  approvedAt?: Date;
+
+  createdAt: Date;
+  updatedAt: Date;
+
+  deletedAt?: Date;
+}
+
+// ============================================================
+// TIPOS — GESTÃO DE RISCOS
+// ============================================================
+
+export type RiskTreatment = 'accept' | 'mitigate' | 'transfer' | 'avoid';
+
+export type RiskStatus =
+  | 'identified'
+  | 'analyzed'
+  | 'treated'
+  | 'monitored'
+  | 'closed';
+
+export interface IAuditRisk {
+  _id: string;
+  id: string;
+
+  companyId: string;
+  auditPlanId?: string;
+
+  riskId: string;
+
+  description: string;
+  eventOrAsset: string;
+  owner: string;
+
+  threat: string;
+  vulnerability: string;
+  existingControl: string;
+
+  probability: number;
+  impact: number;
+  riskLevel: number;
+  riskClassification: string;
+
+  treatment: RiskTreatment;
+  treatmentPlan?: string;
+  probabilityAfter?: number;
+  impactAfter?: number;
+  residualRisk?: number;
+  treatmentDeadline?: Date;
+
+  status: RiskStatus;
+
+  createdBy: string;
+  createdAt: Date;
+  updatedAt: Date;
+
+  deletedAt?: Date;
+}
+
+// ============================================================
+// TIPOS — REVISÃO DE DOCUMENTAÇÃO
+// ============================================================
+
+export type DocumentReviewStatus =
+  | 'OK'
+  | 'NC_A'
+  | 'NC_B'
+  | 'PI'
+  | 'GP'
+  | 'CM'
+  | '--';
+
+export interface IAuditDocumentReviewItem {
+  clause: string;
+  requirement: string;
+  status: DocumentReviewStatus;
+  observations?: string;
+  reviewer: string;
+  reviewDate: Date;
+  documentId?: string;
+  documentName?: string;
+}
+
+export interface IAuditDocumentReviewSummary {
+  total: number;
+  ok: number;
+  ncA: number;
+  ncB: number;
+  pi: number;
+  gp: number;
+  cm: number;
+  pending: number;
+}
+
+export interface IAuditDocumentReview {
+  _id: string;
+  id: string;
+
+  companyId: string;
+  auditPlanId: string;
+
+  documents: IAuditDocumentReviewItem[];
+
+  summary: IAuditDocumentReviewSummary;
+
+  observations?: string;
+
+  status: 'pending' | 'in_progress' | 'completed';
+
+  createdBy: string;
+  completedBy?: string;
+  completedAt?: Date;
+
+  createdAt: Date;
+  updatedAt: Date;
+
+  deletedAt?: Date;
+}
+
+// ============================================================
+// TIPOS — ESCOPO E EXCLUSÃO (Opção C)
+// ============================================================
+
 export interface IAuditExcludedControl {
   controlId: string;
   reason: string;
@@ -90,175 +306,135 @@ export interface IAuditExcludedControl {
 }
 
 // ============================================================
-// PLANO DE AUDITORIA
+// TIPOS — PLANO DE AUDITORIA
 // ============================================================
 
-export interface AuditPlan {
+export interface IAuditPlanScope {
+  mode: AuditScopeMode;
+  controls: string[];
+  excludedControls: IAuditExcludedControl[];
+  processes: string[];
+  areas: string[];
+  totalAvailableControls: number;
+}
+
+export interface IAuditPlanTeam {
+  leadAuditor: string;
+  auditors: string[];
+  observers: string[];
+  specialists?: string[];
+}
+
+export interface IAuditPlanPeriod {
+  startDate: Date;
+  endDate: Date;
+  estimatedDays: number;
+}
+
+export interface IAuditPlan {
   _id: string;
   id: string;
 
-  // Empresa
   companyId: string;
 
-  // Identificação
   title: string;
   description: string;
   code?: string;
 
-  // Programa de auditoria
   programId?: string;
 
-  // Escopo
-  scope: {
-    mode: AuditScopeMode;
-    controls: string[];
-    excludedControls: IAuditExcludedControl[];
-    processes: string[];
-    areas: string[];
-    totalAvailableControls: number;
-  };
+  scope: IAuditPlanScope;
+  period: IAuditPlanPeriod;
+  team: IAuditPlanTeam;
 
-  // Período
-  period: {
-    startDate: string;
-    endDate: string;
-    estimatedDays?: number;
-  };
-
-  // Equipe
-  team: {
-    leadAuditor: string;
-    auditors: string[];
-    observers: string[];
-    specialists?: string[];
-  };
-
-  // Critérios
   criteria: string[];
 
-  // Status
   status: AuditStatus;
 
-  // Criação
   createdBy: string;
-  createdAt: string;
+  createdAt: Date;
 
-  // Aprovação
   approvedBy?: string;
-  approvedAt?: string;
+  approvedAt?: Date;
 
-  // Rejeição
   rejectionReason?: string;
 
-  // Execução
-  startedAt?: string;
-  completedAt?: string;
+  startedAt?: Date;
+  completedAt?: Date;
   completedBy?: string;
 
-  // Observações
   observations?: string;
 
-  // Atualização
-  updatedAt: string;
+  updatedAt: Date;
 
-  // Soft delete
-  deletedAt?: string;
+  deletedAt?: Date;
 }
 
 // ============================================================
-// CHECKLIST DE AUDITORIA
+// TIPOS — CHECKLIST DE AUDITORIA
 // ============================================================
 
-/**
- * Interface legada/compatibilidade.
- *
- * Mantida para evitar quebra de componentes ou serviços
- * que ainda utilizem a nomenclatura descritiva dos resultados.
- */
 export interface IAuditChecklistItem {
   question: string;
-
   answer:
     | 'conforme'
     | 'nao_conforme'
     | 'nao_aplicavel';
-
   observations: string;
-
   evidenceIds: string[];
-
   responsible?: string;
-
-  answeredAt?: string;
-
+  answeredAt?: Date;
   answeredBy?: string;
 }
 
-/**
- * Interface principal utilizada pelo modelo AuditChecklist.
- */
-export interface AuditChecklistQuestion {
+export interface IAuditChecklistQuestion {
   question: string;
-
-  /**
-   * C  = Conforme
-   * NC = Não Conforme
-   * OB = Observação
-   * OM = Oportunidade
-   * NA = Não Aplicável
-   * -- = Não Respondido
-   */
   answer: 'C' | 'NC' | 'NA' | 'OB' | 'OM' | '--';
-
   observations: string;
-
   evidenceIds: string[];
-
   responsible: string;
-
-  answeredAt?: string;
-
+  answeredAt?: Date;
   answeredBy?: string;
 }
 
-export interface AuditChecklist {
-  _id: string;
+export interface IAuditChecklistStatistics {
+  total: number;
+  conforme: number;
+  nonConforme: number;
+  observacao: number;
+  oportunidade: number;
+  naoAplicavel: number;
+}
 
+export interface IAuditChecklist {
+  _id: string;
   id: string;
 
   auditPlanId: string;
-
   controlId: string;
 
-  questions: AuditChecklistQuestion[];
+  questions: IAuditChecklistQuestion[];
 
-  statistics: {
-    total: number;
-    conforme: number;
-    nonConforme: number;
-    observacao: number;
-    oportunidade: number;
-    naoAplicavel: number;
-  };
+  statistics: IAuditChecklistStatistics;
 
   status: AuditChecklistStatus;
 
   completedBy?: string;
-  completedAt?: string;
+  completedAt?: Date;
 
   createdBy: string;
   updatedBy?: string;
-  createdAt: string;
-  updatedAt: string;
+  createdAt: Date;
+  updatedAt: Date;
 
-  deletedAt?: string;
+  deletedAt?: Date;
 }
 
 // ============================================================
-// NÃO CONFORMIDADE (FINDING)
+// TIPOS — NÃO CONFORMIDADE (FINDING)
 // ============================================================
 
-export interface AuditFinding {
+export interface IAuditFinding {
   _id: string;
   id: string;
 
@@ -266,7 +442,6 @@ export interface AuditFinding {
   checklistId?: string;
 
   number: string;
-
   type: AuditFindingType;
 
   title: string;
@@ -274,37 +449,37 @@ export interface AuditFinding {
 
   area: string;
   process: string;
-
   clause: string;
-
   controlId?: string;
 
   evidenceIds: string[];
-
   actionPlanIds: string[];
 
-  deadline?: string;
+  deadline?: Date;
 
   status: AuditFindingStatus;
 
   createdBy: string;
-  createdAt: string;
+  createdAt: Date;
 
   validatedBy?: string;
-  validatedAt?: string;
-
+  validatedAt?: Date;
   validationComment?: string;
 
-  updatedAt: string;
+  reopenedAt?: Date;
+  reopenedBy?: string;
+  reopenReason?: string;
 
-  deletedAt?: string;
+  updatedAt: Date;
+
+  deletedAt?: Date;
 }
 
 // ============================================================
-// EVIDÊNCIA DE AUDITORIA
+// TIPOS — EVIDÊNCIA DE AUDITORIA
 // ============================================================
 
-export interface AuditEvidence {
+export interface IAuditEvidence {
   _id: string;
   id: string;
 
@@ -319,16 +494,16 @@ export interface AuditEvidence {
   description: string;
 
   uploadedBy: string;
-  uploadedAt: string;
+  uploadedAt: Date;
 
-  deletedAt?: string;
+  deletedAt?: Date;
 }
 
 // ============================================================
-// PLANO DE AÇÃO
+// TIPOS — PLANO DE AÇÃO
 // ============================================================
 
-export interface AuditActionPlan {
+export interface IAuditActionPlan {
   _id: string;
   id: string;
 
@@ -341,30 +516,30 @@ export interface AuditActionPlan {
 
   responsible: string;
 
-  deadline: string;
+  deadline: Date;
 
   evidenceIds: string[];
 
   status: AuditActionStatus;
 
   createdBy: string;
-  createdAt: string;
+  createdAt: Date;
 
   validatedBy?: string;
-  validatedAt?: string;
+  validatedAt?: Date;
   validationComment?: string;
 
-  updatedAt: string;
+  updatedAt: Date;
   updatedBy?: string;
 
-  deletedAt?: string;
+  deletedAt?: Date;
 }
 
 // ============================================================
-// RELATÓRIO DE AUDITORIA
+// TIPOS — RELATÓRIO DE AUDITORIA
 // ============================================================
 
-export interface AuditReportFinding {
+export interface IAuditReportFinding {
   id: string;
   number: string;
 
@@ -375,22 +550,20 @@ export interface AuditReportFinding {
 
   area: string;
   process: string;
-
   clause: string;
 
   status: AuditFindingStatus;
 
   evidenceIds: string[];
-
   actionPlanIds: string[];
 
   createdBy: string;
-  createdAt: string;
+  createdAt: Date;
 
-  updatedAt: string;
+  updatedAt: Date;
 }
 
-export interface AuditReport {
+export interface IAuditReport {
   _id: string;
   id: string;
 
@@ -412,44 +585,34 @@ export interface AuditReport {
   summary: string;
   conclusion: string;
 
-  findings: AuditReportFinding[];
+  findings: IAuditReportFinding[];
 
   recommendations: string[];
 
   status: AuditReportStatus;
 
   createdBy: string;
-  createdAt: string;
+  createdAt: Date;
 
   approvedBy?: string;
-  approvedAt?: string;
+  approvedAt?: Date;
 
   rejectionReason?: string;
 
-  updatedAt: string;
+  updatedAt: Date;
 
-  deletedAt?: string;
+  deletedAt?: Date;
 }
 
 // ============================================================
-// DTOs - PLANO DE AUDITORIA
+// DTOs — PLANO DE AUDITORIA
 // ============================================================
 
 export interface CreateAuditPlanDTO {
   code?: string;
   title: string;
-
   description: string;
 
-  /**
-   * Escopo do plano.
-   *
-   * - mode 'all' (padrão): todos os controles da empresa.
-   *   Neste caso, scope.controls é ignorado no create
-   *   (o service popula automaticamente).
-   *
-   * - mode 'custom': apenas os controles informados em controls.
-   */
   scope: {
     mode?: AuditScopeMode;
     controls?: string[];
@@ -476,7 +639,6 @@ export interface CreateAuditPlanDTO {
 
 export interface UpdateAuditPlanDTO {
   title?: string;
-
   description?: string;
 
   scope?: {
@@ -505,7 +667,7 @@ export interface UpdateAuditPlanDTO {
 }
 
 // ============================================================
-// DTOs - EXCLUSÃO DE CONTROLE
+// DTOs — EXCLUSÃO DE CONTROLE
 // ============================================================
 
 export interface ExcludeControlDTO {
@@ -526,115 +688,77 @@ export interface RemoveExclusionDTO {
 }
 
 // ============================================================
-// DTOs - NÃO CONFORMIDADE
+// DTOs — NÃO CONFORMIDADE
 // ============================================================
 
 export interface CreateAuditFindingDTO {
   type: AuditFindingType;
-
   title: string;
-
   description: string;
-
   area: string;
-
   process: string;
-
   clause: string;
-
   controlId?: string;
-
   evidenceIds?: string[];
-
   deadline?: Date | string;
 }
 
 export interface UpdateAuditFindingDTO {
   title?: string;
-
   description?: string;
-
   area?: string;
-
   process?: string;
-
   clause?: string;
-
   evidenceIds?: string[];
-
   status?: AuditFindingStatus;
-
   deadline?: Date | string;
 }
 
 // ============================================================
-// DTOs - PLANO DE AÇÃO
+// DTOs — PLANO DE AÇÃO
 // ============================================================
 
 export interface CreateAuditActionPlanDTO {
   findingId: string;
-
   action: string;
-
   description?: string;
-
   responsible: string;
-
   deadline: Date | string;
 }
 
 export interface UpdateAuditActionPlanDTO {
   action?: string;
-
   description?: string;
-
   responsible?: string;
-
   deadline?: Date | string;
-
   evidenceIds?: string[];
-
   status?: AuditActionStatus;
 }
 
 // ============================================================
-// DTOs - RELATÓRIO DE AUDITORIA
+// DTOs — RELATÓRIO DE AUDITORIA
 // ============================================================
 
 export interface CreateAuditReportDTO {
   auditPlanId: string;
-
   summary: string;
-
   conclusion: string;
-
   recommendations: string[];
-
-  findings: AuditReportFinding[];
+  findings: IAuditReportFinding[];
 }
 
 export interface UpdateAuditReportDTO {
   summary?: string;
-
   conclusion?: string;
-
   recommendations?: string[];
-
-  findings?: AuditReportFinding[];
-
+  findings?: IAuditReportFinding[];
   status?: AuditReportStatus;
 }
 
 // ============================================================
-// DTOs - RISCO (frontend)
+// DTOs — RISCO (frontend + backend)
 // ============================================================
 
-/**
- * DTO para criação de risco (frontend).
- *
- * Mantido em paridade com o schema Zod do backend
- * (createAuditRiskSchema).
- */
 export interface CreateAuditRiskDTO {
   companyId?: string;
   auditPlanId?: string;
@@ -647,17 +771,14 @@ export interface CreateAuditRiskDTO {
   probability: number;
   impact: number;
   riskClassification: string;
-  treatment?: 'accept' | 'mitigate' | 'transfer' | 'avoid';
+  treatment?: RiskTreatment;
   treatmentPlan?: string;
   probabilityAfter?: number;
   impactAfter?: number;
   treatmentDeadline?: Date | string;
-  status?: 'identified' | 'analyzed' | 'treated' | 'monitored' | 'closed';
+  status?: RiskStatus;
 }
 
-/**
- * DTO para atualização de risco (frontend).
- */
 export interface UpdateAuditRiskDTO {
   description?: string;
   eventOrAsset?: string;
@@ -668,87 +789,121 @@ export interface UpdateAuditRiskDTO {
   probability?: number;
   impact?: number;
   riskClassification?: string;
-  treatment?: 'accept' | 'mitigate' | 'transfer' | 'avoid';
+  treatment?: RiskTreatment;
   treatmentPlan?: string;
   probabilityAfter?: number;
   impactAfter?: number;
   treatmentDeadline?: Date | string;
-  status?: 'identified' | 'analyzed' | 'treated' | 'monitored' | 'closed';
+  status?: RiskStatus;
 }
 
 // ============================================================
-// FILTROS E CONSULTAS
+// DTOs — PROGRAMA DE AUDITORIAS
+// ============================================================
+
+export interface CreateAuditProgramDTO {
+  companyId: string;
+  year: number;
+  sectors?: IAuditProgramSector[];
+  supplierAudits?: IAuditProgramSupplierAudit[];
+  externalAudit?: IAuditProgramExternalAudit;
+  otherActivities?: IAuditProgramActivity[];
+  observations?: string;
+}
+
+export interface UpdateAuditProgramDTO {
+  year?: number;
+  sectors?: IAuditProgramSector[];
+  supplierAudits?: IAuditProgramSupplierAudit[];
+  externalAudit?: IAuditProgramExternalAudit;
+  otherActivities?: IAuditProgramActivity[];
+  observations?: string;
+}
+
+// ============================================================
+// DTOs — DECLARAÇÃO DE APLICABILIDADE (SoA)
+// ============================================================
+
+export interface CreateAuditSoADTO {
+  companyId: string;
+  version?: string;
+  controls?: IAuditSoAControl[];
+  observations?: string;
+}
+
+export interface UpdateAuditSoADTO {
+  version?: string;
+  controls?: IAuditSoAControl[];
+  observations?: string;
+}
+
+// ============================================================
+// DTOs — REVISÃO DE DOCUMENTAÇÃO
+// ============================================================
+
+export interface CreateAuditDocumentReviewDTO {
+  companyId: string;
+  auditPlanId: string;
+  documents?: IAuditDocumentReviewItem[];
+  observations?: string;
+}
+
+export interface UpdateAuditDocumentReviewDTO {
+  documents?: IAuditDocumentReviewItem[];
+  observations?: string;
+}
+
+// ============================================================
+// FILTROS
 // ============================================================
 
 export interface AuditFilters {
   companyId?: string;
-
   status?: AuditStatus;
-
   startDate?: Date;
-
   endDate?: Date;
-
   leadAuditor?: string;
-
   auditor?: string;
-
   search?: string;
 }
 
 export interface AuditFindingFilters {
   auditPlanId?: string;
-
   type?: AuditFindingType;
-
   status?: AuditFindingStatus;
-
   area?: string;
-
   createdBy?: string;
 }
 
 export interface AuditReportFilters {
   auditPlanId?: string;
-
   status?: AuditReportStatus;
-
   createdBy?: string;
 }
 
 // ============================================================
-// ESTATÍSTICAS DE AUDITORIA
+// ESTATÍSTICAS
 // ============================================================
 
 export interface AuditStats {
   totalPlans: number;
-
   totalAudits: number;
-
   totalFindings: number;
-
   totalNcA: number;
-
   totalNcB: number;
-
   openFindings: number;
-
   closedFindings: number;
-
   pendingActions: number;
-
   completedActions: number;
 }
 
 export interface AuditFindingStats {
   total: number;
-
   ncA: number;
   ncB: number;
   comment: number;
   opportunity: number;
   positive: number;
-
   open: number;
   inProgress: number;
   pendingValidation: number;
@@ -758,27 +913,23 @@ export interface AuditFindingStats {
 
 export interface AuditChecklistStats {
   total: number;
-
   conforme: number;
   nonConforme: number;
   observacao: number;
   oportunidade: number;
   naoAplicavel: number;
-
   pending: number;
   inProgress: number;
   completed: number;
 }
 
 // ============================================================
-// PERGUNTAS PRÉ-DEFINIDAS PARA CHECKLIST
+// PERGUNTAS
 // ============================================================
 
 export interface IAuditQuestion {
   controlId: string;
-
   question: string;
-
   category:
     | 'organizational'
     | 'people'
