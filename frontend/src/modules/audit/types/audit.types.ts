@@ -163,19 +163,39 @@ export interface AuditReport {
 export interface AuditRisk {
   _id: string;
   id: string;
+
+  // Identificação
   companyId: string;
   auditPlanId: string;
   riskId: string;
+
+  // Análise do risco
   description: string;
+  eventOrAsset: string;
   owner: string;
   threat: string;
   vulnerability: string;
+  existingControl: string;
+
+  // Avaliação do risco inerente
   probability: 'baixa' | 'media' | 'alta' | 'critica';
   impact: 'baixo' | 'medio' | 'alto' | 'critico';
   riskLevel: AuditRiskLevel;
+  classification: string;
+
+  // Tratamento
   treatment: string;
+  treatmentPlan: string;
+
+  // Avaliação do risco residual
+  residualProbability: 'baixa' | 'media' | 'alta' | 'critica';
+  residualImpact: 'baixo' | 'medio' | 'alto' | 'critico';
   residualRisk: string;
+
+  // Controle do ciclo de vida
   status: AuditRiskStatus;
+
+  // Auditoria do registro
   createdBy: string;
   createdAt: string;
   updatedAt: string;
@@ -378,23 +398,45 @@ export interface UpdateAuditReportDTO {
 
 export interface CreateAuditRiskDTO {
   description: string;
+  eventOrAsset: string;
   owner: string;
   threat: string;
   vulnerability: string;
+  existingControl: string;
+
   probability: 'baixa' | 'media' | 'alta' | 'critica';
   impact: 'baixo' | 'medio' | 'alto' | 'critico';
-  treatment?: string;
+
+  classification?: string;
+
+  treatment: string;
+  treatmentPlan: string;
+
+  residualProbability: 'baixa' | 'media' | 'alta' | 'critica';
+  residualImpact: 'baixo' | 'medio' | 'alto' | 'critico';
+
   residualRisk?: string;
 }
 
 export interface UpdateAuditRiskDTO {
   description?: string;
+  eventOrAsset?: string;
   owner?: string;
   threat?: string;
   vulnerability?: string;
+  existingControl?: string;
+
   probability?: 'baixa' | 'media' | 'alta' | 'critica';
   impact?: 'baixo' | 'medio' | 'alto' | 'critico';
+
+  classification?: string;
+
   treatment?: string;
+  treatmentPlan?: string;
+
+  residualProbability?: 'baixa' | 'media' | 'alta' | 'critica';
+  residualImpact?: 'baixo' | 'medio' | 'alto' | 'critico';
+
   residualRisk?: string;
   status?: AuditRiskStatus;
 }

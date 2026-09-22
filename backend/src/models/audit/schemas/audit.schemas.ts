@@ -4,32 +4,137 @@ import { z } from 'zod';
 // SCHEMAS EXISTENTES (MANTER)
 // ============================================================
 
+/**
+ * Schema para criação de um controle excluído do escopo.
+ *
+ * Usado no createAuditPlanSchema para aceitar exclusões
+ * enviadas junto com o payload do plano.
+ */
+const excludedControlPayloadSchema = z.object({
+  controlId: z.string().min(1, 'ID do controle é obrigatório'),
+  reason: z
+    .string()
+    .min(20, 'A justificativa da exclusão deve ter no mínimo 20 caracteres')
+    .max(1000, 'A justificativa não pode exceder 1000 caracteres'),
+});
+
 export const createAuditPlanSchema = z.object({
   title: z.string().min(3, 'Título deve ter no mínimo 3 caracteres'),
   description: z.string().min(10, 'Descrição deve ter no mínimo 10 caracteres'),
   companyId: z.string(),
   programId: z.string().optional(),
-  scope: z.object({
-    controls: z.array(z.string()),
-    processes: z.array(z.string()),
-    areas: z.array(z.string()),
-  }),
+
+  /**
+   * Escopo do plano de auditoria.
+   *
+   * - mode 'all' (padrão): todos os controles da empresa.
+   *   Neste caso, scope.controls pode vir vazio (o service popula).
+   *   Exclusões são feitas via scope.excludedControls.
+   *
+   * - mode 'custom': apenas os controles informados em controls.
+   *   Neste caso, scope.controls é obrigatório e não vazio.
+   */
+  scope: z
+    .object({
+      mode: z.enum(['all', 'custom']).optional().default('all'),
+      controls: z.array(z.string()).optional().default([]),
+
+      /**
+       * Exclusões enviadas junto com o payload.
+       * O service processa cada uma para gerar IAuditExcludedControl
+       * com excludedBy e excludedAt preenchidos.
+       */
+      excludedControls: z
+        .array(excludedControlPayloadSchema)
+        .optional()
+        .default([]),
+
+      processes: z.array(z.string()),
+      areas: z.array(z.string()),
+    })
+    .refine(
+      (data) => {
+        // Em modo 'custom', pelo menos 1 controle é obrigatório
+        if (data.mode === 'custom') {
+          return data.controls && data.controls.length > 0;
+        }
+        return true;
+      },
+      {
+        message: 'Modo "custom" requer pelo menos 1 controle em scope.controls',
+        path: ['controls'],
+      }
+    ),
+
   team: z.object({
     leadAuditor: z.string(),
     auditors: z.array(z.string()),
     observers: z.array(z.string()),
     specialists: z.array(z.string()).optional(),
   }),
+
   period: z.object({
     startDate: z.string().transform((val) => new Date(val)),
     endDate: z.string().transform((val) => new Date(val)),
     estimatedDays: z.number().min(1, 'Dias estimados deve ser no mínimo 1'),
   }),
+
   criteria: z.array(z.string()).min(1, 'Pelo menos um critério é obrigatório'),
   observations: z.string().optional(),
 });
 
 export const updateAuditPlanSchema = createAuditPlanSchema.partial();
+
+// ============================================================
+// SCHEMAS — EXCLUSÃO DE CONTROLE (Opção C)
+// ============================================================
+
+/**
+ * Excluir um controle do escopo do plano.
+ *
+ * Aplica-se apenas a planos em modo 'all'.
+ * A justificativa deve ter no mínimo 20 caracteres (ISO 19011:2018).
+ */
+export const excludeControlSchema = z.object({
+  controlId: z.string().min(1, 'ID do controle é obrigatório'),
+  reason: z
+    .string()
+    .min(20, 'A justificativa deve ter no mínimo 20 caracteres')
+    .max(1000, 'A justificativa não pode exceder 1000 caracteres'),
+});
+
+/**
+ * Aprovar uma exclusão de controle.
+ *
+ * Apenas o Auditor Líder pode aprovar.
+ */
+export const approveExclusionSchema = z.object({
+  controlId: z.string().min(1, 'ID do controle é obrigatório'),
+});
+
+/**
+ * Rejeitar uma exclusão de controle.
+ *
+ * Apenas o Auditor Líder pode rejeitar.
+ * Ao rejeitar, o controle volta ao escopo efetivo.
+ */
+export const rejectExclusionSchema = z.object({
+  controlId: z.string().min(1, 'ID do controle é obrigatório'),
+});
+
+/**
+ * Remover uma exclusão já registrada.
+ *
+ * Autor da exclusão OU Auditor Líder.
+ * Ao remover, o controle volta ao escopo efetivo.
+ */
+export const removeExclusionSchema = z.object({
+  controlId: z.string().min(1, 'ID do controle é obrigatório'),
+});
+
+// ============================================================
+// CHECKLIST
+// ============================================================
 
 export const updateChecklistSchema = z.object({
   questions: z.array(
@@ -44,6 +149,10 @@ export const updateChecklistSchema = z.object({
     })
   ),
 });
+
+// ============================================================
+// NÃO CONFORMIDADE (FINDING)
+// ============================================================
 
 export const createAuditFindingSchema = z.object({
   auditPlanId: z.string(),
@@ -61,6 +170,10 @@ export const createAuditFindingSchema = z.object({
 
 export const updateAuditFindingSchema = createAuditFindingSchema.partial();
 
+// ============================================================
+// PLANO DE AÇÃO
+// ============================================================
+
 export const createAuditActionPlanSchema = z.object({
   findingId: z.string(),
   auditPlanId: z.string(),
@@ -73,6 +186,10 @@ export const createAuditActionPlanSchema = z.object({
 });
 
 export const updateAuditActionPlanSchema = createAuditActionPlanSchema.partial();
+
+// ============================================================
+// RELATÓRIO DE AUDITORIA
+// ============================================================
 
 export const createAuditReportSchema = z.object({
   auditPlanId: z.string(),
@@ -126,6 +243,10 @@ export const createAuditReportSchema = z.object({
 
 export const updateAuditReportSchema = createAuditReportSchema.partial();
 
+// ============================================================
+// EVIDÊNCIA
+// ============================================================
+
 export const uploadEvidenceSchema = z.object({
   auditPlanId: z.string(),
   findingId: z.string().optional(),
@@ -133,7 +254,7 @@ export const uploadEvidenceSchema = z.object({
 });
 
 // ============================================================
-// 🆕 SCHEMAS - PROGRAMA DE AUDITORIAS
+// PROGRAMA DE AUDITORIAS
 // ============================================================
 
 export const createAuditProgramSchema = z.object({
@@ -200,7 +321,7 @@ export const addActivitySchema = z.object({
 });
 
 // ============================================================
-// 🆕 SCHEMAS - DECLARAÇÃO DE APLICABILIDADE (SoA)
+// DECLARAÇÃO DE APLICABILIDADE (SoA)
 // ============================================================
 
 export const createAuditSoASchema = z.object({
@@ -250,7 +371,7 @@ export const updateSoAControlSchema = z.object({
 });
 
 // ============================================================
-// 🆕 SCHEMAS - GESTÃO DE RISCOS
+// GESTÃO DE RISCOS
 // ============================================================
 
 export const createAuditRiskSchema = z.object({
@@ -297,7 +418,7 @@ export const reopenRiskSchema = z.object({
 });
 
 // ============================================================
-// 🆕 SCHEMAS - REVISÃO DE DOCUMENTAÇÃO
+// REVISÃO DE DOCUMENTAÇÃO
 // ============================================================
 
 export const createAuditDocumentReviewSchema = z.object({
@@ -352,28 +473,34 @@ export default {
   createAuditReportSchema,
   updateAuditReportSchema,
   uploadEvidenceSchema,
-  
-  // Novos - Programa
+
+  // Exclusão de Controle
+  excludeControlSchema,
+  approveExclusionSchema,
+  rejectExclusionSchema,
+  removeExclusionSchema,
+
+  // Programa
   createAuditProgramSchema,
   updateAuditProgramSchema,
   addSectorSchema,
   addSupplierAuditSchema,
   addActivitySchema,
-  
-  // Novos - SoA
+
+  // SoA
   createAuditSoASchema,
   updateAuditSoASchema,
   updateSoAControlSchema,
-  
-  // Novos - Riscos
+
+  // Riscos
   createAuditRiskSchema,
   updateAuditRiskSchema,
   updateRiskAssessmentSchema,
   treatRiskSchema,
   monitorRiskSchema,
   reopenRiskSchema,
-  
-  // Novos - Document Review
+
+  // Document Review
   createAuditDocumentReviewSchema,
   updateAuditDocumentReviewSchema,
   updateDocumentStatusSchema,

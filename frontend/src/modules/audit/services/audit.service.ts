@@ -124,6 +124,85 @@ export const auditService = {
   },
 
   // ============================================================
+  // 🆕 NOVO — EXCLUSÃO DE CONTROLES DO ESCOPO (Opção C)
+  // ============================================================
+
+  /**
+   * Excluir um controle do escopo do plano.
+   *
+   * Aplica-se apenas a planos em modo 'all'.
+   * A exclusão fica pendente de aprovação do Auditor Líder.
+   *
+   * @param planId - ID do plano
+   * @param controlId - ID do controle a excluir
+   * @param reason - Justificativa (mínimo 20 caracteres)
+   */
+  async excludeControl(
+    planId: string,
+    controlId: string,
+    reason: string
+  ): Promise<AuditPlan> {
+    const response = await api.post(
+      `${BASE_URL}/plans/${planId}/exclusions`,
+      { controlId, reason }
+    );
+    return response.data.data;
+  },
+
+  /**
+   * Aprovar uma exclusão de controle (apenas Auditor Líder).
+   *
+   * @param planId - ID do plano
+   * @param controlId - ID do controle excluído
+   */
+  async approveExclusion(
+    planId: string,
+    controlId: string
+  ): Promise<AuditPlan> {
+    const response = await api.post(
+      `${BASE_URL}/plans/${planId}/exclusions/${controlId}/approve`
+    );
+    return response.data.data;
+  },
+
+  /**
+   * Rejeitar uma exclusão de controle (apenas Auditor Líder).
+   *
+   * Ao rejeitar, o controle volta ao escopo efetivo.
+   *
+   * @param planId - ID do plano
+   * @param controlId - ID do controle excluído
+   */
+  async rejectExclusion(
+    planId: string,
+    controlId: string
+  ): Promise<AuditPlan> {
+    const response = await api.post(
+      `${BASE_URL}/plans/${planId}/exclusions/${controlId}/reject`
+    );
+    return response.data.data;
+  },
+
+  /**
+   * Remover uma exclusão já registrada.
+   *
+   * Autor da exclusão OU Auditor Líder podem remover.
+   * Ao remover, o controle volta ao escopo efetivo.
+   *
+   * @param planId - ID do plano
+   * @param controlId - ID do controle excluído
+   */
+  async removeExclusion(
+    planId: string,
+    controlId: string
+  ): Promise<AuditPlan> {
+    const response = await api.delete(
+      `${BASE_URL}/plans/${planId}/exclusions/${controlId}`
+    );
+    return response.data.data;
+  },
+
+  // ============================================================
   // CHECKLISTS
   // ============================================================
 
@@ -442,7 +521,7 @@ export const auditService = {
   },
 
   // ============================================================
-  // 🆕 NOVO (v46.0) - RISCOS
+  // RISCOS
   // ============================================================
 
   /**
@@ -485,7 +564,7 @@ export const auditService = {
   },
 
   // ============================================================
-  // 🆕 NOVO (v46.0) - SoA (Statement of Applicability)
+  // SoA (Statement of Applicability)
   // ============================================================
 
   /**
@@ -515,7 +594,7 @@ export const auditService = {
   },
 
   // ============================================================
-  // 🆕 NOVO (v46.0) - PROGRAMA DE AUDITORIA
+  // PROGRAMA DE AUDITORIA
   // ============================================================
 
   /**
@@ -550,7 +629,7 @@ export const auditService = {
   },
 
   // ============================================================
-  // 🆕 NOVO (v46.0) - REVISÃO DOCUMENTAL
+  // REVISÃO DOCUMENTAL
   // ============================================================
 
   /**
@@ -578,11 +657,12 @@ export const auditService = {
   },
 
   // ============================================================
-  // 🆕 NOVO (v47.0) - RESPOSTAS DOS USUÁRIOS POR PLANO
+  // RESPOSTAS DOS USUÁRIOS POR PLANO
   // ============================================================
 
   /**
    * Buscar respostas dos usuários para um plano de auditoria
+   *
    * Esta rota retorna todas as respostas dos usuários para os controles
    * que fazem parte do escopo do plano.
    */

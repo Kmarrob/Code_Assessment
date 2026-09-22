@@ -37,16 +37,20 @@ export const auditKeys = {
   reports: (planId?: string) => [...auditKeys.all, 'reports', planId] as const,
   report: (id: string) => [...auditKeys.all, 'report', id] as const,
 
-  // 🆕 NOVO (v46.0) - Query Keys para funcionalidades adicionais
+  // Query Keys para funcionalidades adicionais
   risks: (planId: string) => [...auditKeys.all, 'risks', planId] as const,
   risk: (id: string) => [...auditKeys.all, 'risk', id] as const,
   soa: (planId: string) => [...auditKeys.all, 'soa', planId] as const,
   program: (planId: string) => [...auditKeys.all, 'program', planId] as const,
   documentReview: (planId: string) => [...auditKeys.all, 'document-review', planId] as const,
 
-  // 🆕 NOVO (v47.0) - Query Key para respostas dos usuários por plano
+  // Query Key para respostas dos usuários por plano
   responses: (planId: string) => [...auditKeys.all, 'responses', planId] as const,
 };
+
+// ============================================================
+// PLANOS DE AUDITORIA
+// ============================================================
 
 export function usePlans(filters?: AuditFilters) {
   return useQuery({
@@ -181,6 +185,155 @@ export function useDeletePlan() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: auditKeys.plans() });
       queryClient.invalidateQueries({ queryKey: auditKeys.plansStats() });
+    },
+  });
+}
+
+// ============================================================
+// 🆕 NOVO — EXCLUSÃO DE CONTROLES DO ESCOPO (Opção C)
+// ============================================================
+
+/**
+ * Hook para excluir um controle do escopo do plano.
+ *
+ * Aplica-se apenas a planos em modo 'all'.
+ * A exclusão fica pendente de aprovação do Auditor Líder.
+ *
+ * @returns Mutation que recebe { planId, controlId, reason }
+ */
+export function useExcludeControl() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      planId,
+      controlId,
+      reason,
+    }: {
+      planId: string;
+      controlId: string;
+      reason: string;
+    }) => auditService.excludeControl(planId, controlId, reason),
+
+    onSuccess: (_, { planId }) => {
+      queryClient.invalidateQueries({
+        queryKey: auditKeys.plan(planId),
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: auditKeys.plans(),
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: auditKeys.plansStats(),
+      });
+    },
+  });
+}
+
+/**
+ * Hook para aprovar uma exclusão de controle.
+ *
+ * Apenas o Auditor Líder pode aprovar.
+ *
+ * @returns Mutation que recebe { planId, controlId }
+ */
+export function useApproveExclusion() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      planId,
+      controlId,
+    }: {
+      planId: string;
+      controlId: string;
+    }) => auditService.approveExclusion(planId, controlId),
+
+    onSuccess: (_, { planId }) => {
+      queryClient.invalidateQueries({
+        queryKey: auditKeys.plan(planId),
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: auditKeys.plans(),
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: auditKeys.plansStats(),
+      });
+    },
+  });
+}
+
+/**
+ * Hook para rejeitar uma exclusão de controle.
+ *
+ * Apenas o Auditor Líder pode rejeitar.
+ * Ao rejeitar, o controle volta ao escopo efetivo.
+ *
+ * @returns Mutation que recebe { planId, controlId }
+ */
+export function useRejectExclusion() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      planId,
+      controlId,
+    }: {
+      planId: string;
+      controlId: string;
+    }) => auditService.rejectExclusion(planId, controlId),
+
+    onSuccess: (_, { planId }) => {
+      queryClient.invalidateQueries({
+        queryKey: auditKeys.plan(planId),
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: auditKeys.plans(),
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: auditKeys.plansStats(),
+      });
+    },
+  });
+}
+
+/**
+ * Hook para remover uma exclusão já registrada.
+ *
+ * Autor da exclusão OU Auditor Líder podem remover.
+ * Ao remover, o controle volta ao escopo efetivo.
+ *
+ * @returns Mutation que recebe { planId, controlId }
+ */
+export function useRemoveExclusion() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      planId,
+      controlId,
+    }: {
+      planId: string;
+      controlId: string;
+    }) => auditService.removeExclusion(planId, controlId),
+
+    onSuccess: (_, { planId }) => {
+      queryClient.invalidateQueries({
+        queryKey: auditKeys.plan(planId),
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: auditKeys.plans(),
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: auditKeys.plansStats(),
+      });
     },
   });
 }
@@ -686,7 +839,7 @@ export function useGenerateReport() {
 }
 
 // ============================================================
-// 🆕 NOVO (v46.0) - HOOKS — RISCOS
+// RISCOS
 // ============================================================
 
 export function useRisksByPlan(planId: string) {
@@ -760,7 +913,7 @@ export function useDeleteRisk() {
 }
 
 // ============================================================
-// 🆕 NOVO (v46.0) - HOOKS — SoA (Statement of Applicability)
+// SoA (Statement of Applicability)
 // ============================================================
 
 export function useSoAByPlan(planId: string) {
@@ -800,7 +953,7 @@ export function useExportSoA() {
 }
 
 // ============================================================
-// 🆕 NOVO (v46.0) - HOOKS — PROGRAMA DE AUDITORIA
+// PROGRAMA DE AUDITORIA
 // ============================================================
 
 export function useProgramByPlan(planId: string) {
@@ -874,7 +1027,7 @@ export function useDeleteProgramActivity() {
 }
 
 // ============================================================
-// 🆕 NOVO (v46.0) - HOOKS — REVISÃO DOCUMENTAL
+// REVISÃO DOCUMENTAL
 // ============================================================
 
 export function useDocumentReviewByPlan(planId: string) {
@@ -923,7 +1076,7 @@ export function useCompleteDocumentReview() {
 }
 
 // ============================================================
-// 🆕 NOVO (v47.0) - HOOKS — RESPOSTAS DOS USUÁRIOS POR PLANO
+// RESPOSTAS DOS USUÁRIOS POR PLANO
 // ============================================================
 
 /**
@@ -961,6 +1114,12 @@ export const useAudit = {
   useCompletePlan,
   useCancelPlan,
   useDeletePlan,
+
+  // 🆕 Exclusão de Controle (Opção C)
+  useExcludeControl,
+  useApproveExclusion,
+  useRejectExclusion,
+  useRemoveExclusion,
 
   // Checklists
   useChecklists,
@@ -1004,29 +1163,29 @@ export const useAudit = {
   useDeleteReport,
   useGenerateReport,
 
-  // 🆕 Riscos
+  // Riscos
   useRisksByPlan,
   useRisk,
   useCreateRisk,
   useUpdateRisk,
   useDeleteRisk,
 
-  // 🆕 SoA
+  // SoA
   useSoAByPlan,
   useUpdateSoAControl,
   useExportSoA,
 
-  // 🆕 Programa
+  // Programa
   useProgramByPlan,
   useCreateProgramActivity,
   useUpdateProgramActivity,
   useDeleteProgramActivity,
 
-  // 🆕 Revisão Documental
+  // Revisão Documental
   useDocumentReviewByPlan,
   useUpdateDocumentReview,
   useCompleteDocumentReview,
 
-  // 🆕 (v47.0) - Respostas dos usuários
+  // Respostas dos usuários
   useResponsesByPlan,
 };

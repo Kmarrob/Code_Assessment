@@ -2,6 +2,8 @@ import mongoose from 'mongoose';
 import { AuditPlan } from '../models/AuditPlan';
 import { AuditChecklist } from '../models/AuditChecklist';
 import { Question } from '../../Question';
+import { Company } from '../../../models/Company';
+import { Control } from '../../../models/Control';
 import {
   IAuditPlan,
   CreateAuditPlanDTO,
@@ -12,9 +14,6 @@ import { AuditChecklistService } from './AuditChecklistService';
 
 /**
  * Mapeia documento do MongoDB para IAuditPlan com id.
- *
- * O método mantém os campos existentes do documento e garante
- * que o campo id esteja disponível para o frontend/serviços.
  */
 function mapToIAuditPlan(doc: any): IAuditPlan {
   if (!doc) {
@@ -59,6 +58,45 @@ export class AuditPlanService {
   }
 
   // ============================================================
+  // MÉTODOS AUXILIARES — FONTE DOS CONTROLES DA EMPRESA
+  // ============================================================
+
+  async getAllCompanyControls(companyId: string): Promise<string[]> {
+    if (!companyId) {
+      throw new Error('ID da empresa é obrigatório para buscar controles');
+    }
+
+    if (!isValidObjectId(companyId)) {
+      throw new Error('ID da empresa inválido');
+    }
+
+    const company = await Company.findById(companyId)
+      .select('assignedControls')
+      .lean();
+
+    if (!company) {
+      throw new Error('Empresa não encontrada');
+    }
+
+    if (
+      !company.assignedControls ||
+      !Array.isArray(company.assignedControls) ||
+      company.assignedControls.length === 0
+    ) {
+      return [];
+    }
+
+    return company.assignedControls.map((controlId) =>
+      controlId.toString()
+    );
+  }
+
+  async getTotalAvailableControls(companyId: string): Promise<number> {
+    const controls = await this.getAllCompanyControls(companyId);
+    return controls.length;
+  }
+
+  // ============================================================
   // CRIAR PLANO DE AUDITORIA
   // ============================================================
 
@@ -67,10 +105,6 @@ export class AuditPlanService {
     createdBy: string,
     companyId: string
   ): Promise<IAuditPlan> {
-    // ============================================================
-    // VALIDAÇÕES BÁSICAS
-    // ============================================================
-
     if (!createdBy) {
       throw new Error(
         'O usuário responsável pela criação do plano é obrigatório'
@@ -101,19 +135,11 @@ export class AuditPlanService {
       );
     }
 
-    // ============================================================
-    // VALIDAR SEGREGAÇÃO DE FUNÇÕES
-    // ============================================================
-
     if (data.team.leadAuditor === createdBy) {
       throw new Error(
         'O auditor líder não pode ser o mesmo que criou o plano'
       );
     }
-
-    // ============================================================
-    // VALIDAR PERÍODO
-    // ============================================================
 
     const startDate = new Date(data.period.startDate);
     const endDate = new Date(data.period.endDate);
@@ -136,19 +162,11 @@ export class AuditPlanService {
       );
     }
 
-    // ============================================================
-    // CALCULAR DIAS ESTIMADOS
-    // ============================================================
-
     const estimatedDays =
       Math.ceil(
         (endDate.getTime() - startDate.getTime()) /
           (1000 * 60 * 60 * 24)
       ) + 1;
-
-    // ============================================================
-    // NORMALIZAR EQUIPE
-    // ============================================================
 
     const teamData = {
       leadAuditor: data.team.leadAuditor,
@@ -158,9 +176,129 @@ export class AuditPlanService {
         (data.team as any).specialists || [],
     };
 
+    const allCompanyControls = await this.getAllCompanyControls(companyId);
+
+    if (allCompanyControls.length === 0) {
+      throw new Error(
+        'A empresa não possui controles atribuídos. Não é possível criar um plano de auditoria.'
+      );
+    }
+
+    const requestedMode: 'all' | 'custom' =
+      (data.scope as any)?.mode === 'custom' ? 'custom' : 'all';
+
+    let effectiveControls: string[];
+
+    if (requestedMode === 'custom') {
+      const requestedControls = Array.isArray(data.scope?.controls)
+        ? data.scope.controls
+            .filter(Boolean)
+            .map((c) => String(c).trim())
+        : [];
+
+      if (requestedControls.length === 0) {
+        throw new Error(
+          'Modo "custom" requer que pelo menos 1 controle seja selecionado em scope.controls'
+        );
+      }
+
+      const companyControlSet = new Set(allCompanyControls);
+
+      const invalidControls = requestedControls.filter(
+        (controlId) => !companyControlSet.has(controlId)
+      );
+
+      if (invalidControls.length > 0) {
+        throw new Error(
+          `Os seguintes controles não estão atribuídos à empresa: ${invalidControls.join(', ')}`
+        );
+      }
+
+      effectiveControls = [...new Set(requestedControls)];
+    } else {
+      effectiveControls = [...allCompanyControls];
+    }
+
     // ============================================================
-    // CRIAR PLANO
+    // PROCESSAR EXCLUSÕES ENVIADAS NO PAYLOAD (OPÇÃO C)
     // ============================================================
+
+    const rawExclusions: Array<{ controlId: string; reason: string }> =
+      requestedMode === 'all' &&
+      Array.isArray((data.scope as any)?.excludedControls)
+        ? (data.scope as any).excludedControls
+        : [];
+
+    const processedExclusions: Array<{
+      controlId: string;
+      reason: string;
+      excludedBy: string;
+      excludedAt: Date;
+      approvedBy?: string;
+      approvedAt?: Date;
+    }> = [];
+
+    if (rawExclusions.length > 0) {
+      const companyControlSet = new Set(allCompanyControls);
+      const seenControlIds = new Set<string>();
+
+      for (const raw of rawExclusions) {
+        const controlId = String(raw.controlId || '').trim();
+        const reason = String(raw.reason || '').trim();
+
+        if (!controlId) {
+          throw new Error(
+            'Toda exclusão precisa ter um controlId válido'
+          );
+        }
+
+        if (reason.length < 20) {
+          throw new Error(
+            `A justificativa da exclusão do controle ${controlId} deve ter no mínimo 20 caracteres`
+          );
+        }
+
+        if (!companyControlSet.has(controlId)) {
+          throw new Error(
+            `O controle ${controlId} não está atribuído à empresa`
+          );
+        }
+
+        if (seenControlIds.has(controlId)) {
+          throw new Error(
+            `O controle ${controlId} foi enviado em duplicidade nas exclusões`
+          );
+        }
+
+        seenControlIds.add(controlId);
+
+        processedExclusions.push({
+          controlId,
+          reason,
+          excludedBy: createdBy,
+          excludedAt: new Date(),
+          approvedBy: undefined,
+          approvedAt: undefined,
+        });
+      }
+
+      const effectiveAfterExclusions =
+        allCompanyControls.length - processedExclusions.length;
+
+      if (effectiveAfterExclusions <= 0) {
+        throw new Error(
+          'Não é permitido excluir todos os controles. A auditoria deve ter pelo menos 1 controle em escopo'
+        );
+      }
+
+      const excludedIds = new Set(
+        processedExclusions.map((e) => e.controlId)
+      );
+
+      effectiveControls = effectiveControls.filter(
+        (id) => !excludedIds.has(id)
+      );
+    }
 
     const plan = new AuditPlan({
       ...data,
@@ -179,9 +317,17 @@ export class AuditPlanService {
       },
 
       scope: {
-        controls: data.scope?.controls || [],
+        mode: requestedMode,
+
+        controls: effectiveControls,
+
+        excludedControls: processedExclusions,
+
         processes: data.scope?.processes || [],
+
         areas: data.scope?.areas || [],
+
+        totalAvailableControls: allCompanyControls.length,
       },
 
       team: teamData,
@@ -191,24 +337,12 @@ export class AuditPlanService {
 
     await plan.save();
 
-    // ============================================================
-    // GERAR CHECKLIST AUTOMATICAMENTE
-    // ============================================================
-
-    if (
-      data.scope &&
-      data.scope.controls &&
-      data.scope.controls.length > 0
-    ) {
+    if (effectiveControls.length > 0) {
       await this.generateChecklist(
         plan._id.toString(),
-        data.scope.controls,
+        effectiveControls,
         createdBy
       );
-
-      // ============================================================
-      // POPULAR COM RESPOSTAS EXISTENTES
-      // ============================================================
 
       try {
         const populatedCount =
@@ -225,8 +359,6 @@ export class AuditPlanService {
           '⚠️ Erro ao popular checklists com respostas dos usuários:',
           populateError
         );
-
-        // Não interromper criação do plano.
       }
     }
 
@@ -246,7 +378,6 @@ export class AuditPlanService {
       return;
     }
 
-    // Remover duplicidades sem alterar a ordem original.
     const uniqueControlIds = [
       ...new Set(
         controlIds
@@ -256,10 +387,6 @@ export class AuditPlanService {
     ];
 
     for (const controlId of uniqueControlIds) {
-      // ============================================================
-      // EVITAR DUPLICAÇÃO DE CHECKLIST
-      // ============================================================
-
       const existingChecklist =
         await AuditChecklist.findOne({
           auditPlanId: planId,
@@ -270,10 +397,6 @@ export class AuditPlanService {
         continue;
       }
 
-      // ============================================================
-      // BUSCAR PERGUNTAS DA BIBLIOTECA
-      // ============================================================
-
       const sourceQuestions = await Question.find({
         controlId,
         active: true,
@@ -283,35 +406,20 @@ export class AuditPlanService {
         })
         .lean();
 
-      // ============================================================
-      // GERAR PERGUNTAS DO CHECKLIST
-      // ============================================================
-
       const questions = sourceQuestions.map(
         (sourceQuestion) => ({
           question: sourceQuestion.text,
-
           answer: '--' as const,
-
           observations: '',
-
           evidenceIds: [],
-
           responsible: createdBy,
         })
       );
 
-      // ============================================================
-      // CRIAR CHECKLIST
-      // ============================================================
-
       await AuditChecklist.create({
         auditPlanId: planId,
-
         controlId,
-
         questions,
-
         statistics: {
           total: questions.length,
           conforme: 0,
@@ -320,9 +428,7 @@ export class AuditPlanService {
           oportunidade: 0,
           naoAplicavel: 0,
         },
-
         status: 'pending',
-
         createdBy,
       });
 
@@ -341,44 +447,24 @@ export class AuditPlanService {
   ): Promise<IAuditPlan[]> {
     const query: any = {};
 
-    // ============================================================
-    // EMPRESA
-    // ============================================================
-
     if (filters.companyId) {
       query.companyId = filters.companyId;
     }
 
-    // ============================================================
-    // STATUS
-    // ============================================================
-
     if (filters.status) {
       query.status = filters.status;
     }
-
-    // ============================================================
-    // AUDITOR LÍDER
-    // ============================================================
 
     if (filters.leadAuditor) {
       query['team.leadAuditor'] =
         filters.leadAuditor;
     }
 
-    // ============================================================
-    // AUDITOR
-    // ============================================================
-
     if (filters.auditor) {
       query['team.auditors'] = {
         $in: [filters.auditor],
       };
     }
-
-    // ============================================================
-    // PERÍODO
-    // ============================================================
 
     if (
       filters.startDate ||
@@ -396,10 +482,6 @@ export class AuditPlanService {
         };
       }
     }
-
-    // ============================================================
-    // PESQUISA
-    // ============================================================
 
     if (filters.search) {
       const escapedSearch =
@@ -429,10 +511,6 @@ export class AuditPlanService {
         },
       ];
     }
-
-    // ============================================================
-    // CONSULTA
-    // ============================================================
 
     const docs = await AuditPlan.find(query)
       .sort({
@@ -514,10 +592,6 @@ export class AuditPlanService {
       );
     }
 
-    // ============================================================
-    // STATUS PERMITIDOS PARA EDIÇÃO
-    // ============================================================
-
     if (
       plan.status !== 'draft' &&
       plan.status !== 'pending_approval'
@@ -526,10 +600,6 @@ export class AuditPlanService {
         'Apenas planos em rascunho ou aguardando aprovação podem ser editados'
       );
     }
-
-    // ============================================================
-    // SEGURANÇA
-    // ============================================================
 
     delete (data as any).companyId;
     delete (data as any).createdBy;
@@ -540,10 +610,6 @@ export class AuditPlanService {
     delete (data as any).deletedAt;
     delete (data as any)._id;
     delete (data as any).id;
-
-    // ============================================================
-    // SEGREGAÇÃO DE FUNÇÕES
-    // ============================================================
 
     const currentTeam =
       typeof (plan.team as any)?.toObject === 'function'
@@ -564,10 +630,6 @@ export class AuditPlanService {
         'O auditor líder não pode ser o mesmo que criou o plano'
       );
     }
-
-    // ============================================================
-    // PERÍODO
-    // ============================================================
 
     if (data.period) {
       const startDate =
@@ -613,35 +675,50 @@ export class AuditPlanService {
       });
     }
 
-    // ============================================================
-    // APLICAÇÃO DOS DADOS DO ESCOPO
-    // ============================================================
-
     if (data.scope) {
-      plan.scope = {
-        ...plan.scope,
-        ...data.scope,
+      const incomingScope = data.scope as any;
 
-        controls:
-          data.scope.controls !== undefined
-            ? data.scope.controls
-            : plan.scope.controls,
+      if (incomingScope.processes !== undefined) {
+        plan.scope.processes = incomingScope.processes;
+      }
 
-        processes:
-          data.scope.processes !== undefined
-            ? data.scope.processes
-            : plan.scope.processes,
+      if (incomingScope.areas !== undefined) {
+        plan.scope.areas = incomingScope.areas;
+      }
 
-        areas:
-          data.scope.areas !== undefined
-            ? data.scope.areas
-            : plan.scope.areas,
-      };
+      if (incomingScope.controls !== undefined) {
+        if (plan.scope.mode === 'all') {
+          throw new Error(
+            'O escopo de controles não pode ser alterado manualmente em modo "all". Use excludeControl para justificar exclusões.'
+          );
+        }
+
+        const allCompanyControls =
+          await this.getAllCompanyControls(
+            plan.companyId
+          );
+
+        const companyControlSet = new Set(allCompanyControls);
+
+        const requestedControls = Array.isArray(incomingScope.controls)
+          ? incomingScope.controls
+              .filter(Boolean)
+              .map((c: string) => String(c).trim())
+          : [];
+
+        const invalidControls = requestedControls.filter(
+          (controlId: string) => !companyControlSet.has(controlId)
+        );
+
+        if (invalidControls.length > 0) {
+          throw new Error(
+            `Os seguintes controles não estão atribuídos à empresa: ${invalidControls.join(', ')}`
+          );
+        }
+
+        plan.scope.controls = [...new Set(requestedControls)];
+      }
     }
-
-    // ============================================================
-    // APLICAÇÃO DOS DADOS DA EQUIPE
-    // ============================================================
 
     if (data.team) {
       plan.team = {
@@ -665,34 +742,18 @@ export class AuditPlanService {
       };
     }
 
-    // ============================================================
-    // CRITÉRIOS
-    // ============================================================
-
     if (data.criteria !== undefined) {
       plan.criteria = data.criteria;
     }
-
-    // ============================================================
-    // TÍTULO
-    // ============================================================
 
     if (data.title !== undefined) {
       plan.title = data.title;
     }
 
-    // ============================================================
-    // DESCRIÇÃO
-    // ============================================================
-
     if (data.description !== undefined) {
       plan.description =
         data.description;
     }
-
-    // ============================================================
-    // OBSERVAÇÕES
-    // ============================================================
 
     if (
       (data as any).observations !== undefined
@@ -701,12 +762,6 @@ export class AuditPlanService {
         (data as any).observations;
     }
 
-    // ============================================================
-    // STATUS
-    // ============================================================
-
-    // O status não deve ser alterado livremente
-    // pelo DTO de edição.
     if (
       data.status !== undefined &&
       data.status !== plan.status
@@ -716,26 +771,19 @@ export class AuditPlanService {
       );
     }
 
-    // ============================================================
-    // ATUALIZAÇÃO
-    // ============================================================
-
     plan.updatedAt = new Date();
 
     await plan.save();
 
-    // ============================================================
-    // GARANTIR CHECKLISTS DOS NOVOS CONTROLES
-    // ============================================================
-
     if (
       data.scope &&
-      data.scope.controls !== undefined &&
-      data.scope.controls.length > 0
+      (data.scope as any).controls !== undefined &&
+      Array.isArray((data.scope as any).controls) &&
+      (data.scope as any).controls.length > 0
     ) {
       await this.generateChecklist(
         plan._id.toString(),
-        data.scope.controls,
+        (data.scope as any).controls,
         userId
       );
     }
@@ -743,6 +791,295 @@ export class AuditPlanService {
     return mapToIAuditPlan(
       plan.toObject()
     );
+  }
+
+  // ============================================================
+  // EXCLUIR CONTROLE DO ESCOPO (com justificativa)
+  // ============================================================
+
+  async excludeControl(
+    planId: string,
+    controlId: string,
+    reason: string,
+    userId: string,
+    companyId?: string
+  ): Promise<IAuditPlan | null> {
+    if (!isValidObjectId(planId)) {
+      throw new Error('ID do plano de auditoria inválido');
+    }
+
+    if (!controlId || !controlId.trim()) {
+      throw new Error('O ID do controle a excluir é obrigatório');
+    }
+
+    if (!reason || reason.trim().length < 20) {
+      throw new Error(
+        'A justificativa da exclusão deve ter no mínimo 20 caracteres'
+      );
+    }
+
+    if (!userId) {
+      throw new Error('O usuário que está excluindo é obrigatório');
+    }
+
+    const query: any = { _id: planId };
+    if (companyId) {
+      query.companyId = companyId;
+    }
+
+    const plan = await AuditPlan.findOne(query);
+
+    if (!plan) {
+      throw new Error('Plano não encontrado');
+    }
+
+    if (plan.status !== 'draft' && plan.status !== 'pending_approval') {
+      throw new Error(
+        'Apenas planos em rascunho ou aguardando aprovação podem ter controles excluídos'
+      );
+    }
+
+    if (plan.scope.mode !== 'all') {
+      throw new Error(
+        'A exclusão de controles só é permitida em planos com modo "all". Em modo "custom", ajuste diretamente scope.controls.'
+      );
+    }
+
+    const alreadyExcluded = plan.scope.excludedControls.some(
+      (e) => e.controlId === controlId
+    );
+
+    if (alreadyExcluded) {
+      throw new Error('Este controle já está excluído do escopo');
+    }
+
+    const isInScope = plan.scope.controls.includes(controlId);
+
+    if (!isInScope) {
+      throw new Error(
+        'Este controle não está no escopo atual do plano'
+      );
+    }
+
+    const effectiveAfterExclusion =
+      plan.scope.controls.length - 1;
+
+    if (effectiveAfterExclusion <= 0) {
+      throw new Error(
+        'Não é permitido excluir todos os controles. A auditoria deve ter pelo menos 1 controle em escopo'
+      );
+    }
+
+    plan.scope.excludedControls.push({
+      controlId: controlId.trim(),
+      reason: reason.trim(),
+      excludedBy: userId,
+      excludedAt: new Date(),
+      approvedBy: undefined,
+      approvedAt: undefined,
+    } as any);
+
+    plan.scope.controls = plan.scope.controls.filter(
+      (c) => c !== controlId
+    );
+
+    plan.updatedAt = new Date();
+
+    await plan.save();
+
+    return mapToIAuditPlan(plan.toObject());
+  }
+
+  // ============================================================
+  // APROVAR EXCLUSÃO DE CONTROLE
+  // ============================================================
+
+  async approveExclusion(
+    planId: string,
+    controlId: string,
+    approverId: string,
+    companyId?: string
+  ): Promise<IAuditPlan | null> {
+    if (!isValidObjectId(planId)) {
+      throw new Error('ID do plano de auditoria inválido');
+    }
+
+    if (!controlId || !controlId.trim()) {
+      throw new Error('O ID do controle é obrigatório');
+    }
+
+    if (!approverId) {
+      throw new Error('O aprovador é obrigatório');
+    }
+
+    const query: any = { _id: planId };
+    if (companyId) {
+      query.companyId = companyId;
+    }
+
+    const plan = await AuditPlan.findOne(query);
+
+    if (!plan) {
+      throw new Error('Plano não encontrado');
+    }
+
+    if (plan.team.leadAuditor !== approverId) {
+      throw new Error(
+        'Apenas o Auditor Líder designado pode aprovar exclusões de controle'
+      );
+    }
+
+    const exclusion = plan.scope.excludedControls.find(
+      (e) => e.controlId === controlId
+    );
+
+    if (!exclusion) {
+      throw new Error('Exclusão não encontrada para este controle');
+    }
+
+    if (exclusion.approvedBy) {
+      throw new Error('Esta exclusão já foi aprovada');
+    }
+
+    exclusion.approvedBy = approverId;
+    exclusion.approvedAt = new Date();
+
+    plan.updatedAt = new Date();
+
+    await plan.save();
+
+    return mapToIAuditPlan(plan.toObject());
+  }
+
+  // ============================================================
+  // REJEITAR EXCLUSÃO DE CONTROLE
+  // ============================================================
+
+  async rejectExclusion(
+    planId: string,
+    controlId: string,
+    approverId: string,
+    companyId?: string
+  ): Promise<IAuditPlan | null> {
+    if (!isValidObjectId(planId)) {
+      throw new Error('ID do plano de auditoria inválido');
+    }
+
+    if (!controlId || !controlId.trim()) {
+      throw new Error('O ID do controle é obrigatório');
+    }
+
+    if (!approverId) {
+      throw new Error('O aprovador é obrigatório');
+    }
+
+    const query: any = { _id: planId };
+    if (companyId) {
+      query.companyId = companyId;
+    }
+
+    const plan = await AuditPlan.findOne(query);
+
+    if (!plan) {
+      throw new Error('Plano não encontrado');
+    }
+
+    if (plan.team.leadAuditor !== approverId) {
+      throw new Error(
+        'Apenas o Auditor Líder designado pode rejeitar exclusões de controle'
+      );
+    }
+
+    const exclusionIndex = plan.scope.excludedControls.findIndex(
+      (e) => e.controlId === controlId
+    );
+
+    if (exclusionIndex === -1) {
+      throw new Error('Exclusão não encontrada para este controle');
+    }
+
+    plan.scope.excludedControls.splice(exclusionIndex, 1);
+
+    if (!plan.scope.controls.includes(controlId)) {
+      plan.scope.controls.push(controlId);
+    }
+
+    plan.updatedAt = new Date();
+
+    await plan.save();
+
+    return mapToIAuditPlan(plan.toObject());
+  }
+
+  // ============================================================
+  // REMOVER EXCLUSÃO DE CONTROLE
+  // ============================================================
+
+  async removeExclusion(
+    planId: string,
+    controlId: string,
+    userId: string,
+    companyId?: string
+  ): Promise<IAuditPlan | null> {
+    if (!isValidObjectId(planId)) {
+      throw new Error('ID do plano de auditoria inválido');
+    }
+
+    if (!controlId || !controlId.trim()) {
+      throw new Error('O ID do controle é obrigatório');
+    }
+
+    if (!userId) {
+      throw new Error('O usuário é obrigatório');
+    }
+
+    const query: any = { _id: planId };
+    if (companyId) {
+      query.companyId = companyId;
+    }
+
+    const plan = await AuditPlan.findOne(query);
+
+    if (!plan) {
+      throw new Error('Plano não encontrado');
+    }
+
+    if (plan.status !== 'draft' && plan.status !== 'pending_approval') {
+      throw new Error(
+        'Apenas planos em rascunho ou aguardando aprovação podem ter exclusões removidas'
+      );
+    }
+
+    const exclusionIndex = plan.scope.excludedControls.findIndex(
+      (e) => e.controlId === controlId
+    );
+
+    if (exclusionIndex === -1) {
+      throw new Error('Exclusão não encontrada para este controle');
+    }
+
+    const exclusion = plan.scope.excludedControls[exclusionIndex];
+
+    const isAuthor = exclusion.excludedBy === userId;
+    const isLeadAuditor = plan.team.leadAuditor === userId;
+
+    if (!isAuthor && !isLeadAuditor) {
+      throw new Error(
+        'Apenas o autor da exclusão ou o Auditor Líder podem remover esta exclusão'
+      );
+    }
+
+    plan.scope.excludedControls.splice(exclusionIndex, 1);
+
+    if (!plan.scope.controls.includes(controlId)) {
+      plan.scope.controls.push(controlId);
+    }
+
+    plan.updatedAt = new Date();
+
+    await plan.save();
+
+    return mapToIAuditPlan(plan.toObject());
   }
 
   // ============================================================
@@ -777,10 +1114,6 @@ export class AuditPlanService {
       );
     }
 
-    // ============================================================
-    // SEGREGAÇÃO DE FUNÇÕES
-    // ============================================================
-
     if (plan.createdBy !== userId) {
       throw new Error(
         'Apenas o criador do plano pode enviar para aprovação'
@@ -793,19 +1126,11 @@ export class AuditPlanService {
       );
     }
 
-    // ============================================================
-    // VALIDAR AUDITOR LÍDER
-    // ============================================================
-
     if (!plan.team.leadAuditor) {
       throw new Error(
         'O plano precisa possuir um auditor líder designado'
       );
     }
-
-    // ============================================================
-    // VALIDAR ESCOPO
-    // ============================================================
 
     if (
       !plan.scope ||
@@ -815,6 +1140,26 @@ export class AuditPlanService {
       throw new Error(
         'O plano precisa possuir pelo menos um controle no escopo da auditoria'
       );
+    }
+
+    if (
+      plan.scope.excludedControls &&
+      plan.scope.excludedControls.length > 0
+    ) {
+      const pendingExclusions = plan.scope.excludedControls.filter(
+        (e) => !e.approvedBy
+      );
+
+      if (pendingExclusions.length > 0) {
+        const pendingIds = pendingExclusions
+          .map((e) => e.controlId)
+          .join(', ');
+
+        throw new Error(
+          `Existem ${pendingExclusions.length} exclusão(ões) pendente(s) de aprovação pelo Auditor Líder: ${pendingIds}. ` +
+          `Todas as exclusões precisam ser aprovadas antes do envio.`
+        );
+      }
     }
 
     plan.status =
@@ -862,10 +1207,6 @@ export class AuditPlanService {
       );
     }
 
-    // ============================================================
-    // SEGREGAÇÃO DE FUNÇÕES
-    // ============================================================
-
     if (
       plan.createdBy ===
       approverId
@@ -874,10 +1215,6 @@ export class AuditPlanService {
         'O aprovador não pode ser o mesmo que criou o plano'
       );
     }
-
-    // ============================================================
-    // VALIDAR AUDITOR LÍDER
-    // ============================================================
 
     if (
       plan.team.leadAuditor !==
@@ -888,10 +1225,6 @@ export class AuditPlanService {
       );
     }
 
-    // ============================================================
-    // VALIDAR STATUS
-    // ============================================================
-
     if (
       plan.status !==
       'pending_approval'
@@ -900,10 +1233,6 @@ export class AuditPlanService {
         'Apenas planos aguardando aprovação podem ser aprovados'
       );
     }
-
-    // ============================================================
-    // APROVAR
-    // ============================================================
 
     plan.status =
       'approved';
@@ -960,10 +1289,6 @@ export class AuditPlanService {
       );
     }
 
-    // ============================================================
-    // SEGREGAÇÃO DE FUNÇÕES
-    // ============================================================
-
     if (
       plan.createdBy ===
       approverId
@@ -972,10 +1297,6 @@ export class AuditPlanService {
         'O rejeitador não pode ser o mesmo que criou o plano'
       );
     }
-
-    // ============================================================
-    // VALIDAR AUDITOR LÍDER
-    // ============================================================
 
     if (
       plan.team.leadAuditor !==
@@ -986,10 +1307,6 @@ export class AuditPlanService {
       );
     }
 
-    // ============================================================
-    // VALIDAR STATUS
-    // ============================================================
-
     if (
       plan.status !==
       'pending_approval'
@@ -999,19 +1316,11 @@ export class AuditPlanService {
       );
     }
 
-    // ============================================================
-    // VALIDAR MOTIVO
-    // ============================================================
-
     if (!reason || !reason.trim()) {
       throw new Error(
         'O motivo da rejeição é obrigatório'
       );
     }
-
-    // ============================================================
-    // REJEITAR
-    // ============================================================
 
     plan.status =
       'draft';
@@ -1019,7 +1328,6 @@ export class AuditPlanService {
     plan.rejectionReason =
       reason.trim();
 
-    // Não registrar aprovação em uma rejeição.
     plan.approvedBy =
       undefined;
 
@@ -1068,10 +1376,6 @@ export class AuditPlanService {
       );
     }
 
-    // ============================================================
-    // VALIDAR AUTORIZAÇÃO
-    // ============================================================
-
     const canCancel =
       plan.createdBy === userId ||
       plan.team.leadAuditor === userId;
@@ -1081,10 +1385,6 @@ export class AuditPlanService {
         'Apenas o criador do plano ou o auditor líder podem cancelar a auditoria'
       );
     }
-
-    // ============================================================
-    // VALIDAR STATUS
-    // ============================================================
 
     if (
       plan.status ===
@@ -1103,10 +1403,6 @@ export class AuditPlanService {
         plan.toObject()
       );
     }
-
-    // ============================================================
-    // CANCELAR
-    // ============================================================
 
     plan.status =
       'cancelled';
@@ -1153,10 +1449,6 @@ export class AuditPlanService {
       );
     }
 
-    // ============================================================
-    // VALIDAR EQUIPE
-    // ============================================================
-
     const isTeamMember =
       plan.team.leadAuditor ===
         userId ||
@@ -1170,10 +1462,6 @@ export class AuditPlanService {
       );
     }
 
-    // ============================================================
-    // VALIDAR STATUS
-    // ============================================================
-
     if (
       plan.status !==
       'approved'
@@ -1182,10 +1470,6 @@ export class AuditPlanService {
         'Apenas planos aprovados podem ser iniciados'
       );
     }
-
-    // ============================================================
-    // INICIAR
-    // ============================================================
 
     plan.status =
       'in_progress';
@@ -1235,10 +1519,6 @@ export class AuditPlanService {
       );
     }
 
-    // ============================================================
-    // VALIDAR AUDITOR LÍDER
-    // ============================================================
-
     if (
       plan.team.leadAuditor !==
       userId
@@ -1248,10 +1528,6 @@ export class AuditPlanService {
       );
     }
 
-    // ============================================================
-    // VALIDAR STATUS
-    // ============================================================
-
     if (
       plan.status !==
       'in_progress'
@@ -1260,10 +1536,6 @@ export class AuditPlanService {
         'Apenas auditorias em andamento podem ser concluídas'
       );
     }
-
-    // ============================================================
-    // VERIFICAR CHECKLISTS
-    // ============================================================
 
     const pendingChecklists =
       await AuditChecklist.countDocuments(
@@ -1282,10 +1554,6 @@ export class AuditPlanService {
         `Não é possível concluir a auditoria enquanto existirem ${pendingChecklists} checklist(s) pendente(s)`
       );
     }
-
-    // ============================================================
-    // CONCLUIR
-    // ============================================================
 
     plan.status =
       'completed';
@@ -1313,15 +1581,6 @@ export class AuditPlanService {
   async validateEnterpriseAccess(
     companyId: string
   ): Promise<boolean> {
-    /*
-     * Mantido conforme implementação original.
-     *
-     * A validação definitiva deverá ser conectada à regra
-     * de assinatura/licenciamento da empresa.
-     *
-     * NÃO deve ser considerada uma implementação definitiva
-     * de controle de acesso.
-     */
     return Boolean(companyId);
   }
 
@@ -1369,4 +1628,3 @@ export class AuditPlanService {
     };
   }
 }
-

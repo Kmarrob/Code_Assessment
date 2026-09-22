@@ -32,11 +32,46 @@ router.delete('/plans/:id', auditPlanController.delete);
 router.post('/plans/:id/submit', auditPlanController.submitForApproval);
 router.post('/plans/:id/approve', auditPlanController.approve);
 router.post('/plans/:id/reject', auditPlanController.reject);
+router.post('/plans/:id/cancel', auditPlanController.cancel);
 router.post('/plans/:id/start', auditPlanController.startAudit);
 router.post('/plans/:id/complete', auditPlanController.completeAudit);
 
 // 🆕 NOVO (v47.0) - Buscar respostas dos usuários por plano
 router.get('/plans/:planId/responses', auditPlanController.getResponsesByPlan);
+
+// ============================================================
+// 🆕 NOVO — EXCLUSÃO DE CONTROLES DO ESCOPO (Opção C)
+// ============================================================
+//
+// Fluxo:
+//   1. Criador do plano exclui um controle com justificativa.
+//   2. Auditor Líder aprova ou rejeita a exclusão.
+//   3. Autor da exclusão (ou Auditor Líder) pode remover
+//      antes do envio para aprovação.
+
+// Excluir um controle (adiciona exclusão pendente)
+router.post(
+  '/plans/:id/exclusions',
+  auditPlanController.excludeControl
+);
+
+// Aprovar uma exclusão específica
+router.post(
+  '/plans/:id/exclusions/:controlId/approve',
+  auditPlanController.approveExclusion
+);
+
+// Rejeitar uma exclusão específica (devolve o controle ao escopo)
+router.post(
+  '/plans/:id/exclusions/:controlId/reject',
+  auditPlanController.rejectExclusion
+);
+
+// Remover uma exclusão já registrada (devolve o controle ao escopo)
+router.delete(
+  '/plans/:id/exclusions/:controlId',
+  auditPlanController.removeExclusion
+);
 
 // ============================================================
 // ROTAS DE CHECKLISTS

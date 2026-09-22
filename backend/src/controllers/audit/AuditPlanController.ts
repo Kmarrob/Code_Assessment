@@ -4,6 +4,12 @@ import {
   CreateAuditPlanDTO,
   UpdateAuditPlanDTO,
 } from '../../models/audit/types/audit.types';
+import {
+  excludeControlSchema,
+  approveExclusionSchema,
+  rejectExclusionSchema,
+  removeExclusionSchema,
+} from '../../models/audit/schemas/audit.schemas';
 import { AuthenticatedRequest } from '../../types';
 import { Response as ResponseModel } from '../../models/Response';
 import mongoose from 'mongoose';
@@ -1106,6 +1112,436 @@ export class AuditPlanController {
         success: false,
         message:
           error.message,
+      });
+    }
+  }
+
+  // ============================================================
+  // 🆕 EXCLUIR CONTROLE DO ESCOPO
+  // ============================================================
+
+  /**
+   * Exclui um controle do escopo da auditoria.
+   *
+   * Rota esperada:
+   *   POST /api/internal-audit/plans/:id/exclusions
+   *
+   * Body:
+   *   {
+   *     controlId: string,
+   *     reason: string (min 20 chars)
+   *   }
+   *
+   * Regras:
+   *   - Plano deve estar em 'draft' ou 'pending_approval'.
+   *   - Plano deve estar em modo 'all'.
+   *   - Justificativa obrigatória.
+   *   - Não pode excluir todos os controles.
+   */
+  async excludeControl(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<Response> {
+    try {
+      const { id } = req.params;
+
+      const userId =
+        req.user?._id?.toString();
+
+      const companyId =
+        req.user?.companyId?.toString();
+
+      if (!id) {
+        return res.status(400).json({
+          success: false,
+          message: 'ID do plano não informado',
+        });
+      }
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: 'Usuário não autenticado',
+        });
+      }
+
+      if (!companyId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Empresa não identificada',
+        });
+      }
+
+      // ============================================================
+      // VALIDAR BODY COM ZOD
+      // ============================================================
+
+      const parsed =
+        excludeControlSchema.safeParse(req.body);
+
+      if (!parsed.success) {
+        return res.status(400).json({
+          success: false,
+          message: 'Dados inválidos',
+          errors: parsed.error.errors.map((e) => ({
+            field: e.path.join('.'),
+            message: e.message,
+          })),
+        });
+      }
+
+      const { controlId, reason } = parsed.data;
+
+      const plan =
+        await auditPlanService.excludeControl(
+          id,
+          controlId,
+          reason,
+          userId,
+          companyId
+        );
+
+      if (!plan) {
+        return res.status(404).json({
+          success: false,
+          message: 'Plano não encontrado',
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        data: plan,
+        message: 'Controle excluído do escopo. Aguardando aprovação do Auditor Líder.',
+      });
+    } catch (error: any) {
+      console.error(
+        'Erro ao excluir controle do escopo:',
+        error
+      );
+
+      return res.status(400).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  }
+
+  // ============================================================
+  // 🆕 APROVAR EXCLUSÃO DE CONTROLE
+  // ============================================================
+
+  /**
+   * Aprova uma exclusão de controle previamente registrada.
+   *
+   * Rota esperada:
+   *   POST /api/internal-audit/plans/:id/exclusions/:controlId/approve
+   *
+   * Regras:
+   *   - Apenas o Auditor Líder pode aprovar.
+   *   - A exclusão precisa existir.
+   *   - A exclusão não pode já estar aprovada.
+   */
+  async approveExclusion(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<Response> {
+    try {
+      const { id, controlId } = req.params;
+
+      const userId =
+        req.user?._id?.toString();
+
+      const companyId =
+        req.user?.companyId?.toString();
+
+      if (!id) {
+        return res.status(400).json({
+          success: false,
+          message: 'ID do plano não informado',
+        });
+      }
+
+      if (!controlId) {
+        return res.status(400).json({
+          success: false,
+          message: 'ID do controle não informado',
+        });
+      }
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: 'Usuário não autenticado',
+        });
+      }
+
+      if (!companyId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Empresa não identificada',
+        });
+      }
+
+      // ============================================================
+      // VALIDAR PARAMS COM ZOD
+      // ============================================================
+
+      const parsed =
+        approveExclusionSchema.safeParse({ controlId });
+
+      if (!parsed.success) {
+        return res.status(400).json({
+          success: false,
+          message: 'Dados inválidos',
+          errors: parsed.error.errors.map((e) => ({
+            field: e.path.join('.'),
+            message: e.message,
+          })),
+        });
+      }
+
+      const plan =
+        await auditPlanService.approveExclusion(
+          id,
+          controlId,
+          userId,
+          companyId
+        );
+
+      if (!plan) {
+        return res.status(404).json({
+          success: false,
+          message: 'Plano não encontrado',
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        data: plan,
+        message: 'Exclusão aprovada com sucesso.',
+      });
+    } catch (error: any) {
+      console.error(
+        'Erro ao aprovar exclusão de controle:',
+        error
+      );
+
+      return res.status(400).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  }
+
+  // ============================================================
+  // 🆕 REJEITAR EXCLUSÃO DE CONTROLE
+  // ============================================================
+
+  /**
+   * Rejeita uma exclusão de controle.
+   *
+   * Rota esperada:
+   *   POST /api/internal-audit/plans/:id/exclusions/:controlId/reject
+   *
+   * Regras:
+   *   - Apenas o Auditor Líder pode rejeitar.
+   *   - Ao rejeitar, o controle volta ao escopo efetivo.
+   */
+  async rejectExclusion(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<Response> {
+    try {
+      const { id, controlId } = req.params;
+
+      const userId =
+        req.user?._id?.toString();
+
+      const companyId =
+        req.user?.companyId?.toString();
+
+      if (!id) {
+        return res.status(400).json({
+          success: false,
+          message: 'ID do plano não informado',
+        });
+      }
+
+      if (!controlId) {
+        return res.status(400).json({
+          success: false,
+          message: 'ID do controle não informado',
+        });
+      }
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: 'Usuário não autenticado',
+        });
+      }
+
+      if (!companyId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Empresa não identificada',
+        });
+      }
+
+      // ============================================================
+      // VALIDAR PARAMS COM ZOD
+      // ============================================================
+
+      const parsed =
+        rejectExclusionSchema.safeParse({ controlId });
+
+      if (!parsed.success) {
+        return res.status(400).json({
+          success: false,
+          message: 'Dados inválidos',
+          errors: parsed.error.errors.map((e) => ({
+            field: e.path.join('.'),
+            message: e.message,
+          })),
+        });
+      }
+
+      const plan =
+        await auditPlanService.rejectExclusion(
+          id,
+          controlId,
+          userId,
+          companyId
+        );
+
+      if (!plan) {
+        return res.status(404).json({
+          success: false,
+          message: 'Plano não encontrado',
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        data: plan,
+        message: 'Exclusão rejeitada. O controle voltou ao escopo.',
+      });
+    } catch (error: any) {
+      console.error(
+        'Erro ao rejeitar exclusão de controle:',
+        error
+      );
+
+      return res.status(400).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  }
+
+  // ============================================================
+  // 🆕 REMOVER EXCLUSÃO DE CONTROLE
+  // ============================================================
+
+  /**
+   * Remove uma exclusão já registrada (sem rejeição formal).
+   *
+   * Rota esperada:
+   *   DELETE /api/internal-audit/plans/:id/exclusions/:controlId
+   *
+   * Regras:
+   *   - Plano deve estar em 'draft' ou 'pending_approval'.
+   *   - Autor da exclusão OU Auditor Líder podem remover.
+   *   - O controle volta ao escopo efetivo.
+   */
+  async removeExclusion(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<Response> {
+    try {
+      const { id, controlId } = req.params;
+
+      const userId =
+        req.user?._id?.toString();
+
+      const companyId =
+        req.user?.companyId?.toString();
+
+      if (!id) {
+        return res.status(400).json({
+          success: false,
+          message: 'ID do plano não informado',
+        });
+      }
+
+      if (!controlId) {
+        return res.status(400).json({
+          success: false,
+          message: 'ID do controle não informado',
+        });
+      }
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: 'Usuário não autenticado',
+        });
+      }
+
+      if (!companyId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Empresa não identificada',
+        });
+      }
+
+      // ============================================================
+      // VALIDAR PARAMS COM ZOD
+      // ============================================================
+
+      const parsed =
+        removeExclusionSchema.safeParse({ controlId });
+
+      if (!parsed.success) {
+        return res.status(400).json({
+          success: false,
+          message: 'Dados inválidos',
+          errors: parsed.error.errors.map((e) => ({
+            field: e.path.join('.'),
+            message: e.message,
+          })),
+        });
+      }
+
+      const plan =
+        await auditPlanService.removeExclusion(
+          id,
+          controlId,
+          userId,
+          companyId
+        );
+
+      if (!plan) {
+        return res.status(404).json({
+          success: false,
+          message: 'Plano não encontrado',
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        data: plan,
+        message: 'Exclusão removida. O controle voltou ao escopo.',
+      });
+    } catch (error: any) {
+      console.error(
+        'Erro ao remover exclusão de controle:',
+        error
+      );
+
+      return res.status(400).json({
+        success: false,
+        message: error.message,
       });
     }
   }

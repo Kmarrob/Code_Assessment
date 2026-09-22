@@ -1,6 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, Users, FileText, X, Plus, AlertCircle, UserPlus, UserCheck } from 'lucide-react';
+import {
+  Calendar,
+  Users,
+  FileText,
+  X,
+  Plus,
+  AlertCircle,
+  UserPlus,
+  UserCheck,
+  Info,
+  Lock,
+  Trash2,
+  CheckCircle2,
+  XCircle,
+  ShieldCheck,
+} from 'lucide-react';
 import { useAuth } from '../../../../contexts/AuthContext.js';
 import { useUsers } from '../../../../hooks/useAdmin.js';
 import { CreateAuditPlanDTO, UpdateAuditPlanDTO, AuditPlan } from '../../types/audit.types';
@@ -8,12 +23,27 @@ import { toast } from 'react-hot-toast';
 import api from '../../../../services/api.js';
 import { CustomSelect } from '../../../../components/ui/CustomSelect';
 
+// ============================================================
+// TIPOS AUXILIARES
+// ============================================================
+
+type ScopeMode = 'all' | 'custom';
+
+interface ExcludedControlDraft {
+  controlId: string;
+  reason: string;
+}
+
 interface AuditPlanFormProps {
   initialData?: AuditPlan;
   isEditing?: boolean;
   onSubmit: (data: CreateAuditPlanDTO) => Promise<void>;
   isSubmitting?: boolean;
 }
+
+// ============================================================
+// CONSTANTES
+// ============================================================
 
 const STATUS_OPTIONS = [
   { value: 'draft', label: 'Rascunho' },
@@ -50,6 +80,12 @@ const PROCESS_OPTIONS = [
   'Outros',
 ];
 
+const MIN_EXCLUSION_REASON_LENGTH = 20;
+
+// ============================================================
+// COMPONENTE PRINCIPAL
+// ============================================================
+
 export function AuditPlanForm({
   initialData,
   isEditing = false,
@@ -60,21 +96,42 @@ export function AuditPlanForm({
   const { user } = useAuth();
   const { data: users = [], isLoading: isLoadingUsers } = useUsers();
 
-  // Estado para auditores manuais
+  // ============================================================
+  // ESTADOS — AUDITORES MANUAIS
+  // ============================================================
+
   const [manualAuditorName, setManualAuditorName] = useState('');
   const [manualAuditorEmail, setManualAuditorEmail] = useState('');
   const [manualAuditors, setManualAuditors] = useState<Array<{ id: string; name: string; email: string }>>([]);
   const [showManualAuditorInput, setShowManualAuditorInput] = useState(false);
 
-  // Estado para controles do backend enriquecidos com respostas
+  // ============================================================
+  // ESTADOS — CONTROLES
+  // ============================================================
+
   const [controls, setControls] = useState<Array<any>>([]);
   const [isLoadingControls, setIsLoadingControls] = useState(true);
+
+  // ============================================================
+  // 🆕 ESTADOS — ESCOPO (Opção C)
+  // ============================================================
+
+  const [scopeMode, setScopeMode] = useState<ScopeMode>('all');
+  const [totalAvailableControls, setTotalAvailableControls] = useState<number>(0);
+  const [excludedControls, setExcludedControls] = useState<ExcludedControlDraft[]>([]);
+  const [exclusionDialogControlId, setExclusionDialogControlId] = useState<string | null>(null);
+  const [exclusionReason, setExclusionReason] = useState('');
+
+  // ============================================================
+  // ESTADOS — FORMULÁRIO
+  // ============================================================
 
   const [formData, setFormData] = useState<Partial<CreateAuditPlanDTO>>({
     code: '',
     title: '',
     description: '',
     scope: {
+      mode: 'all',
       controls: [],
       processes: [],
       areas: [],
@@ -98,18 +155,19 @@ export function AuditPlanForm({
   const [selectedProcesses, setSelectedProcesses] = useState<string[]>([]);
   const [selectedAreas, setSelectedAreas] = useState<string[]>([]);
 
-  // Buscar controles da empresa via rota /rep/controls E respostas salvas via /rep/responses
+  // ============================================================
+  // BUSCAR CONTROLES E RESPOSTAS
+  // ============================================================
+
   useEffect(() => {
     const fetchControlsAndResponses = async () => {
       setIsLoadingControls(true);
       try {
         console.log('🔍 Buscando controles e respostas da empresa (REP)...');
-        
-        // 1. Busca controles
+
         const controlsRes = await api.get('/rep/controls');
         const controlList = controlsRes.data.data || controlsRes.data || [];
 
-        // 2. Busca respostas de maturidade salvas no banco
         let responsesList: any[] = [];
         try {
           const responsesRes = await api.get('/rep/responses');
@@ -118,7 +176,6 @@ export function AuditPlanForm({
           console.warn('⚠️ Erro ao carregar respostas de /rep/responses:', e);
         }
 
-        // 3. Cruzamento de dados entre Controles e Respostas de Maturidade
         const enrichedControls = controlList.map((c: any) => {
           const ctrlCode = c.id || c.controlId || c.code;
           const ctrlDbId = c._id;
@@ -138,6 +195,9 @@ export function AuditPlanForm({
 
         console.log('📦 Controles carregados e enriquecidos:', enrichedControls.length);
         setControls(enrichedControls);
+
+        // 🆕 Atualizar total disponível
+        setTotalAvailableControls(enrichedControls.length);
       } catch (err) {
         console.error('❌ Erro ao carregar controles:', err);
         toast.error('Erro ao carregar lista de controles');
@@ -148,14 +208,17 @@ export function AuditPlanForm({
     fetchControlsAndResponses();
   }, []);
 
-  // Carregar dados iniciais para edição
+  // ============================================================
+  // CARREGAR DADOS INICIAIS (EDIÇÃO)
+  // ============================================================
+
   useEffect(() => {
     if (initialData) {
       setFormData({
         code: initialData.code || '',
         title: initialData.title,
         description: initialData.description,
-        scope: initialData.scope || { controls: [], processes: [], areas: [] },
+        scope: initialData.scope || { mode: 'all', controls: [], processes: [], areas: [] },
         period: {
           startDate: initialData.period.startDate.split('T')[0],
           endDate: initialData.period.endDate.split('T')[0],
@@ -164,13 +227,39 @@ export function AuditPlanForm({
         team: initialData.team || { leadAuditor: '', auditors: [], observers: [] },
         criteria: initialData.criteria || [],
       });
+
+      // 🆕 Carregar modo do escopo
+      const existingScope: any = initialData.scope || {};
+      setScopeMode(existingScope.mode || 'all');
+
+      // 🆕 Carregar exclusões
+      if (
+        existingScope.excludedControls &&
+        Array.isArray(existingScope.excludedControls)
+      ) {
+        setExcludedControls(
+          existingScope.excludedControls.map((e: any) => ({
+            controlId: e.controlId,
+            reason: e.reason,
+          }))
+        );
+      }
+
+      // 🆕 Carregar total disponível (snapshot salvo ou atual)
+      if (existingScope.totalAvailableControls) {
+        setTotalAvailableControls(existingScope.totalAvailableControls);
+      }
+
       setSelectedControls(initialData.scope?.controls || []);
       setSelectedProcesses(initialData.scope?.processes || []);
       setSelectedAreas(initialData.scope?.areas || []);
     }
   }, [initialData]);
 
-  // Carregar auditores manuais do localStorage
+  // ============================================================
+  // CARREGAR AUDITORES MANUAIS DO LOCALSTORAGE
+  // ============================================================
+
   useEffect(() => {
     try {
       const saved = localStorage.getItem('manualAuditors');
@@ -185,7 +274,6 @@ export function AuditPlanForm({
     }
   }, []);
 
-  // Salvar auditores manuais no localStorage
   const saveManualAuditors = (auditors: Array<{ id: string; name: string; email: string }>) => {
     try {
       localStorage.setItem('manualAuditors', JSON.stringify(auditors));
@@ -193,6 +281,114 @@ export function AuditPlanForm({
       console.warn('Erro ao salvar auditores manuais:', e);
     }
   };
+
+  // ============================================================
+  // 🆕 CONTROLES EFETIVOS (MODO 'all')
+  // ============================================================
+
+  /**
+   * Em modo 'all', os controles efetivos são:
+   *   total disponível - excluídos
+   *
+   * Em modo 'custom', são os controles selecionados manualmente.
+   */
+  const effectiveControls = useMemo(() => {
+    if (scopeMode === 'custom') {
+      return selectedControls;
+    }
+
+    // Modo 'all': todos os controles menos os excluídos
+    const excludedIds = new Set(excludedControls.map((e) => e.controlId));
+    return controls
+      .map((c) => String(c.id || c.controlId || c.code || c._id))
+      .filter((id) => !excludedIds.has(id));
+  }, [scopeMode, controls, selectedControls, excludedControls]);
+
+  // ============================================================
+  // 🆕 HANDLERS — MODO DO ESCOPO
+  // ============================================================
+
+  const handleScopeModeChange = (newMode: ScopeMode) => {
+    if (scopeMode === newMode) return;
+
+    // Ao alternar, limpar estados específicos do outro modo
+    if (newMode === 'all') {
+      setSelectedControls([]);
+    } else {
+      // Ao ir para 'custom', iniciar com todos os controles já disponíveis
+      setExcludedControls([]);
+    }
+
+    setScopeMode(newMode);
+  };
+
+  // ============================================================
+  // 🆕 HANDLERS — EXCLUSÃO DE CONTROLES
+  // ============================================================
+
+  const openExclusionDialog = (controlId: string) => {
+    setExclusionDialogControlId(controlId);
+    setExclusionReason('');
+  };
+
+  const closeExclusionDialog = () => {
+    setExclusionDialogControlId(null);
+    setExclusionReason('');
+  };
+
+  const confirmExclusion = () => {
+    if (!exclusionDialogControlId) return;
+
+    const trimmedReason = exclusionReason.trim();
+
+    if (trimmedReason.length < MIN_EXCLUSION_REASON_LENGTH) {
+      toast.error(
+        `A justificativa deve ter no mínimo ${MIN_EXCLUSION_REASON_LENGTH} caracteres`
+      );
+      return;
+    }
+
+    // Verificar se o controle já está excluído
+    const alreadyExcluded = excludedControls.some(
+      (e) => e.controlId === exclusionDialogControlId
+    );
+
+    if (alreadyExcluded) {
+      toast.error('Este controle já está excluído');
+      return;
+    }
+
+    // Não permitir excluir todos os controles
+    const willRemain =
+      controls.length - (excludedControls.length + 1);
+
+    if (willRemain <= 0) {
+      toast.error(
+        'Não é permitido excluir todos os controles. A auditoria deve ter pelo menos 1 controle em escopo'
+      );
+      return;
+    }
+
+    setExcludedControls([
+      ...excludedControls,
+      {
+        controlId: exclusionDialogControlId,
+        reason: trimmedReason,
+      },
+    ]);
+
+    closeExclusionDialog();
+    toast.success('Controle excluído. A exclusão ficará pendente de aprovação do Auditor Líder.');
+  };
+
+  const cancelExclusion = (controlId: string) => {
+    setExcludedControls(excludedControls.filter((e) => e.controlId !== controlId));
+    toast.success('Exclusão removida. O controle voltou ao escopo.');
+  };
+
+  // ============================================================
+  // HANDLERS — FORMULÁRIO
+  // ============================================================
 
   const handleChange = (field: string, value: any) => {
     setFormData((prev) => ({
@@ -246,7 +442,6 @@ export function AuditPlanForm({
     }));
   };
 
-  // Handler para adicionar auditor manual
   const handleAddManualAuditor = () => {
     if (!manualAuditorName.trim()) {
       toast.error('Nome do auditor é obrigatório');
@@ -280,7 +475,6 @@ export function AuditPlanForm({
     toast.success(`Auditor "${newAuditor.name}" adicionado com sucesso!`);
   };
 
-  // Remover auditor manual
   const handleRemoveManualAuditor = (id: string) => {
     const updatedAuditors = manualAuditors.filter((a) => a.id !== id);
     setManualAuditors(updatedAuditors);
@@ -293,6 +487,10 @@ export function AuditPlanForm({
 
     toast.success('Auditor removido');
   };
+
+  // ============================================================
+  // VALIDAÇÃO
+  // ============================================================
 
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -315,9 +513,29 @@ export function AuditPlanForm({
     if (!formData.period?.endDate) {
       newErrors.endDate = 'Data de fim é obrigatória';
     }
-    if (selectedControls.length === 0) {
-      newErrors.controls = 'Selecione pelo menos um controle';
+
+    // 🆕 Validação do escopo (modo all)
+    if (scopeMode === 'all') {
+      if (effectiveControls.length === 0) {
+        newErrors.controls = 'O plano precisa ter pelo menos 1 controle no escopo';
+      }
+
+      // Validar justificativas das exclusões
+      const invalidExclusions = excludedControls.filter(
+        (e) => e.reason.trim().length < MIN_EXCLUSION_REASON_LENGTH
+      );
+      if (invalidExclusions.length > 0) {
+        newErrors.controls = `Toda exclusão precisa ter justificativa com no mínimo ${MIN_EXCLUSION_REASON_LENGTH} caracteres`;
+      }
     }
+
+    // Validação do escopo (modo custom)
+    if (scopeMode === 'custom') {
+      if (selectedControls.length === 0) {
+        newErrors.controls = 'Selecione pelo menos um controle';
+      }
+    }
+
     if (selectedProcesses.length === 0) {
       newErrors.processes = 'Selecione pelo menos um processo';
     }
@@ -339,7 +557,8 @@ export function AuditPlanForm({
       title: formData.title!,
       description: formData.description!,
       scope: {
-        controls: selectedControls,
+        mode: scopeMode,
+        controls: effectiveControls,
         processes: selectedProcesses,
         areas: selectedAreas,
       },
@@ -356,10 +575,18 @@ export function AuditPlanForm({
       criteria: formData.criteria || [],
     };
 
+    // 🆕 Anexar exclusões ao payload (o service do backend valida)
+    if (scopeMode === 'all' && excludedControls.length > 0) {
+      (data as any).excludedControls = excludedControls;
+    }
+
     await onSubmit(data);
   };
 
-  // Combinar usuários do sistema + auditores manuais
+  // ============================================================
+  // OPÇÕES DE AUDITORES
+  // ============================================================
+
   const allAuditorOptions = [
     ...(users || [])
       .filter((u: any) => u.role === 'rep' || u.role === 'admin')
@@ -379,7 +606,10 @@ export function AuditPlanForm({
 
   const hasOptions = allAuditorOptions.length > 0;
 
-  // Opções de controles dinâmicos mapeando id (código) e nome (descrição) com badges coloridas de maturidade
+  // ============================================================
+  // OPÇÕES DE CONTROLES
+  // ============================================================
+
   const controlOptions = controls.map((c) => {
     const code = c.id || c.controlId || c.code || '';
     const name = c.nome || c.name || c.title || '';
@@ -404,9 +634,25 @@ export function AuditPlanForm({
     };
   });
 
+  // ============================================================
+  // 🆕 HELPER — INFO DO CONTROLE EXCLUÍDO
+  // ============================================================
+
+  const getControlLabelById = (controlId: string) => {
+    const opt = controlOptions.find((o) => o.value === controlId);
+    return opt ? opt.label : controlId;
+  };
+
+  // ============================================================
+  // RENDER
+  // ============================================================
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Título e Descrição */}
+
+      {/* ======================================================== */}
+      {/* INFORMAÇÕES BÁSICAS */}
+      {/* ======================================================== */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Informações Básicas</h2>
         <div className="space-y-4">
@@ -466,51 +712,264 @@ export function AuditPlanForm({
         </div>
       </div>
 
-      {/* Escopo */}
+      {/* ======================================================== */}
+      {/* ESCOPO DA AUDITORIA (OPÇÃO C) */}
+      {/* ======================================================== */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Escopo da Auditoria</h2>
+        <h2 className="text-lg font-semibold text-gray-900 mb-1">Escopo da Auditoria</h2>
+        <p className="text-sm text-gray-500 mb-4">
+          Defina como os controles ISO 27001 serão selecionados para esta auditoria.
+        </p>
+
+        {/* ------------------------------------------------------ */}
+        {/* TOGGLE DE MODO */}
+        {/* ------------------------------------------------------ */}
+        <div className="mb-6">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Modo de seleção de controles
+          </label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {/* Modo 'all' */}
+            <button
+              type="button"
+              onClick={() => handleScopeModeChange('all')}
+              className={`flex items-start gap-3 p-4 rounded-lg border-2 transition-all text-left ${
+                scopeMode === 'all'
+                  ? 'border-indigo-500 bg-indigo-50'
+                  : 'border-gray-200 hover:border-gray-300 bg-white'
+              }`}
+            >
+              <div
+                className={`flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center mt-0.5 ${
+                  scopeMode === 'all'
+                    ? 'border-indigo-600 bg-indigo-600'
+                    : 'border-gray-300 bg-white'
+                }`}
+              >
+                {scopeMode === 'all' && (
+                  <CheckCircle2 className="w-3 h-3 text-white" />
+                )}
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-indigo-600" />
+                  <span className="font-semibold text-gray-900">
+                    Todos os controles (padrão)
+                  </span>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Cobertura total. Todos os {totalAvailableControls || '93'} controles
+                  da empresa entram no escopo. Exclusões exigem justificativa e
+                  aprovação do Auditor Líder.
+                </p>
+              </div>
+            </button>
+
+            {/* Modo 'custom' */}
+            <button
+              type="button"
+              onClick={() => handleScopeModeChange('custom')}
+              className={`flex items-start gap-3 p-4 rounded-lg border-2 transition-all text-left ${
+                scopeMode === 'custom'
+                  ? 'border-indigo-500 bg-indigo-50'
+                  : 'border-gray-200 hover:border-gray-300 bg-white'
+              }`}
+            >
+              <div
+                className={`flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center mt-0.5 ${
+                  scopeMode === 'custom'
+                    ? 'border-indigo-600 bg-indigo-600'
+                    : 'border-gray-300 bg-white'
+                }`}
+              >
+                {scopeMode === 'custom' && (
+                  <CheckCircle2 className="w-3 h-3 text-white" />
+                )}
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-gray-600" />
+                  <span className="font-semibold text-gray-900">
+                    Seleção personalizada
+                  </span>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Você escolhe quais controles auditar. Recomendado apenas para
+                  auditorias de escopo reduzido.
+                </p>
+              </div>
+            </button>
+          </div>
+        </div>
+
+        {/* ------------------------------------------------------ */}
+        {/* RESUMO DO ESCOPO */}
+        {/* ------------------------------------------------------ */}
+        <div className="mb-4 p-3 rounded-lg bg-blue-50 border border-blue-200 flex items-start gap-2">
+          <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+          <div className="text-xs text-blue-800">
+            {scopeMode === 'all' ? (
+              <>
+                <strong>Modo "Todos":</strong> {effectiveControls.length} controle(s)
+                em escopo · {excludedControls.length} excluído(s) ·{' '}
+                {totalAvailableControls} disponíveis.
+              </>
+            ) : (
+              <>
+                <strong>Modo "Personalizado":</strong> {effectiveControls.length}{' '}
+                controle(s) selecionado(s) manualmente de {totalAvailableControls}{' '}
+                disponíveis.
+              </>
+            )}
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Controles - Usando CustomSelect */}
-          <div>
+          {/* ------------------------------------------------------ */}
+          {/* CONTROLES */}
+          {/* ------------------------------------------------------ */}
+          <div className="md:col-span-1">
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Controles ISO 27001 <span className="text-red-500">*</span>
             </label>
-            <div className="flex flex-wrap gap-2 mb-2">
-              {selectedControls.map((controlVal) => {
-                const option = controlOptions.find((opt) => opt.value === controlVal);
-                const controlLabel = option ? option.label : controlVal;
-                return (
-                  <span
-                    key={controlVal}
-                    className="flex items-center gap-1 px-2 py-0.5 bg-indigo-100 text-indigo-700 text-xs rounded-full"
-                  >
-                    {controlLabel}
-                    <button
-                      type="button"
-                      onClick={() => handleScopeChange('controls', controlVal)}
-                      className="hover:text-red-500"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </span>
-                );
-              })}
-            </div>
-            {isLoadingControls ? (
-              <div className="text-sm text-gray-500 py-2">Carregando controles...</div>
-            ) : (
-              <CustomSelect
-                value=""
-                onChange={(val) => handleScopeChange('controls', val)}
-                options={controlOptions.filter((c) => !selectedControls.includes(c.value))}
-                placeholder="Selecione um controle..."
-                className="w-full"
-              />
+
+            {/* MODO 'all': lista com exclusões */}
+            {scopeMode === 'all' && (
+              <div className="border border-gray-200 rounded-lg max-h-96 overflow-y-auto bg-white">
+                {isLoadingControls ? (
+                  <div className="p-4 text-sm text-gray-500 text-center">
+                    Carregando controles...
+                  </div>
+                ) : controlOptions.length === 0 ? (
+                  <div className="p-4 text-sm text-gray-500 text-center">
+                    Nenhum controle disponível
+                  </div>
+                ) : (
+                  <ul className="divide-y divide-gray-100">
+                    {controlOptions.map((opt) => {
+                      const isExcluded = excludedControls.some(
+                        (e) => e.controlId === opt.value
+                      );
+                      const exclusion = excludedControls.find(
+                        (e) => e.controlId === opt.value
+                      );
+
+                      return (
+                        <li
+                          key={opt.value}
+                          className={`px-3 py-2 flex items-start gap-2 ${
+                            isExcluded ? 'bg-red-50' : 'hover:bg-gray-50'
+                          }`}
+                        >
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span
+                                className={`text-xs font-medium truncate ${
+                                  isExcluded
+                                    ? 'text-red-700 line-through'
+                                    : 'text-gray-900'
+                                }`}
+                              >
+                                {opt.label}
+                              </span>
+                              {opt.badge && !isExcluded && (
+                                <span
+                                  className="text-[10px] px-1.5 py-0.5 rounded-full font-medium"
+                                  style={{
+                                    backgroundColor: opt.badge.bg,
+                                    color: opt.badge.color,
+                                  }}
+                                >
+                                  {opt.badge.label}
+                                </span>
+                              )}
+                              {isExcluded && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-red-600 text-white">
+                                  Excluído
+                                </span>
+                              )}
+                            </div>
+                            {isExcluded && exclusion && (
+                              <p className="text-[10px] text-red-600 mt-1 italic">
+                                Motivo: {exclusion.reason}
+                              </p>
+                            )}
+                          </div>
+                          {isExcluded ? (
+                            <button
+                              type="button"
+                              onClick={() => cancelExclusion(opt.value)}
+                              className="flex-shrink-0 p-1 text-red-500 hover:text-red-700 hover:bg-red-100 rounded"
+                              title="Remover exclusão (devolver ao escopo)"
+                            >
+                              <XCircle className="w-4 h-4" />
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => openExclusionDialog(opt.value)}
+                              className="flex-shrink-0 p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded"
+                              title="Excluir este controle do escopo"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
             )}
-            {errors.controls && <p className="text-sm text-red-500 mt-1">{errors.controls}</p>}
+
+            {/* MODO 'custom': seleção manual (comportamento atual) */}
+            {scopeMode === 'custom' && (
+              <>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {selectedControls.map((controlVal) => {
+                    const option = controlOptions.find((opt) => opt.value === controlVal);
+                    const controlLabel = option ? option.label : controlVal;
+                    return (
+                      <span
+                        key={controlVal}
+                        className="flex items-center gap-1 px-2 py-0.5 bg-indigo-100 text-indigo-700 text-xs rounded-full"
+                      >
+                        {controlLabel}
+                        <button
+                          type="button"
+                          onClick={() => handleScopeChange('controls', controlVal)}
+                          className="hover:text-red-500"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    );
+                  })}
+                </div>
+                {isLoadingControls ? (
+                  <div className="text-sm text-gray-500 py-2">Carregando controles...</div>
+                ) : (
+                  <CustomSelect
+                    value=""
+                    onChange={(val) => handleScopeChange('controls', val)}
+                    options={controlOptions.filter(
+                      (c) => !selectedControls.includes(c.value)
+                    )}
+                    placeholder="Selecione um controle..."
+                    className="w-full"
+                  />
+                )}
+              </>
+            )}
+
+            {errors.controls && (
+              <p className="text-sm text-red-500 mt-1">{errors.controls}</p>
+            )}
           </div>
 
-          {/* Processos */}
+          {/* ------------------------------------------------------ */}
+          {/* PROCESSOS */}
+          {/* ------------------------------------------------------ */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Processos <span className="text-red-500">*</span>
@@ -544,10 +1003,14 @@ export function AuditPlanForm({
                 </option>
               ))}
             </select>
-            {errors.processes && <p className="text-sm text-red-500 mt-1">{errors.processes}</p>}
+            {errors.processes && (
+              <p className="text-sm text-red-500 mt-1">{errors.processes}</p>
+            )}
           </div>
 
-          {/* Áreas */}
+          {/* ------------------------------------------------------ */}
+          {/* ÁREAS */}
+          {/* ------------------------------------------------------ */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Áreas <span className="text-red-500">*</span>
@@ -581,12 +1044,81 @@ export function AuditPlanForm({
                 </option>
               ))}
             </select>
-            {errors.areas && <p className="text-sm text-red-500 mt-1">{errors.areas}</p>}
+            {errors.areas && (
+              <p className="text-sm text-red-500 mt-1">{errors.areas}</p>
+            )}
           </div>
         </div>
+
+        {/* ------------------------------------------------------ */}
+        {/* 🆕 DIALOG DE JUSTIFICATIVA DE EXCLUSÃO */}
+        {/* ------------------------------------------------------ */}
+        {exclusionDialogControlId && (
+          <div className="mt-4 p-4 bg-red-50 border-2 border-red-300 rounded-lg">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <h3 className="font-semibold text-red-900 mb-1">
+                  Justificar exclusão do controle
+                </h3>
+                <p className="text-xs text-red-700 mb-3">
+                  <strong>{getControlLabelById(exclusionDialogControlId)}</strong>
+                  <br />
+                  A justificativa é obrigatória (mínimo {MIN_EXCLUSION_REASON_LENGTH}{' '}
+                  caracteres) e ficará registrada para auditoria (ISO 19011:2018).
+                </p>
+
+                <textarea
+                  value={exclusionReason}
+                  onChange={(e) => setExclusionReason(e.target.value)}
+                  placeholder="Ex: Controle não aplicável ao escopo desta auditoria porque..."
+                  rows={3}
+                  className="w-full px-3 py-2 border border-red-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm"
+                  style={{ color: '#1f2937', backgroundColor: '#ffffff' }}
+                  autoFocus
+                />
+
+                <div className="flex items-center justify-between mt-2">
+                  <span
+                    className={`text-xs ${
+                      exclusionReason.trim().length >= MIN_EXCLUSION_REASON_LENGTH
+                        ? 'text-green-600'
+                        : 'text-red-500'
+                    }`}
+                  >
+                    {exclusionReason.trim().length}/{MIN_EXCLUSION_REASON_LENGTH}{' '}
+                    caracteres
+                  </span>
+
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={closeExclusionDialog}
+                      className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={confirmExclusion}
+                      disabled={
+                        exclusionReason.trim().length < MIN_EXCLUSION_REASON_LENGTH
+                      }
+                      className="px-3 py-1 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Confirmar exclusão
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Equipe */}
+      {/* ======================================================== */}
+      {/* EQUIPE */}
+      {/* ======================================================== */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
           <Users className="w-5 h-5 text-gray-500" />
@@ -645,7 +1177,9 @@ export function AuditPlanForm({
                 Nenhum auditor disponível. Adicione um manualmente abaixo.
               </div>
             )}
-            {errors.leadAuditor && <p className="text-sm text-red-500 mt-1">{errors.leadAuditor}</p>}
+            {errors.leadAuditor && (
+              <p className="text-sm text-red-500 mt-1">{errors.leadAuditor}</p>
+            )}
           </div>
 
           <div>
@@ -761,7 +1295,9 @@ export function AuditPlanForm({
         </div>
       </div>
 
-      {/* Período */}
+      {/* ======================================================== */}
+      {/* PERÍODO */}
+      {/* ======================================================== */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
           <Calendar className="w-5 h-5 text-gray-500" />
@@ -786,7 +1322,9 @@ export function AuditPlanForm({
               }`}
               style={{ color: '#1f2937', backgroundColor: '#ffffff' }}
             />
-            {errors.startDate && <p className="text-sm text-red-500 mt-1">{errors.startDate}</p>}
+            {errors.startDate && (
+              <p className="text-sm text-red-500 mt-1">{errors.startDate}</p>
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -806,7 +1344,9 @@ export function AuditPlanForm({
               }`}
               style={{ color: '#1f2937', backgroundColor: '#ffffff' }}
             />
-            {errors.endDate && <p className="text-sm text-red-500 mt-1">{errors.endDate}</p>}
+            {errors.endDate && (
+              <p className="text-sm text-red-500 mt-1">{errors.endDate}</p>
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -818,7 +1358,10 @@ export function AuditPlanForm({
               onChange={(e) =>
                 setFormData((prev) => ({
                   ...prev,
-                  period: { ...prev.period!, estimatedDays: parseInt(e.target.value) || 30 },
+                  period: {
+                    ...prev.period!,
+                    estimatedDays: parseInt(e.target.value) || 30,
+                  },
                 }))
               }
               min={1}
@@ -832,7 +1375,9 @@ export function AuditPlanForm({
         </div>
       </div>
 
-      {/* Critérios */}
+      {/* ======================================================== */}
+      {/* CRITÉRIOS */}
+      {/* ======================================================== */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
           <FileText className="w-5 h-5 text-gray-500" />
@@ -845,7 +1390,11 @@ export function AuditPlanForm({
               className="flex items-center gap-1 px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm"
             >
               {c}
-              <button type="button" onClick={() => handleRemoveCriteria(c)} className="hover:text-red-500">
+              <button
+                type="button"
+                onClick={() => handleRemoveCriteria(c)}
+                className="hover:text-red-500"
+              >
                 <X className="w-3 h-3" />
               </button>
             </span>
@@ -876,7 +1425,9 @@ export function AuditPlanForm({
         </div>
       </div>
 
-      {/* Ações */}
+      {/* ======================================================== */}
+      {/* ERRO GERAL */}
+      {/* ======================================================== */}
       {errors.general && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
           <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
@@ -884,6 +1435,9 @@ export function AuditPlanForm({
         </div>
       )}
 
+      {/* ======================================================== */}
+      {/* AÇÕES */}
+      {/* ======================================================== */}
       <div className="flex items-center justify-end gap-4 pt-4 border-t border-gray-200">
         <button
           type="button"

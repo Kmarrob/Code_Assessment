@@ -1,21 +1,39 @@
 // ============================================================
-// TIPOS DO MÓDULO DE AUDITORIA INTERNA
+// TIPOS DO MÓDULO DE AUDITORIA INTERNA (FRONTEND)
 // ============================================================
 
 export type AuditStatus =
   | 'draft'
-  |  'pending_approval'
+  | 'submitted'
+  | 'pending_approval'
   | 'approved'
+  | 'rejected'
   | 'in_progress'
   | 'completed'
   | 'cancelled';
 
+/**
+ * Tipo de constatação de auditoria.
+ *
+ * Valores alinhados com:
+ *   - Modelo AuditFinding.ts (enum MongoDB)
+ *   - Schema Zod (createAuditFindingSchema)
+ *   - Documento "Exemplo - RELATÓRIO DE AUDITORIA.docx"
+ *   - ISO 19011:2018
+ *
+ * Siglas:
+ *   NC_A = Não Conformidade Maior
+ *   NC_B = Não Conformidade Menor
+ *   CM   = Comentário
+ *   OM   = Oportunidade de Melhoria
+ *   AP   = Boas Práticas / Aspecto Positivo
+ */
 export type AuditFindingType =
-  | 'nc_a'
-  | 'nc_b'
-  | 'comment'
-  | 'opportunity'
-  | 'positive';
+  | 'NC_A'
+  | 'NC_B'
+  | 'CM'
+  | 'OM'
+  | 'AP';
 
 export type AuditFindingStatus =
   | 'open'
@@ -42,10 +60,40 @@ export type AuditChecklistStatus =
   | 'completed';
 
 // ============================================================
+// TIPOS DE ESCOPO E EXCLUSÃO (Opção C)
+// ============================================================
+
+/**
+ * Modo de definição do escopo do plano de auditoria.
+ *
+ * - 'all'    → Todos os controles da empresa entram no escopo.
+ *              Exclusões são feitas via excludedControls.
+ *
+ * - 'custom' → Apenas os controles informados em scope.controls
+ *              entram no escopo. Não permite excludedControls.
+ */
+export type AuditScopeMode = 'all' | 'custom';
+
+/**
+ * Registro de exclusão de controle do escopo.
+ *
+ * Mantido no plano para rastreabilidade (ISO 19011:2018).
+ * Toda exclusão exige justificativa e aprovação do Auditor Líder.
+ */
+export interface IAuditExcludedControl {
+  controlId: string;
+  reason: string;
+  excludedBy: string;
+  excludedAt: Date;
+  approvedBy?: string;
+  approvedAt?: Date;
+}
+
+// ============================================================
 // PLANO DE AUDITORIA
 // ============================================================
 
-export interface IAuditPlan {
+export interface AuditPlan {
   _id: string;
   id: string;
 
@@ -62,24 +110,27 @@ export interface IAuditPlan {
 
   // Escopo
   scope: {
-    controls: string[];        // IDs dos controles ISO 27001
-    processes: string[];       // Processos a serem auditados
-    areas: string[];           // Áreas/departamentos
+    mode: AuditScopeMode;
+    controls: string[];
+    excludedControls: IAuditExcludedControl[];
+    processes: string[];
+    areas: string[];
+    totalAvailableControls: number;
   };
 
   // Período
   period: {
-    startDate: Date;
-    endDate: Date;
+    startDate: string;
+    endDate: string;
     estimatedDays?: number;
   };
 
   // Equipe
   team: {
-    leadAuditor: string;       // ID do usuário (AUDITOR LÍDER)
-    auditors: string[];        // IDs dos auditores
-    observers: string[];       // IDs dos observadores (CONSULTANT)
-    specialists?: string[];    // Especialistas convidados
+    leadAuditor: string;
+    auditors: string[];
+    observers: string[];
+    specialists?: string[];
   };
 
   // Critérios
@@ -89,29 +140,29 @@ export interface IAuditPlan {
   status: AuditStatus;
 
   // Criação
-  createdBy: string;           // ID do REP que criou
-  createdAt: Date;
+  createdBy: string;
+  createdAt: string;
 
   // Aprovação
-  approvedBy?: string;         // ID do AUDITOR LÍDER que aprovou
-  approvedAt?: Date;
+  approvedBy?: string;
+  approvedAt?: string;
 
   // Rejeição
   rejectionReason?: string;
 
   // Execução
-  startedAt?: Date;
-  completedAt?: Date;
+  startedAt?: string;
+  completedAt?: string;
   completedBy?: string;
 
   // Observações
   observations?: string;
 
   // Atualização
-  updatedAt: Date;
+  updatedAt: string;
 
   // Soft delete
-  deletedAt?: Date;
+  deletedAt?: string;
 }
 
 // ============================================================
@@ -123,16 +174,6 @@ export interface IAuditPlan {
  *
  * Mantida para evitar quebra de componentes ou serviços
  * que ainda utilizem a nomenclatura descritiva dos resultados.
- *
- * O modelo atual AuditChecklist utiliza
- * IAuditChecklistQuestion, com os códigos:
- *
- * C  = Conforme
- * NC = Não Conforme
- * OB = Observação
- * OM = Oportunidade
- * NA = Não Aplicável
- * -- = Não Respondido
  */
 export interface IAuditChecklistItem {
   question: string;
@@ -146,23 +187,17 @@ export interface IAuditChecklistItem {
 
   evidenceIds: string[];
 
-  // Rastreamento do responsável
   responsible?: string;
 
-  // Data da resposta
-  answeredAt?: Date;
+  answeredAt?: string;
 
-  // Usuário que respondeu
   answeredBy?: string;
 }
 
 /**
  * Interface principal utilizada pelo modelo AuditChecklist.
- *
- * Os códigos de resposta precisam permanecer sincronizados
- * com o enum definido em AuditChecklist.ts.
  */
-export interface IAuditChecklistQuestion {
+export interface AuditChecklistQuestion {
   question: string;
 
   /**
@@ -179,31 +214,24 @@ export interface IAuditChecklistQuestion {
 
   evidenceIds: string[];
 
-  // ID do responsável pela pergunta
   responsible: string;
 
-  // Data em que a pergunta foi respondida
-  answeredAt?: Date;
+  answeredAt?: string;
 
-  // ID do usuário que respondeu
   answeredBy?: string;
 }
 
-export interface IAuditChecklist {
+export interface AuditChecklist {
   _id: string;
 
   id: string;
 
-  // Plano de auditoria ao qual o checklist pertence
   auditPlanId: string;
 
-  // Controle ISO 27001
   controlId: string;
 
-  // Perguntas do checklist
-  questions: IAuditChecklistQuestion[];
+  questions: AuditChecklistQuestion[];
 
-  // Estatísticas do checklist
   statistics: {
     total: number;
     conforme: number;
@@ -213,217 +241,164 @@ export interface IAuditChecklist {
     naoAplicavel: number;
   };
 
-  // Status
   status: AuditChecklistStatus;
 
-  // Conclusão
   completedBy?: string;
-  completedAt?: Date;
+  completedAt?: string;
 
-  // Metadados
   createdBy: string;
   updatedBy?: string;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: string;
+  updatedAt: string;
 
-  // Soft delete
-  deletedAt?: Date;
+  deletedAt?: string;
 }
 
 // ============================================================
 // NÃO CONFORMIDADE (FINDING)
 // ============================================================
 
-export interface IAuditFinding {
+export interface AuditFinding {
   _id: string;
   id: string;
 
-  // Relacionamentos
   auditPlanId: string;
   checklistId?: string;
 
-  // Identificação
   number: string;
 
-  // Classificação
   type: AuditFindingType;
 
-  // Descrição
   title: string;
   description: string;
 
-  // Localização organizacional
-  area: string;                // Área/processo responsável
-  process: string;             // Processo específico
+  area: string;
+  process: string;
 
-  // Critério
-  clause: string;              // Cláusula ISO 27001 (ex: "A.5.1")
+  clause: string;
 
-  // Controle relacionado
   controlId?: string;
 
-  // Evidências
   evidenceIds: string[];
 
-  // Planos de ação relacionados
   actionPlanIds: string[];
 
-  // Prazo
-  deadline?: Date;
+  deadline?: string;
 
-  // Status
   status: AuditFindingStatus;
 
-  // Criação
-  createdBy: string;           // ID do AUDITOR que criou
-  createdAt: Date;
+  createdBy: string;
+  createdAt: string;
 
-  // Validação
-  validatedBy?: string;        // ID do REP ou AUDITOR LÍDER que validou
-  validatedAt?: Date;
+  validatedBy?: string;
+  validatedAt?: string;
 
-  // Comentário da validação
   validationComment?: string;
 
-  // Atualização
-  updatedAt: Date;
+  updatedAt: string;
 
-  // Soft delete
-  deletedAt?: Date;
+  deletedAt?: string;
 }
 
 // ============================================================
 // EVIDÊNCIA DE AUDITORIA
 // ============================================================
 
-export interface IAuditEvidence {
+export interface AuditEvidence {
   _id: string;
   id: string;
 
-  // Relacionamento
   auditPlanId: string;
   findingId?: string;
 
-  // Arquivo
   filename: string;
   filepath: string;
   mimeType: string;
   size: number;
 
-  // Descrição
   description: string;
 
-  // Upload
   uploadedBy: string;
-  uploadedAt: Date;
+  uploadedAt: string;
 
-  // Soft delete
-  deletedAt?: Date;
+  deletedAt?: string;
 }
 
 // ============================================================
 // PLANO DE AÇÃO
 // ============================================================
 
-export interface IAuditActionPlan {
+export interface AuditActionPlan {
   _id: string;
   id: string;
 
-  // Relacionamentos
   findingId: string;
   auditPlanId: string;
   companyId: string;
 
-  // Ação
   action: string;
   description?: string;
 
-  // Responsável
-  responsible: string;         // ID do USER responsável
+  responsible: string;
 
-  // Prazo
-  deadline: Date;
+  deadline: string;
 
-  // Evidências
   evidenceIds: string[];
 
-  // Status
   status: AuditActionStatus;
 
-  // Criação
   createdBy: string;
-  createdAt: Date;
+  createdAt: string;
 
-  // Validação
-  validatedBy?: string;        // ID do AUDITOR que validou
-  validatedAt?: Date;
+  validatedBy?: string;
+  validatedAt?: string;
   validationComment?: string;
 
-  // Atualização
-  updatedAt: Date;
+  updatedAt: string;
   updatedBy?: string;
 
-  // Soft delete
-  deletedAt?: Date;
+  deletedAt?: string;
 }
 
 // ============================================================
 // RELATÓRIO DE AUDITORIA
 // ============================================================
 
-/**
- * Item de finding utilizado dentro do relatório.
- *
- * O relatório mantém uma representação dos findings
- * relacionados à auditoria.
- */
-export interface IAuditReportFinding {
+export interface AuditReportFinding {
   id: string;
   number: string;
 
-  // Classificação
   type: AuditFindingType;
 
-  // Descrição
   title: string;
   description: string;
 
-  // Localização
   area: string;
   process: string;
 
-  // Critério
   clause: string;
 
-  // Status
   status: AuditFindingStatus;
 
-  // Evidências
   evidenceIds: string[];
 
-  // Planos de ação
   actionPlanIds: string[];
 
-  // Auditor responsável pela criação
   createdBy: string;
-  createdAt: Date;
+  createdAt: string;
 
-  // Atualização
-  updatedAt: Date;
+  updatedAt: string;
 }
 
-export interface IAuditReport {
+export interface AuditReport {
   _id: string;
   id: string;
 
-  // Relacionamento
   auditPlanId: string;
   companyId: string;
 
-  // Controle de versão
   version: string;
 
-  // Organização
   organization: {
     legalName: string;
     corporateGroup?: string;
@@ -434,35 +409,26 @@ export interface IAuditReport {
     industry: string;
   };
 
-  // Conteúdo
   summary: string;
   conclusion: string;
 
-  // Findings
-  findings: IAuditReportFinding[];
+  findings: AuditReportFinding[];
 
-  // Recomendações
   recommendations: string[];
 
-  // Status
   status: AuditReportStatus;
 
-  // Criação
-  createdBy: string;           // ID do AUDITOR que criou
-  createdAt: Date;
+  createdBy: string;
+  createdAt: string;
 
-  // Aprovação
-  approvedBy?: string;         // ID do REP que aprovou
-  approvedAt?: Date;
+  approvedBy?: string;
+  approvedAt?: string;
 
-  // Rejeição
   rejectionReason?: string;
 
-  // Atualização
-  updatedAt: Date;
+  updatedAt: string;
 
-  // Soft delete
-  deletedAt?: Date;
+  deletedAt?: string;
 }
 
 // ============================================================
@@ -470,19 +436,32 @@ export interface IAuditReport {
 // ============================================================
 
 export interface CreateAuditPlanDTO {
+  code?: string;
   title: string;
 
   description: string;
 
+  /**
+   * Escopo do plano.
+   *
+   * - mode 'all' (padrão): todos os controles da empresa.
+   *   Neste caso, scope.controls é ignorado no create
+   *   (o service popula automaticamente).
+   *
+   * - mode 'custom': apenas os controles informados em controls.
+   */
   scope: {
-    controls: string[];
+    mode?: AuditScopeMode;
+    controls?: string[];
+    excludedControls?: Array<{ controlId: string; reason: string }>;
     processes: string[];
     areas: string[];
   };
 
   period: {
-    startDate: Date;
-    endDate: Date;
+    startDate: Date | string;
+    endDate: Date | string;
+    estimatedDays?: number;
   };
 
   team: {
@@ -507,8 +486,8 @@ export interface UpdateAuditPlanDTO {
   };
 
   period?: {
-    startDate?: Date;
-    endDate?: Date;
+    startDate?: Date | string;
+    endDate?: Date | string;
   };
 
   team?: {
@@ -523,6 +502,27 @@ export interface UpdateAuditPlanDTO {
   status?: AuditStatus;
 
   observations?: string;
+}
+
+// ============================================================
+// DTOs - EXCLUSÃO DE CONTROLE
+// ============================================================
+
+export interface ExcludeControlDTO {
+  controlId: string;
+  reason: string;
+}
+
+export interface ApproveExclusionDTO {
+  controlId: string;
+}
+
+export interface RejectExclusionDTO {
+  controlId: string;
+}
+
+export interface RemoveExclusionDTO {
+  controlId: string;
 }
 
 // ============================================================
@@ -546,7 +546,7 @@ export interface CreateAuditFindingDTO {
 
   evidenceIds?: string[];
 
-  deadline?: Date;
+  deadline?: Date | string;
 }
 
 export interface UpdateAuditFindingDTO {
@@ -564,7 +564,7 @@ export interface UpdateAuditFindingDTO {
 
   status?: AuditFindingStatus;
 
-  deadline?: Date;
+  deadline?: Date | string;
 }
 
 // ============================================================
@@ -580,7 +580,7 @@ export interface CreateAuditActionPlanDTO {
 
   responsible: string;
 
-  deadline: Date;
+  deadline: Date | string;
 }
 
 export interface UpdateAuditActionPlanDTO {
@@ -590,7 +590,7 @@ export interface UpdateAuditActionPlanDTO {
 
   responsible?: string;
 
-  deadline?: Date;
+  deadline?: Date | string;
 
   evidenceIds?: string[];
 
@@ -610,7 +610,7 @@ export interface CreateAuditReportDTO {
 
   recommendations: string[];
 
-  findings: IAuditReportFinding[];
+  findings: AuditReportFinding[];
 }
 
 export interface UpdateAuditReportDTO {
@@ -620,9 +620,60 @@ export interface UpdateAuditReportDTO {
 
   recommendations?: string[];
 
-  findings?: IAuditReportFinding[];
+  findings?: AuditReportFinding[];
 
   status?: AuditReportStatus;
+}
+
+// ============================================================
+// DTOs - RISCO (frontend)
+// ============================================================
+
+/**
+ * DTO para criação de risco (frontend).
+ *
+ * Mantido em paridade com o schema Zod do backend
+ * (createAuditRiskSchema).
+ */
+export interface CreateAuditRiskDTO {
+  companyId?: string;
+  auditPlanId?: string;
+  description: string;
+  eventOrAsset: string;
+  owner: string;
+  threat: string;
+  vulnerability: string;
+  existingControl: string;
+  probability: number;
+  impact: number;
+  riskClassification: string;
+  treatment?: 'accept' | 'mitigate' | 'transfer' | 'avoid';
+  treatmentPlan?: string;
+  probabilityAfter?: number;
+  impactAfter?: number;
+  treatmentDeadline?: Date | string;
+  status?: 'identified' | 'analyzed' | 'treated' | 'monitored' | 'closed';
+}
+
+/**
+ * DTO para atualização de risco (frontend).
+ */
+export interface UpdateAuditRiskDTO {
+  description?: string;
+  eventOrAsset?: string;
+  owner?: string;
+  threat?: string;
+  vulnerability?: string;
+  existingControl?: string;
+  probability?: number;
+  impact?: number;
+  riskClassification?: string;
+  treatment?: 'accept' | 'mitigate' | 'transfer' | 'avoid';
+  treatmentPlan?: string;
+  probabilityAfter?: number;
+  impactAfter?: number;
+  treatmentDeadline?: Date | string;
+  status?: 'identified' | 'analyzed' | 'treated' | 'monitored' | 'closed';
 }
 
 // ============================================================
@@ -687,6 +738,36 @@ export interface AuditStats {
   pendingActions: number;
 
   completedActions: number;
+}
+
+export interface AuditFindingStats {
+  total: number;
+
+  ncA: number;
+  ncB: number;
+  comment: number;
+  opportunity: number;
+  positive: number;
+
+  open: number;
+  inProgress: number;
+  pendingValidation: number;
+  closed: number;
+  reopened: number;
+}
+
+export interface AuditChecklistStats {
+  total: number;
+
+  conforme: number;
+  nonConforme: number;
+  observacao: number;
+  oportunidade: number;
+  naoAplicavel: number;
+
+  pending: number;
+  inProgress: number;
+  completed: number;
 }
 
 // ============================================================
