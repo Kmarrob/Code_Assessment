@@ -1759,6 +1759,88 @@ export class RepService {
       }
     );
 
+    // ============================================================
+    // 🔧 CORREÇÃO CRÍTICA — ERRO 500 NO /api/rep/stats
+    // ============================================================
+    //
+    // ANTES (com bug):
+    //   $avg: { $toDouble: '$maturityLevel' }
+    //
+    //   Problema: se algum Response tiver maturityLevel = 'N/A',
+    //   o $toDouble lança MongoServerError em runtime:
+    //   "Failed to parse number 'N/A' in $convert with no onError value"
+    //   → pipeline quebra → promise rejeita → endpoint retorna 500
+    //
+    // DEPOIS (corrigido):
+    //   Usar $convert com onError e onNull
+    //
+    //   - Se for '0', '1', '2'   → número válido → entra no $avg
+    //   - Se for 'N/A'           → onError/null → null → ignorado no $avg
+    //   - Se for null/undefined  → onNull       → null → ignorado no $avg
+    //   - Se for qualquer lixo  → onError       → null → ignorado no $avg
+    //
+    // Resultado: a agregação NUNCA mais quebra, mesmo com dados sujos.
+    //
+    // Documentação: https://www.mongodb.com/docs/manual/reference/operator/aggregation/convert/
+
+    const maturityAvg =
+      await Response.aggregate([
+        {
+          $lookup: {
+            from:
+              'assignments',
+            localField:
+              'assignmentId',
+            foreignField:
+              '_id',
+            as:
+              'assignment'
+          }
+        },
+        {
+          $unwind:
+            '$assignment'
+        },
+        {
+          $match: {
+            'assignment.assignedBy':
+              new mongoose.Types.ObjectId(
+                repId
+              ),
+            'assignment.userId': {
+              $in:
+                activeUserIds
+            }
+          }
+        },
+        {
+          $addFields: {
+            maturityNumeric: {
+              $convert: {
+                input: '$maturityLevel',
+                to: 'double',
+                onError: null,   // ← CORREÇÃO: trata 'N/A' e outros inválidos
+                onNull: null     // ← CORREÇÃO: trata null/undefined
+              }
+            }
+          }
+        },
+        {
+          $match: {
+            maturityNumeric: { $ne: null }  // ← Só considera valores numéricos válidos
+          }
+        },
+        {
+          $group: {
+            _id:
+              null,
+            avgMaturity: {
+              $avg: '$maturityNumeric'
+            }
+          }
+        }
+      ]);
+
     const totalResponses =
       await Response.aggregate([
         {
@@ -1792,50 +1874,6 @@ export class RepService {
         {
           $count:
             'total'
-        }
-      ]);
-
-    const maturityAvg =
-      await Response.aggregate([
-        {
-          $lookup: {
-            from:
-              'assignments',
-            localField:
-              'assignmentId',
-            foreignField:
-              '_id',
-            as:
-              'assignment'
-          }
-        },
-        {
-          $unwind:
-            '$assignment'
-        },
-        {
-          $match: {
-            'assignment.assignedBy':
-              new mongoose.Types.ObjectId(
-                repId
-              ),
-            'assignment.userId': {
-              $in:
-                activeUserIds
-            }
-          }
-        },
-        {
-          $group: {
-            _id:
-              null,
-            avgMaturity: {
-              $avg: {
-                $toDouble:
-                  '$maturityLevel'
-              }
-            }
-          }
         }
       ]);
 
