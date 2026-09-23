@@ -17,7 +17,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { useAuth } from '../../../../contexts/AuthContext.js';
-import { useUsers } from '../../../../hooks/useAdmin.js';
+import { useRepUsers } from '../../../../hooks/useRep.js';
 import { CreateAuditPlanDTO, UpdateAuditPlanDTO, AuditPlan } from '../../types/audit.types';
 import { toast } from 'react-hot-toast';
 import api from '../../../../services/api.js';
@@ -94,7 +94,24 @@ export function AuditPlanForm({
 }: AuditPlanFormProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { data: users = [], isLoading: isLoadingUsers } = useUsers();
+
+  // ============================================================
+  // 🔧 CORREÇÃO ERRO 1 — Usar hook do REP (não do Admin)
+  // ============================================================
+  //
+  // ANTES:
+  //   import { useUsers } from '../../../../hooks/useAdmin.js';
+  //   const { data: users = [], isLoading: isLoadingUsers } = useUsers();
+  //
+  // Causa do 403: useUsers() chama /api/admin/users, que o REP não pode acessar.
+  //
+  // DEPOIS:
+  //   import { useRepUsers } from '../../../../hooks/useRep.js';
+  //   const { data: usersData, isLoading: isLoadingUsers } = useRepUsers();
+  //
+  // Correto: useRepUsers() chama /api/rep/users, permitido para REP.
+
+  const { data: usersData, isLoading: isLoadingUsers } = useRepUsers();
 
   // ============================================================
   // ESTADOS — AUDITORES MANUAIS
@@ -113,7 +130,7 @@ export function AuditPlanForm({
   const [isLoadingControls, setIsLoadingControls] = useState(true);
 
   // ============================================================
-  // 🆕 ESTADOS — ESCOPO (Opção C)
+  // ESTADOS — ESCOPO (Opção C)
   // ============================================================
 
   const [scopeMode, setScopeMode] = useState<ScopeMode>('all');
@@ -165,17 +182,39 @@ export function AuditPlanForm({
       try {
         console.log('🔍 Buscando controles e respostas da empresa (REP)...');
 
+        // 1. Busca controles
         const controlsRes = await api.get('/rep/controls');
         const controlList = controlsRes.data.data || controlsRes.data || [];
 
+        // ============================================================
+        // 🔧 CORREÇÃO ERRO 3 — Usar rota que existe (/users-with-responses)
+        // ============================================================
+        //
+        // ANTES:
+        //   const responsesRes = await api.get('/rep/responses');  // 404
+        //
+        // DEPOIS:
+        //   const responsesRes = await api.get('/rep/users-with-responses');
+        //
+        // A rota /users-with-responses retorna [{ user, responses: [...] }],
+        // então achatamos para pegar só as respostas.
+
         let responsesList: any[] = [];
         try {
-          const responsesRes = await api.get('/rep/responses');
-          responsesList = responsesRes.data.data || responsesRes.data || [];
+          const responsesRes = await api.get('/rep/users-with-responses');
+          const usersWithResponses = responsesRes.data.data || [];
+
+          // Achatar: [{ user, responses: [...] }] → [...responses]
+          responsesList = usersWithResponses.flatMap(
+            (u: any) => u.responses || []
+          );
+
+          console.log('✅ Respostas carregadas:', responsesList.length);
         } catch (e) {
-          console.warn('⚠️ Erro ao carregar respostas de /rep/responses:', e);
+          console.warn('⚠️ Erro ao carregar respostas de /rep/users-with-responses:', e);
         }
 
+        // 3. Cruzamento de dados entre Controles e Respostas de Maturidade
         const enrichedControls = controlList.map((c: any) => {
           const ctrlCode = c.id || c.controlId || c.code;
           const ctrlDbId = c._id;
@@ -183,7 +222,8 @@ export function AuditPlanForm({
           const savedResp = responsesList.find(
             (r: any) =>
               String(r.controlId) === String(ctrlCode) ||
-              String(r.controlId) === String(ctrlDbId)
+              String(r.controlId) === String(ctrlDbId) ||
+              String(r.controlIdString) === String(ctrlCode)
           );
 
           return {
@@ -196,7 +236,7 @@ export function AuditPlanForm({
         console.log('📦 Controles carregados e enriquecidos:', enrichedControls.length);
         setControls(enrichedControls);
 
-        // 🆕 Atualizar total disponível
+        // Atualizar total disponível
         setTotalAvailableControls(enrichedControls.length);
       } catch (err) {
         console.error('❌ Erro ao carregar controles:', err);
@@ -228,11 +268,11 @@ export function AuditPlanForm({
         criteria: initialData.criteria || [],
       });
 
-      // 🆕 Carregar modo do escopo
+      // Carregar modo do escopo
       const existingScope: any = initialData.scope || {};
       setScopeMode(existingScope.mode || 'all');
 
-      // 🆕 Carregar exclusões
+      // Carregar exclusões
       if (
         existingScope.excludedControls &&
         Array.isArray(existingScope.excludedControls)
@@ -245,7 +285,7 @@ export function AuditPlanForm({
         );
       }
 
-      // 🆕 Carregar total disponível (snapshot salvo ou atual)
+      // Carregar total disponível (snapshot salvo ou atual)
       if (existingScope.totalAvailableControls) {
         setTotalAvailableControls(existingScope.totalAvailableControls);
       }
@@ -283,15 +323,9 @@ export function AuditPlanForm({
   };
 
   // ============================================================
-  // 🆕 CONTROLES EFETIVOS (MODO 'all')
+  // CONTROLES EFETIVOS (MODO 'all')
   // ============================================================
 
-  /**
-   * Em modo 'all', os controles efetivos são:
-   *   total disponível - excluídos
-   *
-   * Em modo 'custom', são os controles selecionados manualmente.
-   */
   const effectiveControls = useMemo(() => {
     if (scopeMode === 'custom') {
       return selectedControls;
@@ -305,7 +339,7 @@ export function AuditPlanForm({
   }, [scopeMode, controls, selectedControls, excludedControls]);
 
   // ============================================================
-  // 🆕 HANDLERS — MODO DO ESCOPO
+  // HANDLERS — MODO DO ESCOPO
   // ============================================================
 
   const handleScopeModeChange = (newMode: ScopeMode) => {
@@ -323,7 +357,7 @@ export function AuditPlanForm({
   };
 
   // ============================================================
-  // 🆕 HANDLERS — EXCLUSÃO DE CONTROLES
+  // HANDLERS — EXCLUSÃO DE CONTROLES
   // ============================================================
 
   const openExclusionDialog = (controlId: string) => {
@@ -514,7 +548,7 @@ export function AuditPlanForm({
       newErrors.endDate = 'Data de fim é obrigatória';
     }
 
-    // 🆕 Validação do escopo (modo all)
+    // Validação do escopo (modo all)
     if (scopeMode === 'all') {
       if (effectiveControls.length === 0) {
         newErrors.controls = 'O plano precisa ter pelo menos 1 controle no escopo';
@@ -575,7 +609,7 @@ export function AuditPlanForm({
       criteria: formData.criteria || [],
     };
 
-    // 🆕 Anexar exclusões ao payload (o service do backend valida)
+    // Anexar exclusões ao payload (o service do backend valida)
     if (scopeMode === 'all' && excludedControls.length > 0) {
       (data as any).excludedControls = excludedControls;
     }
@@ -587,9 +621,24 @@ export function AuditPlanForm({
   // OPÇÕES DE AUDITORES
   // ============================================================
 
+  // 🔧 CORREÇÃO — Extrair corretamente os usuários da estrutura do useRepUsers
+  //
+  // useRepUsers retorna:
+  //   { users: [...], pagination: {...} }
+  //
+  // Antes:
+  //   const users = usersData (array)
+  //
+  // Depois:
+  //   const users = usersData?.users || [] (array extraído)
+
+  const rawUsers: any[] = Array.isArray(usersData)
+    ? usersData
+    : (usersData as any)?.users || [];
+
   const allAuditorOptions = [
-    ...(users || [])
-      .filter((u: any) => u.role === 'rep' || u.role === 'admin')
+    ...(rawUsers || [])
+      .filter((u: any) => u.role === 'rep' || u.role === 'admin' || u.role === 'user')
       .map((u: any) => ({
         id: u._id || u.id,
         name: u.name,
@@ -635,7 +684,7 @@ export function AuditPlanForm({
   });
 
   // ============================================================
-  // 🆕 HELPER — INFO DO CONTROLE EXCLUÍDO
+  // HELPER — INFO DO CONTROLE EXCLUÍDO
   // ============================================================
 
   const getControlLabelById = (controlId: string) => {
@@ -922,7 +971,7 @@ export function AuditPlanForm({
               </div>
             )}
 
-            {/* MODO 'custom': seleção manual (comportamento atual) */}
+            {/* MODO 'custom': seleção manual */}
             {scopeMode === 'custom' && (
               <>
                 <div className="flex flex-wrap gap-2 mb-2">
@@ -1051,7 +1100,7 @@ export function AuditPlanForm({
         </div>
 
         {/* ------------------------------------------------------ */}
-        {/* 🆕 DIALOG DE JUSTIFICATIVA DE EXCLUSÃO */}
+        {/* DIALOG DE JUSTIFICATIVA DE EXCLUSÃO */}
         {/* ------------------------------------------------------ */}
         {exclusionDialogControlId && (
           <div className="mt-4 p-4 bg-red-50 border-2 border-red-300 rounded-lg">
