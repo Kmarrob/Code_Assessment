@@ -281,15 +281,45 @@ export class AuditPlanService {
       ) + 1;
 
     // ============================================================
-    // NORMALIZAR EQUIPE
+    // 🆕 v49.1 — NORMALIZAR EQUIPE (COM NOMES/EMAILS)
+    // ============================================================
+    //
+    // MOTIVO:
+    //   A versão anterior salvava apenas IDs. Agora salvamos
+    //   também os nomes e emails dos auditores, para que o card
+    //   do plano exiba informações legíveis sem precisar
+    //   consultar o localStorage nem o User collection.
+    //
+    // COMPATIBILIDADE:
+    //   Se os campos novos não vierem (payload antigo), os
+    //   defaults ('') e ([]) garantem que nada quebre.
+    //
     // ============================================================
 
+    const rawTeam: any = data.team;
+
     const teamData = {
+      // ---- Campos originais (INALTERADOS) ----
       leadAuditor: data.team.leadAuditor,
       auditors: data.team.auditors || [],
       observers: data.team.observers || [],
-      specialists:
-        (data.team as any).specialists || [],
+      specialists: rawTeam.specialists || [],
+
+      // ---- 🆕 v49.1 — Nomes e emails ----
+      leadAuditorName: rawTeam.leadAuditorName || '',
+      leadAuditorEmail: rawTeam.leadAuditorEmail || '',
+      auditorNames: Array.isArray(rawTeam.auditorNames)
+        ? rawTeam.auditorNames
+        : [],
+      auditorEmails: Array.isArray(rawTeam.auditorEmails)
+        ? rawTeam.auditorEmails
+        : [],
+      observerNames: Array.isArray(rawTeam.observerNames)
+        ? rawTeam.observerNames
+        : [],
+      observerEmails: Array.isArray(rawTeam.observerEmails)
+        ? rawTeam.observerEmails
+        : [],
     };
 
     // ============================================================
@@ -346,11 +376,32 @@ export class AuditPlanService {
     // ============================================================
     // PROCESSAR EXCLUSÕES ENVIADAS NO PAYLOAD (OPÇÃO C)
     // ============================================================
+    //
+    // 🆕 v49.1 — LEITURA DEFENSIVA
+    //
+    // MOTIVO:
+    //   O frontend atual (AuditPlanForm.tsx) envia as exclusões
+    //   FORA de scope (ex.: data.excludedControls). O schema Zod
+    //   espera dentro de scope (scope.excludedControls).
+    //
+    //   Para não quebrar planos criados enquanto o frontend
+    //   não for corrigido (BLOCO 2), lemos das duas fontes,
+    //   priorizando scope.excludedControls (forma oficial).
+    //
+    // COMPATIBILIDADE:
+    //   - Frontend atual (bug): data.excludedControls (top-level)
+    //   - Frontend corrigido (BLOCO 2): data.scope.excludedControls
+    //   - Ambos funcionam.
+    //
+    // ============================================================
 
     const rawExclusions: Array<{ controlId: string; reason: string }> =
-      requestedMode === 'all' &&
-      Array.isArray((data.scope as any)?.excludedControls)
-        ? (data.scope as any).excludedControls
+      requestedMode === 'all'
+        ? Array.isArray((data.scope as any)?.excludedControls)
+          ? (data.scope as any).excludedControls
+          : Array.isArray((data as any)?.excludedControls)
+            ? (data as any).excludedControls
+            : []
         : [];
 
     const processedExclusions: Array<{
@@ -919,14 +970,31 @@ export class AuditPlanService {
     }
 
     // ============================================================
-    // APLICAÇÃO DOS DADOS DA EQUIPE
+    // 🆕 v49.1 — APLICAÇÃO DOS DADOS DA EQUIPE (COM NOMES/EMAILS)
+    // ============================================================
+    //
+    // MOTIVO:
+    //   Preservar nomes/emails dos auditores ao editar um plano.
+    //   Sem isso, a edição limparia os nomes e o card voltaria
+    //   a mostrar apenas os IDs brutos.
+    //
+    // ESTRATÉGIA:
+    //   Para cada campo novo, se vier preenchido no payload,
+    //   usa o novo valor; senão, mantém o valor existente
+    //   no plano. Isso garante que edições parciais (ex.: só
+    //   o título) não apaguem os nomes.
+    //
     // ============================================================
 
     if (data.team) {
+      const incomingTeam: any = data.team;
+      const existingTeam: any = plan.team;
+
       plan.team = {
         ...plan.team,
         ...data.team,
 
+        // ---- Campos originais ----
         observers:
           data.team.observers !== undefined
             ? data.team.observers
@@ -938,9 +1006,40 @@ export class AuditPlanService {
             : plan.team.auditors || [],
 
         specialists:
-          (data.team as any).specialists !== undefined
-            ? (data.team as any).specialists
-            : (plan.team as any).specialists || [],
+          incomingTeam.specialists !== undefined
+            ? incomingTeam.specialists
+            : existingTeam.specialists || [],
+
+        // ---- 🆕 v49.1 — Nomes e emails ----
+        leadAuditorName:
+          incomingTeam.leadAuditorName !== undefined
+            ? incomingTeam.leadAuditorName
+            : existingTeam.leadAuditorName || '',
+
+        leadAuditorEmail:
+          incomingTeam.leadAuditorEmail !== undefined
+            ? incomingTeam.leadAuditorEmail
+            : existingTeam.leadAuditorEmail || '',
+
+        auditorNames:
+          incomingTeam.auditorNames !== undefined
+            ? incomingTeam.auditorNames
+            : existingTeam.auditorNames || [],
+
+        auditorEmails:
+          incomingTeam.auditorEmails !== undefined
+            ? incomingTeam.auditorEmails
+            : existingTeam.auditorEmails || [],
+
+        observerNames:
+          incomingTeam.observerNames !== undefined
+            ? incomingTeam.observerNames
+            : existingTeam.observerNames || [],
+
+        observerEmails:
+          incomingTeam.observerEmails !== undefined
+            ? incomingTeam.observerEmails
+            : existingTeam.observerEmails || [],
       };
     }
 

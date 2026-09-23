@@ -22,11 +22,41 @@ export interface IAuditPlanScope {
   totalAvailableControls: number;      // Snapshot do total de controles disponíveis na empresa
 }
 
+// ============================================================
+// 🆕 v49.1 — IAuditPlanTeam EXPANDIDO
+// ============================================================
+//
+// MOTIVO:
+//   A versão anterior salvava apenas os IDs dos auditores
+//   (ex.: 'manual_1790110055011' ou ObjectId do User). Ao exibir
+//   o card do plano, o frontend só conseguia mostrar o ID bruto,
+//   pois não tinha o nome.
+//
+//   Agora salvamos TAMBÉM nome e email de cada membro,
+//   mantendo os IDs como fonte de verdade para autorização
+//   e segregação de funções.
+//
+// COMPATIBILIDADE:
+//   Todos os campos novos são OPCIONAIS (?). Planos antigos
+//   continuam válidos — o frontend faz fallback para o ID
+//   quando o nome não está disponível.
+//
+// ============================================================
+
 export interface IAuditPlanTeam {
+  // ---- Campos originais (INALTERADOS) ----
   leadAuditor: string;         // User ID
   auditors: string[];          // User IDs
   observers: string[];         // User IDs
   specialists?: string[];      // Especialistas convidados
+
+  // ---- 🆕 v49.1 — Nomes e emails resolvidos ----
+  leadAuditorName?: string;
+  leadAuditorEmail?: string;
+  auditorNames?: string[];     // Alinhado por índice com `auditors`
+  auditorEmails?: string[];    // Alinhado por índice com `auditors`
+  observerNames?: string[];    // Alinhado por índice com `observers`
+  observerEmails?: string[];   // Alinhado por índice com `observers`
 }
 
 export interface IAuditPlanPeriod {
@@ -203,7 +233,20 @@ const AuditPlanSchema = new Schema<IAuditPlan>(
       },
     },
 
+    // ============================================================
+    // 🆕 v49.1 — TEAM EXPANDIDO
+    // ============================================================
+    //
+    // Adicionados os campos de nome e email. Todos opcionais,
+    // para manter compatibilidade com planos criados antes
+    // desta versão.
+    //
+    // REGRA DE OURO: nenhum campo foi removido. Apenas
+    // adicionamos novos campos de metadados (nome/email).
+    //
+    // ============================================================
     team: {
+      // ---- Campos originais (INALTERADOS) ----
       leadAuditor: {
         type: String,
         required: true,
@@ -220,6 +263,40 @@ const AuditPlanSchema = new Schema<IAuditPlan>(
       },
 
       specialists: {
+        type: [String],
+        default: [],
+      },
+
+      // ---- 🆕 v49.1 — Nomes e emails resolvidos ----
+      leadAuditorName: {
+        type: String,
+        trim: true,
+        default: '',
+      },
+
+      leadAuditorEmail: {
+        type: String,
+        trim: true,
+        lowercase: true,
+        default: '',
+      },
+
+      auditorNames: {
+        type: [String],
+        default: [],
+      },
+
+      auditorEmails: {
+        type: [String],
+        default: [],
+      },
+
+      observerNames: {
+        type: [String],
+        default: [],
+      },
+
+      observerEmails: {
         type: [String],
         default: [],
       },
@@ -357,6 +434,14 @@ AuditPlanSchema.virtual('id').get(function () {
 
 // ============================================================
 // VALIDAÇÕES
+// ============================================================
+//
+// NOTA (v49.1): as validações abaixo foram PRESERVADAS
+// integralmente. Nenhuma regra foi removida ou relaxada.
+// Os novos campos de nome/email não interferem em nenhuma
+// das regras abaixo (R1 a R8), pois operam sobre os IDs
+// (leadAuditor, auditors, observers) e não sobre os nomes.
+//
 // ============================================================
 
 AuditPlanSchema.pre('validate', function (next) {

@@ -318,11 +318,47 @@ export interface IAuditPlanScope {
   totalAvailableControls: number;
 }
 
+// ============================================================
+// 🆕 v49.1 — IAuditPlanTeam EXPANDIDO
+// ============================================================
+//
+// MOTIVO DA ALTERAÇÃO:
+//   A versão anterior salvava apenas os IDs dos auditores
+//   (ex.: 'manual_1790110055011' ou ObjectId do User). Ao exibir
+//   o card do plano, o frontend só conseguia mostrar o ID bruto,
+//   pois não tinha o nome.
+//
+//   Agora, salvamos TAMBÉM o nome e o email de cada membro,
+//   mantendo os IDs como fonte de verdade para autorização
+//   e segregação de funções.
+//
+// COMPATIBILIDADE:
+//   Todos os campos novos são OPCIONAIS (?). Planos antigos,
+//   sem esses campos, continuam válidos — o frontend faz
+//   fallback para o ID quando o nome não está disponível.
+//
+// DECISÃO DE ARQUITETURA (confirmada pelo stakeholder):
+//   Opção A — 1 líder + N auditores + N observadores.
+//   Mantém conformidade com ISO 19011:2018 §5.5.3.
+//
+// ============================================================
+
 export interface IAuditPlanTeam {
-  leadAuditor: string;
-  auditors: string[];
-  observers: string[];
-  specialists?: string[];
+  // ---- Campos originais (INALTERADOS) ----
+  leadAuditor: string;         // User ID OU 'manual_xxx'
+  auditors: string[];          // User IDs OU 'manual_xxx'
+  observers: string[];         // User IDs OU 'manual_xxx'
+  specialists?: string[];      // (opcional, já existia)
+
+  // ---- 🆕 v49.1 — Nomes e emails resolvidos ----
+  // Justificativa: permitir renderizar o card do plano
+  // sem consultar localStorage nem User collection em loop.
+  leadAuditorName?: string;
+  leadAuditorEmail?: string;
+  auditorNames?: string[];     // Alinhado por índice com `auditors`
+  auditorEmails?: string[];    // Alinhado por índice com `auditors`
+  observerNames?: string[];    // Alinhado por índice com `observers`
+  observerEmails?: string[];   // Alinhado por índice com `observers`
 }
 
 export interface IAuditPlanPeriod {
@@ -608,6 +644,20 @@ export interface IAuditReport {
 // DTOs — PLANO DE AUDITORIA
 // ============================================================
 
+// ============================================================
+// 🆕 v49.1 — CreateAuditPlanDTO.team EXPANDIDO
+// ============================================================
+//
+// MOTIVO: O frontend (AuditPlanForm.tsx) agora envia, além dos
+// IDs, os nomes e emails resolvidos dos auditores. Isso permite
+// que o backend persista essas informações sem precisar fazer
+// lookup no User em cada exibição.
+//
+// COMPATIBILIDADE: Todos os campos novos são opcionais.
+// Chamadas antigas (só com IDs) continuam funcionando.
+//
+// ============================================================
+
 export interface CreateAuditPlanDTO {
   code?: string;
   title: string;
@@ -628,14 +678,35 @@ export interface CreateAuditPlanDTO {
   };
 
   team: {
+    // ---- Campos originais (INALTERADOS) ----
     leadAuditor: string;
     auditors: string[];
     observers?: string[];
     specialists?: string[];
+
+    // ---- 🆕 v49.1 — Nomes e emails ----
+    leadAuditorName?: string;
+    leadAuditorEmail?: string;
+    auditorNames?: string[];
+    auditorEmails?: string[];
+    observerNames?: string[];
+    observerEmails?: string[];
   };
 
   criteria: string[];
 }
+
+// ============================================================
+// 🆕 v49.1 — UpdateAuditPlanDTO.team EXPANDIDO
+// ============================================================
+//
+// MOTIVO: A edição de planos deve preservar os nomes e emails
+// dos auditores. Sem isso, ao editar um plano, o card voltaria
+// a mostrar apenas os IDs brutos.
+//
+// COMPATIBILIDADE: Todos os campos novos são opcionais.
+//
+// ============================================================
 
 export interface UpdateAuditPlanDTO {
   title?: string;
@@ -653,10 +724,19 @@ export interface UpdateAuditPlanDTO {
   };
 
   team?: {
+    // ---- Campos originais (INALTERADOS) ----
     leadAuditor?: string;
     auditors?: string[];
     observers?: string[];
     specialists?: string[];
+
+    // ---- 🆕 v49.1 — Nomes e emails ----
+    leadAuditorName?: string;
+    leadAuditorEmail?: string;
+    auditorNames?: string[];
+    auditorEmails?: string[];
+    observerNames?: string[];
+    observerEmails?: string[];
   };
 
   criteria?: string[];

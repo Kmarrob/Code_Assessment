@@ -18,6 +18,27 @@ const excludedControlPayloadSchema = z.object({
     .max(1000, 'A justificativa não pode exceder 1000 caracteres'),
 });
 
+// ============================================================
+// 🆕 v49.1 — createAuditPlanSchema EXPANDIDO
+// ============================================================
+//
+// MOTIVO:
+//   O frontend (AuditPlanForm.tsx) agora envia, além dos IDs
+//   dos auditores, os nomes e emails resolvidos. Precisamos
+//   aceitar esses campos no schema, senão o Zod os descarta
+//   silenciosamente antes de chegar ao service.
+//
+// COMPATIBILIDADE:
+//   Todos os campos novos são .optional(). Chamadas antigas
+//   (só com IDs) continuam válidas.
+//
+// NOTA SOBRE leadAuditorEmail:
+//   Aceita .email() válido OU string vazia (para auditores
+//   manuais sem email). Uso de .or(z.literal('')) garante
+//   que '' passe na validação sem erro.
+//
+// ============================================================
+
 export const createAuditPlanSchema = z.object({
   title: z.string().min(3, 'Título deve ter no mínimo 3 caracteres'),
   description: z.string().min(10, 'Descrição deve ter no mínimo 10 caracteres'),
@@ -66,11 +87,38 @@ export const createAuditPlanSchema = z.object({
       }
     ),
 
+  // ============================================================
+  // 🆕 v49.1 — TEAM EXPANDIDO
+  // ============================================================
+  //
+  // Os 6 campos novos (leadAuditorName, leadAuditorEmail,
+  // auditorNames, auditorEmails, observerNames, observerEmails)
+  // são todos OPCIONAIS.
+  //
+  // O frontend (BLOCO 2) enviará preenchido, mas o backend
+  // permanece compatível com payloads antigos (só IDs).
+  //
+  // ============================================================
   team: z.object({
+    // ---- Campos originais (INALTERADOS) ----
     leadAuditor: z.string(),
     auditors: z.array(z.string()),
     observers: z.array(z.string()),
     specialists: z.array(z.string()).optional(),
+
+    // ---- 🆕 v49.1 — Nomes e emails ----
+    leadAuditorName: z.string().optional(),
+    leadAuditorEmail: z
+      .string()
+      .email('Email do auditor líder inválido')
+      .optional()
+      .or(z.literal('')), // Permite string vazia (auditor manual sem email)
+
+    auditorNames: z.array(z.string()).optional(),
+    auditorEmails: z.array(z.string()).optional(),
+
+    observerNames: z.array(z.string()).optional(),
+    observerEmails: z.array(z.string()).optional(),
   }),
 
   period: z.object({
