@@ -15,6 +15,9 @@ import {
   ChevronRight,
   FileText,
   AlertCircle,
+  User,
+  Users,
+  EyeIcon,
 } from 'lucide-react';
 import { usePlans, useDeletePlan, useCancelPlan } from '../../../hooks/useAudit';
 import { AuditPlan, AuditStatus } from '../../../types/audit.types';
@@ -46,6 +49,53 @@ const STATUS_LABELS: Record<string, string> = {
   completed: 'Concluído',
   cancelled: 'Cancelado',
 };
+
+// ============================================================
+// 🆕 v49.1 — HELPERS DE EXIBIÇÃO DA EQUIPE
+// ============================================================
+//
+// MOTIVO:
+//   O card expandido mostrava apenas os IDs brutos (ex.:
+//   'manual_1790110055011'). Os nomes/emails já estão
+//   persistidos no backend (BLOCO 1) e enviados pelo
+//   frontend (BLOCO 2). Aqui apenas os exibimos.
+//
+// ESTRATÉGIA:
+//   - Preferir `name` quando existir.
+//   - Fallback para ID (planos antigos, criados antes da v49.1).
+//   - Email é opcional (auditores manuais podem não ter).
+//
+// ============================================================
+
+interface TeamMemberDisplay {
+  id: string;
+  name: string;
+  email: string;
+  isManual: boolean;
+}
+
+/**
+ * Reconstrói a lista de membros da equipe a partir do
+ * `plan.team` persistido (que pode vir do formato antigo — só IDs —
+ * ou do formato novo — IDs + nomes + emails).
+ */
+function buildTeamMembers(
+  ids: string[] | undefined,
+  names: string[] | undefined,
+  emails: string[] | undefined
+): TeamMemberDisplay[] {
+  const safeIds = Array.isArray(ids) ? ids : [];
+  const safeNames = Array.isArray(names) ? names : [];
+  const safeEmails = Array.isArray(emails) ? emails : [];
+
+  return safeIds.map((id, index) => ({
+    id,
+    // Fallback: se o nome não veio, usa o ID.
+    name: safeNames[index] || id,
+    email: safeEmails[index] || '',
+    isManual: String(id).startsWith('manual_'),
+  }));
+}
 
 export function RepAuditPlans() {
   const navigate = useNavigate();
@@ -175,129 +225,246 @@ export function RepAuditPlans() {
           </div>
         ) : (
           <div className="divide-y divide-gray-200">
-            {filteredPlans.map((plan: AuditPlan) => (
-              <div key={plan._id} className="hover:bg-gray-50 transition-colors">
-                {/* Plan Row */}
-                <div className="flex items-center justify-between px-6 py-4">
-                  <div
-                    className="flex items-center gap-4 flex-1 cursor-pointer"
-                    onClick={() => toggleExpand(plan._id)}
-                  >
-                    <div className="p-2 bg-indigo-50 rounded-lg">
-                      <FileText className="w-5 h-5 text-indigo-600" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-3 flex-wrap">
-                        <span className="font-medium text-gray-900 truncate">{plan.title}</span>
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[plan.status] || 'bg-gray-100 text-gray-600'}`}>
-                          {STATUS_LABELS[plan.status] || plan.status}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-4 mt-1 text-sm text-gray-500">
-                        <span className="flex items-center gap-1">
-                          <Calendar className="w-3 h-3" />
-                          {new Date(plan.period.startDate).toLocaleDateString('pt-BR')}
-                          {' - '}
-                          {new Date(plan.period.endDate).toLocaleDateString('pt-BR')}
-                        </span>
-                        <span>•</span>
-                        <span>{plan.scope.controls.length} controles</span>
-                        <span>•</span>
-                        <span>{plan.scope.areas.length} áreas</span>
-                      </div>
-                    </div>
-                    <div className="text-sm text-gray-400">
-                      {new Date(plan.createdAt).toLocaleDateString('pt-BR')}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 ml-4">
-                    <button
-                      onClick={() => navigate(`/rep/audit/plans/${plan._id}`)}
-                      className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                      title="Visualizar"
-                    >
-                      <Eye className="w-4 h-4" />
-                    </button>
-                    {plan.status === 'draft' && (
-                      <>
-                        <button
-                          onClick={() => navigate(`/rep/audit/plans/${plan._id}/edit`)}
-                          className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                          title="Editar"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => setShowDeleteConfirm(plan._id)}
-                          className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                          title="Excluir"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </>
-                    )}
-                    {plan.status === 'pending_approval' && (
-                      <button
-                        onClick={() => handleCancel(plan._id)}
-                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                        title="Cancelar"
-                      >
-                        <XCircle className="w-4 h-4" />
-                      </button>
-                    )}
-                    <button
-                      onClick={() => toggleExpand(plan._id)}
-                      className="p-2 text-gray-400 hover:text-gray-600 rounded-lg transition-colors"
-                    >
-                      {expandedId === plan._id ? (
-                        <ChevronDown className="w-4 h-4" />
-                      ) : (
-                        <ChevronRight className="w-4 h-4" />
-                      )}
-                    </button>
-                  </div>
-                </div>
+            {filteredPlans.map((plan: AuditPlan) => {
+              // ============================================================
+              // 🆕 v49.1 — MONTAGEM DA EQUIPE PARA EXIBIÇÃO
+              // ============================================================
+              //
+              // Reconstrói os membros a partir do `plan.team` persistido.
+              // Compatível com:
+              //   - Planos novos (v49.1+): team tem name/email
+              //   - Planos antigos: team só tem IDs (fallback para ID)
+              //
+              // ============================================================
 
-                {/* Expanded Content */}
-                {expandedId === plan._id && (
-                  <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <h4 className="text-sm font-medium text-gray-700 mb-1">Descrição</h4>
-                        <p className="text-sm text-gray-600">{plan.description}</p>
+              const teamAny: any = plan.team || {};
+
+              const leadAuditorDisplay: TeamMemberDisplay | null =
+                teamAny.leadAuditor
+                  ? {
+                      id: teamAny.leadAuditor,
+                      name:
+                        teamAny.leadAuditorName ||
+                        teamAny.leadAuditor,
+                      email: teamAny.leadAuditorEmail || '',
+                      isManual: String(teamAny.leadAuditor).startsWith('manual_'),
+                    }
+                  : null;
+
+              const auditorsDisplay = buildTeamMembers(
+                teamAny.auditors,
+                teamAny.auditorNames,
+                teamAny.auditorEmails
+              );
+
+              const observersDisplay = buildTeamMembers(
+                teamAny.observers,
+                teamAny.observerNames,
+                teamAny.observerEmails
+              );
+
+              return (
+                <div key={plan._id} className="hover:bg-gray-50 transition-colors">
+                  {/* Plan Row */}
+                  <div className="flex items-center justify-between px-6 py-4">
+                    <div
+                      className="flex items-center gap-4 flex-1 cursor-pointer"
+                      onClick={() => toggleExpand(plan._id)}
+                    >
+                      <div className="p-2 bg-indigo-50 rounded-lg">
+                        <FileText className="w-5 h-5 text-indigo-600" />
                       </div>
-                      <div>
-                        <h4 className="text-sm font-medium text-gray-700 mb-1">Equipe</h4>
-                        <p className="text-sm text-gray-600">
-                          <span className="font-medium">Auditor Líder:</span>{' '}
-                          {plan.team.leadAuditor || 'Não definido'}
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          <span className="font-medium">Auditores:</span>{' '}
-                          {plan.team.auditors.length > 0
-                            ? plan.team.auditors.join(', ')
-                            : 'Nenhum'}
-                        </p>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-3 flex-wrap">
+                          <span className="font-medium text-gray-900 truncate">{plan.title}</span>
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[plan.status] || 'bg-gray-100 text-gray-600'}`}>
+                            {STATUS_LABELS[plan.status] || plan.status}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-4 mt-1 text-sm text-gray-500">
+                          <span className="flex items-center gap-1">
+                            <Calendar className="w-3 h-3" />
+                            {new Date(plan.period.startDate).toLocaleDateString('pt-BR')}
+                            {' - '}
+                            {new Date(plan.period.endDate).toLocaleDateString('pt-BR')}
+                          </span>
+                          <span>•</span>
+                          <span>{plan.scope.controls.length} controles</span>
+                          <span>•</span>
+                          <span>{plan.scope.areas.length} áreas</span>
+                        </div>
+                      </div>
+                      <div className="text-sm text-gray-400">
+                        {new Date(plan.createdAt).toLocaleDateString('pt-BR')}
                       </div>
                     </div>
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      <h4 className="text-sm font-medium text-gray-700 w-full">Critérios:</h4>
-                      {plan.criteria.map((c) => (
-                        <span key={c} className="px-2 py-0.5 bg-gray-200 text-gray-700 text-xs rounded-full">
-                          {c}
-                        </span>
-                      ))}
+                    <div className="flex items-center gap-2 ml-4">
+                      <button
+                        onClick={() => navigate(`/rep/audit/plans/${plan._id}`)}
+                        className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        title="Visualizar"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </button>
+                      {plan.status === 'draft' && (
+                        <>
+                          <button
+                            onClick={() => navigate(`/rep/audit/plans/${plan._id}/edit`)}
+                            className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                            title="Editar"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => setShowDeleteConfirm(plan._id)}
+                            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Excluir"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </>
+                      )}
+                      {plan.status === 'pending_approval' && (
+                        <button
+                          onClick={() => handleCancel(plan._id)}
+                          className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Cancelar"
+                        >
+                          <XCircle className="w-4 h-4" />
+                        </button>
+                      )}
+                      <button
+                        onClick={() => toggleExpand(plan._id)}
+                        className="p-2 text-gray-400 hover:text-gray-600 rounded-lg transition-colors"
+                      >
+                        {expandedId === plan._id ? (
+                          <ChevronDown className="w-4 h-4" />
+                        ) : (
+                          <ChevronRight className="w-4 h-4" />
+                        )}
+                      </button>
                     </div>
-                    {plan.status === 'approved' && (
-                      <div className="mt-4 flex items-center gap-2 text-sm text-green-600 bg-green-50 px-3 py-2 rounded-lg">
-                        <CheckCircle className="w-4 h-4" />
-                        Plano aprovado em {new Date(plan.approvedAt!).toLocaleDateString('pt-BR')}
-                      </div>
-                    )}
                   </div>
-                )}
-              </div>
-            ))}
+
+                  {/* Expanded Content */}
+                  {expandedId === plan._id && (
+                    <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <h4 className="text-sm font-medium text-gray-700 mb-1">Descrição</h4>
+                          <p className="text-sm text-gray-600">{plan.description}</p>
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-medium text-gray-700 mb-2">Equipe</h4>
+
+                          {/* ============================================ */}
+                          {/* 🆕 v49.1 — AUDITOR LÍDER (nome em vez de ID) */}
+                          {/* ============================================ */}
+                          {leadAuditorDisplay ? (
+                            <div className="mb-2">
+                              <span className="text-xs font-medium text-gray-500 uppercase">
+                                Auditor Líder
+                              </span>
+                              <div className="flex items-center gap-2 mt-1">
+                                <span className="inline-flex items-center gap-1 px-2 py-1 bg-indigo-100 text-indigo-700 text-xs rounded-full">
+                                  <User className="w-3 h-3" />
+                                  {leadAuditorDisplay.name}
+                                  {leadAuditorDisplay.isManual && (
+                                    <span title="Auditor manual">📝</span>
+                                  )}
+                                </span>
+                                {leadAuditorDisplay.email && (
+                                  <span className="text-xs text-gray-500">
+                                    {leadAuditorDisplay.email}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="mb-2">
+                              <span className="text-xs font-medium text-gray-500 uppercase">
+                                Auditor Líder
+                              </span>
+                              <p className="text-sm text-gray-400">Não definido</p>
+                            </div>
+                          )}
+
+                          {/* ============================================ */}
+                          {/* 🆕 v49.1 — AUDITORES (nomes em vez de IDs) */}
+                          {/* ============================================ */}
+                          <div className="mb-2">
+                            <span className="text-xs font-medium text-gray-500 uppercase">
+                              Auditores
+                            </span>
+                            {auditorsDisplay.length > 0 ? (
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {auditorsDisplay.map((member) => (
+                                  <span
+                                    key={member.id}
+                                    className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full"
+                                    title={member.email}
+                                  >
+                                    <Users className="w-3 h-3" />
+                                    {member.name}
+                                    {member.isManual && (
+                                      <span title="Auditor manual">📝</span>
+                                    )}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-sm text-gray-400">Nenhum</p>
+                            )}
+                          </div>
+
+                          {/* ============================================ */}
+                          {/* 🆕 v49.1 — OBSERVADORES (bloco novo) */}
+                          {/* ============================================ */}
+                          <div>
+                            <span className="text-xs font-medium text-gray-500 uppercase">
+                              Observadores
+                            </span>
+                            {observersDisplay.length > 0 ? (
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {observersDisplay.map((member) => (
+                                  <span
+                                    key={member.id}
+                                    className="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-100 text-purple-700 text-xs rounded-full"
+                                    title={member.email}
+                                  >
+                                    <EyeIcon className="w-3 h-3" />
+                                    {member.name}
+                                    {member.isManual && (
+                                      <span title="Observador manual">📝</span>
+                                    )}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-sm text-gray-400">Nenhum</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        <h4 className="text-sm font-medium text-gray-700 w-full">Critérios:</h4>
+                        {plan.criteria.map((c) => (
+                          <span key={c} className="px-2 py-0.5 bg-gray-200 text-gray-700 text-xs rounded-full">
+                            {c}
+                          </span>
+                        ))}
+                      </div>
+                      {plan.status === 'approved' && plan.approvedAt && (
+                        <div className="mt-4 flex items-center gap-2 text-sm text-green-600 bg-green-50 px-3 py-2 rounded-lg">
+                          <CheckCircle className="w-4 h-4" />
+                          Plano aprovado em {new Date(plan.approvedAt).toLocaleDateString('pt-BR')}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
