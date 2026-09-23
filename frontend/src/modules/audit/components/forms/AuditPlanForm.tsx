@@ -39,15 +39,6 @@ interface ExcludedControlDraft {
 
 /**
  * 🆕 v49.1 — Estrutura unificada de um membro da equipe.
- *
- * `id` pode ser:
- *   - ObjectId de um User cadastrado
- *   - 'manual_<timestamp>' para auditores manuais
- *
- * `isManual` diferencia os dois casos, e é usado para:
- *   - Persistir no localStorage
- *   - Exibir o ícone 📝
- *   - Aplicar a lógica de remoção global
  */
 interface TeamMember {
   id: string;
@@ -107,19 +98,6 @@ const MANUAL_AUDITORS_STORAGE_KEY = 'manualAuditors';
 
 // ============================================================
 // SUB-COMPONENTE INTERNO — TeamMemberPicker
-// ============================================================
-//
-// MOTIVO:
-//   Substitui os <select multiple> por uma UI de chips +
-//   adicionar/remover + modo manual por papel.
-//
-// COMPORTAMENTO:
-//   - Modo single (Líder): apenas 1 membro selecionado
-//   - Modo multiple (Auditores/Observadores): N membros
-//
-// REUTILIZAÇÃO:
-//   Usado 3x dentro deste arquivo, evitando duplicação de JSX.
-//
 // ============================================================
 
 interface TeamMemberPickerProps {
@@ -380,30 +358,10 @@ export function AuditPlanForm({
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  // ============================================================
-  // 🔧 CORREÇÃO ERRO 1 — Usar hook do REP (não do Admin)
-  // ============================================================
-  //
-  // useUsers (admin) → useRepUsers (rep) evita erro 403
-
   const { data: usersData, isLoading: isLoadingUsers } = useRepUsers();
 
   // ============================================================
-  // 🆕 v49.1 — ESTADOS DE EQUIPE (REFEITOS)
-  // ============================================================
-  //
-  // ANTES:
-  //   - manualAuditors: TeamMember[]
-  //   - manualAuditorName / manualAuditorEmail (1 par apenas)
-  //   - Só existia 1 botão para adicionar manual
-  //
-  // DEPOIS:
-  //   - manualMembers: pool global de manuais (persistido em localStorage)
-  //   - teamMembersByRole: membros selecionados para CADA papel
-  //     (leadAuditor | auditors | observers)
-  //
-  // Isso permite adicionar manualmente em QUALQUER papel.
-  //
+  // ESTADOS — EQUIPE (v49.1)
   // ============================================================
 
   const [manualMembers, setManualMembers] = useState<TeamMember[]>([]);
@@ -481,7 +439,6 @@ export function AuditPlanForm({
         const controlsRes = await api.get('/rep/controls');
         const controlList = controlsRes.data.data || controlsRes.data || [];
 
-        // 🔧 CORREÇÃO ERRO 3 — Usar rota que existe (/users-with-responses)
         let responsesList: any[] = [];
         try {
           const responsesRes = await api.get('/rep/users-with-responses');
@@ -596,8 +553,7 @@ export function AuditPlanForm({
       setSelectedProcesses(initialData.scope?.processes || []);
       setSelectedAreas(initialData.scope?.areas || []);
 
-      // 🆕 v49.1 — Reconstruir teamMembersByRole a partir do initialData
-      // Usa os nomes/emails persistidos no backend (v49.1+) ou fallback para ID.
+      // Reconstruir teamMembersByRole a partir do initialData
       const team: any = initialData.team || {};
 
       const leadAuditorArr: TeamMember[] = team.leadAuditor
@@ -774,14 +730,53 @@ export function AuditPlanForm({
     }
   };
 
+  // ============================================================
+  // 🆕 v49.1.1 — HANDLERS DE CRITÉRIOS (MELHORADOS)
+  // ============================================================
+  //
+  // MOTIVO:
+  //   Garantir que NENHUM critério digitado seja perdido.
+  //   Adiciona suporte a auto-flush no submit.
+  //
+  // ============================================================
+
   const handleAddCriteria = () => {
-    if (newCriteria.trim() && !formData.criteria?.includes(newCriteria.trim())) {
-      setFormData((prev) => ({
-        ...prev,
-        criteria: [...(prev.criteria || []), newCriteria.trim()],
-      }));
+    const trimmed = newCriteria.trim();
+    if (!trimmed) return;
+
+    const current = formData.criteria || [];
+    if (current.includes(trimmed)) {
       setNewCriteria('');
+      return;
     }
+
+    setFormData((prev) => ({
+      ...prev,
+      criteria: [...(prev.criteria || []), trimmed],
+    }));
+    setNewCriteria('');
+  };
+
+  /**
+   * 🆕 v49.1.1 — Auto-flush de critério pendente
+   *
+   * Se o usuário digitou algo no input e não apertou Enter nem
+   * clicou no +, este método garante que o valor seja adicionado
+   * antes do submit.
+   *
+   * @returns {string[]} Array de critérios atualizado (para uso imediato no submit)
+   */
+  const flushPendingCriteria = (): string[] => {
+    const trimmed = newCriteria.trim();
+    const current = formData.criteria || [];
+
+    if (!trimmed) return current;
+    if (current.includes(trimmed)) return current;
+
+    const updated = [...current, trimmed];
+    setFormData((prev) => ({ ...prev, criteria: updated }));
+    setNewCriteria('');
+    return updated;
   };
 
   const handleRemoveCriteria = (criteria: string) => {
@@ -792,7 +787,7 @@ export function AuditPlanForm({
   };
 
   // ============================================================
-  // 🆕 v49.1 — HANDLERS DE EQUIPE (POR PAPEL)
+  // HANDLERS — EQUIPE (POR PAPEL)
   // ============================================================
 
   const handleTeamRoleChange = (role: TeamRole, members: TeamMember[]) => {
@@ -801,7 +796,6 @@ export function AuditPlanForm({
       [role]: members,
     }));
 
-    // Limpar erro associado
     const errorKey = role === 'leadAuditor' ? 'leadAuditor' : role;
     if (errors[errorKey]) {
       setErrors((prev) => {
@@ -821,7 +815,6 @@ export function AuditPlanForm({
       return null;
     }
 
-    // Verifica duplicidade entre TODOS os membros (cadastrados + manuais)
     const exists = allMemberOptions.some(
       (m) => m.name.toLowerCase() === trimmedName.toLowerCase()
     );
@@ -907,17 +900,22 @@ export function AuditPlanForm({
   };
 
   // ============================================================
-  // SUBMIT — 🆕 v49.1 PAYLOAD CORRIGIDO E EXPANDIDO
+  // SUBMIT — 🆕 v49.1.1 CORRIGIDO
   // ============================================================
   //
-  // CORREÇÕES APLICADAS:
-  //   1. excludedControls agora vai DENTRO de scope (corrige P1.1)
-  //   2. team agora envia os nomes/emails de cada membro (fecha BLOCO 1)
+  // CORREÇÕES APLICADAS (v49.1.1):
+  //   1. `controls` só é enviado em modo 'custom' (corrige erro 400)
+  //   2. `excludedControls` só é enviado se houver exclusões
+  //   3. `flushPendingCriteria()` garante que critério digitado
+  //      no input e não confirmado NÃO seja perdido
   //
   // ============================================================
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // 🆕 v49.1.1 — Auto-flush de critério pendente ANTES de validar
+    const flushedCriteria = flushPendingCriteria();
 
     if (!validate()) return;
 
@@ -925,22 +923,32 @@ export function AuditPlanForm({
     const auditorsMembers = teamMembersByRole.auditors;
     const observersMembers = teamMembersByRole.observers;
 
+    // 🆕 v49.1.1 — Montar scope respeitando o modo
+    const scopePayload: any = {
+      mode: scopeMode,
+      processes: selectedProcesses,
+      areas: selectedAreas,
+    };
+
+    // Só envia `controls` em modo 'custom'.
+    // Em modo 'all', o backend popula automaticamente com TODOS
+    // os controles da empresa e rejeita a presença deste campo
+    // (proteção de integridade ISO 19011:2018 §5.5).
+    if (scopeMode === 'custom') {
+      scopePayload.controls = effectiveControls;
+    }
+
+    // Só envia `excludedControls` se houver exclusões efetivas
+    if (scopeMode === 'all' && excludedControls.length > 0) {
+      scopePayload.excludedControls = excludedControls;
+    }
+
     const data: CreateAuditPlanDTO = {
       code: formData.code || `AUD-${Date.now().toString().slice(-6)}`,
       title: formData.title!,
       description: formData.description!,
 
-      scope: {
-        mode: scopeMode,
-        controls: effectiveControls,
-        // ✅ CORRIGIDO — dentro de scope
-        excludedControls:
-          scopeMode === 'all' && excludedControls.length > 0
-            ? excludedControls
-            : undefined,
-        processes: selectedProcesses,
-        areas: selectedAreas,
-      },
+      scope: scopePayload,
 
       period: {
         startDate: new Date(formData.period!.startDate!),
@@ -948,7 +956,6 @@ export function AuditPlanForm({
         estimatedDays: formData.period?.estimatedDays || 30,
       },
 
-      // 🆕 v49.1 — PAYLOAD EXPANDIDO COM NOMES/EMAILS
       team: {
         leadAuditor: leadAuditorMember.id,
         leadAuditorName: leadAuditorMember.name,
@@ -963,7 +970,8 @@ export function AuditPlanForm({
         observerEmails: observersMembers.map((m) => m.email),
       },
 
-      criteria: formData.criteria || [],
+      // 🆕 v49.1.1 — Usa critérios com flush aplicado
+      criteria: flushedCriteria,
     };
 
     await onSubmit(data);
@@ -1454,7 +1462,7 @@ export function AuditPlanForm({
       </div>
 
       {/* ======================================================== */}
-      {/* 🆕 v49.1 — EQUIPE (UI REFEITA) */}
+      {/* EQUIPE (v49.1) */}
       {/* ======================================================== */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
@@ -1611,7 +1619,7 @@ export function AuditPlanForm({
       </div>
 
       {/* ======================================================== */}
-      {/* CRITÉRIOS */}
+      {/* CRITÉRIOS (v49.1.1 — com onBlur) */}
       {/* ======================================================== */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
@@ -1640,6 +1648,7 @@ export function AuditPlanForm({
             type="text"
             value={newCriteria}
             onChange={(e) => setNewCriteria(e.target.value)}
+            onBlur={handleAddCriteria}
             placeholder="Ex: ISO 27001:2022, Política de SI, Requisitos Legais"
             className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
             style={{ color: '#1f2937', backgroundColor: '#ffffff' }}

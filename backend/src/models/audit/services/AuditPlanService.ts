@@ -971,24 +971,79 @@ export class AuditPlanService {
 
     // ============================================================
     // 🆕 v49.1 — APLICAÇÃO DOS DADOS DA EQUIPE (COM NOMES/EMAILS)
+    // 🆕 v49.1.1 — REALINHAMENTO DEFENSIVO DE NOMES/EMAILS
     // ============================================================
     //
-    // MOTIVO:
+    // MOTIVO (v49.1):
     //   Preservar nomes/emails dos auditores ao editar um plano.
     //   Sem isso, a edição limparia os nomes e o card voltaria
     //   a mostrar apenas os IDs brutos.
     //
+    // MOTIVO (v49.1.1):
+    //   Garantir que `auditorNames[i]` corresponda a `auditors[i]`,
+    //   e `observerNames[i]` corresponda a `observers[i]`.
+    //
+    //   Sem isso, se o frontend enviar arrays de tamanhos diferentes
+    //   (ex.: remover um auditor sem remover o nome), os nomes
+    //   ficariam desalinhados e o card mostraria o nome errado.
+    //
     // ESTRATÉGIA:
-    //   Para cada campo novo, se vier preenchido no payload,
-    //   usa o novo valor; senão, mantém o valor existente
-    //   no plano. Isso garante que edições parciais (ex.: só
-    //   o título) não apaguem os nomes.
+    //   - Para cada campo novo, se vier preenchido no payload,
+    //     usa o novo valor; senão, mantém o valor existente
+    //     no plano. Isso garante que edições parciais (ex.: só
+    //     o título) não apaguem os nomes.
+    //   - Realinha auditorNames/auditorEmails com auditors
+    //   - Realinha observerNames/observerEmails com observers
     //
     // ============================================================
 
     if (data.team) {
       const incomingTeam: any = data.team;
       const existingTeam: any = plan.team;
+
+      // ---- Realinhamento defensivo (v49.1.1) ----
+
+      if (
+        data.team.auditors !== undefined &&
+        Array.isArray(data.team.auditors)
+      ) {
+        const incomingNames = Array.isArray(incomingTeam.auditorNames)
+          ? incomingTeam.auditorNames
+          : [];
+        const incomingEmails = Array.isArray(incomingTeam.auditorEmails)
+          ? incomingTeam.auditorEmails
+          : [];
+
+        incomingTeam.auditorNames = data.team.auditors.map(
+          (_, i) => String(incomingNames[i] || '')
+        );
+
+        incomingTeam.auditorEmails = data.team.auditors.map(
+          (_, i) => String(incomingEmails[i] || '')
+        );
+      }
+
+      if (
+        data.team.observers !== undefined &&
+        Array.isArray(data.team.observers)
+      ) {
+        const incomingNames = Array.isArray(incomingTeam.observerNames)
+          ? incomingTeam.observerNames
+          : [];
+        const incomingEmails = Array.isArray(incomingTeam.observerEmails)
+          ? incomingTeam.observerEmails
+          : [];
+
+        incomingTeam.observerNames = data.team.observers.map(
+          (_, i) => String(incomingNames[i] || '')
+        );
+
+        incomingTeam.observerEmails = data.team.observers.map(
+          (_, i) => String(incomingEmails[i] || '')
+        );
+      }
+
+      // ---- Merge ----
 
       plan.team = {
         ...plan.team,
@@ -1046,9 +1101,26 @@ export class AuditPlanService {
     // ============================================================
     // CRITÉRIOS
     // ============================================================
+    //
+    // 🆕 v49.1.1 — Normalização defensiva
+    //
+    // MOTIVO:
+    //   Garantir que o array de critérios esteja sempre limpo:
+    //   - Strings com espaços extras são trimadas
+    //   - Strings vazias são removidas
+    //   - Valores não-string são convertidos
+    //
+    // Isso evita que entradas inválidas cheguem ao MongoDB
+    // e quebrem a renderização no card.
+    //
+    // ============================================================
 
     if (data.criteria !== undefined) {
-      plan.criteria = data.criteria;
+      plan.criteria = Array.isArray(data.criteria)
+        ? data.criteria
+            .map((c) => String(c).trim())
+            .filter((c) => c.length > 0)
+        : [];
     }
 
     // ============================================================
