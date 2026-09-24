@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Loader2, AlertCircle } from 'lucide-react';
 import { useAudit } from '../../../hooks/useAudit';
@@ -6,6 +6,7 @@ import { AuditChecklist } from '../../../components/AuditChecklist';
 import { AuditChecklistItem } from '../../../types/audit.types';
 import { toast } from 'react-hot-toast';
 import api from '@/services/api';
+
 export function RepAuditChecklist() {
   const { planId } = useParams<{ planId: string }>();
   const navigate = useNavigate();
@@ -18,12 +19,18 @@ export function RepAuditChecklist() {
   }>>([]);
   const [isLoadingResponses, setIsLoadingResponses] = useState(true);
 
+  // ============================================================
+  // 🆕 v49.1.2 — CONTROLES DA EMPRESA (exibição código + nome)
+  // ============================================================
+
+  const [controls, setControls] = useState<Array<any>>([]);
+
   // Hooks do React Query
   const {
-  useChecklists,
-  useUpdateChecklist,
-  useCompleteChecklist,
-} = useAudit;
+    useChecklists,
+    useUpdateChecklist,
+    useCompleteChecklist,
+  } = useAudit;
 
   // Buscar checklists do plano
   const {
@@ -31,7 +38,45 @@ export function RepAuditChecklist() {
     isLoading,
     error,
     refetch,
-} = useChecklists(planId || '');
+  } = useChecklists(planId || '');
+
+  // 🆕 v49.1.2 — Buscar controles da empresa (para exibição)
+  useEffect(() => {
+    const fetchControls = async () => {
+      try {
+        const res = await api.get('/rep/controls');
+        const list = res.data.data || res.data || [];
+        setControls(Array.isArray(list) ? list : []);
+      } catch (err) {
+        console.warn('⚠️ Não foi possível carregar controles para exibição:', err);
+      }
+    };
+    fetchControls();
+  }, []);
+
+  // 🆕 v49.1.2 — Mapa { controlId -> { code, name } }
+  const controlsMap = useMemo(() => {
+    const map = new Map<string, { code: string; name: string }>();
+    (controls || []).forEach((c: any) => {
+      const id = String(c._id || c.id || c.controlId || '');
+      const code = String(c.id || c.controlId || c.code || '');
+      const name = String(c.nome || c.name || c.title || '');
+      if (id) {
+        map.set(id, { code, name });
+      }
+    });
+    return map;
+  }, [controls]);
+
+  // 🆕 v49.1.2 — Helper: rótulo amigável
+  const getControlLabel = (controlId: string): string => {
+    const entry = controlsMap.get(String(controlId));
+    if (!entry) return controlId;
+    const { code, name } = entry;
+    if (code && name) return `${code} - ${name}`;
+    return code || name || controlId;
+  };
+
   // Buscar respostas dos usuários diretamente
   useEffect(() => {
     const fetchResponses = async () => {
@@ -179,11 +224,13 @@ export function RepAuditChecklist() {
         isSubmitting={isSubmitting}
         isReadOnly={currentChecklist.status === 'completed'}
         companyResponses={companyResponses}
+        controlsMap={controlsMap}
       />
 
       <div className="mt-6 text-sm text-gray-500 border-t border-gray-200 pt-4">
         <p>
-          Controle: {currentChecklist.controlId} • 
+          {/* 🆕 v49.1.2 — Usa rótulo amigável do controle */}
+          Controle: {getControlLabel(String(currentChecklist.controlId))} • 
           Total de perguntas: {checklistItems.length} • 
           Respondidas: {checklistItems.filter((q: AuditChecklistItem) => q.answer !== undefined).length}
         </p>

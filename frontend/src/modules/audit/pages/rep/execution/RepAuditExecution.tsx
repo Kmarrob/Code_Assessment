@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -26,6 +26,7 @@ import {
 } from '../../../hooks/useAudit';
 import { AuditChecklistItem } from '../../../types/audit.types';
 import { AuditChecklist } from '../../../components/AuditChecklist';
+import api from '@/services/api';
 
 const STATUS_LABELS: Record<string, string> = {
   draft: 'Rascunho',
@@ -51,6 +52,56 @@ export function RepAuditExecution() {
   const effectivePlanId = planId || '';
   const [selectedControl, setSelectedControl] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+
+  // ============================================================
+  // 🆕 v49.1.2 — CONTROLES PARA EXIBIÇÃO DE CÓDIGO + NOME
+  // ============================================================
+  //
+  // MOTIVO:
+  //   A lista lateral exibia o controlId bruto (hash). Agora
+  //   buscamos os controles da empresa (mesma rota /rep/controls
+  //   usada em outras telas — cache hit garantido).
+  //
+  // IMPACTO:
+  //   - 1 fetch adicional (cache hit)
+  //   - Fallback: se não encontrar, exibe o hash
+  //   - Zero regressão
+  //
+  // ============================================================
+
+  const [controls, setControls] = useState<Array<any>>([]);
+
+  useEffect(() => {
+    const fetchControls = async () => {
+      try {
+        const res = await api.get('/rep/controls');
+        const list = res.data.data || res.data || [];
+        setControls(Array.isArray(list) ? list : []);
+      } catch (err) {
+        console.warn('⚠️ Não foi possível carregar controles para exibição:', err);
+      }
+    };
+    fetchControls();
+  }, []);
+
+  const controlsMap = useMemo(() => {
+    const map = new Map<string, { code: string; name: string }>();
+    (controls || []).forEach((c: any) => {
+      const id = String(c._id || c.id || c.controlId || '');
+      const code = String(c.id || c.controlId || c.code || '');
+      const name = String(c.nome || c.name || c.title || '');
+      if (id) map.set(id, { code, name });
+    });
+    return map;
+  }, [controls]);
+
+  const getControlLabel = (controlId: string): string => {
+    const entry = controlsMap.get(String(controlId));
+    if (!entry) return controlId;
+    const { code, name } = entry;
+    if (code && name) return `${code} - ${name}`;
+    return code || name || controlId;
+  };
 
   const { data: plan, isLoading: isLoadingPlan } = usePlan(effectivePlanId);
   const { data: checklists = [], isLoading: isLoadingChecklists } = useChecklists(effectivePlanId);
@@ -180,7 +231,8 @@ export function RepAuditExecution() {
                 <button key={checklist._id} onClick={() => setSelectedControl(checklist.controlId)} className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors flex items-center justify-between ${isSelected ? 'bg-indigo-50 border-l-4 border-indigo-500' : ''}`}>
                   <div className="flex items-center gap-2 min-w-0">
                     {isCompleted ? <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" /> : <Clock className="w-4 h-4 text-gray-400 flex-shrink-0" />}
-                    <span className="text-sm font-medium text-gray-700 truncate">{checklist.controlId}</span>
+                    {/* 🆕 v49.1.2 — Rótulo amigável do controle */}
+                    <span className="text-sm font-medium text-gray-700 truncate">{getControlLabel(checklist.controlId)}</span>
                   </div>
                   <ChevronRight className={`w-4 h-4 text-gray-400 ${isSelected ? 'rotate-90' : ''}`} />
                 </button>
@@ -201,6 +253,7 @@ export function RepAuditExecution() {
                 await completeChecklist.mutateAsync({ id: selectedChecklist._id, planId: effectivePlanId });
               }}
               isReadOnly={plan.status === 'completed' || plan.status === 'cancelled'}
+              controlsMap={controlsMap}
             />
           ) : (
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">

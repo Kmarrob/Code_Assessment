@@ -2,6 +2,23 @@ import React, { useState, useEffect } from 'react';
 import { CheckCircle, XCircle, MinusCircle, AlertCircle, Upload, Wand2 } from 'lucide-react';
 import { AuditChecklist as AuditChecklistType, AuditChecklistItem } from '../types/audit.types';
 
+// ============================================================
+// 🆕 v49.1.2 — MAPEAMENTO DE CONTROLES PARA EXIBIÇÃO
+// ============================================================
+//
+// MOTIVO:
+//   O componente exibia o `controlId` bruto (ObjectId do MongoDB)
+//   no header. Agora aceita uma prop `controlsMap` opcional que,
+//   quando fornecida, permite exibir o código + nome do controle
+//   (ex.: "5.1 - Políticas de segurança da informação").
+//
+// COMPATIBILIDADE:
+//   A prop é OPCIONAL. Se não vier, o componente cai no
+//   comportamento anterior (exibe o controlId como está).
+//   Isso garante zero regressão em qualquer chamador.
+//
+// ============================================================
+
 interface AuditChecklistProps {
   checklist: AuditChecklistType;
   onUpdate: (questions: AuditChecklistItem[]) => Promise<void>;
@@ -14,6 +31,8 @@ interface AuditChecklistProps {
     scenarioDescription?: string;
     observations?: string;
   }>;
+  /** 🆕 v49.1.2 — Mapa opcional para exibir código + nome dos controles */
+  controlsMap?: Map<string, { code: string; name: string }>;
 }
 
 const ANSWER_OPTIONS = [
@@ -31,11 +50,27 @@ export function AuditChecklist({
   isSubmitting = false,
   isReadOnly = false,
   companyResponses = [],
+  controlsMap,
 }: AuditChecklistProps) {
   const [questions, setQuestions] = useState<AuditChecklistItem[]>([]);
   const [isDirty, setIsDirty] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  // ============================================================
+  // 🆕 v49.1.2 — HELPER DE EXIBIÇÃO DE CONTROLE
+  // ============================================================
+
+  const getControlLabel = (controlId: string): string => {
+    if (!controlsMap) return controlId;
+
+    const entry = controlsMap.get(String(controlId));
+    if (!entry) return controlId;
+
+    const { code, name } = entry;
+    if (code && name) return `${code} - ${name}`;
+    return code || name || controlId;
+  };
 
   useEffect(() => {
     let initialQuestions = checklist.questions || [];
@@ -166,7 +201,10 @@ export function AuditChecklist({
       <div className="p-4 border-b border-gray-200 bg-gray-50">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h3 className="text-lg font-semibold text-gray-900">Checklist - Controle {checklist.controlId}</h3>
+            {/* 🆕 v49.1.2 — Usa rótulo amigável do controle quando disponível */}
+            <h3 className="text-lg font-semibold text-gray-900">
+              Checklist - Controle {getControlLabel(String(checklist.controlId))}
+            </h3>
             <p className="text-sm text-gray-500">{totalQuestions} perguntas • {answeredQuestions} respondidas</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
