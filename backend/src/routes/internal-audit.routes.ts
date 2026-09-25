@@ -1,5 +1,6 @@
 import { Router } from 'express';
-import { authenticate } from '../middleware/auth';
+import { authenticate, authorize } from '../middleware/auth';
+import { UserRole } from '../types/index.js';
 import {
   auditPlanController,
   auditChecklistController,
@@ -11,6 +12,7 @@ import {
   auditSoAController,
   auditRiskController,
   auditDocumentReviewController,
+  auditQuestionController,
 } from '../controllers/audit';
 
 const router = Router();
@@ -71,6 +73,69 @@ router.post(
 router.delete(
   '/plans/:id/exclusions/:controlId',
   auditPlanController.removeExclusion
+);
+
+// ============================================================
+// 🆕 v49.2 — ROTAS DE PERGUNTAS DE AUDITORIA (CLÁUSULAS 4-10)
+// ============================================================
+//
+// ACESSO RESTRITO:
+//   Todas as rotas exigem role ADMIN (authorize(UserRole.ADMIN)).
+//   Nenhum outro perfil (REP, Consultant, User) pode acessar.
+//
+// ENDPOINTS:
+//   POST   /questions                 → Criar pergunta
+//   GET    /questions                 → Listar perguntas (filtros)
+//   GET    /questions/stats           → Estatísticas
+//   GET    /questions/:id             → Buscar por ID
+//   PUT    /questions/:id             → Atualizar
+//   DELETE /questions/:id             → Soft delete
+//
+// ORDEM DAS ROTAS:
+//   /stats vem ANTES de /:id para não ser interpretado como ID.
+//
+// ============================================================
+
+// Listar perguntas (com filtros opcionais)
+router.get(
+  '/questions',
+  authorize(UserRole.ADMIN),
+  auditQuestionController.findAll
+);
+
+// Estatísticas (antes de /:id para não conflitar)
+router.get(
+  '/questions/stats',
+  authorize(UserRole.ADMIN),
+  auditQuestionController.getStats
+);
+
+// Criar nova pergunta
+router.post(
+  '/questions',
+  authorize(UserRole.ADMIN),
+  auditQuestionController.create
+);
+
+// Buscar pergunta por ID
+router.get(
+  '/questions/:id',
+  authorize(UserRole.ADMIN),
+  auditQuestionController.findById
+);
+
+// Atualizar pergunta
+router.put(
+  '/questions/:id',
+  authorize(UserRole.ADMIN),
+  auditQuestionController.update
+);
+
+// Excluir pergunta (soft delete)
+router.delete(
+  '/questions/:id',
+  authorize(UserRole.ADMIN),
+  auditQuestionController.delete
 );
 
 // ============================================================

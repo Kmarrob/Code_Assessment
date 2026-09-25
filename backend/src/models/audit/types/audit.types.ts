@@ -1016,3 +1016,128 @@ export interface IAuditQuestion {
     | 'physical'
     | 'technological';
 }
+
+// ============================================================
+// 🆕 v49.2 — TIPOS DE PERGUNTAS DE AUDITORIA (CLÁUSULAS 4-10)
+// ============================================================
+//
+// MOTIVO:
+//   Precisamos de tipos específicos para gerenciar perguntas
+//   de auditoria de cláusulas ISO 27001:2022 (SGSI).
+//
+//   NÃO confundir com IAuditQuestion (acima), que é legado
+//   e estava associado ao assessment de controles.
+//
+// COMPATIBILIDADE:
+//   - IAuditQuestion original foi MANTIDO (zero remoção).
+//   - Novos tipos são adicionais e não afetam nada existente.
+//
+// ============================================================
+
+/**
+ * Criticidade de uma pergunta de auditoria.
+ */
+export type AuditQuestionCriticality = 'low' | 'medium' | 'high' | 'critical';
+
+/**
+ * Interface principal da pergunta de auditoria de cláusulas.
+ * Espelha 1:1 o modelo Mongoose AuditQuestion.
+ */
+export interface IAuditQuestionFull {
+  _id: string;
+  id: string;
+
+  // Identificação da cláusula ISO 27001:2022
+  clauseId: string;
+  clauseTitle: string;
+  clauseGroup: string;
+
+  // Conteúdo da pergunta
+  text: string;
+  objective: string;
+  guidance: string;
+
+  // Critérios de avaliação
+  evidenceExpected: string;
+  conformityCriteria: string;
+  nonconformityCriteria: string;
+
+  // Criticidade
+  criticality: AuditQuestionCriticality;
+
+  // Rastreabilidade
+  relatedControls: string[];
+  relatedDocuments: string[];
+
+  // Controle
+  order: number;
+  active: boolean;
+
+  // Metadados
+  createdBy: string;
+  createdAt: Date;
+  updatedAt: Date;
+  deletedAt?: Date;
+}
+
+/**
+ * DTO para criar uma pergunta de auditoria.
+ */
+export interface CreateAuditQuestionFullDTO {
+  clauseId: string;
+  clauseTitle?: string;
+  clauseGroup?: string;
+  text: string;
+  objective?: string;
+  guidance?: string;
+  evidenceExpected?: string;
+  conformityCriteria?: string;
+  nonconformityCriteria?: string;
+  criticality?: AuditQuestionCriticality;
+  relatedControls?: string[];
+  relatedDocuments?: string[];
+  order?: number;
+  active?: boolean;
+}
+
+/**
+ * DTO para atualizar uma pergunta de auditoria.
+ */
+export interface UpdateAuditQuestionFullDTO {
+  clauseId?: string;
+  clauseTitle?: string;
+  clauseGroup?: string;
+  text?: string;
+  objective?: string;
+  guidance?: string;
+  evidenceExpected?: string;
+  conformityCriteria?: string;
+  nonconformityCriteria?: string;
+  criticality?: AuditQuestionCriticality;
+  relatedControls?: string[];
+  relatedDocuments?: string[];
+  order?: number;
+  active?: boolean;
+}
+
+/**
+ * Filtros para listar perguntas de auditoria.
+ */
+export interface AuditQuestionFullFilters {
+  clauseId?: string;
+  clauseGroup?: string;
+  criticality?: AuditQuestionCriticality;
+  active?: boolean;
+  search?: string;
+}
+
+/**
+ * Estatísticas das perguntas de auditoria.
+ */
+export interface AuditQuestionFullStats {
+  total: number;
+  active: number;
+  inactive: number;
+  byCriticality: Record<string, number>;
+  byClauseGroup: Record<string, number>;
+}

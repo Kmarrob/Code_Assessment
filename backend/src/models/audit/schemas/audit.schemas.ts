@@ -506,6 +506,90 @@ export const addDocumentReviewSchema = z.object({
 });
 
 // ============================================================
+// 🆕 v49.2 — SCHEMAS DE PERGUNTAS DE AUDITORIA (CLÁUSULAS 4-10)
+// ============================================================
+//
+// MOTIVO:
+//   Validar a criação/edição de perguntas de auditoria de
+//   cláusulas. Todos os schemas anteriores foram PRESERVADOS.
+//
+// ============================================================
+
+/**
+ * Schema para criação de pergunta de auditoria.
+ */
+export const createAuditQuestionSchema = z.object({
+  clauseId: z
+    .string()
+    .min(1, 'ID da cláusula é obrigatório')
+    .max(20, 'ID da cláusula muito longo'),
+  clauseTitle: z.string().max(500).optional().default(''),
+  clauseGroup: z.string().max(500).optional().default(''),
+  text: z
+    .string()
+    .min(5, 'Texto da pergunta deve ter no mínimo 5 caracteres')
+    .max(2000, 'Texto da pergunta muito longo'),
+  objective: z.string().max(2000).optional().default(''),
+  guidance: z.string().max(5000).optional().default(''),
+  evidenceExpected: z.string().max(2000).optional().default(''),
+  conformityCriteria: z.string().max(2000).optional().default(''),
+  nonconformityCriteria: z.string().max(2000).optional().default(''),
+  criticality: z
+    .enum(['low', 'medium', 'high', 'critical'])
+    .optional()
+    .default('medium'),
+  relatedControls: z.array(z.string()).optional().default([]),
+  relatedDocuments: z.array(z.string()).optional().default([]),
+  order: z.number().min(1).optional().default(1),
+  active: z.boolean().optional().default(true),
+});
+
+/**
+ * Schema para atualização de pergunta de auditoria.
+ */
+export const updateAuditQuestionSchema = z.object({
+  clauseId: z.string().min(1).max(20).optional(),
+  clauseTitle: z.string().max(500).optional(),
+  clauseGroup: z.string().max(500).optional(),
+  text: z
+    .string()
+    .min(5, 'Texto da pergunta deve ter no mínimo 5 caracteres')
+    .max(2000)
+    .optional(),
+  objective: z.string().max(2000).optional(),
+  guidance: z.string().max(5000).optional(),
+  evidenceExpected: z.string().max(2000).optional(),
+  conformityCriteria: z.string().max(2000).optional(),
+  nonconformityCriteria: z.string().max(2000).optional(),
+  criticality: z.enum(['low', 'medium', 'high', 'critical']).optional(),
+  relatedControls: z.array(z.string()).optional(),
+  relatedDocuments: z.array(z.string()).optional(),
+  order: z.number().min(1).optional(),
+  active: z.boolean().optional(),
+});
+
+/**
+ * Schema para filtros de listagem (query params).
+ * Todos opcionais.
+ */
+export const auditQuestionFiltersSchema = z.object({
+  clauseId: z.string().optional(),
+  clauseGroup: z.string().optional(),
+  criticality: z.enum(['low', 'medium', 'high', 'critical']).optional(),
+  active: z
+    .union([z.boolean(), z.string().transform((v) => v === 'true')])
+    .optional(),
+  search: z.string().optional(),
+});
+
+/**
+ * Schema para exclusão de pergunta (by ID via params).
+ */
+export const deleteAuditQuestionSchema = z.object({
+  id: z.string().min(1, 'ID é obrigatório'),
+});
+
+// ============================================================
 // EXPORTAÇÃO DE TODOS OS SCHEMAS
 // ============================================================
 
@@ -553,4 +637,10 @@ export default {
   updateAuditDocumentReviewSchema,
   updateDocumentStatusSchema,
   addDocumentReviewSchema,
+
+  // 🆕 v49.2 — Perguntas de auditoria de cláusulas
+  createAuditQuestionSchema,
+  updateAuditQuestionSchema,
+  auditQuestionFiltersSchema,
+  deleteAuditQuestionSchema,
 };

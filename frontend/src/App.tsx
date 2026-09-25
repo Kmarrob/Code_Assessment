@@ -62,6 +62,11 @@ import { RepAuditProgram } from './modules/audit/pages/rep/program/RepAuditProgr
 import { RepAuditDocumentReview } from './modules/audit/pages/rep/document-review/RepAuditDocumentReview.js';
 
 // ============================================
+// 🆕 NOVO (v49.2) - IMPORTAÇÃO ADMIN - PERGUNTAS DE AUDITORIA (CLÁUSULAS)
+// ============================================
+import { AdminAuditQuestions } from './modules/audit/pages/admin/questions/AdminAuditQuestions.js';
+
+// ============================================
 // IMPORTAÇÕES DO DASHBOARD (DIRETAS - CORRIGIDO)
 // ============================================
 import { DashboardOverview } from './pages/dashboard/DashboardOverview.js';
@@ -388,6 +393,15 @@ function App() {
                     <Route path="/admin/audit/reports/:id" element={
                       <Layout>
                         <AdminAuditReports />
+                      </Layout>
+                    } />
+
+                    {/* ============================================
+                        🆕 NOVO (v49.2) - ROTAS ADMIN - PERGUNTAS DE AUDITORIA (CLÁUSULAS)
+                        ============================================ */}
+                    <Route path="/admin/audit/questions" element={
+                      <Layout>
+                        <AdminAuditQuestions />
                       </Layout>
                     } />
                   </Route>

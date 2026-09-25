@@ -8,3 +8,4 @@ export { AuditProgram } from './AuditProgram';
 export { AuditSoA } from './AuditSoA';
 export { AuditRisk } from './AuditRisk';
 export { AuditDocumentReview } from './AuditDocumentReview';
+export { AuditQuestion } from './AuditQuestion';

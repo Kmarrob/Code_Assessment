@@ -19,6 +19,12 @@ import {
   UpdateAuditActionPlanDTO,
   CreateAuditReportDTO,
   UpdateAuditReportDTO,
+  // 🆕 v49.2 — Tipos de perguntas de auditoria
+  AuditQuestionFull,
+  CreateAuditQuestionFullDTO,
+  UpdateAuditQuestionFullDTO,
+  AuditQuestionFullFilters,
+  AuditQuestionFullStats,
 } from '../types/audit.types';
 
 const BASE_URL = '/internal-audit';
@@ -668,6 +674,69 @@ export const auditService = {
    */
   async getResponsesByPlan(planId: string): Promise<any[]> {
     const response = await api.get(`${BASE_URL}/plans/${planId}/responses`);
+    return response.data.data;
+  },
+
+  // ============================================================
+  // 🆕 v49.2 — PERGUNTAS DE AUDITORIA (CLÁUSULAS 4-10)
+  // ============================================================
+  //
+  // ACESSO RESTRITO:
+  //   Todas as rotas exigem role ADMIN (validação no backend).
+  //
+  // ============================================================
+
+  /**
+   * Listar perguntas de auditoria com filtros opcionais.
+   */
+  async listAuditQuestions(
+    filters?: AuditQuestionFullFilters
+  ): Promise<AuditQuestionFull[]> {
+    const response = await api.get(`${BASE_URL}/questions`, { params: filters });
+    return response.data.data;
+  },
+
+  /**
+   * Buscar pergunta de auditoria por ID.
+   */
+  async getAuditQuestion(id: string): Promise<AuditQuestionFull> {
+    const response = await api.get(`${BASE_URL}/questions/${id}`);
+    return response.data.data;
+  },
+
+  /**
+   * Criar nova pergunta de auditoria.
+   */
+  async createAuditQuestion(
+    data: CreateAuditQuestionFullDTO
+  ): Promise<AuditQuestionFull> {
+    const response = await api.post(`${BASE_URL}/questions`, data);
+    return response.data.data;
+  },
+
+  /**
+   * Atualizar pergunta de auditoria.
+   */
+  async updateAuditQuestion(
+    id: string,
+    data: UpdateAuditQuestionFullDTO
+  ): Promise<AuditQuestionFull> {
+    const response = await api.put(`${BASE_URL}/questions/${id}`, data);
+    return response.data.data;
+  },
+
+  /**
+   * Excluir pergunta de auditoria (soft delete).
+   */
+  async deleteAuditQuestion(id: string): Promise<void> {
+    await api.delete(`${BASE_URL}/questions/${id}`);
+  },
+
+  /**
+   * Estatísticas das perguntas de auditoria.
+   */
+  async getAuditQuestionStats(): Promise<AuditQuestionFullStats> {
+    const response = await api.get(`${BASE_URL}/questions/stats`);
     return response.data.data;
   },
 };

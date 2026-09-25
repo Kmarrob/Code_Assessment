@@ -18,6 +18,12 @@ import {
   UpdateAuditReportDTO,
   CreateAuditRiskDTO,
   UpdateAuditRiskDTO,
+  // 🆕 v49.2 — Tipos de perguntas de auditoria
+  AuditQuestionFull,
+  CreateAuditQuestionFullDTO,
+  UpdateAuditQuestionFullDTO,
+  AuditQuestionFullFilters,
+  AuditQuestionFullStats,
 } from '../types/audit.types';
 
 export const auditKeys = {
@@ -46,6 +52,14 @@ export const auditKeys = {
 
   // Query Key para respostas dos usuários por plano
   responses: (planId: string) => [...auditKeys.all, 'responses', planId] as const,
+
+  // 🆕 v49.2 — Query Keys para perguntas de auditoria
+  auditQuestions: (filters?: AuditQuestionFullFilters) =>
+    [...auditKeys.all, 'audit-questions', filters] as const,
+  auditQuestion: (id: string) =>
+    [...auditKeys.all, 'audit-question', id] as const,
+  auditQuestionsStats: () =>
+    [...auditKeys.all, 'audit-questions-stats'] as const,
 };
 
 // ============================================================
@@ -1097,6 +1111,121 @@ export function useResponsesByPlan(planId: string) {
 }
 
 // ============================================================
+// 🆕 v49.2 — PERGUNTAS DE AUDITORIA (CLÁUSULAS 4-10)
+// ============================================================
+//
+// ACESSO RESTRITO:
+//   Todas as queries/mutations de perguntas exigem role ADMIN
+//   (validação no backend).
+//
+// ============================================================
+
+/**
+ * Listar perguntas de auditoria (com filtros opcionais).
+ */
+export function useAuditQuestions(filters?: AuditQuestionFullFilters) {
+  return useQuery({
+    queryKey: auditKeys.auditQuestions(filters),
+    queryFn: () => auditService.listAuditQuestions(filters),
+  });
+}
+
+/**
+ * Buscar uma pergunta de auditoria por ID.
+ */
+export function useAuditQuestion(id: string) {
+  return useQuery({
+    queryKey: auditKeys.auditQuestion(id),
+    queryFn: () => auditService.getAuditQuestion(id),
+    enabled: !!id,
+  });
+}
+
+/**
+ * Estatísticas das perguntas de auditoria.
+ */
+export function useAuditQuestionStats() {
+  return useQuery({
+    queryKey: auditKeys.auditQuestionsStats(),
+    queryFn: () => auditService.getAuditQuestionStats(),
+  });
+}
+
+/**
+ * Criar nova pergunta de auditoria.
+ */
+export function useCreateAuditQuestion() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: CreateAuditQuestionFullDTO) =>
+      auditService.createAuditQuestion(data),
+
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: [...auditKeys.all, 'audit-questions'],
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: auditKeys.auditQuestionsStats(),
+      });
+    },
+  });
+}
+
+/**
+ * Atualizar pergunta de auditoria.
+ */
+export function useUpdateAuditQuestion() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: UpdateAuditQuestionFullDTO;
+    }) => auditService.updateAuditQuestion(id, data),
+
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({
+        queryKey: auditKeys.auditQuestion(id),
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: [...auditKeys.all, 'audit-questions'],
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: auditKeys.auditQuestionsStats(),
+      });
+    },
+  });
+}
+
+/**
+ * Excluir pergunta de auditoria (soft delete).
+ */
+export function useDeleteAuditQuestion() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => auditService.deleteAuditQuestion(id),
+
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: [...auditKeys.all, 'audit-questions'],
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: auditKeys.auditQuestionsStats(),
+      });
+    },
+  });
+}
+
+// ============================================================
 // EXPORTAÇÃO DO OBJETO useAudit (para compatibilidade com as páginas)
 // ============================================================
 
@@ -1188,4 +1317,12 @@ export const useAudit = {
 
   // Respostas dos usuários
   useResponsesByPlan,
+
+  // 🆕 v49.2 — Perguntas de auditoria
+  useAuditQuestions,
+  useAuditQuestion,
+  useAuditQuestionStats,
+  useCreateAuditQuestion,
+  useUpdateAuditQuestion,
+  useDeleteAuditQuestion,
 };

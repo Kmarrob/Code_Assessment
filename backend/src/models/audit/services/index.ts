@@ -9,6 +9,11 @@ import { AuditActionPlanService } from './AuditActionPlanService';
 import { AuditReportService } from './AuditReportService';
 
 // ============================================================
+// 🆕 v49.2 — Importar o service de perguntas de auditoria
+// ============================================================
+import { AuditQuestionService } from './AuditQuestionService';
+
+// ============================================================
 // Importar as instâncias (para serviços que já exportam instância)
 // ============================================================
 import { auditProgramService } from './AuditProgramService';
@@ -37,6 +42,12 @@ export {
   AuditActionPlanService,
   AuditReportService,
 };
+
+// ============================================================
+// 🆕 v49.2 — Exportar o service de perguntas de auditoria
+// ============================================================
+export { AuditQuestionService } from './AuditQuestionService';
+export { auditQuestionService } from './AuditQuestionService';
 
 // Exportar os serviços que já exportam instância
 export {
