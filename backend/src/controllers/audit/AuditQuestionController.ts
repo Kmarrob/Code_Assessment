@@ -84,7 +84,14 @@ export class AuditQuestionController {
    */
   async findById(req: Request, res: Response): Promise<void> {
     try {
-      const question = await auditQuestionService.findById(req.params.id);
+      // 🔧 v49.2.2 — Guard para TypeScript: garante que id é string
+      const id = String(req.params.id || '').trim();
+      if (!id) {
+        res.status(400).json({ success: false, message: 'ID é obrigatório' });
+        return;
+      }
+
+      const question = await auditQuestionService.findById(id);
 
       if (!question) {
         res.status(404).json({ success: false, message: 'Pergunta não encontrada' });
@@ -107,7 +114,14 @@ export class AuditQuestionController {
    */
   async update(req: Request, res: Response): Promise<void> {
     try {
-      const question = await auditQuestionService.update(req.params.id, req.body);
+      // 🔧 v49.2.2 — Guard para TypeScript: garante que id é string
+      const id = String(req.params.id || '').trim();
+      if (!id) {
+        res.status(400).json({ success: false, message: 'ID é obrigatório' });
+        return;
+      }
+
+      const question = await auditQuestionService.update(id, req.body);
 
       res.status(200).json({
         success: true,
@@ -129,7 +143,14 @@ export class AuditQuestionController {
    */
   async delete(req: Request, res: Response): Promise<void> {
     try {
-      await auditQuestionService.delete(req.params.id);
+      // 🔧 v49.2.2 — Guard para TypeScript: garante que id é string
+      const id = String(req.params.id || '').trim();
+      if (!id) {
+        res.status(400).json({ success: false, message: 'ID é obrigatório' });
+        return;
+      }
+
+      await auditQuestionService.delete(id);
 
       res.status(200).json({
         success: true,
