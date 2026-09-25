@@ -11,7 +11,11 @@
 // ============================================================
 
 import { Request, Response } from 'express';
-import { auditQuestionService } from '../services/AuditQuestionService';
+
+// 🔧 CORREÇÃO v49.2.1 — Caminho correto do service
+// ANTES:  '../services/AuditQuestionService'                    → controllers/services/ (inexistente)
+// DEPOIS: '../../models/audit/services/AuditQuestionService'    → correto
+import { auditQuestionService } from '../../models/audit/services/AuditQuestionService';
 import { AuthenticatedRequest } from '../../types/index.js';
 
 export class AuditQuestionController {
