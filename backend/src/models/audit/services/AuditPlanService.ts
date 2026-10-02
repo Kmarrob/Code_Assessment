@@ -578,17 +578,57 @@ export class AuditPlanService {
       }
 
       // ============================================================
+      // 🔧 CORREÇÃO v50.1 — RESOLVER GAP DE IDs
+      // ============================================================
+      //
+      // PROBLEMA:
+      //   `controlId` chega como ObjectId do MongoDB em string
+      //   (ex.: "6a349c90189bd114495fc1f2"), mas a coleção
+      //   `Question` armazena o código ISO (ex.: "5.22").
+      //
+      //   Antes: Question.find({ controlId: "6a349c90..." }) → 0 resultados.
+      //
+      // SOLUÇÃO:
+      //   Buscar o Control na coleção Control (SOMENTE LEITURA),
+      //   extrair o campo `id` (código ISO) e usar esse código
+      //   para buscar as perguntas em Question.
+      //
+      // ESCOPO:
+      //   Somente leitura das coleções Control e Question.
+      //   Nenhuma alteração fora do módulo de auditoria.
+      //
+      // FALLBACK:
+      //   Se o Control não for encontrado ou não tiver o campo `id`,
+      //   usa o controlId original (mantém comportamento anterior).
+      //
+      // ============================================================
+
+      const controlDoc = await Control.findById(controlId)
+        .select('id')
+        .lean();
+
+      const controlCode = controlDoc?.id || controlId;
+
+      console.log(
+        `🔍 [BG] Controle ${controlId} → código ISO: "${controlCode}"`
+      );
+
+      // ============================================================
       // BUSCAR PERGUNTAS DA BIBLIOTECA
       // ============================================================
 
       const sourceQuestions = await Question.find({
-        controlId,
+        controlId: controlCode,
         active: true,
       })
         .sort({
           order: 1,
         })
         .lean();
+
+      console.log(
+        `📋 [BG] Controle ${controlCode}: ${sourceQuestions.length} pergunta(s) encontrada(s)`
+      );
 
       // ============================================================
       // GERAR PERGUNTAS DO CHECKLIST

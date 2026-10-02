@@ -109,10 +109,34 @@ export function RepAuditChecklist() {
   const [currentChecklist, setCurrentChecklist] = useState<any>(null);
   const [checklistItems, setChecklistItems] = useState<AuditChecklistItem[]>([]);
 
-  // Atualizar quando os dados chegarem
+  // ============================================================
+  // 🔧 CORREÇÃO v50.1 — Acesso ao array de checklists
+  // ============================================================
+  //
+  // PROBLEMA:
+  //   O `useChecklists` do React Query retorna o array DIRETO
+  //   (já passou por `response.data.data` no service).
+  //
+  //   MAS o código abaixo acessava `checklistsData.data[0]`,
+  //   esperando um objeto `{ data: [...] }`.
+  //
+  //   Resultado: `checklistsData.data` era undefined, e o
+  //   checklist nunca era setado → tela "Nenhum checklist
+  //   encontrado" mesmo com o checklist existindo no banco.
+  //
+  // SOLUÇÃO:
+  //   Usar `Array.isArray(checklistsData)` para acessar o array
+  //   diretamente. Fallback seguro para [] se não for array.
+  //
+  // ============================================================
+
   useEffect(() => {
-    if (checklistsData?.data && checklistsData.data.length > 0) {
-      const firstChecklist = checklistsData.data[0];
+    const checklistsArray = Array.isArray(checklistsData)
+      ? checklistsData
+      : [];
+
+    if (checklistsArray.length > 0) {
+      const firstChecklist = checklistsArray[0];
       setCurrentChecklist(firstChecklist);
       setChecklistItems(firstChecklist.questions || []);
     }
