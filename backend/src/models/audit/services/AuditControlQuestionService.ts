@@ -6,7 +6,7 @@ import {
 } from '../schemas/auditControlQuestion.schemas';
 
 // ============================================================
-// AUDIT CONTROL QUESTION SERVICE — v50.1
+// AUDIT CONTROL QUESTION SERVICE — v50.2.7
 // ============================================================
 //
 // Serviço de CRUD da coleção AuditControlQuestion.
@@ -20,6 +20,12 @@ import {
 //   - getStats() para a tela do admin
 //
 // NÃO HÁ SEED. O cadastro é 100% manual pelo ADMIN.
+//
+// 🔧 v50.2.7 — Correção:
+//   create() e update() passam a persistir `controlDescription`.
+//   findAll() passa a incluí-lo na busca textual.
+//   Sem essas linhas, o backend respondia 200 OK mas o mongoose
+//   gravava sempre string vazia.
 // ============================================================
 
 // ============================================================
@@ -73,6 +79,9 @@ export class AuditControlQuestionService {
       controlName: data.controlName.trim(),
 
       controlGroup: data.controlGroup?.trim() || '',
+
+      // 🔧 v50.2.7 — Descrição oficial do controle (ISO 27001)
+      controlDescription: data.controlDescription?.trim() || '',
 
       text: data.text.trim(),
 
@@ -136,6 +145,8 @@ export class AuditControlQuestionService {
         { objective: { $regex: escaped, $options: 'i' } },
         { guidance: { $regex: escaped, $options: 'i' } },
         { evidenceExpected: { $regex: escaped, $options: 'i' } },
+        // 🔧 v50.2.7 — Buscar também na descrição do controle
+        { controlDescription: { $regex: escaped, $options: 'i' } },
       ];
     }
 
@@ -237,6 +248,11 @@ export class AuditControlQuestionService {
 
     if (data.controlGroup !== undefined) {
       question.controlGroup = data.controlGroup.trim();
+    }
+
+    // 🔧 v50.2.7 — Descrição oficial do controle (ISO 27001)
+    if (data.controlDescription !== undefined) {
+      question.controlDescription = data.controlDescription.trim();
     }
 
     if (data.text !== undefined) {
