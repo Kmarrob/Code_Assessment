@@ -24,18 +24,14 @@ import {
 import controlService, { Control } from '@/services/control.service';
 
 // ============================================================
-// ADMIN AUDIT CONTROL QUESTIONS — v50.2.1
+// ADMIN AUDIT CONTROL QUESTIONS — v50.2.2
 // ============================================================
 //
-// Tela dedicada ao ADMIN para cadastrar manualmente as perguntas
-// de auditoria por CONTROLE do Anexo A (ISO 27001:2022).
-//
-// v50.2.1 — CORREÇÃO:
-//   • O campo "Descrição do Controle" agora é lido de
-//     `Control.controles` (nome real do campo no banco — não
-//     é `descricao`).
-//   • Ao editar uma pergunta existente, o select NÃO sobrescreve
-//     a descrição salva na pergunta.
+// CORREÇÕES v50.2.2 (Bloco J2.2):
+//   • Todos os botões do modal têm `type="button"` explícito.
+//   • `onClick` inline chamando saveQuestion diretamente.
+//   • console.log de diagnóstico no saveQuestion.
+//   • reset() das mutations antes de salvar.
 //
 // ============================================================
 
@@ -65,10 +61,6 @@ const EMPTY_FORM: FormState = {
   active: true,
 };
 
-/**
- * Deriva o grupo (ex.: "A.5 Organizacionais") a partir do
- * código do controle (ex.: "5.1").
- */
 function deriveControlGroup(controlId: string): string {
   const prefix = String(controlId || '').split('.')[0];
 
@@ -89,8 +81,6 @@ function deriveControlGroup(controlId: string): string {
 export function AdminAuditControlQuestions() {
   const navigate = useNavigate();
 
-  // ---- Hooks React Query ----
-
   const {
     useAuditControlQuestions,
     useAuditControlQuestionStats,
@@ -98,8 +88,6 @@ export function AdminAuditControlQuestions() {
     useUpdateAuditControlQuestion,
     useDeleteAuditControlQuestion,
   } = useAudit;
-
-  // ---- Estados locais ----
 
   const [search, setSearch] = useState('');
   const [controlIdFilter, setControlIdFilter] = useState('');
@@ -116,12 +104,8 @@ export function AdminAuditControlQuestions() {
 
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
-  // ---- Controles para o select ----
-
   const [controls, setControls] = useState<Control[]>([]);
   const [isLoadingControls, setIsLoadingControls] = useState(true);
-
-  // ---- Filtros efetivos ----
 
   const filters = useMemo(() => {
     const f: any = {};
@@ -130,8 +114,6 @@ export function AdminAuditControlQuestions() {
     if (activeFilter !== 'all') f.active = activeFilter === 'true';
     return f;
   }, [search, controlIdFilter, activeFilter]);
-
-  // ---- Queries ----
 
   const {
     data: questions = [],
@@ -142,13 +124,9 @@ export function AdminAuditControlQuestions() {
 
   const { data: stats } = useAuditControlQuestionStats();
 
-  // ---- Mutations ----
-
   const createMutation = useCreateAuditControlQuestion();
   const updateMutation = useUpdateAuditControlQuestion();
   const deleteMutation = useDeleteAuditControlQuestion();
-
-  // ---- Carregar controles ----
 
   useEffect(() => {
     const load = async () => {
@@ -180,8 +158,6 @@ export function AdminAuditControlQuestions() {
     load();
   }, []);
 
-  // ---- Agrupamento por controlGroup ----
-
   const grouped = useMemo(() => {
     const map = new Map<string, AuditControlQuestionFull[]>();
     (questions || []).forEach((q) => {
@@ -202,8 +178,6 @@ export function AdminAuditControlQuestions() {
     });
     return entries;
   }, [questions]);
-
-  // ---- Handlers de UI ----
 
   const toggleGroup = (group: string) => {
     const next = new Set(expandedGroups);
@@ -244,19 +218,6 @@ export function AdminAuditControlQuestions() {
     setFormErrors({});
   };
 
-  /**
-   * 🔧 v50.2.1 — Seleciona um controle no <select> e
-   * preenche automaticamente nome, grupo e descrição.
-   *
-   * IMPORTANTE:
-   *   O campo de descrição do controle na coleção `Control`
-   *   chama-se `controles` (texto oficial ISO 27001 Anexo A).
-   *   NÃO é `descricao` nem `description`.
-   *
-   * PROTEÇÃO:
-   *   Se o campo `controlDescription` já tem valor (caso da
-   *   edição), o select NÃO sobrescreve.
-   */
   const handleControlSelect = (controlId: string) => {
     const selected = controls.find((c) => c.id === controlId);
 
@@ -266,14 +227,12 @@ export function AdminAuditControlQuestions() {
         controlId: '',
         controlName: '',
         controlGroup: '',
-        // Não limpa a descrição se já houver valor
         controlDescription: prev.controlDescription || '',
       }));
       return;
     }
 
     setFormData((prev) => {
-      // Só preenche a descrição se ela estiver vazia
       const currentDesc = (prev.controlDescription || '').trim();
       const descFromControl = String((selected as any).controles || '').trim();
 
@@ -313,7 +272,22 @@ export function AdminAuditControlQuestions() {
   };
 
   const saveQuestion = async (closeAfter: boolean) => {
-    if (!validateForm()) return;
+    // 🔧 v50.2.2 — Diagnóstico
+    console.log('🚀 [saveQuestion] INICIADO', {
+      closeAfter,
+      editingQuestion: !!editingQuestion,
+      formData,
+    });
+
+    if (!validateForm()) {
+      console.log('⚠️ [saveQuestion] Validação falhou — abortando');
+      toast.error('Preencha os campos obrigatórios');
+      return;
+    }
+
+    // 🔧 v50.2.2 — Reset de mutations travadas
+    createMutation.reset();
+    updateMutation.reset();
 
     try {
       if (editingQuestion) {
@@ -329,10 +303,15 @@ export function AdminAuditControlQuestions() {
           order: formData.order,
           active: formData.active,
         };
+
+        console.log('📤 [saveQuestion] PUT payload:', payload);
+
         await updateMutation.mutateAsync({
           id: editingQuestion._id || editingQuestion.id || '',
           data: payload,
         });
+
+        console.log('✅ [saveQuestion] PUT concluído');
         toast.success('Pergunta atualizada com sucesso!');
       } else {
         const payload: CreateAuditControlQuestionDTO = {
@@ -347,7 +326,12 @@ export function AdminAuditControlQuestions() {
           order: formData.order,
           active: formData.active,
         };
+
+        console.log('📤 [saveQuestion] POST payload:', payload);
+
         await createMutation.mutateAsync(payload);
+
+        console.log('✅ [saveQuestion] POST concluído');
         toast.success('Pergunta criada com sucesso!');
       }
 
@@ -367,21 +351,13 @@ export function AdminAuditControlQuestions() {
         setFormErrors({});
       }
     } catch (err: any) {
+      console.error('❌ [saveQuestion] Erro:', err);
       const message =
         err?.response?.data?.message ||
         err?.message ||
         'Erro ao salvar pergunta';
       toast.error(message);
     }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    await saveQuestion(true);
-  };
-
-  const handleSaveAndNew = async () => {
-    await saveQuestion(false);
   };
 
   const handleToggleActive = async (q: AuditControlQuestionFull) => {
@@ -408,8 +384,6 @@ export function AdminAuditControlQuestions() {
       toast.error(err?.message || 'Erro ao excluir pergunta');
     }
   };
-
-  // ---- Render: loading / error ----
 
   if (isLoading || isLoadingControls) {
     return (
@@ -447,6 +421,7 @@ export function AdminAuditControlQuestions() {
       {/* Header */}
       <div className="flex items-center gap-4 mb-6">
         <button
+          type="button"
           onClick={() => navigate('/admin/audit/dashboard')}
           className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
         >
@@ -462,6 +437,7 @@ export function AdminAuditControlQuestions() {
         </div>
         <div className="ml-auto">
           <button
+            type="button"
             onClick={openCreateModal}
             className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
           >
@@ -513,6 +489,7 @@ export function AdminAuditControlQuestions() {
             />
           </div>
           <button
+            type="button"
             onClick={() => setShowFilters(!showFilters)}
             className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
           >
@@ -574,6 +551,7 @@ export function AdminAuditControlQuestions() {
                 className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden"
               >
                 <button
+                  type="button"
                   onClick={() => toggleGroup(group)}
                   className="w-full flex items-center gap-3 px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-colors"
                 >
@@ -629,6 +607,7 @@ export function AdminAuditControlQuestions() {
 
                           <div className="flex items-center gap-1">
                             <button
+                              type="button"
                               onClick={() => handleToggleActive(q)}
                               title={q.active ? 'Desativar' : 'Ativar'}
                               className={`p-2 rounded-lg transition-colors ${
@@ -640,6 +619,7 @@ export function AdminAuditControlQuestions() {
                               <Power className="w-4 h-4" />
                             </button>
                             <button
+                              type="button"
                               onClick={() => openEditModal(q)}
                               title="Editar"
                               className="p-2 rounded-lg text-indigo-600 hover:bg-indigo-50 transition-colors"
@@ -647,6 +627,7 @@ export function AdminAuditControlQuestions() {
                               <Pencil className="w-4 h-4" />
                             </button>
                             <button
+                              type="button"
                               onClick={() => setDeleteConfirmId(q._id || q.id || '')}
                               title="Excluir"
                               className="p-2 rounded-lg text-red-600 hover:bg-red-50 transition-colors"
@@ -678,7 +659,11 @@ export function AdminAuditControlQuestions() {
               </p>
             </div>
 
-            <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6">
+            {/* 🔧 v50.2.2 — onSubmit preventDefault (por segurança) */}
+            <form
+              onSubmit={(e) => e.preventDefault()}
+              className="flex-1 overflow-y-auto p-6"
+            >
               <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
@@ -738,7 +723,6 @@ export function AdminAuditControlQuestions() {
                   )}
                 </div>
 
-                {/* 🆕 v50.2 — Descrição do Controle */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Descrição do Controle
@@ -867,6 +851,7 @@ export function AdminAuditControlQuestions() {
               </div>
             </form>
 
+            {/* 🔧 v50.2.2 — type="button" + onClick direto */}
             <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 flex flex-wrap justify-end gap-2">
               <button
                 type="button"
@@ -879,7 +864,7 @@ export function AdminAuditControlQuestions() {
               {!editingQuestion && (
                 <button
                   type="button"
-                  onClick={handleSaveAndNew}
+                  onClick={() => saveQuestion(false)}
                   disabled={isSaving}
                   className="flex items-center gap-2 px-4 py-2 bg-white border border-indigo-300 text-indigo-700 rounded-lg hover:bg-indigo-50 transition-colors disabled:opacity-50 text-sm"
                 >
@@ -889,7 +874,8 @@ export function AdminAuditControlQuestions() {
               )}
 
               <button
-                onClick={handleSubmit}
+                type="button"
+                onClick={() => saveQuestion(true)}
                 disabled={isSaving}
                 className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 text-sm"
               >
@@ -917,12 +903,15 @@ export function AdminAuditControlQuestions() {
             </p>
             <div className="flex justify-end gap-2">
               <button
+                type="button"
                 onClick={() => setDeleteConfirmId(null)}
                 className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors text-sm"
               >
                 Cancelar
               </button>
-              <button                onClick={handleDelete}
+              <button
+                type="button"
+                onClick={handleDelete}
                 disabled={deleteMutation.isPending}
                 className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 text-sm"
               >
