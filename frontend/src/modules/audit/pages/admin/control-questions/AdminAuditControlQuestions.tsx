@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -24,30 +24,23 @@ import {
 import controlService, { Control } from '@/services/control.service';
 
 // ============================================================
-// ADMIN AUDIT CONTROL QUESTIONS — v50.2.10
+// ADMIN AUDIT CONTROL QUESTIONS — v50.2.11
 // ============================================================
 //
 // Tela dedicada ao ADMIN para cadastrar manualmente as perguntas
 // de auditoria por CONTROLE do Anexo A (ISO 27001:2022).
 //
-// 🔧 v50.2.10 — Correções de UX da busca e dos filtros:
-//   • Debounce de 400ms nos campos "Buscar" e "Código do
-//     controle". Antes, cada tecla disparava um refetch e a
-//     tela "piscava", impedindo o usuário de terminar de
-//     digitar.
-//   • O spinner de carregamento só aparece na primeira carga.
-//     Refetches em background não trocam mais a tela por
-//     "Carregando...".
+// 🔧 v50.2.10 — Debounce de 400ms na busca e nos filtros.
+// 🔧 v50.2.11 — Remove o indicador "Atualizando..." e deixa o
+//               placeholderData (keepPreviousData) do React
+//               Query manter a lista visível enquanto recarrega.
+//               Com isso a tela para de "piscar" a cada tecla.
 //
 // ============================================================
 
 // ============================================================
-// 🆕 v50.2.10 — Hook auxiliar: debounce de valor
+// Hook auxiliar: debounce de valor (400ms)
 // ============================================================
-//
-// Retorna o valor após um atraso. Cada vez que o valor muda,
-// o timer anterior é cancelado e um novo começa. Quando o
-// usuário para de digitar, o valor é propagado.
 
 function useDebouncedValue<T>(value: T, delay: number = 400): T {
   const [debounced, setDebounced] = useState<T>(value);
@@ -126,10 +119,7 @@ export function AdminAuditControlQuestions() {
   const [activeFilter, setActiveFilter] = useState<'all' | 'true' | 'false'>('all');
   const [showFilters, setShowFilters] = useState(false);
 
-  // 🔧 v50.2.10 — Valores debounced (400ms)
-  // São esses que efetivamente disparam o refetch. Os inputs
-  // continuam controlando `search` e `controlIdFilter` livremente,
-  // mas só o valor "estável" vai para os filtros.
+  // 🔧 v50.2.10 — Valores debounced (400ms).
   const debouncedSearch = useDebouncedValue(search, 400);
   const debouncedControlId = useDebouncedValue(controlIdFilter, 400);
 
@@ -163,7 +153,6 @@ export function AdminAuditControlQuestions() {
   const {
     data: questions = [],
     isLoading,
-    isFetching,
     error,
     refetch,
   } = useAuditControlQuestions(filters);
@@ -439,11 +428,16 @@ export function AdminAuditControlQuestions() {
 
   // ---- Render: loading / error ----
   //
-  // 🔧 v50.2.10 — O spinner só aparece quando NÃO há dados ainda
-  // (primeiro carregamento). Refetches em background não trocam
-  // a tela por "Carregando...".
+  // 🔧 v50.2.11 — Só mostra o spinner grande quando:
+  //   • Ainda está carregando a primeira resposta E
+  //   • Não há NENHUM dado anterior (keepPreviousData vazio)
+  //
+  // Isso evita que a tela troque por "Carregando..." a cada
+  // troca de filtro.
 
-  if ((isLoading && questions.length === 0) || isLoadingControls) {
+  const showFullSpinner = isLoading && questions.length === 0;
+
+  if (showFullSpinner || isLoadingControls) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
@@ -586,14 +580,6 @@ export function AdminAuditControlQuestions() {
                 <option value="false">Inativas</option>
               </select>
             </div>
-          </div>
-        )}
-
-        {/* 🔧 v50.2.10 — Indicador discreto de refetch em background */}
-        {isFetching && questions.length > 0 && (
-          <div className="mt-3 flex items-center gap-2 text-xs text-gray-400">
-            <Loader2 className="w-3 h-3 animate-spin" />
-            Atualizando...
           </div>
         )}
       </div>

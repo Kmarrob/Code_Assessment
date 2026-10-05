@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { auditService, UpdateChecklistFullPayload } from '../services/audit.service';
 import {
   AuditPlan,
@@ -76,8 +76,7 @@ export const auditKeys = {
   //
   // 🔧 v50.2.9 — Serializa os filtros em string estável para que
   // o React Query detecte mudanças mesmo quando o objeto é
-  // recriado a cada render. Antes, os filtros não disparavam
-  // refetch porque a comparação estrutural falhava silenciosamente.
+  // recriado a cada render.
   auditControlQuestions: (filters?: AuditControlQuestionFilters) =>
     [
       ...auditKeys.all,
@@ -1038,6 +1037,11 @@ export function useDeleteAuditQuestion() {
  * 🔧 v50.2.9 — staleTime 0 para que os filtros sempre
  * disparem refetch. Antes, o staleTime global de 5 min
  * servia cache antigo e os filtros pareciam não funcionar.
+ *
+ * 🔧 v50.2.11 — placeholderData: keepPreviousData para que,
+ * enquanto a nova query carrega, os dados anteriores
+ * permaneçam visíveis. Sem isso, o spinner "Carregando..."
+ * piscava a cada troca de filtro.
  */
 export function useAuditControlQuestions(
   filters?: AuditControlQuestionFilters
@@ -1049,6 +1053,9 @@ export function useAuditControlQuestions(
     staleTime: 0,
     refetchOnMount: 'always',
     refetchOnWindowFocus: false,
+
+    // 🔧 v50.2.11 — Mantém os dados anteriores enquanto recarrega
+    placeholderData: keepPreviousData,
   });
 }
 
