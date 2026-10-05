@@ -72,6 +72,11 @@ import { AdminAuditQuestions } from './modules/audit/pages/admin/questions/Admin
 import { AdminAuditControlQuestions } from './modules/audit/pages/admin/control-questions/AdminAuditControlQuestions.js';
 
 // ============================================
+// 🆕 NOVO (v51.0) - IMPORTAÇÃO REP - DASHBOARD DE AUDITORIA (WRAPPER)
+// ============================================
+import { RepAuditDashboardWrapper } from './modules/audit/pages/rep/dashboard/RepAuditDashboardWrapper.js';
+
+// ============================================
 // IMPORTAÇÕES DO DASHBOARD (DIRETAS - CORRIGIDO)
 // ============================================
 import { DashboardOverview } from './pages/dashboard/DashboardOverview.js';
@@ -524,6 +529,15 @@ function App() {
                     <Route path="/rep/audit/dashboard" element={
                       <Layout>
                         <RepAuditDashboard />
+                      </Layout>
+                    } />
+
+                    {/* ============================================
+                        🆕 NOVO (v51.0) - ROTA REP - DASHBOARD DE AUDITORIA COMPLETO (KPIs + gráficos)
+                        ============================================ */}
+                    <Route path="/rep/audit/dashboard-completo" element={
+                      <Layout>
+                        <RepAuditDashboardWrapper />
                       </Layout>
                     } />
 

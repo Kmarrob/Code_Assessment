@@ -703,3 +703,55 @@ export interface AuditQuestionFullStats {
   byCriticality: Record<string, number>;
   byClauseGroup: Record<string, number>;
 }
+
+// ============================================================
+// 🆕 v50.2.15 — TIPOS DO DASHBOARD DE AUDITORIA
+// ============================================================
+
+export interface AuditDashboardStats {
+  kpis: {
+    totalPlans: number;
+    inProgress: number;
+    completed: number;
+    approved: number;
+    draft: number;
+    totalChecklists: number;
+    totalAuditQuestions: number;
+    totalAnswered: number;
+  };
+
+  conclusionDistribution: {
+    C: number;
+    NC: number;
+    OB: number;
+    OM: number;
+    NA: number;
+    pending: number;
+  };
+
+  byDomain: {
+    domain: string;
+    label: string;
+    C: number;
+    NC: number;
+    OB: number;
+    OM: number;
+    NA: number;
+    total: number;
+  }[];
+
+  topNonConformities: {
+    controlId: string;
+    controlName: string;
+    NC: number;
+    total: number;
+  }[];
+
+  progress: {
+    totalChecklists: number;
+    completedChecklists: number;
+    inProgressChecklists: number;
+    pendingChecklists: number;
+    completionRate: number;
+  };
+}

@@ -1,6 +1,19 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
+  BarChart as RechartsBarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Cell,
+  PieChart as RechartsPieChart,
+  Pie,
+  Legend,
+} from 'recharts';
+import {
   ClipboardList,
   FileCheck,
   AlertTriangle,
@@ -15,9 +28,15 @@ import {
   ListChecks,
   // 🆕 v50.1 — Ícone do botão de perguntas por controle
   ShieldCheck,
+  // 🆕 v50.2.15 — Ícones do dashboard
+  Activity,
+  TrendingUp,
+  Target,
+  Minus,
+  FileQuestion,
 } from 'lucide-react';
 // 🔧 CORREÇÃO: Caminho corrigido de '../../hooks/useAudit' para '../../../hooks/useAudit'
-import { usePlans, usePlanStats } from '../../../hooks/useAudit';
+import { usePlans, usePlanStats, useDashboardStats } from '../../../hooks/useAudit';
 import { AuditPlan } from '../../../types/audit.types';
 
 const STATUS_COLORS: Record<string, string> = {
@@ -38,10 +57,37 @@ const STATUS_LABELS: Record<string, string> = {
   cancelled: 'Cancelado',
 };
 
+// ============================================================
+// 🆕 v50.2.15 — CORES DOS GRÁFICOS
+// ============================================================
+
+const CONCLUSION_COLORS = {
+  C: '#10b981',
+  NC: '#ef4444',
+  OB: '#f59e0b',
+  OM: '#3b82f6',
+  NA: '#9ca3af',
+};
+
+const DOMAIN_COLORS = {
+  C: '#10b981',
+  NC: '#ef4444',
+  OB: '#f59e0b',
+  OM: '#3b82f6',
+  NA: '#9ca3af',
+};
+
+// ============================================================
+// COMPONENTE PRINCIPAL
+// ============================================================
+
 export function AdminAuditDashboard() {
   const navigate = useNavigate();
   const { data: plans = [], isLoading: isLoadingPlans } = usePlans();
   const { data: stats, isLoading: isLoadingStats } = usePlanStats();
+
+  // 🆕 v50.2.15 — Estatísticas agregadas do dashboard
+  const { data: dashboard, isLoading: isLoadingDashboard } = useDashboardStats();
 
   // Estatísticas para exibição
   const totalPlans = stats?.totalPlans || 0;
@@ -70,6 +116,63 @@ export function AdminAuditDashboard() {
   const companyEntries = Object.entries(companiesStats);
 
   const isLoading = isLoadingPlans || isLoadingStats;
+
+  // ============================================================
+  // 🆕 v50.2.15 — PREPARAR DADOS DOS GRÁFICOS
+  // ============================================================
+
+  const conclusionDistribution = dashboard?.conclusionDistribution || {
+    C: 0,
+    NC: 0,
+    OB: 0,
+    OM: 0,
+    NA: 0,
+    pending: 0,
+  };
+
+  // Dados para o gráfico de pizza (donut)
+  const pieData = [
+    { name: 'Conforme', value: conclusionDistribution.C, color: CONCLUSION_COLORS.C },
+    { name: 'Não Conforme', value: conclusionDistribution.NC, color: CONCLUSION_COLORS.NC },
+    { name: 'Observação', value: conclusionDistribution.OB, color: CONCLUSION_COLORS.OB },
+    { name: 'Oportunidade', value: conclusionDistribution.OM, color: CONCLUSION_COLORS.OM },
+    { name: 'Não Aplicável', value: conclusionDistribution.NA, color: CONCLUSION_COLORS.NA },
+  ].filter((item) => item.value > 0);
+
+  const totalConclusions = pieData.reduce((acc, item) => acc + item.value, 0);
+
+  // Dados para o gráfico de barras por domínio
+  const byDomain = dashboard?.byDomain || [];
+
+  const domainChartData = byDomain.map((d) => ({
+    name: d.label.replace(/^A\.\d\s*/, '').trim() || d.domain,
+    C: d.C,
+    NC: d.NC,
+    OB: d.OB,
+    OM: d.OM,
+    NA: d.NA,
+  }));
+
+  const topNonConformities = dashboard?.topNonConformities || [];
+
+  const progress = dashboard?.progress || {
+    totalChecklists: 0,
+    completedChecklists: 0,
+    inProgressChecklists: 0,
+    pendingChecklists: 0,
+    completionRate: 0,
+  };
+
+  const kpisSecondary = dashboard?.kpis || {
+    totalPlans: 0,
+    inProgress: 0,
+    completed: 0,
+    approved: 0,
+    draft: 0,
+    totalChecklists: 0,
+    totalAuditQuestions: 0,
+    totalAnswered: 0,
+  };
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -180,6 +283,272 @@ export function AdminAuditDashboard() {
         </div>
       )}
 
+      {/* 🆕 v50.2.15 — KPIs SECUNDÁRIOS */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-purple-50 rounded-lg">
+              <FileQuestion className="w-4 h-4 text-purple-600" />
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">Perguntas de Auditoria</p>
+              <p className="text-xl font-bold text-gray-900">
+                {kpisSecondary.totalAuditQuestions}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-teal-50 rounded-lg">
+              <Target className="w-4 h-4 text-teal-600" />
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">Checklists Gerados</p>
+              <p className="text-xl font-bold text-gray-900">
+                {kpisSecondary.totalChecklists}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-blue-50 rounded-lg">
+              <Activity className="w-4 h-4 text-blue-600" />
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">Respostas Registradas</p>
+              <p className="text-xl font-bold text-gray-900">
+                {kpisSecondary.totalAnswered}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-green-50 rounded-lg">
+              <TrendingUp className="w-4 h-4 text-green-600" />
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">Conclusão</p>
+              <p className="text-xl font-bold text-gray-900">
+                {progress.completionRate}%
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 🆕 v50.2.15 — SEÇÃO DE GRÁFICOS */}
+      {isLoadingDashboard ? (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 animate-pulse">
+              <div className="h-4 bg-gray-200 rounded w-1/3 mb-4"></div>
+              <div className="h-40 bg-gray-100 rounded"></div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+
+          {/* Pizza — Distribuição C/NC/OB/OM/NA */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">
+              Distribuição das Constatações
+            </h2>
+
+            {pieData.length === 0 ? (
+              <div className="flex items-center justify-center h-[280px] text-sm text-gray-400">
+                Nenhuma constatação registrada ainda
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={280}>
+                <RechartsPieChart>
+                  <Pie
+                    data={pieData}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={100}
+                    paddingAngle={2}
+                    label={(entry: any) =>
+                      `${entry.name}: ${entry.value}`
+                    }
+                    labelLine={false}
+                  >
+                    {pieData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{
+                      background: '#fff',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: 8,
+                      fontSize: 12,
+                    }}
+                    formatter={(value: any, name: any) => {
+                      const pct = totalConclusions > 0
+                        ? Math.round((Number(value) / totalConclusions) * 100)
+                        : 0;
+                      return [`${value} (${pct}%)`, name];
+                    }}
+                  />
+                  <Legend
+                    verticalAlign="bottom"
+                    height={36}
+                    iconType="circle"
+                    wrapperStyle={{ fontSize: 12 }}
+                  />
+                </RechartsPieChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+
+          {/* Progresso Geral */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">
+              Progresso Geral dos Checklists
+            </h2>
+
+            <div className="space-y-4">
+              <div>
+                <div className="flex justify-between text-sm mb-1">
+                  <span className="text-gray-600">Concluídos</span>
+                  <span className="font-semibold text-gray-900">
+                    {progress.completedChecklists} / {progress.totalChecklists}
+                  </span>
+                </div>
+                <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-green-500 transition-all"
+                    style={{ width: `${progress.completionRate}%` }}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3 pt-2">
+                <div className="text-center p-3 bg-green-50 rounded-lg">
+                  <p className="text-xs text-green-700">Concluídos</p>
+                  <p className="text-lg font-bold text-green-700">
+                    {progress.completedChecklists}
+                  </p>
+                </div>
+                <div className="text-center p-3 bg-yellow-50 rounded-lg">
+                  <p className="text-xs text-yellow-700">Em Andamento</p>
+                  <p className="text-lg font-bold text-yellow-700">
+                    {progress.inProgressChecklists}
+                  </p>
+                </div>
+                <div className="text-center p-3 bg-gray-50 rounded-lg">
+                  <p className="text-xs text-gray-600">Pendentes</p>
+                  <p className="text-lg font-bold text-gray-600">
+                    {progress.pendingChecklists}
+                  </p>
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-gray-100">
+                <p className="text-xs text-gray-500">
+                  Taxa de conclusão:{' '}
+                  <span className="font-bold text-gray-900">
+                    {progress.completionRate}%
+                  </span>
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Barras Empilhadas por Domínio */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">
+              Constatações por Domínio
+            </h2>
+
+            {domainChartData.length === 0 ? (
+              <div className="flex items-center justify-center h-[280px] text-sm text-gray-400">
+                Nenhum domínio com dados ainda
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={280}>
+                <RechartsBarChart
+                  data={domainChartData}
+                  margin={{ top: 20, right: 10, left: -10, bottom: 5 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <XAxis
+                    dataKey="name"
+                    tick={{ fill: '#6b7280', fontSize: 11 }}
+                  />
+                  <YAxis
+                    tick={{ fill: '#9ca3af', fontSize: 11 }}
+                    allowDecimals={false}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      background: '#fff',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: 8,
+                      fontSize: 12,
+                    }}
+                  />
+                  <Legend
+                    verticalAlign="top"
+                    height={28}
+                    iconType="square"
+                    wrapperStyle={{ fontSize: 11 }}
+                  />
+                  <Bar dataKey="C" name="Conforme" stackId="a" fill={DOMAIN_COLORS.C} />
+                  <Bar dataKey="NC" name="Não Conforme" stackId="a" fill={DOMAIN_COLORS.NC} />
+                  <Bar dataKey="OB" name="Observação" stackId="a" fill={DOMAIN_COLORS.OB} />
+                  <Bar dataKey="OM" name="Oportunidade" stackId="a" fill={DOMAIN_COLORS.OM} />
+                  <Bar dataKey="NA" name="Não Aplicável" stackId="a" fill={DOMAIN_COLORS.NA} />
+                </RechartsBarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+
+          {/* Top 10 Controles com mais NC */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">
+              Top 10 Controles com mais Não Conformidades
+            </h2>
+
+            {topNonConformities.length === 0 ? (
+              <div className="flex items-center justify-center h-[280px] text-sm text-gray-400">
+                Nenhuma não conformidade registrada
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-[280px] overflow-y-auto">
+                {topNonConformities.map((item) => (
+                  <div
+                    key={item.controlId}
+                    className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded-lg transition-colors"
+                  >
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-700 whitespace-nowrap">
+                      {item.controlId}
+                    </span>
+                    <span className="text-sm text-gray-700 flex-1 truncate">
+                      {item.controlName}
+                    </span>
+                    <span className="text-sm font-bold text-red-600 whitespace-nowrap">
+                      {item.NC} NC
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Recent Plans */}
         <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
@@ -287,3 +656,5 @@ export function AdminAuditDashboard() {
     </div>
   );
 }
+
+export default AdminAuditDashboard;

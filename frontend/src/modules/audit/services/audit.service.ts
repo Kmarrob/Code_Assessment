@@ -25,6 +25,8 @@ import {
   UpdateAuditQuestionFullDTO,
   AuditQuestionFullFilters,
   AuditQuestionFullStats,
+  // 🆕 v50.2.15 — Tipos do dashboard de auditoria
+  AuditDashboardStats,
 } from '../types/audit.types';
 
 // ============================================================
@@ -841,6 +843,26 @@ export const auditService = {
    */
   async getAuditControlQuestionStats(): Promise<AuditControlQuestionStats> {
     const response = await api.get(`${BASE_URL}/control-questions/stats`);
+    return response.data.data;
+  },
+
+  // ============================================================
+  // 🆕 v50.2.15 — DASHBOARD DE AUDITORIA
+  // ============================================================
+
+  /**
+   * Buscar estatísticas agregadas do dashboard de auditoria.
+   *
+   * @param filters.companyId  (opcional; só ADMIN usa)
+   * @param filters.planId     (opcional)
+   */
+  async getDashboardStats(filters?: {
+    companyId?: string;
+    planId?: string;
+  }): Promise<AuditDashboardStats> {
+    const response = await api.get(`${BASE_URL}/dashboard/stats`, {
+      params: filters,
+    });
     return response.data.data;
   },
 };

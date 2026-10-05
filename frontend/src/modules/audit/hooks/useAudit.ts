@@ -24,6 +24,8 @@ import {
   UpdateAuditQuestionFullDTO,
   AuditQuestionFullFilters,
   AuditQuestionFullStats,
+  // 🆕 v50.2.15 — Tipos do dashboard de auditoria
+  AuditDashboardStats,
 } from '../types/audit.types';
 
 // ============================================================
@@ -87,6 +89,14 @@ export const auditKeys = {
     [...auditKeys.all, 'audit-control-question', id] as const,
   auditControlQuestionsStats: () =>
     [...auditKeys.all, 'audit-control-questions-stats'] as const,
+
+  // 🆕 v50.2.15 — Dashboard de auditoria
+  dashboardStats: (filters?: { companyId?: string; planId?: string }) =>
+    [
+      ...auditKeys.all,
+      'dashboard-stats',
+      filters ? JSON.stringify(filters) : 'all',
+    ] as const,
 };
 
 // ============================================================
@@ -1166,6 +1176,28 @@ export function useDeleteAuditControlQuestion() {
 }
 
 // ============================================================
+// 🆕 v50.2.15 — DASHBOARD DE AUDITORIA
+// ============================================================
+
+/**
+ * Buscar estatísticas agregadas do dashboard.
+ *
+ * staleTime 0 para sempre refetch (dados mudam com frequência).
+ */
+export function useDashboardStats(filters?: {
+  companyId?: string;
+  planId?: string;
+}) {
+  return useQuery({
+    queryKey: auditKeys.dashboardStats(filters),
+    queryFn: () => auditService.getDashboardStats(filters),
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: false,
+  });
+}
+
+// ============================================================
 // EXPORTAÇÃO DO OBJETO useAudit (para compatibilidade com as páginas)
 // ============================================================
 
@@ -1273,4 +1305,7 @@ export const useAudit = {
   useCreateAuditControlQuestion,
   useUpdateAuditControlQuestion,
   useDeleteAuditControlQuestion,
+
+  // 🆕 v50.2.15 — Dashboard de auditoria
+  useDashboardStats,
 };
