@@ -73,8 +73,17 @@ export const auditKeys = {
     [...auditKeys.all, 'audit-questions-stats'] as const,
 
   // 🆕 v50.1 — Query Keys para perguntas de auditoria por controle (Anexo A)
+  //
+  // 🔧 v50.2.9 — Serializa os filtros em string estável para que
+  // o React Query detecte mudanças mesmo quando o objeto é
+  // recriado a cada render. Antes, os filtros não disparavam
+  // refetch porque a comparação estrutural falhava silenciosamente.
   auditControlQuestions: (filters?: AuditControlQuestionFilters) =>
-    [...auditKeys.all, 'audit-control-questions', filters] as const,
+    [
+      ...auditKeys.all,
+      'audit-control-questions',
+      filters ? JSON.stringify(filters) : 'all',
+    ] as const,
   auditControlQuestion: (id: string) =>
     [...auditKeys.all, 'audit-control-question', id] as const,
   auditControlQuestionsStats: () =>
@@ -1023,12 +1032,23 @@ export function useDeleteAuditQuestion() {
 // 🆕 v50.1 — PERGUNTAS DE AUDITORIA POR CONTROLE (ANEXO A)
 // ============================================================
 
+/**
+ * Listar perguntas de auditoria por controle.
+ *
+ * 🔧 v50.2.9 — staleTime 0 para que os filtros sempre
+ * disparem refetch. Antes, o staleTime global de 5 min
+ * servia cache antigo e os filtros pareciam não funcionar.
+ */
 export function useAuditControlQuestions(
   filters?: AuditControlQuestionFilters
 ) {
   return useQuery({
     queryKey: auditKeys.auditControlQuestions(filters),
     queryFn: () => auditService.listAuditControlQuestions(filters),
+
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -1076,9 +1096,7 @@ export function useCreateAuditControlQuestion() {
 /**
  * Atualizar pergunta de auditoria por controle.
  *
- * 🔧 v50.2.3 — Atualiza o cache imediatamente após o PUT,
- * em vez de depender apenas do invalidateQueries (que estava
- * servindo dados antigos do cache do navegador).
+ * 🔧 v50.2.3 — Atualiza o cache imediatamente após o PUT.
  */
 export function useUpdateAuditControlQuestion() {
   const queryClient = useQueryClient();

@@ -6,7 +6,7 @@ import {
 } from '../schemas/auditControlQuestion.schemas';
 
 // ============================================================
-// AUDIT CONTROL QUESTION SERVICE — v50.2.7
+// AUDIT CONTROL QUESTION SERVICE — v50.2.9
 // ============================================================
 //
 // Serviço de CRUD da coleção AuditControlQuestion.
@@ -21,11 +21,13 @@ import {
 //
 // NÃO HÁ SEED. O cadastro é 100% manual pelo ADMIN.
 //
-// 🔧 v50.2.7 — Correção:
-//   create() e update() passam a persistir `controlDescription`.
-//   findAll() passa a incluí-lo na busca textual.
-//   Sem essas linhas, o backend respondia 200 OK mas o mongoose
-//   gravava sempre string vazia.
+// 🔧 v50.2.7 — create() e update() passam a persistir
+// `controlDescription`. Sem isso o backend respondia 200 OK mas
+// o mongoose gravava sempre string vazia.
+//
+// 🔧 v50.2.9 — o filtro `search` passa a incluir o `controlId`
+// no $or, permitindo ao usuário digitar "5.10" no campo de
+// busca e encontrar as perguntas daquele controle.
 // ============================================================
 
 // ============================================================
@@ -114,7 +116,9 @@ export class AuditControlQuestionService {
    *   - controlId       (código ISO ex.: "5.1")
    *   - controlGroup    (ex.: "A.5 Organizacionais")
    *   - active          (true/false)
-   *   - search          (busca textual em text, objective, guidance)
+   *   - search          (busca textual em text, objective,
+   *                      guidance, evidenceExpected,
+   *                      controlDescription e controlId)
    */
   async findAll(
     filters: AuditControlQuestionFiltersInput = {}
@@ -147,6 +151,9 @@ export class AuditControlQuestionService {
         { evidenceExpected: { $regex: escaped, $options: 'i' } },
         // 🔧 v50.2.7 — Buscar também na descrição do controle
         { controlDescription: { $regex: escaped, $options: 'i' } },
+        // 🔧 v50.2.9 — Buscar também no código do controle
+        // Permite digitar "5.10" e encontrar as perguntas.
+        { controlId: { $regex: escaped, $options: 'i' } },
       ];
     }
 
