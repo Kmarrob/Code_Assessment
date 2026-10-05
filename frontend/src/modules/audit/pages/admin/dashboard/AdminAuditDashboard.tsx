@@ -13,6 +13,8 @@ import {
   Building,
   Plus,
   ListChecks,
+  // 🆕 v50.1 — Ícone do botão de perguntas por controle
+  ShieldCheck,
 } from 'lucide-react';
 // 🔧 CORREÇÃO: Caminho corrigido de '../../hooks/useAudit' para '../../../hooks/useAudit'
 import { usePlans, usePlanStats } from '../../../hooks/useAudit';
@@ -80,7 +82,7 @@ export function AdminAuditDashboard() {
           </p>
         </div>
         <div className="flex flex-wrap gap-3 mt-4 md:mt-0">
-          {/* 🆕 NOVO (v47.0): Botão Gerenciar Perguntas */}
+          {/* 🆕 NOVO (v47.0): Botão Gerenciar Perguntas (CLÁUSULAS 4-10) */}
           <button
             onClick={() => navigate('/admin/audit/questions')}
             className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
@@ -88,6 +90,16 @@ export function AdminAuditDashboard() {
             <ListChecks className="w-4 h-4" />
             Gerenciar Perguntas
           </button>
+
+          {/* 🆕 NOVO (v50.1): Botão Perguntas de Controles (ANEXO A) */}
+          <button
+            onClick={() => navigate('/admin/audit/control-questions')}
+            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+          >
+            <ShieldCheck className="w-4 h-4" />
+            Perguntas de Controles
+          </button>
+
           <button
             onClick={() => navigate('/admin/audit/reports')}
             className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
