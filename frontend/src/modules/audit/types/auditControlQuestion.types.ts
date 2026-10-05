@@ -1,5 +1,5 @@
 // ============================================================
-// AUDIT CONTROL QUESTION — TIPOS (FRONTEND) — v50.1
+// AUDIT CONTROL QUESTION — TIPOS (FRONTEND) — v50.2
 // ============================================================
 //
 // Tipos da coleção AuditControlQuestion (perguntas de auditoria
@@ -32,6 +32,15 @@ export interface AuditControlQuestionFull {
    * Grupo do controle (ex.: "A.5 Organizacionais").
    */
   controlGroup?: string;
+
+  /**
+   * 🆕 v50.2 — Descrição oficial do controle (texto ISO 27001).
+   *
+   * Texto do Anexo A da ISO 27001:2022, cadastrado como snapshot
+   * no momento da criação. Se o controle mudar depois, esta
+   * descrição NÃO muda.
+   */
+  controlDescription?: string;
 
   /**
    * Texto da pergunta de auditoria.
@@ -86,6 +95,8 @@ export interface CreateAuditControlQuestionDTO {
   controlId: string;
   controlName: string;
   controlGroup?: string;
+  // 🆕 v50.2 — Descrição oficial do controle
+  controlDescription?: string;
   text: string;
   objective?: string;
   guidance?: string;
@@ -98,6 +109,8 @@ export interface UpdateAuditControlQuestionDTO {
   controlId?: string;
   controlName?: string;
   controlGroup?: string;
+  // 🆕 v50.2 — Descrição oficial do controle
+  controlDescription?: string;
   text?: string;
   objective?: string;
   guidance?: string;
