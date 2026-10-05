@@ -13,6 +13,7 @@ import {
   ChevronRight,
   Power,
   Save,
+  X,
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useAudit } from '../../../hooks/useAudit';
@@ -24,17 +25,16 @@ import {
 import controlService, { Control } from '@/services/control.service';
 
 // ============================================================
-// ADMIN AUDIT CONTROL QUESTIONS — v50.2.11
+// ADMIN AUDIT CONTROL QUESTIONS — v50.2.12
 // ============================================================
 //
 // Tela dedicada ao ADMIN para cadastrar manualmente as perguntas
 // de auditoria por CONTROLE do Anexo A (ISO 27001:2022).
 //
 // 🔧 v50.2.10 — Debounce de 400ms na busca e nos filtros.
-// 🔧 v50.2.11 — Remove o indicador "Atualizando..." e deixa o
-//               placeholderData (keepPreviousData) do React
-//               Query manter a lista visível enquanto recarrega.
-//               Com isso a tela para de "piscar" a cada tecla.
+// 🔧 v50.2.11 — keepPreviousData para evitar a piscada.
+// 🔧 v50.2.12 — Botão "Limpar" para zerar todos os filtros de
+//               uma vez. Só aparece quando há filtro ativo.
 //
 // ============================================================
 
@@ -148,6 +148,14 @@ export function AdminAuditControlQuestions() {
     return f;
   }, [debouncedSearch, debouncedControlId, activeFilter]);
 
+  // 🔧 v50.2.12 — Detecta se há algum filtro ativo (para mostrar
+  // o botão "Limpar"). Usa os valores NÃO debounced, para o botão
+  // aparecer assim que o usuário começa a digitar.
+  const hasActiveFilters =
+    search.trim() !== '' ||
+    controlIdFilter.trim() !== '' ||
+    activeFilter !== 'all';
+
   // ---- Queries ----
 
   const {
@@ -227,6 +235,13 @@ export function AdminAuditControlQuestions() {
     if (next.has(group)) next.delete(group);
     else next.add(group);
     setExpandedGroups(next);
+  };
+
+  // 🔧 v50.2.12 — Limpa todos os filtros de uma vez
+  const handleClearFilters = () => {
+    setSearch('');
+    setControlIdFilter('');
+    setActiveFilter('all');
   };
 
   const openCreateModal = () => {
@@ -427,13 +442,6 @@ export function AdminAuditControlQuestions() {
   };
 
   // ---- Render: loading / error ----
-  //
-  // 🔧 v50.2.11 — Só mostra o spinner grande quando:
-  //   • Ainda está carregando a primeira resposta E
-  //   • Não há NENHUM dado anterior (keepPreviousData vazio)
-  //
-  // Isso evita que a tela troque por "Carregando..." a cada
-  // troca de filtro.
 
   const showFullSpinner = isLoading && questions.length === 0;
 
@@ -548,6 +556,19 @@ export function AdminAuditControlQuestions() {
             <Filter className="w-4 h-4" />
             Filtros
           </button>
+
+          {/* 🔧 v50.2.12 — Botão Limpar (só quando há filtro ativo) */}
+          {hasActiveFilters && (
+            <button
+              type="button"
+              onClick={handleClearFilters}
+              className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+              title="Limpar todos os filtros"
+            >
+              <X className="w-4 h-4" />
+              Limpar
+            </button>
+          )}
         </div>
 
         {showFilters && (
@@ -589,15 +610,25 @@ export function AdminAuditControlQuestions() {
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
           <AlertCircle className="w-12 h-12 mx-auto mb-3 text-gray-300" />
           <p className="text-gray-500">
-            {debouncedSearch.trim() || debouncedControlId.trim() || activeFilter !== 'all'
+            {hasActiveFilters
               ? 'Nenhuma pergunta encontrada com os filtros atuais.'
               : 'Nenhuma pergunta cadastrada.'}
           </p>
           <p className="text-xs text-gray-400 mt-1">
-            {debouncedSearch.trim() || debouncedControlId.trim() || activeFilter !== 'all'
+            {hasActiveFilters
               ? 'Ajuste ou limpe os filtros para ver mais resultados.'
               : 'Clique em "Nova Pergunta" para começar.'}
           </p>
+          {hasActiveFilters && (
+            <button
+              type="button"
+              onClick={handleClearFilters}
+              className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 transition-colors text-sm"
+            >
+              <X className="w-4 h-4" />
+              Limpar filtros
+            </button>
+          )}
         </div>
       ) : (
         <div className="space-y-4">
