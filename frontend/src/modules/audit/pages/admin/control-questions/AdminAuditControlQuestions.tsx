@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -12,6 +12,7 @@ import {
   ChevronDown,
   ChevronRight,
   Power,
+  Save,
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useAudit } from '../../../hooks/useAudit';
@@ -20,19 +21,24 @@ import {
   CreateAuditControlQuestionDTO,
   UpdateAuditControlQuestionDTO,
 } from '../../../types/auditControlQuestion.types';
+// 🆕 v50.2 — Serviço de controles (para o select)
+import controlService, { Control } from '@/services/control.service';
 
 // ============================================================
-// ADMIN AUDIT CONTROL QUESTIONS — v50.1
+// ADMIN AUDIT CONTROL QUESTIONS — v50.2
 // ============================================================
 //
 // Tela dedicada ao ADMIN para cadastrar manualmente as perguntas
 // de auditoria por CONTROLE do Anexo A (ISO 27001:2022).
 //
-// DIFERENÇA DE AdminAuditQuestions:
-//   AdminAuditQuestions       → perguntas por CLÁUSULA (4-10)
-//   AdminAuditControlQuestions → perguntas por CONTROLE (5.1..8.34)
-//
-// SEM SEED. Cadastro 100% manual, uma pergunta por vez.
+// NOVIDADES v50.2:
+//   - Campo "Código do Controle" virou <select> com os 93
+//     controles já cadastrados no banco (Control collection).
+//   - Ao selecionar, preenche automaticamente "Nome do Controle"
+//     e "Grupo do Controle" (readonly, espelho do controle).
+//   - Botão "Salvar e Nova Pergunta" — mantém o controle
+//     selecionado, limpando apenas o texto da pergunta. Ganho
+//     enorme de produtividade no cadastro manual.
 //
 // ============================================================
 
@@ -59,6 +65,29 @@ const EMPTY_FORM: FormState = {
   order: 1,
   active: true,
 };
+
+/**
+ * Deriva o grupo (ex.: "A.5 Organizacionais") a partir do
+ * código do controle (ex.: "5.1"). Se o código começar com "5.",
+ * retorna "A.5 Organizacionais"; se começar com "6.", retorna
+ * "A.6 Pessoas"; etc. Se não casar, retorna "Anexo A".
+ */
+function deriveControlGroup(controlId: string): string {
+  const prefix = String(controlId || '').split('.')[0];
+
+  switch (prefix) {
+    case '5':
+      return 'A.5 Organizacionais';
+    case '6':
+      return 'A.6 Pessoas';
+    case '7':
+      return 'A.7 Físicos';
+    case '8':
+      return 'A.8 Tecnológicos';
+    default:
+      return 'Anexo A';
+  }
+}
 
 export function AdminAuditControlQuestions() {
   const navigate = useNavigate();
@@ -90,6 +119,10 @@ export function AdminAuditControlQuestions() {
 
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
+  // 🆕 v50.2 — Lista de controles para o select
+  const [controls, setControls] = useState<Control[]>([]);
+  const [isLoadingControls, setIsLoadingControls] = useState(true);
+
   // ---- Filtros efetivos ----
 
   const filters = useMemo(() => {
@@ -117,6 +150,41 @@ export function AdminAuditControlQuestions() {
   const updateMutation = useUpdateAuditControlQuestion();
   const deleteMutation = useDeleteAuditControlQuestion();
 
+   // 🆕 v50.2 — Carregar controles (para o select)
+  useEffect(() => {
+    const load = async () => {
+      try {
+        setIsLoadingControls(true);
+
+        // 🔧 CORREÇÃO v50.2.1 — A rota /admin/controls/all não existe.
+        // Usamos /admin/controls?limit=200 (mesma rota usada pela
+        // tela AdminControls.tsx), que retorna os 93 controles em
+        // uma única página.
+        const response = await controlService.listControls({
+          page: 1,
+          limit: 200,
+        });
+
+        const all = response.items || [];
+
+        // Ordenar por código ISO crescente (5.1, 5.2, ..., 8.34)
+        const sorted = [...all].sort((a, b) => {
+          const [aMaj, aMin] = String(a.id || '').split('.').map(Number);
+          const [bMaj, bMin] = String(b.id || '').split('.').map(Number);
+          if (aMaj !== bMaj) return aMaj - bMaj;
+          return (aMin || 0) - (bMin || 0);
+        });
+
+        setControls(sorted);
+      } catch (err) {
+        console.error('Erro ao carregar controles:', err);
+        toast.error('Não foi possível carregar a lista de controles');
+      } finally {
+        setIsLoadingControls(false);
+      }
+    };
+    load();
+  }, []);
   // ---- Agrupamento por controlGroup ----
 
   const grouped = useMemo(() => {
@@ -127,7 +195,6 @@ export function AdminAuditControlQuestions() {
       map.get(key)!.push(q);
     });
 
-    // Ordenar por grupo e, dentro, por controlId e order
     const entries = Array.from(map.entries()).sort((a, b) =>
       a[0].localeCompare(b[0])
     );
@@ -181,11 +248,36 @@ export function AdminAuditControlQuestions() {
     setFormErrors({});
   };
 
+  /**
+   * 🆕 v50.2 — Seleciona um controle no <select> e
+   * preenche automaticamente nome e grupo.
+   */
+  const handleControlSelect = (controlId: string) => {
+    const selected = controls.find((c) => c.id === controlId);
+
+    if (!selected) {
+      setFormData((prev) => ({
+        ...prev,
+        controlId: '',
+        controlName: '',
+        controlGroup: '',
+      }));
+      return;
+    }
+
+    setFormData((prev) => ({
+      ...prev,
+      controlId: selected.id,
+      controlName: selected.nome || '',
+      controlGroup: deriveControlGroup(selected.id),
+    }));
+  };
+
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {};
 
     if (!formData.controlId.trim()) {
-      errors.controlId = 'Código do controle é obrigatório';
+      errors.controlId = 'Selecione um controle';
     }
 
     if (!formData.controlName.trim()) {
@@ -206,8 +298,14 @@ export function AdminAuditControlQuestions() {
     return Object.keys(errors).length === 0;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  /**
+   * Salva a pergunta atual.
+   *
+   * @param closeAfter — se true, fecha o modal.
+   *                     se false, reabre mantendo o controle selecionado
+   *                     (para o fluxo "Salvar e Nova Pergunta").
+   */
+  const saveQuestion = async (closeAfter: boolean) => {
     if (!validateForm()) return;
 
     try {
@@ -244,8 +342,22 @@ export function AdminAuditControlQuestions() {
         toast.success('Pergunta criada com sucesso!');
       }
 
-      closeFormModal();
-      refetch();
+      await refetch();
+
+      if (closeAfter) {
+        closeFormModal();
+      } else {
+        // 🆕 v50.2 — Mantém controle, nome e grupo; limpa só a pergunta
+        setFormData((prev) => ({
+          ...prev,
+          text: '',
+          objective: '',
+          guidance: '',
+          evidenceExpected: '',
+          order: prev.order + 1, // incrementa para a próxima
+        }));
+        setFormErrors({});
+      }
     } catch (err: any) {
       const message =
         err?.response?.data?.message ||
@@ -253,6 +365,16 @@ export function AdminAuditControlQuestions() {
         'Erro ao salvar pergunta';
       toast.error(message);
     }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await saveQuestion(true); // salva e fecha
+  };
+
+  const handleSaveAndNew = async () => {
+    // Modo especial: salva e continua aberto no mesmo controle
+    await saveQuestion(false);
   };
 
   const handleToggleActive = async (q: AuditControlQuestionFull) => {
@@ -282,11 +404,11 @@ export function AdminAuditControlQuestions() {
 
   // ---- Render: loading / error ----
 
-  if (isLoading) {
+  if (isLoading || isLoadingControls) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
-        <span className="ml-3 text-gray-600">Carregando perguntas...</span>
+        <span className="ml-3 text-gray-600">Carregando...</span>
       </div>
     );
   }
@@ -311,7 +433,7 @@ export function AdminAuditControlQuestions() {
     );
   }
 
-  // ---- Render principal ----
+  const isSaving = createMutation.isPending || updateMutation.isPending;
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6">
@@ -551,23 +673,26 @@ export function AdminAuditControlQuestions() {
 
             <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6">
               <div className="space-y-4">
-                {/* Controle */}
+                {/* Controle (select) */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Código do Controle *
+                      Controle *
                     </label>
-                    <input
-                      type="text"
-                      placeholder="Ex.: 5.1"
+                    <select
                       value={formData.controlId}
-                      onChange={(e) =>
-                        setFormData({ ...formData, controlId: e.target.value })
-                      }
+                      onChange={(e) => handleControlSelect(e.target.value)}
                       className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
                         formErrors.controlId ? 'border-red-300' : 'border-gray-300'
                       }`}
-                    />
+                    >
+                      <option value="">Selecione um controle...</option>
+                      {controls.map((c) => (
+                        <option key={c._id} value={c.id}>
+                          {c.id} — {c.nome}
+                        </option>
+                      ))}
+                    </select>
                     {formErrors.controlId && (
                       <p className="text-xs text-red-600 mt-1">
                         {formErrors.controlId}
@@ -581,12 +706,9 @@ export function AdminAuditControlQuestions() {
                     </label>
                     <input
                       type="text"
-                      placeholder="Ex.: A.5 Organizacionais"
                       value={formData.controlGroup}
-                      onChange={(e) =>
-                        setFormData({ ...formData, controlGroup: e.target.value })
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      readOnly
+                      className="w-full px-3 py-2 border border-gray-200 bg-gray-50 rounded-lg text-gray-600 cursor-not-allowed"
                     />
                   </div>
                 </div>
@@ -597,13 +719,10 @@ export function AdminAuditControlQuestions() {
                   </label>
                   <input
                     type="text"
-                    placeholder="Ex.: Políticas de segurança da informação"
                     value={formData.controlName}
-                    onChange={(e) =>
-                      setFormData({ ...formData, controlName: e.target.value })
-                    }
-                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
-                      formErrors.controlName ? 'border-red-300' : 'border-gray-300'
+                    readOnly
+                    className={`w-full px-3 py-2 border bg-gray-50 rounded-lg text-gray-600 cursor-not-allowed ${
+                      formErrors.controlName ? 'border-red-300' : 'border-gray-200'
                     }`}
                   />
                   {formErrors.controlName && (
@@ -725,7 +844,7 @@ export function AdminAuditControlQuestions() {
               </div>
             </form>
 
-            <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 flex justify-end gap-2">
+            <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 flex flex-wrap justify-end gap-2">
               <button
                 type="button"
                 onClick={closeFormModal}
@@ -733,12 +852,26 @@ export function AdminAuditControlQuestions() {
               >
                 Cancelar
               </button>
+
+              {/* 🆕 v50.2 — Salvar e Nova Pergunta (mesmo controle) */}
+              {!editingQuestion && (
+                <button
+                  type="button"
+                  onClick={handleSaveAndNew}
+                  disabled={isSaving}
+                  className="flex items-center gap-2 px-4 py-2 bg-white border border-indigo-300 text-indigo-700 rounded-lg hover:bg-indigo-50 transition-colors disabled:opacity-50 text-sm"
+                >
+                  <Save className="w-4 h-4" />
+                  Salvar e Nova Pergunta
+                </button>
+              )}
+
               <button
                 onClick={handleSubmit}
-                disabled={createMutation.isPending || updateMutation.isPending}
+                disabled={isSaving}
                 className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 text-sm"
               >
-                {createMutation.isPending || updateMutation.isPending
+                {isSaving
                   ? 'Salvando...'
                   : editingQuestion
                   ? 'Salvar Alterações'
