@@ -3,7 +3,11 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Loader2, AlertCircle } from 'lucide-react';
 import { useAudit } from '../../../hooks/useAudit';
 import { AuditChecklist } from '../../../components/AuditChecklist';
-import { AuditChecklistItem } from '../../../types/audit.types';
+import {
+  AuditChecklistItem,
+  AuditChecklistAuditQuestion,
+  AuditChecklistAnswer,
+} from '../../../types/audit.types';
 import { toast } from 'react-hot-toast';
 import api from '@/services/api';
 
@@ -142,13 +146,63 @@ export function RepAuditChecklist() {
     }
   }, [checklistsData]);
 
+  // ============================================================
+  // HANDLER LEGADO — Atualização só das perguntas do Assessment
+  // ============================================================
+  //
+  // MANTIDO para compatibilidade. Não é mais chamado pelo
+  // componente quando `onUpdateFull` está presente, mas fica
+  // aqui como fallback / referência histórica.
+
   const handleUpdateChecklist = async (questions: AuditChecklistItem[]) => {
     if (!currentChecklist) return;
     setIsSubmitting(true);
     try {
       await updateChecklistMutation.mutateAsync({
         id: currentChecklist._id,
-        data: { questions },
+        planId: planId || '',
+        questions,
+      });
+      toast.success('Checklist atualizado com sucesso!');
+      await refetch();
+    } catch (err) {
+      toast.error('Erro ao atualizar checklist');
+      console.error(err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // ============================================================
+  // 🆕 v50.1 — HANDLER COMPLETO
+  // ============================================================
+  //
+  // Recebe o payload inteiro do componente:
+  //   - questions           (Assessment)
+  //   - auditQuestions      (perguntas de auditoria)
+  //   - finalConclusion     (constatação final do controle)
+  //   - finalObservation
+  //   - finalEvidenceIds
+  //   - finalJustification
+  //
+  // Envia o payload via `payload` para o hook `useUpdateChecklist`,
+  // que agora aceita as DUAS formas (questions ou payload).
+
+  const handleUpdateChecklistFull = async (payload: {
+    questions: AuditChecklistItem[];
+    auditQuestions: AuditChecklistAuditQuestion[];
+    finalConclusion: AuditChecklistAnswer;
+    finalObservation: string;
+    finalEvidenceIds: string[];
+    finalJustification: string;
+  }) => {
+    if (!currentChecklist) return;
+    setIsSubmitting(true);
+    try {
+      await updateChecklistMutation.mutateAsync({
+        id: currentChecklist._id,
+        planId: planId || '',
+        payload,
       });
       toast.success('Checklist atualizado com sucesso!');
       await refetch();
@@ -164,7 +218,10 @@ export function RepAuditChecklist() {
     if (!currentChecklist) return;
     setIsSubmitting(true);
     try {
-      await completeChecklistMutation.mutateAsync(currentChecklist._id);
+      await completeChecklistMutation.mutateAsync({
+        id: currentChecklist._id,
+        planId: planId || '',
+      });
       toast.success('Checklist concluído com sucesso!');
       await refetch();
     } catch (err) {
@@ -214,6 +271,14 @@ export function RepAuditChecklist() {
     );
   }
 
+  // 🆕 v50.1 — Contadores de auditoria (para o rodapé)
+
+  const auditQuestions = currentChecklist.auditQuestions || [];
+  const totalAudit = auditQuestions.length;
+  const answeredAudit = auditQuestions.filter(
+    (q: AuditChecklistAuditQuestion) => q.answer && q.answer !== '--'
+  ).length;
+
   return (
     <div className="max-w-5xl mx-auto px-4 py-6">
       <div className="flex items-center gap-4 mb-6">
@@ -244,6 +309,7 @@ export function RepAuditChecklist() {
       <AuditChecklist
         checklist={currentChecklist}
         onUpdate={handleUpdateChecklist}
+        onUpdateFull={handleUpdateChecklistFull}
         onComplete={handleCompleteChecklist}
         isSubmitting={isSubmitting}
         isReadOnly={currentChecklist.status === 'completed'}
@@ -255,9 +321,17 @@ export function RepAuditChecklist() {
         <p>
           {/* 🆕 v49.1.2 — Usa rótulo amigável do controle */}
           Controle: {getControlLabel(String(currentChecklist.controlId))} • 
-          Total de perguntas: {checklistItems.length} • 
+          Total de perguntas do Assessment: {checklistItems.length} • 
           Respondidas: {checklistItems.filter((q: AuditChecklistItem) => q.answer !== undefined).length}
         </p>
+
+        {/* 🆕 v50.1 — Linha de auditoria (só quando houver) */}
+        {totalAudit > 0 && (
+          <p className="mt-1">
+            Perguntas de auditoria: {totalAudit} • Respondidas: {answeredAudit}
+          </p>
+        )}
+
         {companyResponses.length > 0 && (
           <p className="text-xs text-green-600 mt-1">
             ✅ {companyResponses.length} resposta(s) de usuários disponíveis para sincronização

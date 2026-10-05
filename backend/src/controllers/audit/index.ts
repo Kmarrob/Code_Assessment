@@ -14,6 +14,14 @@ import { AuditReportController } from './AuditReportController';
 import { AuditQuestionController } from './AuditQuestionController';
 
 // ============================================================
+// 🆕 v50.1 — Importar o controller de perguntas de auditoria por controle
+// ============================================================
+import {
+  AuditControlQuestionController,
+  auditControlQuestionController,
+} from './AuditControlQuestionController';
+
+// ============================================================
 // Importar as instâncias (para controllers que já exportam instância)
 // ============================================================
 import { auditProgramController } from './AuditProgramController';
@@ -48,6 +56,14 @@ export {
 // ============================================================
 export { AuditQuestionController } from './AuditQuestionController';
 export { auditQuestionController } from './AuditQuestionController';
+
+// ============================================================
+// 🆕 v50.1 — Exportar o controller de perguntas de auditoria por controle
+// ============================================================
+export {
+  AuditControlQuestionController,
+  auditControlQuestionController,
+};
 
 // Exportar os controllers que já exportam instância
 export {

@@ -67,6 +67,11 @@ import { RepAuditDocumentReview } from './modules/audit/pages/rep/document-revie
 import { AdminAuditQuestions } from './modules/audit/pages/admin/questions/AdminAuditQuestions.js';
 
 // ============================================
+// 🆕 NOVO (v50.1) - IMPORTAÇÃO ADMIN - PERGUNTAS DE AUDITORIA POR CONTROLE
+// ============================================
+import { AdminAuditControlQuestions } from './modules/audit/pages/admin/control-questions/AdminAuditControlQuestions.js';
+
+// ============================================
 // IMPORTAÇÕES DO DASHBOARD (DIRETAS - CORRIGIDO)
 // ============================================
 import { DashboardOverview } from './pages/dashboard/DashboardOverview.js';
@@ -402,6 +407,15 @@ function App() {
                     <Route path="/admin/audit/questions" element={
                       <Layout>
                         <AdminAuditQuestions />
+                      </Layout>
+                    } />
+
+                    {/* ============================================
+                        🆕 NOVO (v50.1) - ROTAS ADMIN - PERGUNTAS DE AUDITORIA POR CONTROLE (ANEXO A)
+                        ============================================ */}
+                    <Route path="/admin/audit/control-questions" element={
+                      <Layout>
+                        <AdminAuditControlQuestions />
                       </Layout>
                     } />
                   </Route>

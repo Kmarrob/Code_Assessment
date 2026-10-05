@@ -50,7 +50,17 @@ export interface AuditPlan {
 // ============================================================
 // CHECKLIST
 // ============================================================
+//
+// 🆕 v50.1 — Adicionados campos de auditoria (opcionais).
+// Nada existente foi removido. Checklists antigos continuam
+// funcionando (os campos novos ficam undefined).
+//
+// ============================================================
 
+/**
+ * Pergunta do Assessment (o que o usuário respondeu).
+ * — MANTIDA INTACTA.
+ */
 export interface AuditChecklistItem {
   question: string;
   answer: AuditChecklistAnswer;
@@ -61,12 +71,73 @@ export interface AuditChecklistItem {
   answeredBy?: string;
 }
 
+/**
+ * 🆕 v50.1 — Pergunta de auditoria por controle.
+ * Espelha o backend (IAuditChecklistAuditQuestion).
+ */
+export interface AuditChecklistAuditQuestion {
+  sourceQuestionId?: string;
+  text: string;
+  objective?: string;
+  guidance?: string;
+  evidenceExpected?: string;
+  order: number;
+  answer: AuditChecklistAnswer;
+  observations: string;
+  evidenceIds: string[];
+  answeredAt?: string;
+  answeredBy?: string;
+}
+
+/**
+ * 🆕 v50.1 — Estatísticas das perguntas de auditoria.
+ */
+export interface AuditChecklistAuditStatistics {
+  total: number;
+  conforme: number;
+  nonConforme: number;
+  observacao: number;
+  oportunidade: number;
+  naoAplicavel: number;
+}
+
+/**
+ * 🆕 v50.1 — Estatísticas das perguntas do Assessment.
+ * (Antes existia dentro do model, agora tipado no frontend.)
+ */
+export interface AuditChecklistStatistics {
+  total: number;
+  conforme: number;
+  nonConforme: number;
+  observacao: number;
+  oportunidade: number;
+  naoAplicavel: number;
+}
+
 export interface AuditChecklist {
   _id: string;
   id: string;
   auditPlanId: string;
   controlId: string;
+
+  // ---- Perguntas do Assessment (INTACTO) ----
   questions: AuditChecklistItem[];
+
+  // ---- 🆕 v50.1 — Perguntas de auditoria (NOVO) ----
+  auditQuestions?: AuditChecklistAuditQuestion[];
+
+  // ---- 🆕 v50.1 — Constatação final do controle (NOVO) ----
+  finalConclusion?: AuditChecklistAnswer;
+  finalObservation?: string;
+  finalEvidenceIds?: string[];
+  finalJustification?: string;
+
+  // ---- Estatísticas do Assessment (INTACTO + tipado) ----
+  statistics?: AuditChecklistStatistics;
+
+  // ---- 🆕 v50.1 — Estatísticas de auditoria (NOVO) ----
+  auditStatistics?: AuditChecklistAuditStatistics;
+
   status: AuditChecklistStatus;
   completedBy?: string;
   completedAt?: string;
@@ -164,12 +235,10 @@ export interface AuditRisk {
   _id: string;
   id: string;
 
-  // Identificação
   companyId: string;
   auditPlanId: string;
   riskId: string;
 
-  // Análise do risco
   description: string;
   eventOrAsset: string;
   owner: string;
@@ -177,25 +246,20 @@ export interface AuditRisk {
   vulnerability: string;
   existingControl: string;
 
-  // Avaliação do risco inerente
   probability: 'baixa' | 'media' | 'alta' | 'critica';
   impact: 'baixo' | 'medio' | 'alto' | 'critico';
   riskLevel: AuditRiskLevel;
   classification: string;
 
-  // Tratamento
   treatment: string;
   treatmentPlan: string;
 
-  // Avaliação do risco residual
   residualProbability: 'baixa' | 'media' | 'alta' | 'critica';
   residualImpact: 'baixo' | 'medio' | 'alto' | 'critico';
   residualRisk: string;
 
-  // Controle do ciclo de vida
   status: AuditRiskStatus;
 
-  // Auditoria do registro
   createdBy: string;
   createdAt: string;
   updatedAt: string;
@@ -550,16 +614,6 @@ export interface AuditChecklistStats {
 // ============================================================
 // 🆕 v49.2 — TIPOS DE PERGUNTAS DE AUDITORIA (CLÁUSULAS 4-10)
 // ============================================================
-//
-// MOTIVO:
-//   Tipos para gerenciar perguntas de auditoria de cláusulas
-//   ISO 27001:2022 (SGSI). Apenas ADMIN pode gerenciar.
-//
-// COMPATIBILIDADE:
-//   - Todos os tipos anteriores foram MANTIDOS.
-//   - Novos tipos são adicionais e não afetam nada existente.
-//
-// ============================================================
 
 /**
  * Criticidade de uma pergunta de auditoria.
@@ -574,42 +628,32 @@ export interface AuditQuestionFull {
   _id: string;
   id: string;
 
-  // Identificação da cláusula ISO 27001:2022
   clauseId: string;
   clauseTitle: string;
   clauseGroup: string;
 
-  // Conteúdo da pergunta
   text: string;
   objective: string;
   guidance: string;
 
-  // Critérios de avaliação
   evidenceExpected: string;
   conformityCriteria: string;
   nonconformityCriteria: string;
 
-  // Criticidade
   criticality: AuditQuestionCriticality;
 
-  // Rastreabilidade
   relatedControls: string[];
   relatedDocuments: string[];
 
-  // Controle
   order: number;
   active: boolean;
 
-  // Metadados
   createdBy: string;
   createdAt: string;
   updatedAt: string;
   deletedAt?: string;
 }
 
-/**
- * DTO para criar uma pergunta de auditoria.
- */
 export interface CreateAuditQuestionFullDTO {
   clauseId: string;
   clauseTitle?: string;
@@ -627,9 +671,6 @@ export interface CreateAuditQuestionFullDTO {
   active?: boolean;
 }
 
-/**
- * DTO para atualizar uma pergunta de auditoria.
- */
 export interface UpdateAuditQuestionFullDTO {
   clauseId?: string;
   clauseTitle?: string;
@@ -647,9 +688,6 @@ export interface UpdateAuditQuestionFullDTO {
   active?: boolean;
 }
 
-/**
- * Filtros para listar perguntas de auditoria.
- */
 export interface AuditQuestionFullFilters {
   clauseId?: string;
   clauseGroup?: string;
@@ -658,9 +696,6 @@ export interface AuditQuestionFullFilters {
   search?: string;
 }
 
-/**
- * Estatísticas das perguntas de auditoria.
- */
 export interface AuditQuestionFullStats {
   total: number;
   active: number;

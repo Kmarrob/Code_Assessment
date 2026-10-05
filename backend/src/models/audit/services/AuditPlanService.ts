@@ -4,6 +4,12 @@ import { AuditChecklist } from '../models/AuditChecklist';
 import { Question } from '../../Question';
 import { Company } from '../../../models/Company';
 import { Control } from '../../../models/Control';
+
+// ============================================================
+// 🆕 v50.1 — Perguntas de auditoria por controle (Anexo A)
+// ============================================================
+import { AuditControlQuestion } from '../models/AuditControlQuestion';
+
 import {
   IAuditPlan,
   CreateAuditPlanDTO,
@@ -283,18 +289,6 @@ export class AuditPlanService {
     // ============================================================
     // 🆕 v49.1 — NORMALIZAR EQUIPE (COM NOMES/EMAILS)
     // ============================================================
-    //
-    // MOTIVO:
-    //   A versão anterior salvava apenas IDs. Agora salvamos
-    //   também os nomes e emails dos auditores, para que o card
-    //   do plano exiba informações legíveis sem precisar
-    //   consultar o localStorage nem o User collection.
-    //
-    // COMPATIBILIDADE:
-    //   Se os campos novos não vierem (payload antigo), os
-    //   defaults ('') e ([]) garantem que nada quebre.
-    //
-    // ============================================================
 
     const rawTeam: any = data.team;
 
@@ -375,24 +369,6 @@ export class AuditPlanService {
 
     // ============================================================
     // PROCESSAR EXCLUSÕES ENVIADAS NO PAYLOAD (OPÇÃO C)
-    // ============================================================
-    //
-    // 🆕 v49.1 — LEITURA DEFENSIVA
-    //
-    // MOTIVO:
-    //   O frontend atual (AuditPlanForm.tsx) envia as exclusões
-    //   FORA de scope (ex.: data.excludedControls). O schema Zod
-    //   espera dentro de scope (scope.excludedControls).
-    //
-    //   Para não quebrar planos criados enquanto o frontend
-    //   não for corrigido (BLOCO 2), lemos das duas fontes,
-    //   priorizando scope.excludedControls (forma oficial).
-    //
-    // COMPATIBILIDADE:
-    //   - Frontend atual (bug): data.excludedControls (top-level)
-    //   - Frontend corrigido (BLOCO 2): data.scope.excludedControls
-    //   - Ambos funcionam.
-    //
     // ============================================================
 
     const rawExclusions: Array<{ controlId: string; reason: string }> =
@@ -519,17 +495,8 @@ export class AuditPlanService {
     // ============================================================
     // DISPARAR GERAÇÃO DE CHECKLISTS EM BACKGROUND (FIRE-AND-FORGET)
     // ============================================================
-    //
-    // A partir daqui, o plano JÁ FOI SALVO no banco.
-    // A geração de checklists + populate roda em background,
-    // sem bloquear a resposta ao frontend.
-    //
-    // Se falhar, o plano continua salvo e o erro é logado.
-    // Se tiver sucesso, os checklists aparecem em alguns segundos.
 
     if (effectiveControls.length > 0) {
-      // Não usar await — disparar e seguir em frente.
-      // O catch interno (dentro do método) já evita unhandledRejection.
       void this.generateChecklistInBackground(
         plan._id.toString(),
         effectiveControls,
@@ -542,6 +509,18 @@ export class AuditPlanService {
 
   // ============================================================
   // GERAR CHECKLIST AUTOMÁTICO
+  // ============================================================
+  //
+  // 🆕 v50.1 — Este método agora busca TAMBÉM as perguntas de
+  // auditoria por controle (coleção AuditControlQuestion) e as
+  // insere em auditQuestions[] no checklist recém-criado.
+  //
+  // A lógica existente (buscar Question do Assessment via código
+  // ISO do Control) permanece INTACTA. Apenas adicionamos:
+  //   1. A busca em AuditControlQuestion (por código ISO)
+  //   2. A inserção do array auditQuestions[] no create
+  //   3. A inicialização de auditStatistics e finalConclusion
+  //
   // ============================================================
 
   private async generateChecklist(
@@ -578,29 +557,20 @@ export class AuditPlanService {
       }
 
       // ============================================================
-      // 🔧 CORREÇÃO v50.1 — RESOLVER GAP DE IDs
+      // RESOLVER CÓDIGO ISO DO CONTROLE
       // ============================================================
       //
-      // PROBLEMA:
-      //   `controlId` chega como ObjectId do MongoDB em string
-      //   (ex.: "6a349c90189bd114495fc1f2"), mas a coleção
-      //   `Question` armazena o código ISO (ex.: "5.22").
+      // `controlId` chega como ObjectId do MongoDB em string
+      // (ex.: "6a349c90189bd114495fc1f2"), mas as coleções Question
+      // e AuditControlQuestion armazenam o código ISO (ex.: "5.22").
       //
-      //   Antes: Question.find({ controlId: "6a349c90..." }) → 0 resultados.
-      //
-      // SOLUÇÃO:
-      //   Buscar o Control na coleção Control (SOMENTE LEITURA),
-      //   extrair o campo `id` (código ISO) e usar esse código
-      //   para buscar as perguntas em Question.
-      //
-      // ESCOPO:
-      //   Somente leitura das coleções Control e Question.
-      //   Nenhuma alteração fora do módulo de auditoria.
+      // Buscar o Control na coleção Control (SOMENTE LEITURA),
+      // extrair o campo `id` (código ISO) e usar esse código
+      // para buscar as perguntas.
       //
       // FALLBACK:
       //   Se o Control não for encontrado ou não tiver o campo `id`,
       //   usa o controlId original (mantém comportamento anterior).
-      //
       // ============================================================
 
       const controlDoc = await Control.findById(controlId)
@@ -614,7 +584,7 @@ export class AuditPlanService {
       );
 
       // ============================================================
-      // BUSCAR PERGUNTAS DA BIBLIOTECA
+      // BUSCAR PERGUNTAS DO ASSESSMENT (INTACTO)
       // ============================================================
 
       const sourceQuestions = await Question.find({
@@ -627,11 +597,11 @@ export class AuditPlanService {
         .lean();
 
       console.log(
-        `📋 [BG] Controle ${controlCode}: ${sourceQuestions.length} pergunta(s) encontrada(s)`
+        `📋 [BG] Controle ${controlCode}: ${sourceQuestions.length} pergunta(s) do Assessment`
       );
 
       // ============================================================
-      // GERAR PERGUNTAS DO CHECKLIST
+      // GERAR PERGUNTAS DO CHECKLIST (ASSESSMENT) — INTACTO
       // ============================================================
 
       const questions = sourceQuestions.map(
@@ -649,6 +619,73 @@ export class AuditPlanService {
       );
 
       // ============================================================
+      // 🆕 v50.1 — BUSCAR PERGUNTAS DE AUDITORIA POR CONTROLE
+      // ============================================================
+      //
+      // Fonte: coleção AuditControlQuestion, cadastrada manualmente
+      // pelo ADMIN na tela /admin/audit/control-questions.
+      //
+      // Apenas perguntas ativas, ordenadas por `order`.
+      // ============================================================
+
+      const sourceAuditQuestions = await AuditControlQuestion.find({
+        controlId: controlCode,
+        active: true,
+      })
+        .sort({ order: 1, createdAt: 1 })
+        .lean();
+
+      console.log(
+        `🔍 [BG] Controle ${controlCode}: ${sourceAuditQuestions.length} pergunta(s) de auditoria`
+      );
+
+      // ============================================================
+      // 🆕 v50.1 — GERAR PERGUNTAS DE AUDITORIA (SNAPSHOT)
+      // ============================================================
+      //
+      // Cada pergunta de auditoria é armazenada como SNAPSHOT.
+      // Se o ADMIN editar a pergunta original depois, o checklist
+      // já gerado não muda (rastreabilidade histórica).
+      // ============================================================
+
+      const auditQuestions = sourceAuditQuestions.map(
+        (sourceAuditQuestion) => ({
+          sourceQuestionId: sourceAuditQuestion._id
+            ? String(sourceAuditQuestion._id)
+            : '',
+
+          text: sourceAuditQuestion.text,
+
+          objective: sourceAuditQuestion.objective || '',
+
+          guidance: sourceAuditQuestion.guidance || '',
+
+          evidenceExpected: sourceAuditQuestion.evidenceExpected || '',
+
+          order: sourceAuditQuestion.order || 1,
+
+          answer: '--' as const,
+
+          observations: '',
+
+          evidenceIds: [],
+        })
+      );
+
+      // ============================================================
+      // 🆕 v50.1 — ESTATÍSTICAS INICIAIS DE AUDITORIA
+      // ============================================================
+
+      const auditStatistics = {
+        total: auditQuestions.length,
+        conforme: 0,
+        nonConforme: 0,
+        observacao: 0,
+        oportunidade: 0,
+        naoAplicavel: 0,
+      };
+
+      // ============================================================
       // CRIAR CHECKLIST
       // ============================================================
 
@@ -656,6 +693,8 @@ export class AuditPlanService {
         auditPlanId: planId,
 
         controlId,
+
+        // ---- Perguntas do Assessment (INTACTO) ----
 
         questions,
 
@@ -668,13 +707,31 @@ export class AuditPlanService {
           naoAplicavel: 0,
         },
 
+        // ---- 🆕 v50.1 — Perguntas de auditoria ----
+
+        auditQuestions,
+
+        auditStatistics,
+
+        // ---- 🆕 v50.1 — Constatação final (estado inicial) ----
+
+        finalConclusion: '--',
+
+        finalObservation: '',
+
+        finalEvidenceIds: [],
+
+        finalJustification: '',
+
+        // ---- Status inicial ----
+
         status: 'pending',
 
         createdBy,
       });
 
       console.log(
-        `✅ Checklist criado para o controle ${controlId} com ${questions.length} pergunta(s)`
+        `✅ Checklist criado para o controle ${controlId} — ${questions.length} pergunta(s) do Assessment + ${auditQuestions.length} pergunta(s) de auditoria`
       );
     }
   }
@@ -688,44 +745,24 @@ export class AuditPlanService {
   ): Promise<IAuditPlan[]> {
     const query: any = {};
 
-    // ============================================================
-    // EMPRESA
-    // ============================================================
-
     if (filters.companyId) {
       query.companyId = filters.companyId;
     }
 
-    // ============================================================
-    // STATUS
-    // ============================================================
-
     if (filters.status) {
       query.status = filters.status;
     }
-
-    // ============================================================
-    // AUDITOR LÍDER
-    // ============================================================
 
     if (filters.leadAuditor) {
       query['team.leadAuditor'] =
         filters.leadAuditor;
     }
 
-    // ============================================================
-    // AUDITOR
-    // ============================================================
-
     if (filters.auditor) {
       query['team.auditors'] = {
         $in: [filters.auditor],
       };
     }
-
-    // ============================================================
-    // PERÍODO
-    // ============================================================
 
     if (
       filters.startDate ||
@@ -743,10 +780,6 @@ export class AuditPlanService {
         };
       }
     }
-
-    // ============================================================
-    // PESQUISA
-    // ============================================================
 
     if (filters.search) {
       const escapedSearch =
@@ -776,10 +809,6 @@ export class AuditPlanService {
         },
       ];
     }
-
-    // ============================================================
-    // CONSULTA
-    // ============================================================
 
     const docs = await AuditPlan.find(query)
       .sort({
@@ -860,10 +889,6 @@ export class AuditPlanService {
         'Plano não encontrado'
       );
     }
-
-    // ============================================================
-    // STATUS PERMITIDOS PARA EDIÇÃO
-    // ============================================================
 
     if (
       plan.status !== 'draft' &&
@@ -1013,29 +1038,6 @@ export class AuditPlanService {
     // 🆕 v49.1 — APLICAÇÃO DOS DADOS DA EQUIPE (COM NOMES/EMAILS)
     // 🆕 v49.1.1 — REALINHAMENTO DEFENSIVO DE NOMES/EMAILS
     // ============================================================
-    //
-    // MOTIVO (v49.1):
-    //   Preservar nomes/emails dos auditores ao editar um plano.
-    //   Sem isso, a edição limparia os nomes e o card voltaria
-    //   a mostrar apenas os IDs brutos.
-    //
-    // MOTIVO (v49.1.1):
-    //   Garantir que `auditorNames[i]` corresponda a `auditors[i]`,
-    //   e `observerNames[i]` corresponda a `observers[i]`.
-    //
-    //   Sem isso, se o frontend enviar arrays de tamanhos diferentes
-    //   (ex.: remover um auditor sem remover o nome), os nomes
-    //   ficariam desalinhados e o card mostraria o nome errado.
-    //
-    // ESTRATÉGIA:
-    //   - Para cada campo novo, se vier preenchido no payload,
-    //     usa o novo valor; senão, mantém o valor existente
-    //     no plano. Isso garante que edições parciais (ex.: só
-    //     o título) não apaguem os nomes.
-    //   - Realinha auditorNames/auditorEmails com auditors
-    //   - Realinha observerNames/observerEmails com observers
-    //
-    // ============================================================
 
     if (data.team) {
       const incomingTeam: any = data.team;
@@ -1141,19 +1143,6 @@ export class AuditPlanService {
     // ============================================================
     // CRITÉRIOS
     // ============================================================
-    //
-    // 🆕 v49.1.1 — Normalização defensiva
-    //
-    // MOTIVO:
-    //   Garantir que o array de critérios esteja sempre limpo:
-    //   - Strings com espaços extras são trimadas
-    //   - Strings vazias são removidas
-    //   - Valores não-string são convertidos
-    //
-    // Isso evita que entradas inválidas cheguem ao MongoDB
-    // e quebrem a renderização no card.
-    //
-    // ============================================================
 
     if (data.criteria !== undefined) {
       plan.criteria = Array.isArray(data.criteria)
@@ -1195,8 +1184,6 @@ export class AuditPlanService {
     // STATUS
     // ============================================================
 
-    // O status não deve ser alterado livremente
-    // pelo DTO de edição.
     if (
       data.status !== undefined &&
       data.status !== plan.status
@@ -1224,7 +1211,6 @@ export class AuditPlanService {
       Array.isArray((data.scope as any).controls) &&
       (data.scope as any).controls.length > 0
     ) {
-      // Fire-and-forget: não bloqueia a resposta
       void this.generateChecklistInBackground(
         plan._id.toString(),
         (data.scope as any).controls,
@@ -1289,7 +1275,6 @@ export class AuditPlanService {
       );
     }
 
-    // Verificar se já está excluído
     const alreadyExcluded = plan.scope.excludedControls.some(
       (e) => e.controlId === controlId
     );
@@ -1298,7 +1283,6 @@ export class AuditPlanService {
       throw new Error('Este controle já está excluído do escopo');
     }
 
-    // Verificar se o controle está no escopo atual
     const isInScope = plan.scope.controls.includes(controlId);
 
     if (!isInScope) {
@@ -1307,7 +1291,6 @@ export class AuditPlanService {
       );
     }
 
-    // Não permitir excluir todos os controles
     const effectiveAfterExclusion =
       plan.scope.controls.length - 1;
 
@@ -1317,7 +1300,6 @@ export class AuditPlanService {
       );
     }
 
-    // Aplicar exclusão
     plan.scope.excludedControls.push({
       controlId: controlId.trim(),
       reason: reason.trim(),
@@ -1327,7 +1309,6 @@ export class AuditPlanService {
       approvedAt: undefined,
     } as any);
 
-    // Remover do escopo efetivo
     plan.scope.controls = plan.scope.controls.filter(
       (c) => c !== controlId
     );
@@ -1372,7 +1353,6 @@ export class AuditPlanService {
       throw new Error('Plano não encontrado');
     }
 
-    // Apenas o Auditor Líder pode aprovar
     if (plan.team.leadAuditor !== approverId) {
       throw new Error(
         'Apenas o Auditor Líder designado pode aprovar exclusões de controle'
@@ -1448,10 +1428,8 @@ export class AuditPlanService {
       throw new Error('Exclusão não encontrada para este controle');
     }
 
-    // Remover a exclusão
     plan.scope.excludedControls.splice(exclusionIndex, 1);
 
-    // Devolver o controle ao escopo efetivo
     if (!plan.scope.controls.includes(controlId)) {
       plan.scope.controls.push(controlId);
     }
@@ -1516,7 +1494,6 @@ export class AuditPlanService {
       throw new Error('Exclusão não encontrada para este controle');
     }
 
-    // Autorização: autor da exclusão OU auditor líder
     const isAuthor = exclusion.excludedBy === userId;
     const isLeadAuditor = plan.team.leadAuditor === userId;
 
@@ -1526,10 +1503,8 @@ export class AuditPlanService {
       );
     }
 
-    // Remover exclusão
     plan.scope.excludedControls.splice(exclusionIndex, 1);
 
-    // Devolver controle ao escopo
     if (!plan.scope.controls.includes(controlId)) {
       plan.scope.controls.push(controlId);
     }
@@ -1573,10 +1548,6 @@ export class AuditPlanService {
       );
     }
 
-    // ============================================================
-    // SEGREGAÇÃO DE FUNÇÕES
-    // ============================================================
-
     if (plan.createdBy !== userId) {
       throw new Error(
         'Apenas o criador do plano pode enviar para aprovação'
@@ -1589,19 +1560,11 @@ export class AuditPlanService {
       );
     }
 
-    // ============================================================
-    // VALIDAR AUDITOR LÍDER
-    // ============================================================
-
     if (!plan.team.leadAuditor) {
       throw new Error(
         'O plano precisa possuir um auditor líder designado'
       );
     }
-
-    // ============================================================
-    // VALIDAR ESCOPO
-    // ============================================================
 
     if (
       !plan.scope ||
@@ -1612,10 +1575,6 @@ export class AuditPlanService {
         'O plano precisa possuir pelo menos um controle no escopo da auditoria'
       );
     }
-
-    // ============================================================
-    // VALIDAR EXCLUSÕES PENDENTES DE APROVAÇÃO
-    // ============================================================
 
     if (
       plan.scope.excludedControls &&
@@ -1682,10 +1641,6 @@ export class AuditPlanService {
       );
     }
 
-    // ============================================================
-    // SEGREGAÇÃO DE FUNÇÕES
-    // ============================================================
-
     if (
       plan.createdBy ===
       approverId
@@ -1694,10 +1649,6 @@ export class AuditPlanService {
         'O aprovador não pode ser o mesmo que criou o plano'
       );
     }
-
-    // ============================================================
-    // VALIDAR AUDITOR LÍDER
-    // ============================================================
 
     if (
       plan.team.leadAuditor !==
@@ -1708,10 +1659,6 @@ export class AuditPlanService {
       );
     }
 
-    // ============================================================
-    // VALIDAR STATUS
-    // ============================================================
-
     if (
       plan.status !==
       'pending_approval'
@@ -1720,10 +1667,6 @@ export class AuditPlanService {
         'Apenas planos aguardando aprovação podem ser aprovados'
       );
     }
-
-    // ============================================================
-    // APROVAR
-    // ============================================================
 
     plan.status =
       'approved';
@@ -1780,10 +1723,6 @@ export class AuditPlanService {
       );
     }
 
-    // ============================================================
-    // SEGREGAÇÃO DE FUNÇÕES
-    // ============================================================
-
     if (
       plan.createdBy ===
       approverId
@@ -1792,10 +1731,6 @@ export class AuditPlanService {
         'O rejeitador não pode ser o mesmo que criou o plano'
       );
     }
-
-    // ============================================================
-    // VALIDAR AUDITOR LÍDER
-    // ============================================================
 
     if (
       plan.team.leadAuditor !==
@@ -1806,10 +1741,6 @@ export class AuditPlanService {
       );
     }
 
-    // ============================================================
-    // VALIDAR STATUS
-    // ============================================================
-
     if (
       plan.status !==
       'pending_approval'
@@ -1819,19 +1750,11 @@ export class AuditPlanService {
       );
     }
 
-    // ============================================================
-    // VALIDAR MOTIVO
-    // ============================================================
-
     if (!reason || !reason.trim()) {
       throw new Error(
         'O motivo da rejeição é obrigatório'
       );
     }
-
-    // ============================================================
-    // REJEITAR
-    // ============================================================
 
     plan.status =
       'draft';
@@ -1839,7 +1762,6 @@ export class AuditPlanService {
     plan.rejectionReason =
       reason.trim();
 
-    // Não registrar aprovação em uma rejeição.
     plan.approvedBy =
       undefined;
 
@@ -1888,10 +1810,6 @@ export class AuditPlanService {
       );
     }
 
-    // ============================================================
-    // VALIDAR AUTORIZAÇÃO
-    // ============================================================
-
     const canCancel =
       plan.createdBy === userId ||
       plan.team.leadAuditor === userId;
@@ -1901,10 +1819,6 @@ export class AuditPlanService {
         'Apenas o criador do plano ou o auditor líder podem cancelar a auditoria'
       );
     }
-
-    // ============================================================
-    // VALIDAR STATUS
-    // ============================================================
 
     if (
       plan.status ===
@@ -1923,10 +1837,6 @@ export class AuditPlanService {
         plan.toObject()
       );
     }
-
-    // ============================================================
-    // CANCELAR
-    // ============================================================
 
     plan.status =
       'cancelled';
@@ -1973,10 +1883,6 @@ export class AuditPlanService {
       );
     }
 
-    // ============================================================
-    // VALIDAR EQUIPE
-    // ============================================================
-
     const isTeamMember =
       plan.team.leadAuditor ===
         userId ||
@@ -1990,10 +1896,6 @@ export class AuditPlanService {
       );
     }
 
-    // ============================================================
-    // VALIDAR STATUS
-    // ============================================================
-
     if (
       plan.status !==
       'approved'
@@ -2002,10 +1904,6 @@ export class AuditPlanService {
         'Apenas planos aprovados podem ser iniciados'
       );
     }
-
-    // ============================================================
-    // INICIAR
-    // ============================================================
 
     plan.status =
       'in_progress';
@@ -2055,10 +1953,6 @@ export class AuditPlanService {
       );
     }
 
-    // ============================================================
-    // VALIDAR AUDITOR LÍDER
-    // ============================================================
-
     if (
       plan.team.leadAuditor !==
       userId
@@ -2068,10 +1962,6 @@ export class AuditPlanService {
       );
     }
 
-    // ============================================================
-    // VALIDAR STATUS
-    // ============================================================
-
     if (
       plan.status !==
       'in_progress'
@@ -2080,10 +1970,6 @@ export class AuditPlanService {
         'Apenas auditorias em andamento podem ser concluídas'
       );
     }
-
-    // ============================================================
-    // VERIFICAR CHECKLISTS
-    // ============================================================
 
     const pendingChecklists =
       await AuditChecklist.countDocuments(
@@ -2102,10 +1988,6 @@ export class AuditPlanService {
         `Não é possível concluir a auditoria enquanto existirem ${pendingChecklists} checklist(s) pendente(s)`
       );
     }
-
-    // ============================================================
-    // CONCLUIR
-    // ============================================================
 
     plan.status =
       'completed';
@@ -2133,15 +2015,6 @@ export class AuditPlanService {
   async validateEnterpriseAccess(
     companyId: string
   ): Promise<boolean> {
-    /*
-     * Mantido conforme implementação original.
-     *
-     * A validação definitiva deverá ser conectada à regra
-     * de assinatura/licenciamento da empresa.
-     *
-     * NÃO deve ser considerada uma implementação definitiva
-     * de controle de acesso.
-     */
     return Boolean(companyId);
   }
 

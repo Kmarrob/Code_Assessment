@@ -27,6 +27,33 @@ import {
   AuditQuestionFullStats,
 } from '../types/audit.types';
 
+// ============================================================
+// 🆕 v50.1 — Tipos de perguntas de auditoria por controle
+// ============================================================
+import {
+  AuditControlQuestionFull,
+  CreateAuditControlQuestionDTO,
+  UpdateAuditControlQuestionDTO,
+  AuditControlQuestionFilters,
+  AuditControlQuestionStats,
+} from '../types/auditControlQuestion.types';
+
+// ============================================================
+// 🆕 v50.1 — Payload completo do update de checklist
+// ============================================================
+//
+// Aceita atualização parcial. Todos os campos são opcionais.
+// O backend atualiza somente os campos presentes.
+
+export interface UpdateChecklistFullPayload {
+  questions?: AuditChecklist['questions'];
+  auditQuestions?: AuditChecklist['auditQuestions'];
+  finalConclusion?: AuditChecklist['finalConclusion'];
+  finalObservation?: string;
+  finalEvidenceIds?: string[];
+  finalJustification?: string;
+}
+
 const BASE_URL = '/internal-audit';
 
 export const auditService = {
@@ -229,10 +256,35 @@ export const auditService = {
   },
 
   /**
-   * Atualizar checklist
+   * Atualizar checklist.
+   *
+   * 🆕 v50.1 — Aceita DUAS formas:
+   *
+   *   1. Array direto (compatibilidade com chamadores antigos):
+   *        updateChecklist(id, questions[])
+   *
+   *   2. Payload completo (novo):
+   *        updateChecklist(id, {
+   *          questions,
+   *          auditQuestions,
+   *          finalConclusion,
+   *          finalObservation,
+   *          finalEvidenceIds,
+   *          finalJustification,
+   *        })
+   *
+   * O backend trata as duas formas.
    */
-  async updateChecklist(id: string, questions: AuditChecklist['questions']): Promise<AuditChecklist> {
-    const response = await api.put(`${BASE_URL}/checklists/${id}`, { questions });
+  async updateChecklist(
+    id: string,
+    payloadOrQuestions: UpdateChecklistFullPayload | AuditChecklist['questions']
+  ): Promise<AuditChecklist> {
+    // Normaliza: se for array, encapsula em { questions }
+    const body = Array.isArray(payloadOrQuestions)
+      ? { questions: payloadOrQuestions }
+      : payloadOrQuestions;
+
+    const response = await api.put(`${BASE_URL}/checklists/${id}`, body);
     return response.data.data;
   },
 
@@ -668,9 +720,6 @@ export const auditService = {
 
   /**
    * Buscar respostas dos usuários para um plano de auditoria
-   *
-   * Esta rota retorna todas as respostas dos usuários para os controles
-   * que fazem parte do escopo do plano.
    */
   async getResponsesByPlan(planId: string): Promise<any[]> {
     const response = await api.get(`${BASE_URL}/plans/${planId}/responses`);
@@ -679,11 +728,6 @@ export const auditService = {
 
   // ============================================================
   // 🆕 v49.2 — PERGUNTAS DE AUDITORIA (CLÁUSULAS 4-10)
-  // ============================================================
-  //
-  // ACESSO RESTRITO:
-  //   Todas as rotas exigem role ADMIN (validação no backend).
-  //
   // ============================================================
 
   /**
@@ -737,6 +781,66 @@ export const auditService = {
    */
   async getAuditQuestionStats(): Promise<AuditQuestionFullStats> {
     const response = await api.get(`${BASE_URL}/questions/stats`);
+    return response.data.data;
+  },
+
+  // ============================================================
+  // 🆕 v50.1 — PERGUNTAS DE AUDITORIA POR CONTROLE (ANEXO A)
+  // ============================================================
+
+  /**
+   * Listar perguntas de auditoria por controle com filtros opcionais.
+   */
+  async listAuditControlQuestions(
+    filters?: AuditControlQuestionFilters
+  ): Promise<AuditControlQuestionFull[]> {
+    const response = await api.get(`${BASE_URL}/control-questions`, {
+      params: filters,
+    });
+    return response.data.data;
+  },
+
+  /**
+   * Buscar pergunta de auditoria por controle por ID.
+   */
+  async getAuditControlQuestion(id: string): Promise<AuditControlQuestionFull> {
+    const response = await api.get(`${BASE_URL}/control-questions/${id}`);
+    return response.data.data;
+  },
+
+  /**
+   * Criar nova pergunta de auditoria por controle.
+   */
+  async createAuditControlQuestion(
+    data: CreateAuditControlQuestionDTO
+  ): Promise<AuditControlQuestionFull> {
+    const response = await api.post(`${BASE_URL}/control-questions`, data);
+    return response.data.data;
+  },
+
+  /**
+   * Atualizar pergunta de auditoria por controle.
+   */
+  async updateAuditControlQuestion(
+    id: string,
+    data: UpdateAuditControlQuestionDTO
+  ): Promise<AuditControlQuestionFull> {
+    const response = await api.put(`${BASE_URL}/control-questions/${id}`, data);
+    return response.data.data;
+  },
+
+  /**
+   * Excluir pergunta de auditoria por controle (soft delete).
+   */
+  async deleteAuditControlQuestion(id: string): Promise<void> {
+    await api.delete(`${BASE_URL}/control-questions/${id}`);
+  },
+
+  /**
+   * Estatísticas das perguntas de auditoria por controle.
+   */
+  async getAuditControlQuestionStats(): Promise<AuditControlQuestionStats> {
+    const response = await api.get(`${BASE_URL}/control-questions/stats`);
     return response.data.data;
   },
 };

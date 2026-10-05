@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { auditService } from '../services/audit.service';
+import { auditService, UpdateChecklistFullPayload } from '../services/audit.service';
 import {
   AuditPlan,
   AuditChecklist,
@@ -25,6 +25,17 @@ import {
   AuditQuestionFullFilters,
   AuditQuestionFullStats,
 } from '../types/audit.types';
+
+// ============================================================
+// 🆕 v50.1 — Tipos de perguntas de auditoria por controle
+// ============================================================
+import {
+  AuditControlQuestionFull,
+  CreateAuditControlQuestionDTO,
+  UpdateAuditControlQuestionDTO,
+  AuditControlQuestionFilters,
+  AuditControlQuestionStats,
+} from '../types/auditControlQuestion.types';
 
 export const auditKeys = {
   all: ['audit'] as const,
@@ -53,13 +64,21 @@ export const auditKeys = {
   // Query Key para respostas dos usuários por plano
   responses: (planId: string) => [...auditKeys.all, 'responses', planId] as const,
 
-  // 🆕 v49.2 — Query Keys para perguntas de auditoria
+  // 🆕 v49.2 — Query Keys para perguntas de auditoria (cláusulas 4-10)
   auditQuestions: (filters?: AuditQuestionFullFilters) =>
     [...auditKeys.all, 'audit-questions', filters] as const,
   auditQuestion: (id: string) =>
     [...auditKeys.all, 'audit-question', id] as const,
   auditQuestionsStats: () =>
     [...auditKeys.all, 'audit-questions-stats'] as const,
+
+  // 🆕 v50.1 — Query Keys para perguntas de auditoria por controle (Anexo A)
+  auditControlQuestions: (filters?: AuditControlQuestionFilters) =>
+    [...auditKeys.all, 'audit-control-questions', filters] as const,
+  auditControlQuestion: (id: string) =>
+    [...auditKeys.all, 'audit-control-question', id] as const,
+  auditControlQuestionsStats: () =>
+    [...auditKeys.all, 'audit-control-questions-stats'] as const,
 };
 
 // ============================================================
@@ -380,6 +399,34 @@ export function useChecklistStats(planId: string) {
   });
 }
 
+// ============================================================
+// 🆕 v50.1 — UPDATE CHECKLIST
+// ============================================================
+//
+// Aceita DUAS formas de chamada:
+//
+//   Forma 1 (compatibilidade com chamadores antigos):
+//     mutateAsync({ id, planId, questions })
+//
+//   Forma 2 (nova):
+//     mutateAsync({
+//       id, planId,
+//       payload: {
+//         questions,
+//         auditQuestions,
+//         finalConclusion,
+//         finalObservation,
+//         finalEvidenceIds,
+//         finalJustification,
+//       },
+//     })
+//
+// A detecção é feita por presença da chave `payload`.
+//
+// Isso preserva 100% dos chamadores atuais (que usam
+// `questions` diretamente) e habilita o envio completo.
+// ============================================================
+
 export function useUpdateChecklist() {
   const queryClient = useQueryClient();
 
@@ -388,11 +435,19 @@ export function useUpdateChecklist() {
       id,
       planId,
       questions,
+      payload,
     }: {
       id: string;
       planId: string;
-      questions: AuditChecklist['questions'];
-    }) => auditService.updateChecklist(id, questions),
+      questions?: AuditChecklist['questions'];
+      payload?: UpdateChecklistFullPayload;
+    }) => {
+      // Preferência: se `payload` foi enviado, usa ele.
+      // Caso contrário, cai na forma antiga (questions).
+      const body = payload ?? questions ?? [];
+
+      return auditService.updateChecklist(id, body as any);
+    },
 
     onSuccess: (_, { id, planId }) => {
       queryClient.invalidateQueries({ queryKey: auditKeys.checklists(planId) });
@@ -1095,12 +1150,6 @@ export function useCompleteDocumentReview() {
 
 /**
  * Hook para buscar respostas dos usuários vinculadas a um plano de auditoria
- *
- * Esta query retorna todas as respostas dos usuários para os controles
- * que fazem parte do escopo do plano.
- *
- * @param planId - ID do plano de auditoria
- * @returns Query com as respostas dos usuários
  */
 export function useResponsesByPlan(planId: string) {
   return useQuery({
@@ -1112,12 +1161,6 @@ export function useResponsesByPlan(planId: string) {
 
 // ============================================================
 // 🆕 v49.2 — PERGUNTAS DE AUDITORIA (CLÁUSULAS 4-10)
-// ============================================================
-//
-// ACESSO RESTRITO:
-//   Todas as queries/mutations de perguntas exigem role ADMIN
-//   (validação no backend).
-//
 // ============================================================
 
 /**
@@ -1226,6 +1269,118 @@ export function useDeleteAuditQuestion() {
 }
 
 // ============================================================
+// 🆕 v50.1 — PERGUNTAS DE AUDITORIA POR CONTROLE (ANEXO A)
+// ============================================================
+
+/**
+ * Listar perguntas de auditoria por controle (com filtros opcionais).
+ */
+export function useAuditControlQuestions(
+  filters?: AuditControlQuestionFilters
+) {
+  return useQuery({
+    queryKey: auditKeys.auditControlQuestions(filters),
+    queryFn: () => auditService.listAuditControlQuestions(filters),
+  });
+}
+
+/**
+ * Buscar uma pergunta de auditoria por controle por ID.
+ */
+export function useAuditControlQuestion(id: string) {
+  return useQuery({
+    queryKey: auditKeys.auditControlQuestion(id),
+    queryFn: () => auditService.getAuditControlQuestion(id),
+    enabled: !!id,
+  });
+}
+
+/**
+ * Estatísticas das perguntas de auditoria por controle.
+ */
+export function useAuditControlQuestionStats() {
+  return useQuery({
+    queryKey: auditKeys.auditControlQuestionsStats(),
+    queryFn: () => auditService.getAuditControlQuestionStats(),
+  });
+}
+
+/**
+ * Criar nova pergunta de auditoria por controle.
+ */
+export function useCreateAuditControlQuestion() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: CreateAuditControlQuestionDTO) =>
+      auditService.createAuditControlQuestion(data),
+
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: [...auditKeys.all, 'audit-control-questions'],
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: auditKeys.auditControlQuestionsStats(),
+      });
+    },
+  });
+}
+
+/**
+ * Atualizar pergunta de auditoria por controle.
+ */
+export function useUpdateAuditControlQuestion() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: UpdateAuditControlQuestionDTO;
+    }) => auditService.updateAuditControlQuestion(id, data),
+
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({
+        queryKey: auditKeys.auditControlQuestion(id),
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: [...auditKeys.all, 'audit-control-questions'],
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: auditKeys.auditControlQuestionsStats(),
+      });
+    },
+  });
+}
+
+/**
+ * Excluir pergunta de auditoria por controle (soft delete).
+ */
+export function useDeleteAuditControlQuestion() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) =>
+      auditService.deleteAuditControlQuestion(id),
+
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: [...auditKeys.all, 'audit-control-questions'],
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: auditKeys.auditControlQuestionsStats(),
+      });
+    },
+  });
+}
+
+// ============================================================
 // EXPORTAÇÃO DO OBJETO useAudit (para compatibilidade com as páginas)
 // ============================================================
 
@@ -1318,11 +1473,19 @@ export const useAudit = {
   // Respostas dos usuários
   useResponsesByPlan,
 
-  // 🆕 v49.2 — Perguntas de auditoria
+  // 🆕 v49.2 — Perguntas de auditoria (cláusulas 4-10)
   useAuditQuestions,
   useAuditQuestion,
   useAuditQuestionStats,
   useCreateAuditQuestion,
   useUpdateAuditQuestion,
   useDeleteAuditQuestion,
+
+  // 🆕 v50.1 — Perguntas de auditoria por controle (Anexo A)
+  useAuditControlQuestions,
+  useAuditControlQuestion,
+  useAuditControlQuestionStats,
+  useCreateAuditControlQuestion,
+  useUpdateAuditControlQuestion,
+  useDeleteAuditControlQuestion,
 };

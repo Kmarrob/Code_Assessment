@@ -9,6 +9,41 @@ import { Response } from '../../Response';
 import { Assignment } from '../../Assignment';
 import { Types } from 'mongoose';
 
+// ============================================================
+// 🆕 v50.1 — TIPO DE PAYLOAD DO UPDATE
+// ============================================================
+//
+// O update do checklist agora aceita payload PARCIAL.
+//
+// Compatibilidade total:
+//   - Chamadas antigas enviam apenas `{ questions }`.
+//   - Chamadas novas podem enviar `auditQuestions` e/ou
+//     constatação final, isoladamente ou junto com `questions`.
+//
+// Todos os campos são opcionais. O service atualiza somente os
+// campos efetivamente presentes no payload.
+
+export interface UpdateChecklistPayload {
+  questions?: IAuditChecklistItem[];
+  auditQuestions?: Array<{
+    sourceQuestionId?: string;
+    text: string;
+    objective?: string;
+    guidance?: string;
+    evidenceExpected?: string;
+    order: number;
+    answer: 'C' | 'NC' | 'OB' | 'OM' | 'NA' | '--';
+    observations: string;
+    evidenceIds: string[];
+    answeredAt?: Date | string;
+    answeredBy?: string;
+  }>;
+  finalConclusion?: 'C' | 'NC' | 'OB' | 'OM' | 'NA' | '--';
+  finalObservation?: string;
+  finalEvidenceIds?: string[];
+  finalJustification?: string;
+}
+
 /**
  * ============================================================
  * MAPEAMENTO DE DOCUMENTOS
@@ -983,10 +1018,27 @@ export class AuditChecklistService {
   // ============================================================
   // ATUALIZAR CHECKLIST
   // ============================================================
+  //
+  // 🆕 v50.1 — Aceita payload PARCIAL.
+  //
+  // Compatibilidade:
+  //   • Assinatura antiga: updateChecklist(id, questions[], userId)
+  //   • Assinatura nova:   updateChecklist(id, payload, userId)
+  //
+  // Se `questions` for passado como array direto, o método o
+  // normaliza para `{ questions }` e segue o fluxo antigo.
+  //
+  // Se for passado um objeto com `auditQuestions`,
+  // `finalConclusion`, `finalObservation`, `finalEvidenceIds`
+  // ou `finalJustification`, esses campos são atualizados.
+  //
+  // APENAS os campos presentes no payload são atualizados.
+  //
+  // ============================================================
 
   async updateChecklist(
     id: string,
-    questions: IAuditChecklistItem[],
+    payloadOrQuestions: UpdateChecklistPayload | IAuditChecklistItem[],
     userId: string
   ): Promise<IAuditChecklist | null> {
 
@@ -1039,66 +1091,142 @@ export class AuditChecklistService {
 
     /**
      * ----------------------------------------------------------
-     * VERIFICAR STATUS DO PLANO
+     * NORMALIZAR PAYLOAD
      * ----------------------------------------------------------
      *
-     * Não bloqueamos rascunho aqui para preservar o
-     * comportamento existente.
-     *
-     * A autorização continua sendo baseada na equipe.
+     * Aceita DUAS formas:
+     *   1. Array direto (compatibilidade total).
+     *   2. Objeto com campos parciais.
      */
+
+    let payload: UpdateChecklistPayload;
+
+    if (Array.isArray(payloadOrQuestions)) {
+      // Forma antiga — só questions
+      payload = { questions: payloadOrQuestions };
+    } else if (payloadOrQuestions && typeof payloadOrQuestions === 'object') {
+      // Forma nova — payload parcial
+      payload = payloadOrQuestions;
+    } else {
+      throw new Error(
+        'Payload de atualização inválido'
+      );
+    }
 
     /**
      * ----------------------------------------------------------
-     * CONVERTER QUESTÕES
+     * ATUALIZAR PERGUNTAS DO ASSESSMENT
      * ----------------------------------------------------------
-     *
-     * Mantemos compatibilidade com IAuditChecklistItem,
-     * incluindo os valores legados.
      */
 
-    const questionsMapped:
-      IAuditChecklistQuestion[] =
-      questions.map(
+    if (payload.questions !== undefined) {
+
+      const questionsMapped: IAuditChecklistQuestion[] =
+        payload.questions.map(
+          (q) => ({
+            question:
+              q.question,
+
+            answer:
+              mapAnswer(
+                q.answer
+              ),
+
+            observations:
+              q.observations ||
+              '',
+
+            evidenceIds:
+              q.evidenceIds ||
+              [],
+
+            responsible:
+              q.responsible ||
+              userId,
+
+            answeredAt:
+              q.answeredAt ||
+              undefined,
+
+            answeredBy:
+              q.answeredBy ||
+              userId,
+          })
+        );
+
+      checklist.questions = questionsMapped;
+    }
+
+    /**
+     * ----------------------------------------------------------
+     * 🆕 v50.1 — ATUALIZAR PERGUNTAS DE AUDITORIA
+     * ----------------------------------------------------------
+     *
+     * Mapeia e substitui o array inteiro quando presente.
+     * Preserva o snapshot de cada pergunta (text, guidance etc).
+     */
+
+    if (payload.auditQuestions !== undefined) {
+
+      const auditMapped = payload.auditQuestions.map(
         (q) => ({
-          question:
-            q.question,
-
-          answer:
-            mapAnswer(
-              q.answer
-            ),
-
-          observations:
-            q.observations ||
-            '',
-
-          evidenceIds:
-            q.evidenceIds ||
-            [],
-
-          responsible:
-            q.responsible ||
-            userId,
-
-          answeredAt:
-            q.answeredAt ||
-            undefined,
-
-          answeredBy:
-            q.answeredBy ||
-            userId,
+          sourceQuestionId: q.sourceQuestionId || '',
+          text: q.text,
+          objective: q.objective || '',
+          guidance: q.guidance || '',
+          evidenceExpected: q.evidenceExpected || '',
+          order: q.order || 1,
+          answer: mapAnswer(q.answer) as
+            | 'C'
+            | 'NC'
+            | 'OB'
+            | 'OM'
+            | 'NA'
+            | '--',
+          observations: q.observations || '',
+          evidenceIds: q.evidenceIds || [],
+          answeredAt: q.answeredAt
+            ? new Date(q.answeredAt)
+            : undefined,
+          answeredBy: q.answeredBy || userId,
         })
       );
 
+      (checklist as any).auditQuestions = auditMapped;
+    }
+
     /**
      * ----------------------------------------------------------
-     * ATUALIZAR CHECKLIST
+     * 🆕 v50.1 — ATUALIZAR CONSTATAÇÃO FINAL
      * ----------------------------------------------------------
      */
 
-    checklist.questions =
-      questionsMapped;
+    if (payload.finalConclusion !== undefined) {
+      (checklist as any).finalConclusion = mapAnswer(
+        payload.finalConclusion
+      );
+    }
+
+    if (payload.finalObservation !== undefined) {
+      (checklist as any).finalObservation =
+        payload.finalObservation;
+    }
+
+    if (payload.finalEvidenceIds !== undefined) {
+      (checklist as any).finalEvidenceIds =
+        payload.finalEvidenceIds;
+    }
+
+    if (payload.finalJustification !== undefined) {
+      (checklist as any).finalJustification =
+        payload.finalJustification;
+    }
+
+    /**
+     * ----------------------------------------------------------
+     * METADADOS
+     * ----------------------------------------------------------
+     */
 
     checklist.updatedAt =
       new Date();

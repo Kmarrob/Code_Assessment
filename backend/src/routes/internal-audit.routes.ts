@@ -13,6 +13,11 @@ import {
   auditRiskController,
   auditDocumentReviewController,
   auditQuestionController,
+
+  // ============================================================
+  // 🆕 v50.1 — Perguntas de auditoria por controle (Anexo A)
+  // ============================================================
+  auditControlQuestionController,
 } from '../controllers/audit';
 
 const router = Router();
@@ -44,32 +49,21 @@ router.get('/plans/:planId/responses', auditPlanController.getResponsesByPlan);
 // ============================================================
 // 🆕 NOVO — EXCLUSÃO DE CONTROLES DO ESCOPO (Opção C)
 // ============================================================
-//
-// Fluxo:
-//   1. Criador do plano exclui um controle com justificativa.
-//   2. Auditor Líder aprova ou rejeita a exclusão.
-//   3. Autor da exclusão (ou Auditor Líder) pode remover
-//      antes do envio para aprovação.
-
-// Excluir um controle (adiciona exclusão pendente)
 router.post(
   '/plans/:id/exclusions',
   auditPlanController.excludeControl
 );
 
-// Aprovar uma exclusão específica
 router.post(
   '/plans/:id/exclusions/:controlId/approve',
   auditPlanController.approveExclusion
 );
 
-// Rejeitar uma exclusão específica (devolve o controle ao escopo)
 router.post(
   '/plans/:id/exclusions/:controlId/reject',
   auditPlanController.rejectExclusion
 );
 
-// Remover uma exclusão já registrada (devolve o controle ao escopo)
 router.delete(
   '/plans/:id/exclusions/:controlId',
   auditPlanController.removeExclusion
@@ -78,22 +72,7 @@ router.delete(
 // ============================================================
 // 🆕 v49.2 — ROTAS DE PERGUNTAS DE AUDITORIA (CLÁUSULAS 4-10)
 // ============================================================
-//
-// ACESSO RESTRITO:
-//   Todas as rotas exigem role ADMIN (authorize(UserRole.ADMIN)).
-//   Nenhum outro perfil (REP, Consultant, User) pode acessar.
-//
-// ENDPOINTS:
-//   POST   /questions                 → Criar pergunta
-//   GET    /questions                 → Listar perguntas (filtros)
-//   GET    /questions/stats           → Estatísticas
-//   GET    /questions/:id             → Buscar por ID
-//   PUT    /questions/:id             → Atualizar
-//   DELETE /questions/:id             → Soft delete
-//
-// ORDEM DAS ROTAS:
-//   /stats vem ANTES de /:id para não ser interpretado como ID.
-//
+// ACESSO RESTRITO: authorize(UserRole.ADMIN)
 // ============================================================
 
 // Listar perguntas (com filtros opcionais)
@@ -139,6 +118,73 @@ router.delete(
 );
 
 // ============================================================
+// 🆕 v50.1 — ROTAS DE PERGUNTAS DE AUDITORIA POR CONTROLE (ANEXO A)
+// ============================================================
+//
+// ACESSO RESTRITO:
+//   Todas as rotas exigem role ADMIN (authorize(UserRole.ADMIN)).
+//   Nenhum outro perfil (REP, Consultant, User) pode acessar.
+//
+// ENDPOINTS:
+//   POST   /control-questions                 → Criar pergunta
+//   GET    /control-questions                 → Listar (filtros)
+//   GET    /control-questions/stats           → Estatísticas
+//   GET    /control-questions/:id             → Buscar por ID
+//   PUT    /control-questions/:id             → Atualizar
+//   DELETE /control-questions/:id             → Soft delete
+//
+// ORDEM DAS ROTAS:
+//   /stats vem ANTES de /:id para não ser interpretado como ID.
+//
+// DIFERENÇA DE /questions:
+//   /questions         → cláusulas 4-10 (SGSI)
+//   /control-questions → 93 controles do Anexo A
+//
+// ============================================================
+
+// Listar perguntas de auditoria por controle
+router.get(
+  '/control-questions',
+  authorize(UserRole.ADMIN),
+  auditControlQuestionController.findAll
+);
+
+// Estatísticas (antes de /:id para não conflitar)
+router.get(
+  '/control-questions/stats',
+  authorize(UserRole.ADMIN),
+  auditControlQuestionController.getStats
+);
+
+// Criar nova pergunta de auditoria por controle
+router.post(
+  '/control-questions',
+  authorize(UserRole.ADMIN),
+  auditControlQuestionController.create
+);
+
+// Buscar pergunta por ID
+router.get(
+  '/control-questions/:id',
+  authorize(UserRole.ADMIN),
+  auditControlQuestionController.findById
+);
+
+// Atualizar pergunta
+router.put(
+  '/control-questions/:id',
+  authorize(UserRole.ADMIN),
+  auditControlQuestionController.update
+);
+
+// Excluir pergunta (soft delete)
+router.delete(
+  '/control-questions/:id',
+  authorize(UserRole.ADMIN),
+  auditControlQuestionController.delete
+);
+
+// ============================================================
 // ROTAS DE CHECKLISTS
 // ============================================================
 router.get('/checklists/plan/:auditPlanId', auditChecklistController.findByPlanId);
@@ -148,7 +194,6 @@ router.put('/checklists/:id', auditChecklistController.updateChecklist);
 router.post('/checklists/:id/complete', auditChecklistController.complete);
 
 // 🆕 NOVO (v47.0) - Popula checklists com respostas dos usuários
-// POST /api/internal-audit/checklists/populate/:auditPlanId
 router.post('/checklists/populate/:auditPlanId', auditChecklistController.populateWithUserResponses);
 
 // ============================================================
