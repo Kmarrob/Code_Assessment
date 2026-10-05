@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 // ============================================================
-// AUDIT CONTROL QUESTION — SCHEMAS ZOD
+// AUDIT CONTROL QUESTION — SCHEMAS ZOD — v50.2.8
 // ============================================================
 //
 // Validações dos endpoints REST de AuditControlQuestion.
@@ -10,6 +10,11 @@ import { z } from 'zod';
 // AuditQuestion (create / update / filters / delete).
 //
 // Coleção nova e isolada — não altera nenhum schema existente.
+//
+// 🔧 v50.2.8 — Adicionado o campo controlDescription (descrição
+// oficial do controle ISO 27001 Anexo A) nos schemas de create
+// e update. Sem isso, o TypeScript do service não reconhece o
+// campo e o build quebra.
 // ============================================================
 
 // ============================================================
@@ -33,6 +38,14 @@ export const createAuditControlQuestionSchema = z.object({
     .string()
     .trim()
     .max(200, 'O grupo deve ter no máximo 200 caracteres')
+    .optional()
+    .default(''),
+
+  // 🔧 v50.2.8 — Descrição oficial do controle (ISO 27001 Anexo A)
+  controlDescription: z
+    .string()
+    .trim()
+    .max(4000, 'A descrição do controle deve ter no máximo 4000 caracteres')
     .optional()
     .default(''),
 
@@ -101,6 +114,13 @@ export const updateAuditControlQuestionSchema = z.object({
     .max(200)
     .optional(),
 
+  // 🔧 v50.2.8 — Descrição oficial do controle (ISO 27001 Anexo A)
+  controlDescription: z
+    .string()
+    .trim()
+    .max(4000)
+    .optional(),
+
   text: z
     .string()
     .trim()
@@ -142,7 +162,7 @@ export const updateAuditControlQuestionSchema = z.object({
 // ============================================================
 
 /**
- * Filtros aceitos em GET /questions-control.
+ * Filtros aceitos em GET /control-questions.
  *
  * `active` aceita tanto boolean quanto string 'true'/'false'
  * (query params sempre chegam como string).
