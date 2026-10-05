@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -24,16 +24,46 @@ import {
 import controlService, { Control } from '@/services/control.service';
 
 // ============================================================
-// ADMIN AUDIT CONTROL QUESTIONS — v50.2.2
+// ADMIN AUDIT CONTROL QUESTIONS — v50.2.10
 // ============================================================
 //
-// CORREÇÕES v50.2.2 (Bloco J2.2):
-//   • Todos os botões do modal têm `type="button"` explícito.
-//   • `onClick` inline chamando saveQuestion diretamente.
-//   • console.log de diagnóstico no saveQuestion.
-//   • reset() das mutations antes de salvar.
+// Tela dedicada ao ADMIN para cadastrar manualmente as perguntas
+// de auditoria por CONTROLE do Anexo A (ISO 27001:2022).
+//
+// 🔧 v50.2.10 — Correções de UX da busca e dos filtros:
+//   • Debounce de 400ms nos campos "Buscar" e "Código do
+//     controle". Antes, cada tecla disparava um refetch e a
+//     tela "piscava", impedindo o usuário de terminar de
+//     digitar.
+//   • O spinner de carregamento só aparece na primeira carga.
+//     Refetches em background não trocam mais a tela por
+//     "Carregando...".
 //
 // ============================================================
+
+// ============================================================
+// 🆕 v50.2.10 — Hook auxiliar: debounce de valor
+// ============================================================
+//
+// Retorna o valor após um atraso. Cada vez que o valor muda,
+// o timer anterior é cancelado e um novo começa. Quando o
+// usuário para de digitar, o valor é propagado.
+
+function useDebouncedValue<T>(value: T, delay: number = 400): T {
+  const [debounced, setDebounced] = useState<T>(value);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebounced(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [value, delay]);
+
+  return debounced;
+}
 
 interface FormState {
   controlId: string;
@@ -89,10 +119,21 @@ export function AdminAuditControlQuestions() {
     useDeleteAuditControlQuestion,
   } = useAudit;
 
+  // ---- Estados locais dos filtros ----
+
   const [search, setSearch] = useState('');
   const [controlIdFilter, setControlIdFilter] = useState('');
   const [activeFilter, setActiveFilter] = useState<'all' | 'true' | 'false'>('all');
   const [showFilters, setShowFilters] = useState(false);
+
+  // 🔧 v50.2.10 — Valores debounced (400ms)
+  // São esses que efetivamente disparam o refetch. Os inputs
+  // continuam controlando `search` e `controlIdFilter` livremente,
+  // mas só o valor "estável" vai para os filtros.
+  const debouncedSearch = useDebouncedValue(search, 400);
+  const debouncedControlId = useDebouncedValue(controlIdFilter, 400);
+
+  // ---- Estados de UI ----
 
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
@@ -107,26 +148,35 @@ export function AdminAuditControlQuestions() {
   const [controls, setControls] = useState<Control[]>([]);
   const [isLoadingControls, setIsLoadingControls] = useState(true);
 
+  // ---- Filtros efetivos (usam os valores debounced) ----
+
   const filters = useMemo(() => {
     const f: any = {};
-    if (search.trim()) f.search = search.trim();
-    if (controlIdFilter.trim()) f.controlId = controlIdFilter.trim();
+    if (debouncedSearch.trim()) f.search = debouncedSearch.trim();
+    if (debouncedControlId.trim()) f.controlId = debouncedControlId.trim();
     if (activeFilter !== 'all') f.active = activeFilter === 'true';
     return f;
-  }, [search, controlIdFilter, activeFilter]);
+  }, [debouncedSearch, debouncedControlId, activeFilter]);
+
+  // ---- Queries ----
 
   const {
     data: questions = [],
     isLoading,
+    isFetching,
     error,
     refetch,
   } = useAuditControlQuestions(filters);
 
   const { data: stats } = useAuditControlQuestionStats();
 
+  // ---- Mutations ----
+
   const createMutation = useCreateAuditControlQuestion();
   const updateMutation = useUpdateAuditControlQuestion();
   const deleteMutation = useDeleteAuditControlQuestion();
+
+  // ---- Carregar controles (uma vez) ----
 
   useEffect(() => {
     const load = async () => {
@@ -158,6 +208,8 @@ export function AdminAuditControlQuestions() {
     load();
   }, []);
 
+  // ---- Agrupamento por controlGroup ----
+
   const grouped = useMemo(() => {
     const map = new Map<string, AuditControlQuestionFull[]>();
     (questions || []).forEach((q) => {
@@ -178,6 +230,8 @@ export function AdminAuditControlQuestions() {
     });
     return entries;
   }, [questions]);
+
+  // ---- Handlers de UI ----
 
   const toggleGroup = (group: string) => {
     const next = new Set(expandedGroups);
@@ -272,7 +326,6 @@ export function AdminAuditControlQuestions() {
   };
 
   const saveQuestion = async (closeAfter: boolean) => {
-    // 🔧 v50.2.2 — Diagnóstico
     console.log('🚀 [saveQuestion] INICIADO', {
       closeAfter,
       editingQuestion: !!editingQuestion,
@@ -285,7 +338,6 @@ export function AdminAuditControlQuestions() {
       return;
     }
 
-    // 🔧 v50.2.2 — Reset de mutations travadas
     createMutation.reset();
     updateMutation.reset();
 
@@ -385,7 +437,13 @@ export function AdminAuditControlQuestions() {
     }
   };
 
-  if (isLoading || isLoadingControls) {
+  // ---- Render: loading / error ----
+  //
+  // 🔧 v50.2.10 — O spinner só aparece quando NÃO há dados ainda
+  // (primeiro carregamento). Refetches em background não trocam
+  // a tela por "Carregando...".
+
+  if ((isLoading && questions.length === 0) || isLoadingControls) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
@@ -482,7 +540,7 @@ export function AdminAuditControlQuestions() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type="text"
-              placeholder="Buscar por texto, objetivo, orientação..."
+              placeholder="Buscar por texto, objetivo, orientação ou código do controle..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
@@ -530,15 +588,29 @@ export function AdminAuditControlQuestions() {
             </div>
           </div>
         )}
+
+        {/* 🔧 v50.2.10 — Indicador discreto de refetch em background */}
+        {isFetching && questions.length > 0 && (
+          <div className="mt-3 flex items-center gap-2 text-xs text-gray-400">
+            <Loader2 className="w-3 h-3 animate-spin" />
+            Atualizando...
+          </div>
+        )}
       </div>
 
       {/* Lista agrupada */}
       {grouped.length === 0 ? (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
           <AlertCircle className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-          <p className="text-gray-500">Nenhuma pergunta cadastrada.</p>
+          <p className="text-gray-500">
+            {debouncedSearch.trim() || debouncedControlId.trim() || activeFilter !== 'all'
+              ? 'Nenhuma pergunta encontrada com os filtros atuais.'
+              : 'Nenhuma pergunta cadastrada.'}
+          </p>
           <p className="text-xs text-gray-400 mt-1">
-            Clique em "Nova Pergunta" para começar.
+            {debouncedSearch.trim() || debouncedControlId.trim() || activeFilter !== 'all'
+              ? 'Ajuste ou limpe os filtros para ver mais resultados.'
+              : 'Clique em "Nova Pergunta" para começar.'}
           </p>
         </div>
       ) : (
@@ -659,7 +731,6 @@ export function AdminAuditControlQuestions() {
               </p>
             </div>
 
-            {/* 🔧 v50.2.2 — onSubmit preventDefault (por segurança) */}
             <form
               onSubmit={(e) => e.preventDefault()}
               className="flex-1 overflow-y-auto p-6"
@@ -851,7 +922,6 @@ export function AdminAuditControlQuestions() {
               </div>
             </form>
 
-            {/* 🔧 v50.2.2 — type="button" + onClick direto */}
             <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 flex flex-wrap justify-end gap-2">
               <button
                 type="button"
