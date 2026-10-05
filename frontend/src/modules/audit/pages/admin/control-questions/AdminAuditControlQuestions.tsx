@@ -24,20 +24,18 @@ import {
 import controlService, { Control } from '@/services/control.service';
 
 // ============================================================
-// ADMIN AUDIT CONTROL QUESTIONS — v50.2
+// ADMIN AUDIT CONTROL QUESTIONS — v50.2.1
 // ============================================================
 //
 // Tela dedicada ao ADMIN para cadastrar manualmente as perguntas
 // de auditoria por CONTROLE do Anexo A (ISO 27001:2022).
 //
-// NOVIDADES v50.2:
-//   - Campo "Controle" é um <select> com os 93 controles já
-//     cadastrados (carregados via controlService.listControls).
-//   - Ao selecionar um controle, preenche automaticamente
-//     "Nome do Controle", "Grupo do Controle" e a "Descrição do
-//     Controle" (texto da norma ISO 27001 Anexo A).
-//   - Botão "Salvar e Nova Pergunta" mantém o controle e a
-//     descrição; limpa apenas os campos de texto da pergunta.
+// v50.2.1 — CORREÇÃO:
+//   • O campo "Descrição do Controle" agora é lido de
+//     `Control.controles` (nome real do campo no banco — não
+//     é `descricao`).
+//   • Ao editar uma pergunta existente, o select NÃO sobrescreve
+//     a descrição salva na pergunta.
 //
 // ============================================================
 
@@ -45,7 +43,6 @@ interface FormState {
   controlId: string;
   controlName: string;
   controlGroup: string;
-  // 🆕 v50.2 — Descrição oficial do controle
   controlDescription: string;
   text: string;
   objective: string;
@@ -119,7 +116,8 @@ export function AdminAuditControlQuestions() {
 
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
-  // 🆕 v50.2 — Lista de controles para o select
+  // ---- Controles para o select ----
+
   const [controls, setControls] = useState<Control[]>([]);
   const [isLoadingControls, setIsLoadingControls] = useState(true);
 
@@ -150,14 +148,13 @@ export function AdminAuditControlQuestions() {
   const updateMutation = useUpdateAuditControlQuestion();
   const deleteMutation = useDeleteAuditControlQuestion();
 
-  // 🆕 v50.2 — Carregar controles (para o select)
+  // ---- Carregar controles ----
+
   useEffect(() => {
     const load = async () => {
       try {
         setIsLoadingControls(true);
 
-        // Usa /admin/controls?limit=200 (mesma rota usada pela
-        // tela AdminControls.tsx).
         const response = await controlService.listControls({
           page: 1,
           limit: 200,
@@ -165,7 +162,6 @@ export function AdminAuditControlQuestions() {
 
         const all = response.items || [];
 
-        // Ordenar por código ISO crescente (5.1, 5.2, ..., 8.34)
         const sorted = [...all].sort((a, b) => {
           const [aMaj, aMin] = String(a.id || '').split('.').map(Number);
           const [bMaj, bMin] = String(b.id || '').split('.').map(Number);
@@ -249,8 +245,17 @@ export function AdminAuditControlQuestions() {
   };
 
   /**
-   * 🆕 v50.2 — Seleciona um controle no <select> e
+   * 🔧 v50.2.1 — Seleciona um controle no <select> e
    * preenche automaticamente nome, grupo e descrição.
+   *
+   * IMPORTANTE:
+   *   O campo de descrição do controle na coleção `Control`
+   *   chama-se `controles` (texto oficial ISO 27001 Anexo A).
+   *   NÃO é `descricao` nem `description`.
+   *
+   * PROTEÇÃO:
+   *   Se o campo `controlDescription` já tem valor (caso da
+   *   edição), o select NÃO sobrescreve.
    */
   const handleControlSelect = (controlId: string) => {
     const selected = controls.find((c) => c.id === controlId);
@@ -261,19 +266,25 @@ export function AdminAuditControlQuestions() {
         controlId: '',
         controlName: '',
         controlGroup: '',
-        controlDescription: '',
+        // Não limpa a descrição se já houver valor
+        controlDescription: prev.controlDescription || '',
       }));
       return;
     }
 
-    setFormData((prev) => ({
-      ...prev,
-      controlId: selected.id,
-      controlName: selected.nome || '',
-      controlGroup: deriveControlGroup(selected.id),
-      // 🆕 v50.2 — Descrição oficial do controle
-      controlDescription: (selected as any).descricao || '',
-    }));
+    setFormData((prev) => {
+      // Só preenche a descrição se ela estiver vazia
+      const currentDesc = (prev.controlDescription || '').trim();
+      const descFromControl = String((selected as any).controles || '').trim();
+
+      return {
+        ...prev,
+        controlId: selected.id,
+        controlName: selected.nome || '',
+        controlGroup: deriveControlGroup(selected.id),
+        controlDescription: currentDesc !== '' ? prev.controlDescription : descFromControl,
+      };
+    });
   };
 
   const validateForm = (): boolean => {
@@ -301,9 +312,6 @@ export function AdminAuditControlQuestions() {
     return Object.keys(errors).length === 0;
   };
 
-  /**
-   * Salva a pergunta atual.
-   */
   const saveQuestion = async (closeAfter: boolean) => {
     if (!validateForm()) return;
 
@@ -348,7 +356,6 @@ export function AdminAuditControlQuestions() {
       if (closeAfter) {
         closeFormModal();
       } else {
-        // Mantém controle + descrição; limpa só os campos de texto
         setFormData((prev) => ({
           ...prev,
           text: '',
@@ -673,7 +680,6 @@ export function AdminAuditControlQuestions() {
 
             <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6">
               <div className="space-y-4">
-                {/* Controle (select) + Grupo */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -713,7 +719,6 @@ export function AdminAuditControlQuestions() {
                   </div>
                 </div>
 
-                {/* Nome do Controle */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Nome do Controle *
@@ -752,7 +757,6 @@ export function AdminAuditControlQuestions() {
                   </p>
                 </div>
 
-                {/* Pergunta */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Pergunta de Auditoria *
@@ -818,7 +822,6 @@ export function AdminAuditControlQuestions() {
                   />
                 </div>
 
-                {/* Ordem e Ativa */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -919,8 +922,7 @@ export function AdminAuditControlQuestions() {
               >
                 Cancelar
               </button>
-              <button
-                onClick={handleDelete}
+              <button                onClick={handleDelete}
                 disabled={deleteMutation.isPending}
                 className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 text-sm"
               >
