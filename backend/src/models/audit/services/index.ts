@@ -22,6 +22,14 @@ import {
 } from './AuditControlQuestionService';
 
 // ============================================================
+// 🆕 v50.2.15 — Importar o service do dashboard de auditoria
+// ============================================================
+import {
+  AuditDashboardService,
+  auditDashboardService,
+} from './AuditDashboardService';
+
+// ============================================================
 // Importar as instâncias (para serviços que já exportam instância)
 // ============================================================
 import { auditProgramService } from './AuditProgramService';
@@ -63,6 +71,14 @@ export { auditQuestionService } from './AuditQuestionService';
 export {
   AuditControlQuestionService,
   auditControlQuestionService,
+};
+
+// ============================================================
+// 🆕 v50.2.15 — Exportar o service do dashboard de auditoria
+// ============================================================
+export {
+  AuditDashboardService,
+  auditDashboardService,
 };
 
 // Exportar os serviços que já exportam instância

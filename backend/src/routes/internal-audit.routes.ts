@@ -18,6 +18,11 @@ import {
   // 🆕 v50.1 — Perguntas de auditoria por controle (Anexo A)
   // ============================================================
   auditControlQuestionController,
+
+  // ============================================================
+  // 🆕 v50.2.15 — Dashboard de auditoria (Admin + REP)
+  // ============================================================
+  auditDashboardController,
 } from '../controllers/audit';
 
 const router = Router();
@@ -26,6 +31,21 @@ const router = Router();
 // MIDDLEWARE DE AUTENTICAÇÃO
 // ============================================================
 router.use(authenticate);
+
+// ============================================================
+// 🆕 v50.2.15 — ROTAS DE DASHBOARD
+// ============================================================
+//
+// Acesso:
+//   - ADMIN: vê tudo (query params opcionais: companyId, planId)
+//   - REP:   vê só a empresa dele (backend força o companyId)
+//
+// ============================================================
+
+router.get(
+  '/dashboard/stats',
+  auditDashboardController.getStats
+);
 
 // ============================================================
 // ROTAS DE PLANOS DE AUDITORIA
@@ -49,21 +69,32 @@ router.get('/plans/:planId/responses', auditPlanController.getResponsesByPlan);
 // ============================================================
 // 🆕 NOVO — EXCLUSÃO DE CONTROLES DO ESCOPO (Opção C)
 // ============================================================
+//
+// Fluxo:
+//   1. Criador do plano exclui um controle com justificativa.
+//   2. Auditor Líder aprova ou rejeita a exclusão.
+//   3. Autor da exclusão (ou Auditor Líder) pode remover
+//      antes do envio para aprovação.
+
+// Excluir um controle (adiciona exclusão pendente)
 router.post(
   '/plans/:id/exclusions',
   auditPlanController.excludeControl
 );
 
+// Aprovar uma exclusão específica
 router.post(
   '/plans/:id/exclusions/:controlId/approve',
   auditPlanController.approveExclusion
 );
 
+// Rejeitar uma exclusão específica (devolve o controle ao escopo)
 router.post(
   '/plans/:id/exclusions/:controlId/reject',
   auditPlanController.rejectExclusion
 );
 
+// Remover uma exclusão já registrada (devolve o controle ao escopo)
 router.delete(
   '/plans/:id/exclusions/:controlId',
   auditPlanController.removeExclusion
@@ -72,7 +103,22 @@ router.delete(
 // ============================================================
 // 🆕 v49.2 — ROTAS DE PERGUNTAS DE AUDITORIA (CLÁUSULAS 4-10)
 // ============================================================
-// ACESSO RESTRITO: authorize(UserRole.ADMIN)
+//
+// ACESSO RESTRITO:
+//   Todas as rotas exigem role ADMIN (authorize(UserRole.ADMIN)).
+//   Nenhum outro perfil (REP, Consultant, User) pode acessar.
+//
+// ENDPOINTS:
+//   POST   /questions                 → Criar pergunta
+//   GET    /questions                 → Listar perguntas (filtros)
+//   GET    /questions/stats           → Estatísticas
+//   GET    /questions/:id             → Buscar por ID
+//   PUT    /questions/:id             → Atualizar
+//   DELETE /questions/:id             → Soft delete
+//
+// ORDEM DAS ROTAS:
+//   /stats vem ANTES de /:id para não ser interpretado como ID.
+//
 // ============================================================
 
 // Listar perguntas (com filtros opcionais)
@@ -194,6 +240,7 @@ router.put('/checklists/:id', auditChecklistController.updateChecklist);
 router.post('/checklists/:id/complete', auditChecklistController.complete);
 
 // 🆕 NOVO (v47.0) - Popula checklists com respostas dos usuários
+// POST /api/internal-audit/checklists/populate/:auditPlanId
 router.post('/checklists/populate/:auditPlanId', auditChecklistController.populateWithUserResponses);
 
 // ============================================================
