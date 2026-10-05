@@ -1,7 +1,7 @@
 import mongoose, { Schema } from 'mongoose';
 
 // ============================================================
-// AUDIT CONTROL QUESTION — v50.1
+// AUDIT CONTROL QUESTION — v50.2
 // ============================================================
 //
 // COLEÇÃO NOVA E ISOLADA.
@@ -69,6 +69,22 @@ export interface IAuditControlQuestion {
    * Opcional. Usado para agrupamento visual na tela do admin.
    */
   controlGroup?: string;
+
+  /**
+   * 🆕 v50.2 — Descrição oficial do controle (texto da ISO 27001).
+   *
+   * Contém o texto descritivo do controle do Anexo A da ISO
+   * 27001:2022 (ex.: "Information security policy and
+   * topic-specific policies shall be defined, approved...").
+   *
+   * Desnormalizado intencionalmente como SNAPSHOT no momento do
+   * cadastro: se o controle for editado depois na coleção Control,
+   * esta descrição NÃO muda — preserva rastreabilidade histórica.
+   *
+   * Opcional para manter compatibilidade com perguntas
+   * cadastradas antes da v50.2.
+   */
+  controlDescription?: string;
 
   // ============================================================
   // CONTEÚDO DA PERGUNTA DE AUDITORIA
@@ -173,6 +189,13 @@ const AuditControlQuestionSchema = new Schema<IAuditControlQuestion>(
     },
 
     controlGroup: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+
+    // 🆕 v50.2 — Descrição oficial do controle (snapshot ISO 27001)
+    controlDescription: {
       type: String,
       trim: true,
       default: '',
