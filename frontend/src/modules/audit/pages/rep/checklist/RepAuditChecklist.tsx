@@ -7,6 +7,8 @@ import {
   AuditChecklistItem,
   AuditChecklistAuditQuestion,
   AuditChecklistAnswer,
+  // 🆕 v51.1 — Tipo da evidência para o mapa de exibição
+  AuditEvidence,
 } from '../../../types/audit.types';
 import { toast } from 'react-hot-toast';
 import api from '@/services/api';
@@ -34,6 +36,9 @@ export function RepAuditChecklist() {
     useChecklists,
     useUpdateChecklist,
     useCompleteChecklist,
+    // 🆕 v51.1 — Hooks para upload e listagem de evidências
+    useUploadEvidence,
+    useEvidenceByPlan,
   } = useAudit;
 
   // Buscar checklists do plano
@@ -108,6 +113,100 @@ export function RepAuditChecklist() {
   // Mutations
   const updateChecklistMutation = useUpdateChecklist();
   const completeChecklistMutation = useCompleteChecklist();
+
+  // ============================================================
+  // 🆕 v51.1 — EVIDÊNCIAS DO PLANO
+  // ============================================================
+  //
+  // MOTIVO:
+  //   O <AuditChecklist /> precisa de um `evidenceMap` para
+  //   renderizar o nome amigável dos arquivos anexados a cada
+  //   pergunta de auditoria e à constatação final.
+  //
+  // ESTRATÉGIA:
+  //   - `useEvidenceByPlan(planId)` já existe no hook useAudit
+  //     e usa React Query (cache automático por planId).
+  //   - Derivamos o `Map<id, {filename, size}>` via useMemo para
+  //     evitar re-render desnecessário.
+  //   - `useUploadEvidence()` é a mutation já existente que faz
+  //     POST /api/internal-audit/evidence/upload.
+  //
+  // IMPACTO:
+  //   - Zero regressão (hooks já existiam).
+  //   - A lista de evidências é invalidada automaticamente após
+  //     cada upload (comportamento padrão do hook).
+  //
+  // ============================================================
+
+  const { data: planEvidences = [] } = useEvidenceByPlan(planId || '');
+  const uploadEvidence = useUploadEvidence();
+
+  /**
+   * 🆕 v51.1 — Mapa de evidências para exibição.
+   *
+   * Chave: evidenceId (string).
+   * Valor: { filename, size }.
+   *
+   * O <AuditChecklist /> usa este mapa para exibir o nome do
+   * arquivo em vez do ID bruto.
+   */
+  const evidenceMap = useMemo(() => {
+    const map = new Map<string, { filename: string; size: number }>();
+    (planEvidences || []).forEach((ev: AuditEvidence) => {
+      const id = String(ev._id || ev.id || '');
+      if (!id) return;
+      map.set(id, {
+        filename: ev.filename || id,
+        size: Number(ev.size) || 0,
+      });
+    });
+    return map;
+  }, [planEvidences]);
+
+  /**
+   * 🆕 v51.1 — Callback de upload de evidência por pergunta.
+   *
+   * Recebe o arquivo + contexto do <AuditChecklist />, dispara a
+   * mutation de upload (com `questionRef`) e retorna o `_id`
+   * (string) da evidência criada. O componente então faz push em
+   * `evidenceIds[]`.
+   *
+   * @param file     - Arquivo escolhido pelo auditor.
+   * @param context  - { controlId, questionIndex? }.
+   *                   questionIndex undefined = constatação final.
+   */
+  const handleUploadEvidence = async (
+    file: File,
+    context: { controlId: string; questionIndex?: number }
+  ): Promise<string> => {
+    const description =
+      context.questionIndex !== undefined
+        ? `Controle ${context.controlId} — Pergunta ${context.questionIndex + 1}`
+        : `Controle ${context.controlId} — Constatação final`;
+
+    const result = await uploadEvidence.mutateAsync({
+      auditPlanId: planId || '',
+      file,
+      // findingId fica undefined: a evidência é vinculada à pergunta,
+      // não a uma NC. A vinculação fina é feita via evidenceIds[] no
+      // próprio checklist.
+      findingId: undefined,
+      description,
+      // 🆕 v51.1 — Repassa o vínculo com a pergunta ao backend.
+      // Se `questionIndex` for undefined, o backend entende como
+      // constatação final do controle.
+      questionRef: {
+        controlId: context.controlId,
+        questionIndex: context.questionIndex,
+      },
+    });
+
+    const evidenceId = String(result?._id || result?.id || '');
+    if (!evidenceId) {
+      throw new Error('O servidor não retornou o ID da evidência.');
+    }
+    return evidenceId;
+  };
 
   // Estado local para o checklist atual
   const [currentChecklist, setCurrentChecklist] = useState<any>(null);
@@ -315,6 +414,10 @@ export function RepAuditChecklist() {
         isReadOnly={currentChecklist.status === 'completed'}
         companyResponses={companyResponses}
         controlsMap={controlsMap}
+        /* 🆕 v51.1 — Upload de evidência por pergunta + constatação final */
+        onUploadEvidence={handleUploadEvidence}
+        /* 🆕 v51.1 — Mapa id → {filename, size} para exibição amigável */
+        evidenceMap={evidenceMap}
       />
 
       <div className="mt-6 text-sm text-gray-500 border-t border-gray-200 pt-4">

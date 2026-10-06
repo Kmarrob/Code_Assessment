@@ -454,18 +454,36 @@ export const auditService = {
   // ============================================================
 
   /**
-   * Upload de evidência
+   * Upload de evidência.
+   *
+   * 🆕 v51.1 — Aceita `questionRef` OPCIONAL para vincular a
+   * evidência a uma pergunta específica do checklist.
+   *
+   * - `questionRef.questionIndex` presente → pergunta de auditoria.
+   * - `questionRef.questionIndex` ausente  → constatação final.
+   * - `questionRef` não enviado            → só vinculada ao plano
+   *                                           (comportamento antigo).
+   *
+   * O `questionRef` é serializado como JSON string porque o
+   * corpo é `multipart/form-data`.
    */
   async uploadEvidence(
     auditPlanId: string,
     file: File,
     findingId?: string,
-    description?: string
+    description?: string,
+    questionRef?: { controlId: string; questionIndex?: number }
   ): Promise<AuditEvidence> {
     const formData = new FormData();
     formData.append('auditPlanId', auditPlanId);
     if (findingId) formData.append('findingId', findingId);
     if (description) formData.append('description', description);
+
+    // 🆕 v51.1 — Vincula a evidência a uma pergunta (opcional)
+    if (questionRef && questionRef.controlId) {
+      formData.append('questionRef', JSON.stringify(questionRef));
+    }
+
     formData.append('file', file);
 
     const response = await api.post(`${BASE_URL}/evidence/upload`, formData, {

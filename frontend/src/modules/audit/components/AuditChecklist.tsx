@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   CheckCircle,
   XCircle,
@@ -11,6 +11,9 @@ import {
   FileText,
   ClipboardList,
   Target,
+  Loader2,      // 🆕 v51.1 — spinner de upload
+  Paperclip,    // 🆕 v51.1 — ícone de anexo
+  Trash2,       // 🆕 v51.1 — ícone de remover evidência
 } from 'lucide-react';
 import {
   AuditChecklist as AuditChecklistType,
@@ -20,7 +23,7 @@ import {
 } from '../types/audit.types';
 
 // ============================================================
-// AUDIT CHECKLIST — v50.1
+// AUDIT CHECKLIST — v51.1
 // ============================================================
 //
 // Este componente agora suporta DOIS modos:
@@ -35,16 +38,21 @@ import {
 //       Bloco 1 — Contexto do Assessment (colapsável)
 //       Bloco 2 — Perguntas de auditoria (C/NC/OB/OM/NA + obs)
 //       Bloco 3 — Constatação final do controle
-//       Bloco 4 — Resumo agregado
+//       Bloco 4 — Perguntas do Assessment (formulário)
 //
 // A escolha do modo é automática: se `checklist.auditQuestions`
 // existe e tem itens, entra no MODO 2. Caso contrário, MODO 1.
 //
 // COMPATIBILIDADE DE PROPS:
 //   - `onUpdate`     — MANTIDA (só questions[])
-//   - `onUpdateFull` — NOVA, opcional; quando presente, é chamada
-//                      com o payload completo (questions +
-//                      auditQuestions + constatação final).
+//   - `onUpdateFull` — NOVA (v50.1), opcional; quando presente, é
+//                      chamada com o payload completo.
+//   - `onUploadEvidence` — 🆕 v51.1, opcional; quando presente,
+//                          habilita o botão "Anexar Evidência" em
+//                          cada pergunta de auditoria e na
+//                          constatação final.
+//   - `evidenceMap`  — 🆕 v51.1, opcional; mapa id → {filename, size}
+//                      para exibir nomes amigáveis das evidências.
 //
 // Isso garante ZERO regressão nos chamadores atuais.
 //
@@ -57,6 +65,33 @@ interface AuditUpdateFullPayload {
   finalObservation: string;
   finalEvidenceIds: string[];
   finalJustification: string;
+}
+
+// ============================================================
+// 🆕 v51.1 — CONTEXTO DO UPLOAD DE EVIDÊNCIA
+// ============================================================
+//
+// Distingue os dois casos de upload:
+//   1. Pergunta de auditoria → questionIndex é number
+//   2. Constatação final     → questionIndex é undefined
+//
+// O pai (RepAuditChecklist / RepAuditExecution) decide o que fazer
+// com esse contexto (tipicamente: passar para o backend para gravar
+// o campo `questionRef` da evidência).
+//
+// ============================================================
+
+export interface UploadEvidenceContext {
+  controlId: string;
+  /**
+   * Índice da pergunta de auditoria dentro de `auditQuestions[]`.
+   * Ausente quando o upload é da constatação final do controle.
+   */
+  questionIndex?: number;
+  /**
+   * Descrição opcional que o auditor pode querer associar à evidência.
+   */
+  description?: string;
 }
 
 interface AuditChecklistProps {
@@ -90,6 +125,40 @@ interface AuditChecklistProps {
     observations?: string;
   }>;
   controlsMap?: Map<string, { code: string; name: string }>;
+
+  // ============================================================
+  // 🆕 v51.1 — UPLOAD DE EVIDÊNCIA POR PERGUNTA
+  // ============================================================
+  //
+  // Quando `onUploadEvidence` é fornecida, o botão "Anexar Evidência"
+  // aparece em cada pergunta de auditoria (Bloco 2) e na constatação
+  // final (Bloco 3). Cada upload:
+  //
+  //   1. Chama `onUploadEvidence(file, context)`.
+  //   2. O pai faz o POST /api/internal-audit/evidence/upload.
+  //   3. O pai retorna o `evidenceId` (string).
+  //   4. O componente faz push em `evidenceIds[]` da pergunta.
+  //   5. Marca `isDirty = true` para persistir via Save.
+  //
+  // Se `onUploadEvidence` NÃO for fornecida, os botões NÃO aparecem.
+  // Isso preserva o modo somente-leitura de evidências.
+  //
+  onUploadEvidence?: (
+    file: File,
+    context: UploadEvidenceContext
+  ) => Promise<string>;
+
+  /**
+   * 🆕 v51.1 — Mapa de evidências para exibição.
+   *
+   * Chave: evidenceId (string).
+   * Valor: { filename, size } — usado para renderizar o nome
+   *        amigável do arquivo.
+   *
+   * O componente NÃO busca evidências sozinho; o pai fornece o mapa.
+   * Quando ausente, o componente exibe o ID truncado.
+   */
+  evidenceMap?: Map<string, { filename: string; size: number }>;
 }
 
 const ANSWER_OPTIONS = [
@@ -100,6 +169,34 @@ const ANSWER_OPTIONS = [
   { value: 'NA', label: 'Não Aplicável', icon: MinusCircle, color: 'text-gray-400' },
 ];
 
+// ============================================================
+// 🆕 v51.1 — REGRA DE NEGÓCIO: NC SEM EVIDÊNCIA
+// ============================================================
+//
+// ISO 19011 §6.4.7: toda constatação precisa de evidência objetiva.
+// Mitigação pragmática: se marcar NC e NÃO anexar evidência,
+// exige justificativa textual (≥ 20 caracteres) em "Observações".
+//
+// A regra é aplicada em dois momentos:
+//   - handleSave:     aviso amarelo (não bloqueia)
+//   - handleComplete: bloqueio duro (não deixa concluir)
+//
+// ============================================================
+
+const MIN_JUSTIFICATION_LENGTH = 20;
+
+function isNonConformityWithoutEvidence(
+  answer: string | undefined,
+  evidenceIds: string[] | undefined,
+  observations: string | undefined
+): boolean {
+  if (answer !== 'NC') return false;
+  const hasEvidence = Array.isArray(evidenceIds) && evidenceIds.length > 0;
+  if (hasEvidence) return false;
+  const obs = String(observations || '').trim();
+  return obs.length < MIN_JUSTIFICATION_LENGTH;
+}
+
 export function AuditChecklist({
   checklist,
   onUpdate,
@@ -109,6 +206,9 @@ export function AuditChecklist({
   isReadOnly = false,
   companyResponses = [],
   controlsMap,
+  // 🆕 v51.1
+  onUploadEvidence,
+  evidenceMap,
 }: AuditChecklistProps) {
   // ---- Estado: perguntas do Assessment (INTACTO) ----
 
@@ -140,6 +240,38 @@ export function AuditChecklist({
   const [saving, setSaving] = useState(false);
 
   // ============================================================
+  // 🆕 v51.1 — ESTADOS DE UPLOAD DE EVIDÊNCIA
+  // ============================================================
+  //
+  // Por que Set/Map?
+  //   - Set<number> para `uploadingByQuestion`: permite múltiplos
+  //     uploads simultâneos (auditor pode anexar em várias perguntas
+  //     em paralelo) sem travar a UI global.
+  //   - Map<number, string> para erros: feedback POR pergunta,
+  //     não global — auditor sabe exatamente qual falhou.
+  //   - fileInputRefs: um <input type="file"> oculto POR pergunta
+  //     para que cada botão "Anexar" abra o seletor correto.
+  //
+  // ============================================================
+
+  const [uploadingByQuestion, setUploadingByQuestion] = useState<
+    Set<number>
+  >(new Set());
+  const [uploadingFinal, setUploadingFinal] = useState(false);
+  const [uploadErrorByQuestion, setUploadErrorByQuestion] = useState<
+    Map<number, string>
+  >(new Map());
+  const [uploadErrorFinal, setUploadErrorFinal] = useState<string | null>(
+    null
+  );
+
+  // Refs dos inputs de arquivo (um por pergunta + um para a constatação final)
+  const fileInputRefs = useRef<Map<number, HTMLInputElement | null>>(
+    new Map()
+  );
+  const finalFileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // ============================================================
   // 🆕 v49.1.2 — HELPER DE EXIBIÇÃO DE CONTROLE
   // ============================================================
 
@@ -152,6 +284,39 @@ export function AuditChecklist({
     const { code, name } = entry;
     if (code && name) return `${code} - ${name}`;
     return code || name || controlId;
+  };
+
+  // ============================================================
+  // 🆕 v51.1 — HELPER DE EXIBIÇÃO DE EVIDÊNCIA
+  // ============================================================
+  //
+  // Se o pai forneceu `evidenceMap`, exibe o nome do arquivo.
+  // Caso contrário, exibe o ID truncado (fallback seguro).
+  //
+  // ============================================================
+
+  const getEvidenceLabel = (evidenceId: string): string => {
+    if (evidenceMap) {
+      const entry = evidenceMap.get(evidenceId);
+      if (entry?.filename) return entry.filename;
+    }
+    // Fallback: ID truncado para 8 caracteres + reticências
+    const id = String(evidenceId || '');
+    if (id.length <= 8) return id;
+    return `${id.slice(0, 8)}…`;
+  };
+
+  const formatFileSize = (bytes: number): string => {
+    if (!Number.isFinite(bytes) || bytes <= 0) return '0 B';
+    const units = ['B', 'KB', 'MB', 'GB'];
+    let size = bytes;
+    let unitIndex = 0;
+    while (size >= 1024 && unitIndex < units.length - 1) {
+      size /= 1024;
+      unitIndex += 1;
+    }
+    const rounded = size >= 10 ? Math.round(size) : Math.round(size * 10) / 10;
+    return `${rounded} ${units[unitIndex]}`;
   };
 
   // ============================================================
@@ -225,6 +390,13 @@ export function AuditChecklist({
     setFinalEvidenceIds(checklist.finalEvidenceIds || []);
 
     setIsDirty(false);
+
+    // 🆕 v51.1 — Limpa estados de upload ao trocar de checklist
+    // (evita que um erro de upload do controle anterior vaze)
+    setUploadingByQuestion(new Set());
+    setUploadingFinal(false);
+    setUploadErrorByQuestion(new Map());
+    setUploadErrorFinal(null);
   }, [checklist, companyResponses]);
 
   // ============================================================
@@ -259,6 +431,158 @@ export function AuditChecklist({
     setAuditQuestions(next);
     setIsDirty(true);
     setError(null);
+  };
+
+  // ============================================================
+  // 🆕 v51.1 — HANDLER: UPLOAD DE EVIDÊNCIA (PERGUNTA DE AUDITORIA)
+  // ============================================================
+  //
+  // Fluxo (Opção A — upload imediato, confirmado pelo stakeholder):
+  //
+  //   1. Abre o <input type="file"> da pergunta.
+  //   2. Ao escolher, marca `uploadingByQuestion[index] = true`.
+  //   3. Chama `onUploadEvidence(file, { controlId, questionIndex })`.
+  //   4. O pai faz POST /api/internal-audit/evidence/upload.
+  //   5. O pai retorna `evidenceId` (string).
+  //   6. Faz push em `auditQuestions[index].evidenceIds[]`.
+  //   7. Marca `isDirty = true` → o Save persiste o array atualizado.
+  //   8. Limpa o <input> para permitir re-upload do mesmo arquivo.
+  //
+  // Em caso de erro: guarda mensagem em `uploadErrorByQuestion`.
+  //
+  // ============================================================
+
+  const handleUploadEvidence = async (
+    index: number,
+    file: File
+  ): Promise<void> => {
+    if (isReadOnly || !onUploadEvidence) return;
+
+    // Marca como "uploading" para mostrar spinner
+    setUploadingByQuestion((prev) => {
+      const next = new Set(prev);
+      next.add(index);
+      return next;
+    });
+    // Limpa erro anterior desta pergunta
+    setUploadErrorByQuestion((prev) => {
+      const next = new Map(prev);
+      next.delete(index);
+      return next;
+    });
+
+    try {
+      const evidenceId = await onUploadEvidence(file, {
+        controlId: String(checklist.controlId),
+        questionIndex: index,
+      });
+
+      // Atualiza o array de evidenceIds da pergunta
+      setAuditQuestions((prev) => {
+        const next = [...prev];
+        const current = next[index];
+        if (!current) return prev;
+        const currentIds = Array.isArray(current.evidenceIds)
+          ? current.evidenceIds
+          : [];
+        next[index] = {
+          ...current,
+          evidenceIds: [...currentIds, evidenceId],
+        };
+        return next;
+      });
+
+      setIsDirty(true);
+    } catch (err) {
+      const message =
+        (err as Error)?.message || 'Falha ao anexar evidência.';
+      setUploadErrorByQuestion((prev) => {
+        const next = new Map(prev);
+        next.set(index, message);
+        return next;
+      });
+    } finally {
+      // Limpa o input para permitir o mesmo arquivo novamente
+      const inputEl = fileInputRefs.current.get(index);
+      if (inputEl) inputEl.value = '';
+
+      setUploadingByQuestion((prev) => {
+        const next = new Set(prev);
+        next.delete(index);
+        return next;
+      });
+    }
+  };
+
+  // ============================================================
+  // 🆕 v51.1 — HANDLER: UPLOAD DE EVIDÊNCIA (CONSTATAÇÃO FINAL)
+  // ============================================================
+  //
+  // Mesmo fluxo do handler acima, mas para a constatação final.
+  // `questionIndex` fica indefinido no contexto.
+  //
+  // ============================================================
+
+  const handleUploadFinalEvidence = async (file: File): Promise<void> => {
+    if (isReadOnly || !onUploadEvidence) return;
+
+    setUploadingFinal(true);
+    setUploadErrorFinal(null);
+
+    try {
+      const evidenceId = await onUploadEvidence(file, {
+        controlId: String(checklist.controlId),
+        // questionIndex ausente = constatação final
+      });
+
+      setFinalEvidenceIds((prev) => [...prev, evidenceId]);
+      setIsDirty(true);
+    } catch (err) {
+      const message =
+        (err as Error)?.message || 'Falha ao anexar evidência.';
+      setUploadErrorFinal(message);
+    } finally {
+      if (finalFileInputRef.current) finalFileInputRef.current.value = '';
+      setUploadingFinal(false);
+    }
+  };
+
+  // ============================================================
+  // 🆕 v51.1 — HANDLER: REMOVER EVIDÊNCIA
+  // ============================================================
+  //
+  // Apenas remove o ID do array local. A exclusão física do arquivo
+  // no servidor é responsabilidade do pai (endpoint separado) ou
+  // de um job de limpeza. Aqui só desvinculamos.
+  //
+  // ============================================================
+
+  const handleRemoveEvidence = (
+    index: number,
+    evidenceId: string
+  ): void => {
+    if (isReadOnly) return;
+
+    setAuditQuestions((prev) => {
+      const next = [...prev];
+      const current = next[index];
+      if (!current) return prev;
+      const currentIds = Array.isArray(current.evidenceIds)
+        ? current.evidenceIds
+        : [];
+      next[index] = {
+        ...current,
+        evidenceIds: currentIds.filter((id) => id !== evidenceId),
+      };
+      return next;
+    });
+    setIsDirty(true);
+  };
+
+  const handleRemoveFinalEvidence = (evidenceId: string): void => {
+    if (isReadOnly) return;
+    setFinalEvidenceIds((prev) => prev.filter((id) => id !== evidenceId));
+    setIsDirty(true);
   };
 
   // ---- Auto-fill de maturidade (INTACTO) ----
@@ -308,6 +632,15 @@ export function AuditChecklist({
   //
   // Isso preserva o comportamento de qualquer chamador que ainda
   // não passou a nova prop.
+  //
+  // 🆕 v51.1 — Aviso NC sem evidência:
+  //   Antes de salvar, verifica se há alguma pergunta de auditoria
+  //   marcada como NC sem evidência E sem justificativa adequada.
+  //   Se sim, define `error` com um aviso AMARELO (não bloqueia o
+  //   save — o auditor pode estar no meio do preenchimento).
+  //   O bloqueio duro fica no `handleComplete`.
+  //
+  // ============================================================
 
   const handleSave = async () => {
     if (!isDirty) return;
@@ -315,6 +648,23 @@ export function AuditChecklist({
     setError(null);
 
     try {
+      // 🆕 v51.1 — Aviso (não bloqueia) de NC sem evidência
+      const ncWithoutEvidence = auditQuestions.filter((q) =>
+        isNonConformityWithoutEvidence(
+          q.answer,
+          q.evidenceIds,
+          q.observations
+        )
+      );
+
+      if (ncWithoutEvidence.length > 0) {
+        // Não lança — apenas avisa. O auditor pode salvar parcial.
+        // O aviso visual no footer (badge amarela) já mostra o resumo.
+        console.warn(
+          `[AuditChecklist] ${ncWithoutEvidence.length} pergunta(s) NC sem evidência e sem justificativa adequada.`
+        );
+      }
+
       if (onUpdateFull) {
         await onUpdateFull({
           questions,
@@ -335,7 +685,41 @@ export function AuditChecklist({
     }
   };
 
+  // ============================================================
+  // CONCLUIR CHECKLIST
+  // ============================================================
+  //
+  // 🆕 v51.1 — Bloqueio duro:
+  //   Se qualquer pergunta de auditoria estiver NC sem evidência E
+  //   sem justificativa (≥ 20 chars), NÃO permite concluir.
+  //   Exibe mensagem clara listando o(s) número(s) da(s) pergunta(s).
+  //
+  // ============================================================
+
   const handleComplete = async () => {
+    // 🆕 v51.1 — Validação NC-sem-evidência (bloqueio duro)
+    const ncWithoutEvidenceIndexes: number[] = [];
+    auditQuestions.forEach((q, idx) => {
+      if (
+        isNonConformityWithoutEvidence(
+          q.answer,
+          q.evidenceIds,
+          q.observations
+        )
+      ) {
+        ncWithoutEvidenceIndexes.push(idx + 1);
+      }
+    });
+
+    if (ncWithoutEvidenceIndexes.length > 0) {
+      setError(
+        `Não é possível concluir: pergunta(s) ${ncWithoutEvidenceIndexes.join(
+          ', '
+        )} marcada(s) como NC sem evidência anexada e sem justificativa (mínimo ${MIN_JUSTIFICATION_LENGTH} caracteres em "Observações").`
+      );
+      return;
+    }
+
     if (isDirty) {
       await handleSave();
     }
@@ -397,6 +781,14 @@ export function AuditChecklist({
   ).length;
   const auditNotApplicable = auditQuestions.filter(
     (q) => q.answer === 'NA'
+  ).length;
+
+  // ============================================================
+  // 🆕 v51.1 — CONTADOR: NC SEM EVIDÊNCIA (para aviso no footer)
+  // ============================================================
+
+  const ncWithoutEvidenceCount = auditQuestions.filter((q) =>
+    isNonConformityWithoutEvidence(q.answer, q.evidenceIds, q.observations)
   ).length;
 
   // ============================================================
@@ -637,18 +1029,112 @@ export function AuditChecklist({
                       </div>
                     )}
 
+                    {/* ============================================================
+                        🆕 v51.1 — LISTA DE EVIDÊNCIAS ANEXADAS
+                        ============================================================
+                        Renderiza um chip por evidenceId vinculado à pergunta.
+                        Cada chip exibe o nome do arquivo (via evidenceMap) e
+                        um botão de remover (só se não for readOnly).
+                        ============================================================ */}
+
                     {question.evidenceIds &&
                       question.evidenceIds.length > 0 && (
-                        <div className="mt-2 flex items-center gap-1 text-xs text-blue-600">
-                          <Upload className="w-3 h-3" />
-                          <span>
-                            {question.evidenceIds.length} evidência
-                            {question.evidenceIds.length !== 1 ? 's' : ''}{' '}
-                            anexada
-                            {question.evidenceIds.length !== 1 ? 's' : ''}
-                          </span>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {question.evidenceIds.map((evidenceId) => {
+                            const entry = evidenceMap?.get(evidenceId);
+                            return (
+                              <div
+                                key={evidenceId}
+                                className="flex items-center gap-1 px-2 py-1 bg-blue-50 border border-blue-200 rounded-md text-xs text-blue-700"
+                              >
+                                <Paperclip className="w-3 h-3" />
+                                <span
+                                  className="max-w-[180px] truncate"
+                                  title={entry?.filename || evidenceId}
+                                >
+                                  {getEvidenceLabel(evidenceId)}
+                                </span>
+                                {entry?.size ? (
+                                  <span className="text-blue-500">
+                                    ({formatFileSize(entry.size)})
+                                  </span>
+                                ) : null}
+                                {!isReadOnly && (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      handleRemoveEvidence(index, evidenceId)
+                                    }
+                                    className="ml-1 text-blue-500 hover:text-red-600 transition-colors"
+                                    title="Remover evidência"
+                                    aria-label={`Remover evidência ${getEvidenceLabel(
+                                      evidenceId
+                                    )}`}
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
                       )}
+
+                    {/* ============================================================
+                        🆕 v51.1 — BOTÃO "ANEXAR EVIDÊNCIA" + SPINNER + ERRO
+                        ============================================================
+                        Só aparece se:
+                          - não for readOnly
+                          - `onUploadEvidence` foi fornecida pelo pai
+                        ============================================================ */}
+
+                    {!isReadOnly && onUploadEvidence && (
+                      <div className="mt-2 flex items-center gap-2">
+                        {/* Input oculto — o botão abaixo o aciona via ref */}
+                        <input
+                          ref={(el) => {
+                            if (el) fileInputRefs.current.set(index, el);
+                            else fileInputRefs.current.delete(index);
+                          }}
+                          type="file"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              void handleUploadEvidence(index, file);
+                            }
+                          }}
+                          aria-label={`Anexar evidência à pergunta ${index + 1}`}
+                        />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            fileInputRefs.current.get(index)?.click()
+                          }
+                          disabled={uploadingByQuestion.has(index)}
+                          className="flex items-center gap-1 px-2.5 py-1 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-md text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Anexar evidência a esta pergunta"
+                        >
+                          {uploadingByQuestion.has(index) ? (
+                            <>
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              Enviando...
+                            </>
+                          ) : (
+                            <>
+                              <Paperclip className="w-3.5 h-3.5" />
+                              Anexar Evidência
+                            </>
+                          )}
+                        </button>
+                        {uploadErrorByQuestion.get(index) && (
+                          <span className="text-xs text-red-600 flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3" />
+                            {uploadErrorByQuestion.get(index)}
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex flex-col gap-2 min-w-[150px]">
@@ -696,6 +1182,22 @@ export function AuditChecklist({
                         className="w-full px-3 py-1 text-xs border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                       />
                     )}
+
+                    {/* 🆕 v51.1 — Aviso visual quando NC sem evidência */}
+                    {!isReadOnly &&
+                      question.answer === 'NC' &&
+                      (!question.evidenceIds ||
+                        question.evidenceIds.length === 0) &&
+                      String(question.observations || '').trim().length <
+                        MIN_JUSTIFICATION_LENGTH && (
+                        <div className="flex items-start gap-1 px-2 py-1 bg-amber-50 border border-amber-200 rounded-md text-xs text-amber-700">
+                          <AlertCircle className="w-3 h-3 mt-0.5 shrink-0" />
+                          <span>
+                            NC sem evidência: justifique em Observações (mín.{' '}
+                            {MIN_JUSTIFICATION_LENGTH} caracteres).
+                          </span>
+                        </div>
+                      )}
                   </div>
                 </div>
               </div>
@@ -792,6 +1294,104 @@ export function AuditChecklist({
                   placeholder="Justificativa caso não haja evidência anexada..."
                   className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:bg-gray-100"
                 />
+              </div>
+
+              {/* ============================================================
+                  🆕 v51.1 — EVIDÊNCIAS DA CONSTATAÇÃO FINAL
+                  ============================================================ */}
+
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  Evidências anexadas
+                </label>
+
+                {finalEvidenceIds.length > 0 ? (
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {finalEvidenceIds.map((evidenceId) => {
+                      const entry = evidenceMap?.get(evidenceId);
+                      return (
+                        <div
+                          key={evidenceId}
+                          className="flex items-center gap-1 px-2 py-1 bg-blue-50 border border-blue-200 rounded-md text-xs text-blue-700"
+                        >
+                          <Paperclip className="w-3 h-3" />
+                          <span
+                            className="max-w-[180px] truncate"
+                            title={entry?.filename || evidenceId}
+                          >
+                            {getEvidenceLabel(evidenceId)}
+                          </span>
+                          {entry?.size ? (
+                            <span className="text-blue-500">
+                              ({formatFileSize(entry.size)})
+                            </span>
+                          ) : null}
+                          {!isReadOnly && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleRemoveFinalEvidence(evidenceId)
+                              }
+                              className="ml-1 text-blue-500 hover:text-red-600 transition-colors"
+                              title="Remover evidência"
+                              aria-label={`Remover evidência ${getEvidenceLabel(
+                                evidenceId
+                              )}`}
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-400 italic mb-2">
+                    Nenhuma evidência anexada.
+                  </p>
+                )}
+
+                {!isReadOnly && onUploadEvidence && (
+                  <div className="flex items-center gap-2">
+                    <input
+                      ref={finalFileInputRef}
+                      type="file"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          void handleUploadFinalEvidence(file);
+                        }
+                      }}
+                      aria-label="Anexar evidência à constatação final"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => finalFileInputRef.current?.click()}
+                      disabled={uploadingFinal}
+                      className="flex items-center gap-1 px-2.5 py-1 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-md text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="Anexar evidência à constatação final"
+                    >
+                      {uploadingFinal ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          Enviando...
+                        </>
+                      ) : (
+                        <>
+                          <Paperclip className="w-3.5 h-3.5" />
+                          Anexar Evidência
+                        </>
+                      )}
+                    </button>
+                    {uploadErrorFinal && (
+                      <span className="text-xs text-red-600 flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3" />
+                        {uploadErrorFinal}
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -906,7 +1506,7 @@ export function AuditChecklist({
       </div>
 
       {/* ============================================================
-          FOOTER (INTACTO)
+          FOOTER (INTACTO + aviso NC sem evidência)
           ============================================================ */}
 
       <div className="p-4 border-t border-gray-200 bg-gray-50">
@@ -917,6 +1517,26 @@ export function AuditChecklist({
               {error}
             </div>
           )}
+
+          {/* ============================================================
+              🆕 v51.1 — AVISO AMARELO: NC SEM EVIDÊNCIA (não bloqueia save)
+              ============================================================
+              Mostra quantas perguntas NC estão sem evidência e sem
+              justificativa adequada. Só aparece quando há pelo menos 1.
+              ============================================================ */}
+
+          {!error && ncWithoutEvidenceCount > 0 && !isReadOnly && (
+            <div className="flex items-center gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>
+                {ncWithoutEvidenceCount} pergunta
+                {ncWithoutEvidenceCount !== 1 ? 's' : ''} NC sem evidência
+                anexada. Anexe uma evidência ou descreva a justificativa (mín.{' '}
+                {MIN_JUSTIFICATION_LENGTH} caracteres) para poder concluir.
+              </span>
+            </div>
+          )}
+
           <div className="flex flex-wrap gap-2 ml-auto">
             {isDirty && !isReadOnly && (
               <button
@@ -949,6 +1569,8 @@ export function AuditChecklist({
                       ? answeredAuditQuestions < totalAuditQuestions
                       : answeredQuestions < totalQuestions)
                       ? 'Responda todas as perguntas antes de concluir'
+                      : ncWithoutEvidenceCount > 0
+                      ? 'Resolva as NC sem evidência antes de concluir'
                       : ''
                   }
                 >

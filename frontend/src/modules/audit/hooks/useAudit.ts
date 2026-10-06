@@ -588,6 +588,21 @@ export function useEvidenceByPlan(planId: string) {
   });
 }
 
+/**
+ * Hook de upload de evidência.
+ *
+ * 🆕 v51.1 — Aceita `questionRef` OPCIONAL para vincular a
+ * evidência a uma pergunta específica do checklist:
+ *   - questionIndex presente → pergunta de auditoria.
+ *   - questionIndex ausente  → constatação final do controle.
+ *
+ * O `questionRef` é repassado para `auditService.uploadEvidence()`,
+ * que o serializa como JSON string no FormData.
+ *
+ * COMPATIBILIDADE:
+ *   Chamadas antigas (sem `questionRef`) continuam funcionando
+ *   exatamente como antes.
+ */
 export function useUploadEvidence() {
   const queryClient = useQueryClient();
 
@@ -597,13 +612,22 @@ export function useUploadEvidence() {
       file,
       findingId,
       description,
+      questionRef,
     }: {
       auditPlanId: string;
       file: File;
       findingId?: string;
       description?: string;
+      // 🆕 v51.1 — Vínculo opcional com pergunta do checklist
+      questionRef?: { controlId: string; questionIndex?: number };
     }) =>
-      auditService.uploadEvidence(auditPlanId, file, findingId, description),
+      auditService.uploadEvidence(
+        auditPlanId,
+        file,
+        findingId,
+        description,
+        questionRef
+      ),
 
     onSuccess: (_, { auditPlanId }) =>
       queryClient.invalidateQueries({
