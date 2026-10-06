@@ -98,6 +98,24 @@ export function RepAuditDashboard() {
 
       {/* Cards de Navegação Rápida */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mb-8">
+        {/* 🆕 NOVO (v51.2) — Card Dashboard de Auditoria */}
+        <div
+          onClick={() => navigate('/rep/audit/dashboard-completo')}
+          className="bg-white border-2 border-sky-300 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-medium text-sky-600">Visualizar</p>
+              <p className="text-sm font-bold text-sky-900">Dashboard</p>
+            </div>
+            <div className="p-2 bg-sky-100 rounded-full">
+              <BarChart3 className="w-5 h-5 text-sky-600" />
+            </div>
+          </div>
+          <ChevronRight className="w-4 h-4 text-sky-400 mt-2" />
+          <p className="text-xs text-gray-400 mt-1">KPIs e gráficos de auditoria</p>
+        </div>
+
         {/* Planos */}
         <div
           onClick={() => navigate('/rep/audit/plans')}
@@ -311,7 +329,7 @@ export function RepAuditDashboard() {
           )}
         </div>
 
-        {/* 🆕 Relatório de Auditoria */}
+        {/* Relatório de Auditoria */}
         <div
           onClick={() => {
             if (firstPlanId) {
