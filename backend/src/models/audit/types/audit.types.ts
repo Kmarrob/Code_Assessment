@@ -514,6 +514,43 @@ export interface IAuditFinding {
 // ============================================================
 // TIPOS — EVIDÊNCIA DE AUDITORIA
 // ============================================================
+//
+// 🆕 v51.1 — CAMPO `questionRef` (OPCIONAL)
+// ------------------------------------------
+// MOTIVO:
+//   A evidência pode agora estar vinculada a uma pergunta
+//   específica do checklist (pergunta de auditoria OU constatação
+//   final do controle). Isso permite consulta reversa futura
+//   ("quais evidências pertencem a esta pergunta?") sem depender
+//   do array `evidenceIds[]` do checklist.
+//
+// COMPATIBILIDADE:
+//   - Campo OPCIONAL: evidências antigas (sem `questionRef`)
+//     continuam válidas.
+//   - Evidências vinculadas a NC (`findingId`) NÃO usam este
+//     campo. Os dois vínculos são mutuamente exclusivos na
+//     prática: a evidência é ou de uma NC ou de uma pergunta.
+//
+// DISTINÇÃO PERGUNTA vs CONSTATAÇÃO FINAL:
+//   - `questionIndex` é number  → pergunta de auditoria (índice
+//                                  zero-based em `auditQuestions[]`).
+//   - `questionIndex` undefined → constatação final do controle.
+//
+// ============================================================
+
+export interface IAuditEvidenceQuestionRef {
+  /** ID do controle auditado (ex.: "5.1", "8.34"). */
+  controlId: string;
+
+  /**
+   * Índice zero-based da pergunta de auditoria dentro de
+   * `auditQuestions[]` do checklist.
+   *
+   * AUSENTE quando a evidência é da constatação final do
+   * controle (não de uma pergunta específica).
+   */
+  questionIndex?: number;
+}
 
 export interface IAuditEvidence {
   _id: string;
@@ -521,6 +558,9 @@ export interface IAuditEvidence {
 
   auditPlanId: string;
   findingId?: string;
+
+  // 🆕 v51.1 — Vínculo opcional com pergunta do checklist
+  questionRef?: IAuditEvidenceQuestionRef;
 
   filename: string;
   filepath: string;

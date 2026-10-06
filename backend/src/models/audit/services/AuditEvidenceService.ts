@@ -1,10 +1,23 @@
 import { AuditEvidence } from '../models/AuditEvidence';
-import { IAuditEvidence } from '../types/audit.types';
+import { IAuditEvidence, IAuditEvidenceQuestionRef } from '../types/audit.types';
 
 export class AuditEvidenceService {
   // ============================================================
   // CRIAR EVIDÊNCIA
   // ============================================================
+  //
+  // 🆕 v51.1 — CAMPO `questionRef` (OPCIONAL)
+  // ------------------------------------------
+  // Permite vincular a evidência a uma pergunta específica
+  // do checklist:
+  //   - questionIndex presente → pergunta de auditoria.
+  //   - questionIndex ausente  → constatação final do controle.
+  //
+  // Se não for enviado, a evidência fica apenas vinculada ao
+  // plano (comportamento antigo, 100% compatível).
+  //
+  // ============================================================
+
   async create(
     data: {
       auditPlanId: string;
@@ -14,6 +27,8 @@ export class AuditEvidenceService {
       mimeType: string;
       size: number;
       description?: string;
+      // 🆕 v51.1 — Vínculo opcional com pergunta do checklist
+      questionRef?: IAuditEvidenceQuestionRef;
     },
     uploadedBy: string
   ): Promise<IAuditEvidence> {

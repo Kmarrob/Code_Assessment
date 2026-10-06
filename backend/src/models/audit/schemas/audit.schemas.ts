@@ -294,11 +294,33 @@ export const updateAuditReportSchema = createAuditReportSchema.partial();
 // ============================================================
 // EVIDÊNCIA
 // ============================================================
+//
+// 🆕 v51.1 — CAMPO `questionRef` (OPCIONAL)
+// ------------------------------------------
+// Aceita um objeto `{ controlId, questionIndex? }` que vincula
+// a evidência a uma pergunta específica do checklist.
+//
+// - `questionIndex` presente → pergunta de auditoria.
+// - `questionIndex` ausente  → constatação final do controle.
+//
+// Se `questionRef` NÃO for enviado, a evidência fica apenas
+// vinculada ao plano (comportamento antigo, compatível).
+//
+// ============================================================
 
 export const uploadEvidenceSchema = z.object({
   auditPlanId: z.string(),
   findingId: z.string().optional(),
   description: z.string().optional(),
+
+  // 🆕 v51.1 — Vínculo opcional com pergunta do checklist
+  questionRef: z
+    .object({
+      controlId: z.string().min(1, 'ID do controle é obrigatório'),
+      // AUSENTE = constatação final; presente = pergunta de auditoria
+      questionIndex: z.number().int().min(0).optional(),
+    })
+    .optional(),
 });
 
 // ============================================================
