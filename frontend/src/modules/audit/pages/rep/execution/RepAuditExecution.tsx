@@ -24,7 +24,11 @@ import {
   useStartPlan,
   useCompletePlan,
 } from '../../../hooks/useAudit';
-import { AuditChecklistItem } from '../../../types/audit.types';
+import {
+  AuditChecklistItem,
+  AuditChecklistAuditQuestion,
+  AuditChecklistAnswer,
+} from '../../../types/audit.types';
 import { AuditChecklist } from '../../../components/AuditChecklist';
 import api from '@/services/api';
 
@@ -131,6 +135,33 @@ export function RepAuditExecution() {
     } catch (error) {
       setActionError(error instanceof Error ? error.message : 'Não foi possível executar a operação.');
     }
+  };
+
+  // ============================================================
+  // 🆕 v51.1 — HANDLER COMPLETO
+  // ============================================================
+  //
+  // Envia o payload inteiro (questions + auditQuestions +
+  // constatação final) via onUpdateFull.
+  //
+  // MANTÉM compatibilidade com o handler antigo (onUpdate) para
+  // o caso de o componente cair no modo legado.
+
+  const handleUpdateFull = async (payload: {
+    questions: AuditChecklistItem[];
+    auditQuestions: AuditChecklistAuditQuestion[];
+    finalConclusion: AuditChecklistAnswer;
+    finalObservation: string;
+    finalEvidenceIds: string[];
+    finalJustification: string;
+  }) => {
+    if (!selectedChecklist) return;
+
+    await updateChecklist.mutateAsync({
+      id: selectedChecklist._id,
+      planId: effectivePlanId,
+      payload,
+    } as any);
   };
 
   if (isLoading) {
@@ -244,11 +275,15 @@ export function RepAuditExecution() {
         <div className="lg:col-span-2">
           {selectedChecklist ? (
             <AuditChecklist
+              /* 🆕 v51.1 — key força remontagem ao trocar de controle */
+              key={selectedChecklist._id}
               checklist={selectedChecklist}
               isSubmitting={completeChecklist.isPending}
               onUpdate={async (questions: AuditChecklistItem[]) => {
                 await updateChecklist.mutateAsync({ id: selectedChecklist._id, planId: effectivePlanId, questions });
               }}
+              /* 🆕 v51.1 — envia o payload completo (auditQuestions + constatação final) */
+              onUpdateFull={handleUpdateFull}
               onComplete={async () => {
                 await completeChecklist.mutateAsync({ id: selectedChecklist._id, planId: effectivePlanId });
               }}
