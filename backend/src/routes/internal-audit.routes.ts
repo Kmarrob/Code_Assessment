@@ -1,6 +1,28 @@
 import { Router } from 'express';
 import { authenticate, authorize } from '../middleware/auth';
 import { UserRole } from '../types/index.js';
+
+// ============================================================
+// 🆕 v51.1 — UPLOADER DE EVIDÊNCIAS
+// ============================================================
+//
+// MOTIVO:
+//   A rota POST /evidence/upload não tinha middleware Multer.
+//   Sem ele, o multipart/form-data não era parseado, `req.file`
+//   ficava undefined e `req.body.auditPlanId` nunca chegava ao
+//   controller, causando o erro "ID do plano é obrigatório".
+//
+// O uploader `uploadEvidence` e o handler de erros
+// `handleEvidenceMulterError` vivem em config/multer.ts,
+// junto com os uploaders existentes (logo, favicon) — os quais
+// permanecem INTACTOS.
+//
+// ============================================================
+import {
+  uploadEvidence,
+  handleEvidenceMulterError,
+} from '../config/multer';
+
 import {
   auditPlanController,
   auditChecklistController,
@@ -259,7 +281,40 @@ router.get('/findings/plan/:auditPlanId/stats', auditFindingController.getStats)
 // ============================================================
 // ROTAS DE EVIDÊNCIAS
 // ============================================================
-router.post('/evidence/upload', auditEvidenceController.upload);
+//
+// 🆕 v51.1 — CORREÇÃO CRÍTICA:
+// ----------------------------------------------------------------
+// A rota POST /evidence/upload NÃO tinha Multer aplicado. Sem
+// ele, o `multipart/form-data` não era parseado, `req.file`
+// ficava `undefined` e `req.body.auditPlanId` nunca chegava ao
+// controller — gerando o erro "ID do plano é obrigatório".
+//
+// A CORREÇÃO:
+//   Aplicar `uploadEvidence.single('file')` como middleware
+//   ANTES do controller. O middleware:
+//     1. Parseia o multipart/form-data.
+//     2. Popula `req.file` com o arquivo enviado (campo `file`).
+//     3. Popula `req.body` com os demais campos (auditPlanId,
+//        findingId, description, questionRef).
+//     4. Move o arquivo para `uploads/evidence/<auditPlanId>/`.
+//
+// TRATAMENTO DE ERRO:
+//   `handleEvidenceMulterError` intercepta erros do Multer
+//   (limite de tamanho, campo inesperado) e responde 400 com
+//   JSON estruturado, ANTES de chegar ao controller.
+//
+// IMPACTO:
+//   Zero regressão. A rota continua com a mesma URL, mesmo
+//   controller, mesma resposta em caso de sucesso. A ÚNICA
+//   mudança é que agora o multipart é parseado corretamente.
+//
+// ============================================================
+router.post(
+  '/evidence/upload',
+  uploadEvidence.single('file'),
+  handleEvidenceMulterError,
+  auditEvidenceController.upload
+);
 router.get('/evidence/plan/:auditPlanId', auditEvidenceController.findByPlanId);
 router.get('/evidence/finding/:findingId', auditEvidenceController.findByFindingId);
 router.get('/evidence/:id', auditEvidenceController.findById);
