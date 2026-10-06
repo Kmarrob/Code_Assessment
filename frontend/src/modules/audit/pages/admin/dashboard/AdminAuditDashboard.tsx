@@ -38,6 +38,8 @@ import {
 // 🔧 CORREÇÃO: Caminho corrigido de '../../hooks/useAudit' para '../../../hooks/useAudit'
 import { usePlans, usePlanStats, useDashboardStats } from '../../../hooks/useAudit';
 import { AuditPlan } from '../../../types/audit.types';
+// 🆕 v51.3 — Hook de autenticação para verificar role
+import { useAuth } from '../../../../../contexts/AuthContext.js';
 
 const STATUS_COLORS: Record<string, string> = {
   draft: 'bg-gray-100 text-gray-600',
@@ -83,11 +85,16 @@ const DOMAIN_COLORS = {
 
 export function AdminAuditDashboard() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { data: plans = [], isLoading: isLoadingPlans } = usePlans();
   const { data: stats, isLoading: isLoadingStats } = usePlanStats();
 
   // 🆕 v50.2.15 — Estatísticas agregadas do dashboard
   const { data: dashboard, isLoading: isLoadingDashboard } = useDashboardStats();
+
+  // 🆕 v51.3 — Verificar se o usuário é ADMIN
+  // (os botões de gestão de perguntas só aparecem para ADMIN)
+  const isAdmin = user?.role === 'admin';
 
   // Estatísticas para exibição
   const totalPlans = stats?.totalPlans || 0;
@@ -186,22 +193,28 @@ export function AdminAuditDashboard() {
         </div>
         <div className="flex flex-wrap gap-3 mt-4 md:mt-0">
           {/* 🆕 NOVO (v47.0): Botão Gerenciar Perguntas (CLÁUSULAS 4-10) */}
-          <button
-            onClick={() => navigate('/admin/audit/questions')}
-            className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-          >
-            <ListChecks className="w-4 h-4" />
-            Gerenciar Perguntas
-          </button>
+          {/* 🆕 v51.3 — Visível apenas para ADMIN */}
+          {isAdmin && (
+            <button
+              onClick={() => navigate('/admin/audit/questions')}
+              className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+            >
+              <ListChecks className="w-4 h-4" />
+              Gerenciar Perguntas
+            </button>
+          )}
 
           {/* 🆕 NOVO (v50.1): Botão Perguntas de Controles (ANEXO A) */}
-          <button
-            onClick={() => navigate('/admin/audit/control-questions')}
-            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-          >
-            <ShieldCheck className="w-4 h-4" />
-            Perguntas de Controles
-          </button>
+          {/* 🆕 v51.3 — Visível apenas para ADMIN */}
+          {isAdmin && (
+            <button
+              onClick={() => navigate('/admin/audit/control-questions')}
+              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+            >
+              <ShieldCheck className="w-4 h-4" />
+              Perguntas de Controles
+            </button>
+          )}
 
           <button
             onClick={() => navigate('/admin/audit/reports')}
