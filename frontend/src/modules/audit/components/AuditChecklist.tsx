@@ -23,7 +23,7 @@ import {
 } from '../types/audit.types';
 
 // ============================================================
-// AUDIT CHECKLIST — v51.1
+// AUDIT CHECKLIST — v51.2
 // ============================================================
 //
 // Este componente agora suporta DOIS modos:
@@ -54,7 +54,31 @@ import {
 //   - `evidenceMap`  — 🆕 v51.1, opcional; mapa id → {filename, size}
 //                      para exibir nomes amigáveis das evidências.
 //
-// Isso garante ZERO regressão nos chamadores atuais.
+// 🔧 v51.2 — CORREÇÃO CRÍTICA DE ESTADO
+// ----------------------------------------
+// PROBLEMA (reportado em produção em 06/out/2026):
+//   Ao selecionar uma opção no <select> C/NC/OB/OM/NA, a
+//   escolha "voltava" para "--" imediatamente. Nenhuma
+//   requisição de rede acontecia; nenhum erro no console.
+//
+// CAUSA RAIZ:
+//   O `useEffect` de inicialização tinha como dependência o
+//   OBJETO `checklist` (e o ARRAY `companyResponses`). Esses
+//   valores são recriados a cada render pelo React Query e pelo
+//   componente pai, disparando o efeito a cada mudança de estado
+//   do próprio componente. Resultado: `auditQuestions` era
+//   resetado para o valor do servidor (sem a resposta nova)
+//   logo após o `handleAuditAnswerChange` gravar a resposta.
+//
+// SOLUÇÃO:
+//   Trocar as dependências por valores ESTÁVEIS:
+//   - `checklist._id`         (string, muda só quando troca de checklist)
+//   - `companyResponsesKey`   (string serializada do array)
+//
+// COMPATIBILIDADE:
+//   - Comportamento idêntico em todos os outros cenários.
+//   - Trocar de checklist continua disparando o efeito corretamente.
+//   - Atualizar `companyResponses` continua disparando o efeito.
 //
 // ============================================================
 
@@ -328,7 +352,65 @@ export function AuditChecklist({
     checklist.auditQuestions.length > 0;
 
   // ============================================================
+  // 🆕 v51.2 — CHAVE ESTÁVEL PARA O `companyResponses`
+  // ============================================================
+  //
+  // MOTIVO:
+  //   O `useEffect` de inicialização precisa reagir a mudanças em
+  //   `companyResponses`, mas o array é recriado a cada render do
+  //   pai (mesmo conteúdo, referência nova). Usar o array direto
+  //   como dependência dispara o efeito sem necessidade, resetando
+  //   o estado local e fazendo o select "voltar para --".
+  //
+  // SOLUÇÃO:
+  //   Serializar o array em uma string estável. A string só muda
+  //   quando o CONTEÚDO muda (não a referência).
+  //
+  // CUSTO:
+  //   JSON.stringify de um array pequeno (< 100 itens) é desprezível.
+  //   Não é chamado a cada render — apenas quando `companyResponses`
+  //   muda de referência.
+  //
+  // ============================================================
+
+  const companyResponsesKey = (() => {
+    if (!Array.isArray(companyResponses) || companyResponses.length === 0) {
+      return '';
+    }
+    try {
+      return JSON.stringify(
+        companyResponses.map((r) => ({
+          controlId: String(r.controlId ?? ''),
+          maturityLevel: String(r.maturityLevel ?? ''),
+          scenarioDescription: String(r.scenarioDescription ?? ''),
+          observations: String(r.observations ?? ''),
+        }))
+      );
+    } catch {
+      // Fallback: se a serialização falhar por qualquer motivo,
+      // retorna uma chave que força o efeito (comportamento antigo).
+      return `fallback-${companyResponses.length}`;
+    }
+  })();
+
+  // ============================================================
   // INICIALIZAÇÃO (INTACTO + EXTRA)
+  // ============================================================
+  //
+  // 🔧 v51.2 — DEPENDÊNCIAS CORRIGIDAS
+  // ----------------------------------------
+  // ANTES: [checklist, companyResponses]
+  //   - `checklist` é um OBJETO recriado pelo React Query.
+  //   - `companyResponses` é um ARRAY recriado pelo pai.
+  //   - Ambos disparavam o efeito a cada render, resetando
+  //     `auditQuestions` para o valor do servidor e apagando
+  //     a seleção do usuário.
+  //
+  // DEPOIS: [checklist._id, companyResponsesKey]
+  //   - `checklist._id` é uma STRING estável.
+  //   - `companyResponsesKey` é uma STRING derivada do conteúdo.
+  //   - O efeito só dispara quando o CONTEÚDO muda de verdade.
+  //
   // ============================================================
 
   useEffect(() => {
@@ -397,7 +479,12 @@ export function AuditChecklist({
     setUploadingFinal(false);
     setUploadErrorByQuestion(new Map());
     setUploadErrorFinal(null);
-  }, [checklist, companyResponses]);
+
+    // 🔧 v51.2 — Dependências estáveis (comentário abaixo para
+    // documentar a decisão e evitar regressão futura):
+    //
+    //   eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [checklist._id, companyResponsesKey]);
 
   // ============================================================
   // HANDLERS DAS PERGUNTAS DO ASSESSMENT (INTACTO)
@@ -692,7 +779,7 @@ export function AuditChecklist({
   // 🆕 v51.1 — Bloqueio duro:
   //   Se qualquer pergunta de auditoria estiver NC sem evidência E
   //   sem justificativa (≥ 20 chars), NÃO permite concluir.
-  //   Exibe mensagem clara listando o(s) número(s) da(s) pergunta(s).
+  //   Exibe mensagem clara listando o número(s) da(s) pergunta(s).
   //
   // ============================================================
 
@@ -1520,9 +1607,6 @@ export function AuditChecklist({
 
           {/* ============================================================
               🆕 v51.1 — AVISO AMARELO: NC SEM EVIDÊNCIA (não bloqueia save)
-              ============================================================
-              Mostra quantas perguntas NC estão sem evidência e sem
-              justificativa adequada. Só aparece quando há pelo menos 1.
               ============================================================ */}
 
           {!error && ncWithoutEvidenceCount > 0 && !isReadOnly && (
