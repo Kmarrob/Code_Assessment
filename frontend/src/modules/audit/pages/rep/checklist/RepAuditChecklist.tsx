@@ -31,7 +31,7 @@ import { toast } from 'react-hot-toast';
 import api from '@/services/api';
 
 // ============================================================
-// RepAuditChecklist — v51.4 (Página Viva)
+// RepAuditChecklist — v51.5 (Página Viva)
 // ============================================================
 //
 // 🔧 v51.4 — REESCRITA COMPLETA DA TELA
@@ -57,6 +57,12 @@ import api from '@/services/api';
 //   - Todas as props e hooks do v51.1 foram mantidos.
 //   - Nenhuma funcionalidade existente foi removida.
 //   - Nenhuma rota mudou.
+//
+// 🆕 v51.5 — CLIQUE NO CHIP DE EVIDÊNCIA
+// ----------------------------------------------------------------
+//   Adiciona o callback `onOpenEvidence` que abre o arquivo da
+//   evidência em nova aba ao clicar no chip (via endpoint
+//   GET /api/internal-audit/evidence/:id/file).
 //
 // ============================================================
 
@@ -470,6 +476,30 @@ export function RepAuditChecklist() {
     return evidenceId;
   };
 
+  /**
+   * 🆕 v51.5 — Callback de abertura de evidência.
+   *
+   * Abre o arquivo em nova aba via GET /api/internal-audit/evidence/:id/file.
+   *
+   * O backend serve o arquivo com Content-Disposition inline,
+   * então o navegador exibe em vez de baixar (PDFs e imagens).
+   *
+   * Nota: usa a URL base da API (via variável de ambiente) para
+   * funcionar tanto em produção (Render) quanto local.
+   */
+  const handleOpenEvidence = (evidenceId: string): void => {
+    if (!evidenceId) return;
+
+    const apiBase =
+      (import.meta as any).env?.VITE_API_URL
+        ? `${(import.meta as any).env.VITE_API_URL}/api`
+        : 'https://code-assessment-898z.onrender.com/api';
+
+    const url = `${apiBase}/internal-audit/evidence/${evidenceId}/file`;
+
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
   // ============================================================
   // RENDER — LOADING
   // ============================================================
@@ -550,10 +580,6 @@ export function RepAuditChecklist() {
   // ============================================================
   // RENDER PRINCIPAL
   // ============================================================
-
-  const expandedChecklist = expandedChecklistId
-    ? allChecklists.find((c) => c._id === expandedChecklistId) || null
-    : null;
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-6">
@@ -864,6 +890,8 @@ export function RepAuditChecklist() {
                                   controlsMap={controlsMap}
                                   onUploadEvidence={handleUploadEvidence}
                                   evidenceMap={evidenceMap}
+                                  /* 🆕 v51.5 — Clique no chip de evidência abre o arquivo em nova aba */
+                                  onOpenEvidence={handleOpenEvidence}
                                 />
                               </div>
                             )}

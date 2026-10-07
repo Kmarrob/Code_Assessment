@@ -215,6 +215,31 @@ export function RepAuditExecution() {
     return evidenceId;
   };
 
+  /**
+   * 🆕 v51.5 — Callback de abertura de evidência.
+   *
+   * Recebe o evidenceId do <AuditChecklist /> e abre o arquivo
+   * em nova aba via GET /api/internal-audit/evidence/:id/file.
+   *
+   * O backend serve o arquivo com Content-Disposition inline,
+   * então o navegador exibe em vez de baixar (para PDFs e imagens).
+   *
+   * Nota: usa a URL base da API (via variável de ambiente) para
+   * funcionar tanto em produção (Render) quanto local.
+   */
+  const handleOpenEvidence = (evidenceId: string): void => {
+    if (!evidenceId) return;
+
+    const apiBase =
+      (import.meta as any).env?.VITE_API_URL
+        ? `${(import.meta as any).env.VITE_API_URL}/api`
+        : 'https://code-assessment-898z.onrender.com/api';
+
+    const url = `${apiBase}/internal-audit/evidence/${evidenceId}/file`;
+
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
   useEffect(() => {
     if (!selectedControl && checklists.length > 0) {
       setSelectedControl(checklists[0].controlId);
@@ -392,6 +417,8 @@ export function RepAuditExecution() {
               onUploadEvidence={handleUploadEvidence}
               /* 🆕 v51.1 — Mapa id → {filename, size} para exibição amigável */
               evidenceMap={evidenceMap}
+              /* 🆕 v51.5 — Clique no chip de evidência abre o arquivo em nova aba */
+              onOpenEvidence={handleOpenEvidence}
             />
           ) : (
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">

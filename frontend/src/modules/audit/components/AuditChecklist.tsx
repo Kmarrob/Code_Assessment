@@ -14,6 +14,7 @@ import {
   Loader2,      // 🆕 v51.1 — spinner de upload
   Paperclip,    // 🆕 v51.1 — ícone de anexo
   Trash2,       // 🆕 v51.1 — ícone de remover evidência
+  ExternalLink, // 🆕 v51.5 — ícone para abrir evidência
 } from 'lucide-react';
 import {
   AuditChecklist as AuditChecklistType,
@@ -23,7 +24,7 @@ import {
 } from '../types/audit.types';
 
 // ============================================================
-// AUDIT CHECKLIST — v51.2
+// AUDIT CHECKLIST — v51.5
 // ============================================================
 //
 // Este componente agora suporta DOIS modos:
@@ -53,6 +54,9 @@ import {
 //                          constatação final.
 //   - `evidenceMap`  — 🆕 v51.1, opcional; mapa id → {filename, size}
 //                      para exibir nomes amigáveis das evidências.
+//   - `onOpenEvidence` — 🆕 v51.5, opcional; quando presente,
+//                        clicar no chip de evidência abre o arquivo
+//                        em nova aba (via window.open).
 //
 // 🔧 v51.2 — CORREÇÃO CRÍTICA DE ESTADO
 // ----------------------------------------
@@ -79,6 +83,24 @@ import {
 //   - Comportamento idêntico em todos os outros cenários.
 //   - Trocar de checklist continua disparando o efeito corretamente.
 //   - Atualizar `companyResponses` continua disparando o efeito.
+//
+// 🔧 v51.5 — CLIQUE NO CHIP DE EVIDÊNCIA
+// ----------------------------------------
+// PROBLEMA (reportado em produção em 07/out/2026):
+//   O chip da evidência exibia o nome do arquivo, mas clicar
+//   nele não fazia nada. Não havia forma de abrir/visualizar
+//   o arquivo anexado.
+//
+// SOLUÇÃO:
+//   Adicionado o callback opcional `onOpenEvidence` que o pai
+//   fornece. Quando presente, o chip é clicável e dispara esse
+//   callback com o evidenceId. O pai decide como abrir
+//   (tipicamente window.open numa rota /evidence/:id/file).
+//
+// COMPATIBILIDADE:
+//   - Quando o pai NÃO passa `onOpenEvidence`, o chip fica
+//     estático (mesmo comportamento anterior).
+//   - O botão de remover continua funcionando separadamente.
 //
 // ============================================================
 
@@ -183,6 +205,17 @@ interface AuditChecklistProps {
    * Quando ausente, o componente exibe o ID truncado.
    */
   evidenceMap?: Map<string, { filename: string; size: number }>;
+
+  /**
+   * 🆕 v51.5 — Abre uma evidência existente.
+   *
+   * Quando fornecida, clicar num chip de evidência chama este
+   * callback com o evidenceId. O pai decide como abrir (tipicamente
+   * window.open numa rota /evidence/:id/file).
+   *
+   * Quando ausente, o chip mostra um cursor default e não é clicável.
+   */
+  onOpenEvidence?: (evidenceId: string) => void;
 }
 
 const ANSWER_OPTIONS = [
@@ -233,6 +266,8 @@ export function AuditChecklist({
   // 🆕 v51.1
   onUploadEvidence,
   evidenceMap,
+  // 🆕 v51.5
+  onOpenEvidence,
 }: AuditChecklistProps) {
   // ---- Estado: perguntas do Assessment (INTACTO) ----
 
@@ -670,6 +705,20 @@ export function AuditChecklist({
     if (isReadOnly) return;
     setFinalEvidenceIds((prev) => prev.filter((id) => id !== evidenceId));
     setIsDirty(true);
+  };
+
+  // ============================================================
+  // 🆕 v51.5 — HANDLER: ABRIR EVIDÊNCIA
+  // ============================================================
+  //
+  // Delega para o pai via `onOpenEvidence`. Se o pai não forneceu
+  // o callback, não faz nada (o chip fica estático).
+  //
+  // ============================================================
+
+  const handleOpenEvidence = (evidenceId: string): void => {
+    if (!onOpenEvidence) return;
+    onOpenEvidence(evidenceId);
   };
 
   // ---- Auto-fill de maturidade (INTACTO) ----
@@ -1118,6 +1167,7 @@ export function AuditChecklist({
 
                     {/* ============================================================
                         🆕 v51.1 — LISTA DE EVIDÊNCIAS ANEXADAS
+                        🔧 v51.5 — chip clicável para abrir o arquivo
                         ============================================================
                         Renderiza um chip por evidenceId vinculado à pergunta.
                         Cada chip exibe o nome do arquivo (via evidenceMap) e
@@ -1129,23 +1179,49 @@ export function AuditChecklist({
                         <div className="mt-2 flex flex-wrap gap-2">
                           {question.evidenceIds.map((evidenceId) => {
                             const entry = evidenceMap?.get(evidenceId);
+                            const canOpen = Boolean(onOpenEvidence);
                             return (
                               <div
                                 key={evidenceId}
-                                className="flex items-center gap-1 px-2 py-1 bg-blue-50 border border-blue-200 rounded-md text-xs text-blue-700"
+                                className="flex items-center gap-1 px-2 py-1 bg-blue-50 border border-blue-200 rounded-md text-xs text-blue-700 group"
                               >
-                                <Paperclip className="w-3 h-3" />
-                                <span
-                                  className="max-w-[180px] truncate"
-                                  title={entry?.filename || evidenceId}
+                                {/* 🆕 v51.5 — Área clicável (abre o arquivo) */}
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenEvidence(evidenceId)}
+                                  disabled={!canOpen}
+                                  className={`flex items-center gap-1 transition-colors ${
+                                    canOpen
+                                      ? 'hover:text-blue-900 cursor-pointer'
+                                      : 'cursor-default'
+                                  }`}
+                                  title={
+                                    canOpen
+                                      ? 'Abrir evidência'
+                                      : entry?.filename || evidenceId
+                                  }
+                                  aria-label={`Abrir evidência ${getEvidenceLabel(
+                                    evidenceId
+                                  )}`}
                                 >
-                                  {getEvidenceLabel(evidenceId)}
-                                </span>
-                                {entry?.size ? (
-                                  <span className="text-blue-500">
-                                    ({formatFileSize(entry.size)})
+                                  <Paperclip className="w-3 h-3" />
+                                  <span
+                                    className="max-w-[180px] truncate"
+                                    title={entry?.filename || evidenceId}
+                                  >
+                                    {getEvidenceLabel(evidenceId)}
                                   </span>
-                                ) : null}
+                                  {entry?.size ? (
+                                    <span className="text-blue-500">
+                                      ({formatFileSize(entry.size)})
+                                    </span>
+                                  ) : null}
+                                  {canOpen && (
+                                    <ExternalLink className="w-3 h-3 ml-0.5 opacity-60 group-hover:opacity-100" />
+                                  )}
+                                </button>
+
+                                {/* Botão de remover (só quando editável) */}
                                 {!isReadOnly && (
                                   <button
                                     type="button"
@@ -1385,6 +1461,7 @@ export function AuditChecklist({
 
               {/* ============================================================
                   🆕 v51.1 — EVIDÊNCIAS DA CONSTATAÇÃO FINAL
+                  🔧 v51.5 — chip clicável para abrir o arquivo
                   ============================================================ */}
 
               <div>
@@ -1396,23 +1473,46 @@ export function AuditChecklist({
                   <div className="flex flex-wrap gap-2 mb-2">
                     {finalEvidenceIds.map((evidenceId) => {
                       const entry = evidenceMap?.get(evidenceId);
+                      const canOpen = Boolean(onOpenEvidence);
                       return (
                         <div
                           key={evidenceId}
-                          className="flex items-center gap-1 px-2 py-1 bg-blue-50 border border-blue-200 rounded-md text-xs text-blue-700"
+                          className="flex items-center gap-1 px-2 py-1 bg-blue-50 border border-blue-200 rounded-md text-xs text-blue-700 group"
                         >
-                          <Paperclip className="w-3 h-3" />
-                          <span
-                            className="max-w-[180px] truncate"
-                            title={entry?.filename || evidenceId}
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEvidence(evidenceId)}
+                            disabled={!canOpen}
+                            className={`flex items-center gap-1 transition-colors ${
+                              canOpen
+                                ? 'hover:text-blue-900 cursor-pointer'
+                                : 'cursor-default'
+                            }`}
+                            title={
+                              canOpen
+                                ? 'Abrir evidência'
+                                : entry?.filename || evidenceId
+                            }
+                            aria-label={`Abrir evidência ${getEvidenceLabel(
+                              evidenceId
+                            )}`}
                           >
-                            {getEvidenceLabel(evidenceId)}
-                          </span>
-                          {entry?.size ? (
-                            <span className="text-blue-500">
-                              ({formatFileSize(entry.size)})
+                            <Paperclip className="w-3 h-3" />
+                            <span
+                              className="max-w-[180px] truncate"
+                              title={entry?.filename || evidenceId}
+                            >
+                              {getEvidenceLabel(evidenceId)}
                             </span>
-                          ) : null}
+                            {entry?.size ? (
+                              <span className="text-blue-500">
+                                ({formatFileSize(entry.size)})
+                              </span>
+                            ) : null}
+                            {canOpen && (
+                              <ExternalLink className="w-3 h-3 ml-0.5 opacity-60 group-hover:opacity-100" />
+                            )}
+                          </button>
                           {!isReadOnly && (
                             <button
                               type="button"
