@@ -11,6 +11,37 @@ export const auditHttpMiddleware = (req: Request, res: Response, next: NextFunct
     return next();
   }
 
+  // ============================================================
+  // 🆕 v51.3 — SKIP PARA ROTAS DE AUDITORIA INTERNA (SGSI)
+  // ============================================================
+  //
+  // MOTIVO:
+  //   As rotas /api/internal-audit/* são gerenciadas pelo
+  //   módulo de Auditoria Interna (SGSI), que JÁ possui sua
+  //   própria trilha de auditoria (AuditPlan, AuditChecklist,
+  //   AuditFinding, AuditEvidence, AuditActionPlan, AuditReport).
+  //
+  //   O middleware global `auditHttpMiddleware` gerava valores
+  //   de `action` fora do enum do AuditLog (ex.: 
+  //   `POST__API_INTERNAL_AUDIT_CHECKLISTS_xxx_COMPLETE`), o
+  //   que causava ValidationError no save e poluía os logs do
+  //   Render com stack traces inúteis.
+  //
+  // SOLUÇÃO:
+  //   Pular o middleware para rotas /api/internal-audit/*.
+  //   A trilha do SGSI continua intacta (é feita pelos próprios
+  //   services do módulo).
+  //
+  // IMPACTO:
+  //   - Zero regressão (o módulo SGSI não dependia deste log).
+  //   - Logs do Render ficam limpos.
+  //   - Enum do AuditLog permanece fechado e válido.
+  //
+  // ============================================================
+  if (req.path.startsWith('/internal-audit')) {
+    return next();
+  }
+
   const startTime = Date.now();
 
   res.on('finish', async () => {

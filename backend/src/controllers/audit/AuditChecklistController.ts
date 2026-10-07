@@ -2,6 +2,51 @@ import { Request, Response } from 'express';
 import { auditChecklistService } from '../../models/audit/services';
 import { AuthenticatedRequest } from '../../types';
 
+// ============================================================
+// 🆕 v51.3 — HELPER DE STATUS HTTP
+// ============================================================
+//
+// MOTIVO:
+//   Antes, todos os erros viravam 500, mesmo quando o problema
+//   era de permissão (403) ou recurso não encontrado (404).
+//   Isso confundia o diagnóstico e não dava feedback claro
+//   ao cliente.
+//
+// SOLUÇÃO:
+//   Mapeia a mensagem de erro para o status HTTP correto.
+//
+// ============================================================
+
+function inferHttpStatus(error: any, fallbackMessage: string): number {
+  const msg = String(error?.message || '').toLowerCase();
+
+  if (
+    msg.includes('apenas') ||
+    msg.includes('membros') ||
+    msg.includes('criador do plano') ||
+    msg.includes('auditor líder')
+  ) {
+    return 403;
+  }
+
+  if (
+    msg.includes('não encontrado') ||
+    msg.includes('não encontrada')
+  ) {
+    return 404;
+  }
+
+  if (
+    msg.includes('obrigatório') ||
+    msg.includes('inválido') ||
+    msg.includes('deve ser')
+  ) {
+    return 400;
+  }
+
+  return 500;
+}
+
 export class AuditChecklistController {
   // ============================================================
   // BUSCAR CHECKLIST POR PLANO E CONTROLE
@@ -83,6 +128,8 @@ export class AuditChecklistController {
   // REGRA:
   //   Pelo menos UM dos campos acima deve estar presente.
   //   Chamadas antigas (só questions) continuam funcionando.
+  //
+  // 🔧 v51.3 — Status HTTP apropriado
   // ============================================================
   async updateChecklist(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
@@ -180,12 +227,20 @@ export class AuditChecklistController {
 
       res.status(200).json({ success: true, data: checklist, message: 'Checklist atualizado com sucesso' });
     } catch (error: any) {
-      res.status(500).json({ success: false, message: error.message || 'Erro ao atualizar checklist' });
+      // 🔧 v51.3 — Status HTTP apropriado
+      const status = inferHttpStatus(error, 'Erro ao atualizar checklist');
+      res.status(status).json({
+        success: false,
+        message: error.message || 'Erro ao atualizar checklist',
+      });
     }
   }
 
   // ============================================================
   // MARCAR CHECKLIST COMO CONCLUÍDO
+  // ============================================================
+  //
+  // 🔧 v51.3 — Status HTTP apropriado
   // ============================================================
   async complete(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
@@ -212,7 +267,12 @@ export class AuditChecklistController {
 
       res.status(200).json({ success: true, data: checklist, message: 'Checklist concluído com sucesso' });
     } catch (error: any) {
-      res.status(500).json({ success: false, message: error.message || 'Erro ao concluir checklist' });
+      // 🔧 v51.3 — Status HTTP apropriado
+      const status = inferHttpStatus(error, 'Erro ao concluir checklist');
+      res.status(status).json({
+        success: false,
+        message: error.message || 'Erro ao concluir checklist',
+      });
     }
   }
 

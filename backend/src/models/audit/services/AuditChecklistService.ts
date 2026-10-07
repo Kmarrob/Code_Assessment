@@ -1034,6 +1034,25 @@ export class AuditChecklistService {
   //
   // APENAS os campos presentes no payload são atualizados.
   //
+  // 🔧 v51.3 — PERMISSÃO DO CRIADOR
+  // ----------------------------------------
+  // PROBLEMA:
+  //   O criador do plano (REP) não conseguia atualizar o
+  //   checklist porque o sistema exigia que ele fosse
+  //   membro da equipe (leadAuditor ou auditor).
+  //
+  // SOLUÇÃO:
+  //   Adicionado `plan.createdBy === userId` como membro
+  //   autorizado. Quem cria a auditoria é dono dela e pode
+  //   executá-la, mesmo que não esteja designado como líder
+  //   ou auditor.
+  //
+  // REGRA FINAL:
+  //   Podem atualizar:
+  //     - Criador do plano
+  //     - Auditor Líder
+  //     - Qualquer auditor da equipe
+  //
   // ============================================================
 
   async updateChecklist(
@@ -1072,20 +1091,28 @@ export class AuditChecklistService {
 
     /**
      * ----------------------------------------------------------
-     * VERIFICAR EQUIPE
+     * VERIFICAR PERMISSÃO (v51.3)
      * ----------------------------------------------------------
+     *
+     * Podem atualizar:
+     *   - Criador do plano (plan.createdBy)
+     *   - Auditor Líder (plan.team.leadAuditor)
+     *   - Qualquer auditor da equipe (plan.team.auditors[])
+     *
+     * Antes: apenas leadAuditor OU auditors.
+     * Agora: leadAuditor OU auditors OU createdBy.
+     * Isso destrava o REP que criou o plano sem quebrar
+     * a regra de segregação na criação.
      */
 
     const isTeamMember =
-      plan.team.leadAuditor ===
-        userId ||
-      plan.team.auditors.includes(
-        userId
-      );
+      plan.team.leadAuditor === userId ||
+      plan.team.auditors.includes(userId) ||
+      plan.createdBy === userId;
 
     if (!isTeamMember) {
       throw new Error(
-        'Apenas membros da equipe de auditoria podem atualizar o checklist'
+        'Apenas o criador do plano, o auditor líder ou membros da equipe podem atualizar o checklist'
       );
     }
 
@@ -1345,6 +1372,19 @@ export class AuditChecklistService {
   // ============================================================
   // MARCAR CHECKLIST COMO CONCLUÍDO
   // ============================================================
+  //
+  // 🔧 v51.3 — PERMISSÃO DO CRIADOR
+  // ----------------------------------------
+  // Mesma correção aplicada em `updateChecklist`.
+  // O criador do plano agora pode concluir o checklist.
+  //
+  // REGRA FINAL:
+  //   Podem concluir:
+  //     - Criador do plano (plan.createdBy)
+  //     - Auditor Líder (plan.team.leadAuditor)
+  //     - Qualquer auditor da equipe (plan.team.auditors[])
+  //
+  // ============================================================
 
   async complete(
     id: string,
@@ -1381,20 +1421,23 @@ export class AuditChecklistService {
 
     /**
      * ----------------------------------------------------------
-     * VERIFICAR EQUIPE
+     * VERIFICAR PERMISSÃO (v51.3)
      * ----------------------------------------------------------
+     *
+     * Podem concluir:
+     *   - Criador do plano (plan.createdBy)
+     *   - Auditor Líder (plan.team.leadAuditor)
+     *   - Qualquer auditor da equipe (plan.team.auditors[])
      */
 
     const isTeamMember =
-      plan.team.leadAuditor ===
-        userId ||
-      plan.team.auditors.includes(
-        userId
-      );
+      plan.team.leadAuditor === userId ||
+      plan.team.auditors.includes(userId) ||
+      plan.createdBy === userId;
 
     if (!isTeamMember) {
       throw new Error(
-        'Apenas membros da equipe de auditoria podem concluir o checklist'
+        'Apenas o criador do plano, o auditor líder ou membros da equipe podem concluir o checklist'
       );
     }
 
