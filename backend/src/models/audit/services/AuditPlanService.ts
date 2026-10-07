@@ -10,6 +10,28 @@ import { Control } from '../../../models/Control';
 // ============================================================
 import { AuditControlQuestion } from '../models/AuditControlQuestion';
 
+// ============================================================
+// 🆕 v51.8 — Notificação ao Auditor Líder
+// ============================================================
+//
+// MOTIVO:
+//   O fluxo de aprovação de planos não notificava o Auditor Líder.
+//   Ele só descobria entrando no sistema.
+//
+// SOLUÇÃO:
+//   Após o submitForApproval salvar o plano com sucesso, dispara
+//   uma notificação (in-app + e-mail) para o Auditor Líder.
+//
+// SEGURANÇA:
+//   - Envolvido em try/catch — se a notificação falhar, o plano
+//     continua com status "pending_approval" (ação principal OK).
+//   - Fire-and-forget: não bloqueia a resposta HTTP.
+//
+// ============================================================
+import { NotificationService } from '../../../services/NotificationService';
+import { User } from '../../../models/User';
+import { logger } from '../../../utils/logger';
+
 import {
   IAuditPlan,
   CreateAuditPlanDTO,
@@ -1519,6 +1541,24 @@ export class AuditPlanService {
   // ============================================================
   // ENVIAR PARA APROVAÇÃO
   // ============================================================
+  //
+  // 🔧 v51.8 — NOTIFICAÇÃO AO AUDITOR LÍDER
+  // ----------------------------------------------------------------
+  // MOTIVO:
+  //   Antes, o Auditor Líder só descobria que tinha um plano para
+  //   aprovar entrando no sistema e olhando a lista. Sem aviso.
+  //
+  // SOLUÇÃO:
+  //   Após o save bem-sucedido, dispara em background (fire-and-
+  //   forget) uma notificação in-app + e-mail para o Auditor Líder.
+  //
+  // SEGURANÇA:
+  //   - Envolvido em try/catch: se a notificação falhar, o plano
+  //     continua com status "pending_approval".
+  //   - Fire-and-forget: não bloqueia a resposta HTTP.
+  //   - Se o usuário não for encontrado, apenas loga warning.
+  //
+  // ============================================================
 
   async submitForApproval(
     id: string,
@@ -1603,6 +1643,62 @@ export class AuditPlanService {
       new Date();
 
     await plan.save();
+
+    // ============================================================
+    // 🆕 v51.8 — NOTIFICAR O AUDITOR LÍDER (FIRE-AND-FORGET)
+    // ============================================================
+    //
+    // Executado APÓS o save — o status do plano já está salvo.
+    // Se a notificação falhar, o plano continua em aprovação.
+    //
+    // ============================================================
+
+    void (async () => {
+      try {
+        const leadAuditorId = plan.team?.leadAuditor;
+
+        if (!leadAuditorId) {
+          logger.warn(
+            `⚠️ [Notify] Plano ${plan._id} sem leadAuditor — notificação ignorada`
+          );
+          return;
+        }
+
+        // Buscar nome do criador (REP) para a mensagem
+        let createdByName = 'Um usuário';
+        try {
+          const creator = await User.findById(plan.createdBy)
+            .select('name email')
+            .lean();
+
+          if (creator?.name) {
+            createdByName = creator.name;
+          } else if (creator?.email) {
+            createdByName = creator.email;
+          }
+        } catch (errUser) {
+          // Silencioso — usa fallback genérico
+        }
+
+        // Disparar notificação (in-app + e-mail)
+        await NotificationService.notifyPlanAwaitingApproval(
+          String(leadAuditorId),
+          String(plan.companyId),
+          String(plan.title || 'Plano de auditoria'),
+          String(plan._id),
+          createdByName
+        );
+
+        logger.info(
+          `✅ [Notify] Plano ${plan._id} — Auditor Líder ${leadAuditorId} notificado`
+        );
+      } catch (notifyError) {
+        logger.error(
+          `❌ [Notify] Falha ao notificar Auditor Líder do plano ${plan._id}:`,
+          notifyError
+        );
+      }
+    })();
 
     return mapToIAuditPlan(
       plan.toObject()

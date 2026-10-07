@@ -450,4 +450,51 @@ export class NotificationService {
       },
     });
   }
+
+  // ============================================
+  // 🆕 v51.8 — NOTIFICAÇÕES DE AUDITORIA INTERNA (SGSI)
+  // ============================================
+  //
+  // MOTIVO:
+  //   O fluxo de aprovação de planos de auditoria interna não
+  //   notificava o Auditor Líder quando um plano era enviado para
+  //   sua aprovação. Ele só descobria entrando no sistema.
+  //
+  // SOLUÇÃO:
+  //   Método dedicado que dispara notificação in-app + e-mail
+  //   para o Auditor Líder designado.
+  //
+  // REAPROVEITAMENTO:
+  //   Usa o tipo `review_request` (já existente no enum do
+  //   Notification), evitando alterações no modelo. O título e a
+  //   mensagem contextualizam a ação de auditoria.
+  //
+  // SEGURANÇA:
+  //   - Envolvido em try/catch — se a notificação falhar, o
+  //     fluxo de aprovação não é interrompido.
+  //   - Logs detalhados para diagnóstico.
+  //
+  // ============================================
+
+  static async notifyPlanAwaitingApproval(
+    leadAuditorUserId: string,
+    companyId: string,
+    planTitle: string,
+    planId: string,
+    createdByName: string
+  ): Promise<INotification | null> {
+    return this.createNotification({
+      userId: leadAuditorUserId,
+      companyId,
+      type: 'review_request',
+      title: '🔍 Plano de auditoria aguardando sua aprovação',
+      message: `${createdByName} enviou o plano "${planTitle}" para sua aprovação. Acesse para revisar e aprovar.`,
+      link: `/rep/audit/execution/${planId}`,
+      metadata: {
+        planId,
+        planTitle,
+        userName: createdByName,
+      },
+    });
+  }
 }

@@ -23,6 +23,10 @@ export interface INotificationMetadata {
   status?: string;
   reason?: string;
   pendingCount?: number; // 🔴 ADICIONADO - para notificações de lembrete
+
+  // 🆕 v51.8 — Metadados para notificações de auditoria interna
+  planId?: string;       // ID do plano de auditoria
+  planTitle?: string;    // Título do plano (para exibição)
 }
 
 export interface INotification extends Document {
