@@ -13,6 +13,9 @@ import {
   ShieldCheck,
   AlertTriangle,
   ClipboardCheck,
+  Info,
+  Lightbulb,
+  XCircle,
 } from 'lucide-react';
 import {
   usePlan,
@@ -35,6 +38,20 @@ import {
 import { AuditChecklist } from '../../../components/AuditChecklist';
 import api from '@/services/api';
 
+// ============================================================
+// RepAuditExecution — v51.7
+// ============================================================
+//
+// 🔧 v51.6 — RESTAURAÇÃO
+//   Reentregue completo após corrupção por cópia cruzada.
+//
+// 🆕 v51.7 — MELHORIAS DE UX
+//   Adicionado banner contextual de fluxo de aprovação + dica
+//   por status. Ajuda o usuário a entender em que etapa do
+//   workflow o plano está e qual o próximo passo.
+//
+// ============================================================
+
 const STATUS_LABELS: Record<string, string> = {
   draft: 'Rascunho',
   pending_approval: 'Aguardando aprovação',
@@ -53,12 +70,143 @@ const STATUS_COLORS: Record<string, string> = {
   cancelled: 'bg-red-100 text-red-700',
 };
 
+// ============================================================
+// 🆕 v51.7 — METADADOS DO BANNER POR STATUS
+// ============================================================
+//
+// Cada status tem:
+//   - Título (o que está acontecendo)
+//   - Descrição (o que fazer agora)
+//   - Estilo (cor de fundo, borda, ícone)
+//
+// ============================================================
+
+interface BannerMeta {
+  title: string;
+  description: string;
+  bgColor: string;
+  borderColor: string;
+  textColor: string;
+  iconColor: string;
+  Icon: React.ComponentType<{ className?: string }>;
+}
+
+const getBannerMeta = (status: string): BannerMeta | null => {
+  switch (status) {
+    case 'draft':
+      return {
+        title: 'Este plano está em rascunho',
+        description:
+          'Quando estiver pronto, clique em "Enviar para aprovação". O Auditor Líder designado irá receber o plano para revisão.',
+        bgColor: 'bg-gray-50',
+        borderColor: 'border-gray-200',
+        textColor: 'text-gray-800',
+        iconColor: 'text-gray-500',
+        Icon: Info,
+      };
+
+    case 'pending_approval':
+      return {
+        title: 'Aguardando aprovação do Auditor Líder',
+        description:
+          'O plano foi enviado para revisão. Ele só poderá ser iniciado após a aprovação do Auditor Líder designado.',
+        bgColor: 'bg-yellow-50',
+        borderColor: 'border-yellow-200',
+        textColor: 'text-yellow-900',
+        iconColor: 'text-yellow-600',
+        Icon: Clock,
+      };
+
+    case 'approved':
+      return {
+        title: 'Plano aprovado — pronto para iniciar',
+        description:
+          'O Auditor Líder aprovou o plano. Clique em "Iniciar auditoria" para começar a preencher os checklists.',
+        bgColor: 'bg-blue-50',
+        borderColor: 'border-blue-200',
+        textColor: 'text-blue-900',
+        iconColor: 'text-blue-600',
+        Icon: ShieldCheck,
+      };
+
+    case 'in_progress':
+      return {
+        title: 'Auditoria em andamento',
+        description:
+          'Preencha os checklists, anexe evidências e marque constatações. Quando todos os controles estiverem concluídos, você poderá encerrar a auditoria.',
+        bgColor: 'bg-indigo-50',
+        borderColor: 'border-indigo-200',
+        textColor: 'text-indigo-900',
+        iconColor: 'text-indigo-600',
+        Icon: Lightbulb,
+      };
+
+    case 'completed':
+      return {
+        title: 'Auditoria concluída',
+        description:
+          'Esta auditoria foi finalizada. Você pode revisar os checklists, evidências e gerar o relatório consolidado.',
+        bgColor: 'bg-green-50',
+        borderColor: 'border-green-200',
+        textColor: 'text-green-900',
+        iconColor: 'text-green-600',
+        Icon: CheckCircle,
+      };
+
+    case 'cancelled':
+      return {
+        title: 'Auditoria cancelada',
+        description:
+          'Este plano foi cancelado e não pode mais ser executado.',
+        bgColor: 'bg-red-50',
+        borderColor: 'border-red-200',
+        textColor: 'text-red-900',
+        iconColor: 'text-red-600',
+        Icon: XCircle,
+      };
+
+    default:
+      return null;
+  }
+};
+
+// ============================================================
+// 🆕 v51.7 — DICA CONTEXTUAL POR STATUS (texto curto)
+// ============================================================
+
+const getStatusHint = (status: string): string => {
+  switch (status) {
+    case 'draft':
+      return 'Próximo passo: enviar para aprovação';
+    case 'pending_approval':
+      return 'Aguardando o Auditor Líder';
+    case 'approved':
+      return 'Próximo passo: iniciar auditoria';
+    case 'in_progress':
+      return 'Em execução — preencha os checklists';
+    case 'completed':
+      return 'Finalizada';
+    case 'cancelled':
+      return 'Cancelada';
+    default:
+      return '';
+  }
+};
+
+// ============================================================
+// COMPONENTE PRINCIPAL
+// ============================================================
+
 export function RepAuditExecution() {
   const navigate = useNavigate();
   const { planId } = useParams<{ planId?: string }>();
   const effectivePlanId = planId || '';
   const [selectedControl, setSelectedControl] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+
+  // ============================================================
+  // 🆕 v49.1.2 — CONTROLES PARA EXIBIÇÃO DE CÓDIGO + NOME
+  // ============================================================
 
   const [controls, setControls] = useState<Array<any>>([]);
 
@@ -238,6 +386,10 @@ export function RepAuditExecution() {
 
   const isPendingAction = submitPlan.isPending || approvePlan.isPending || startPlan.isPending || completePlan.isPending;
 
+  // 🆕 v51.7 — Metadados do banner para o status atual
+  const bannerMeta = getBannerMeta(plan.status);
+  const statusHint = getStatusHint(plan.status);
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex flex-col lg:flex-row lg:items-center gap-4 mb-6">
@@ -279,6 +431,37 @@ export function RepAuditExecution() {
           )}
         </div>
       </div>
+
+      {/* ============================================================
+          🆕 v51.7 — BANNER CONTEXTUAL DE FLUXO DE APROVAÇÃO
+          ============================================================
+          Mostra ao usuário em que etapa do workflow o plano está
+          e qual o próximo passo esperado. O conteúdo, cor e ícone
+          variam conforme o status do plano.
+          ============================================================ */}
+
+      {bannerMeta && (
+        <div
+          className={`mb-6 flex items-start gap-3 ${bannerMeta.bgColor} border ${bannerMeta.borderColor} rounded-xl p-4`}
+        >
+          <div className={`p-1.5 bg-white rounded-lg shadow-sm flex-shrink-0`}>
+            <bannerMeta.Icon className={`w-5 h-5 ${bannerMeta.iconColor}`} />
+          </div>
+          <div className="flex-1">
+            <h3 className={`font-semibold text-sm ${bannerMeta.textColor}`}>
+              {bannerMeta.title}
+            </h3>
+            <p className={`text-sm mt-0.5 ${bannerMeta.textColor} opacity-90`}>
+              {bannerMeta.description}
+            </p>
+            {statusHint && (
+              <p className={`text-xs mt-1.5 ${bannerMeta.iconColor} font-medium`}>
+                → {statusHint}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
 
       {actionError && (
         <div className="mb-6 flex items-start gap-3 bg-red-50 border border-red-200 rounded-lg p-4 text-sm text-red-700">
