@@ -30,8 +30,11 @@ import {
 import { toast } from 'react-hot-toast';
 import api from '@/services/api';
 
+// 🆕 v51.6 — Componente de gráficos
+import { RepAuditChecklistCharts } from './RepAuditChecklistCharts';
+
 // ============================================================
-// RepAuditChecklist — v51.5 (Página Viva)
+// RepAuditChecklist — v51.6 (Página Viva + Gráficos)
 // ============================================================
 //
 // 🔧 v51.4 — REESCRITA COMPLETA DA TELA
@@ -39,30 +42,24 @@ import api from '@/services/api';
 // ANTES:
 //   - Mostrava apenas o PRIMEIRO checklist do plano.
 //   - Sem navegação, sem KPIs, sem agrupamento.
-//   - Sem cards, sem filtros, sem vida.
 //
 // AGORA:
 //   - Lista TODOS os checklists do plano.
 //   - Agrupa por domínio (A.5, A.6, A.7, A.8) em cards colapsáveis.
 //   - KPIs no header: total, concluídos, em andamento, pendentes.
 //   - Barra de progresso global.
-//   - Filtros por status (Todos / Concluído / Em andamento / Pendente).
-//   - Cada controle mostra badge de status + contador de evidências.
-//   - Ao clicar num controle, expande o <AuditChecklist /> inline
-//     (modo leitura), no próprio card.
-//   - Botão "Voltar" para a tela de execução.
-//   - Estados vazios e de loading tratados.
+//   - Filtros por status.
 //
-// COMPATIBILIDADE:
-//   - Todas as props e hooks do v51.1 foram mantidos.
-//   - Nenhuma funcionalidade existente foi removida.
-//   - Nenhuma rota mudou.
+// 🔧 v51.5.1 — CORREÇÃO CRÍTICA: abrir evidência via Axios + Blob.
 //
-// 🆕 v51.5 — CLIQUE NO CHIP DE EVIDÊNCIA
+// 🆕 v51.6 — GRÁFICOS + CARD DE INSIGHT
 // ----------------------------------------------------------------
-//   Adiciona o callback `onOpenEvidence` que abre o arquivo da
-//   evidência em nova aba ao clicar no chip (via endpoint
-//   GET /api/internal-audit/evidence/:id/file).
+//   Adiciona o componente <RepAuditChecklistCharts /> entre os
+//   KPIs e os filtros, trazendo:
+//     - Mini KPIs visuais (conformidade %, NC, respondidas)
+//     - Pizza (donut) de constatações
+//     - Barras por constatação
+//     - Card de insight dinâmico
 //
 // ============================================================
 
@@ -123,13 +120,6 @@ const DOMAINS: DomainMeta[] = [
 // HELPERS DE DOMÍNIO
 // ============================================================
 
-/**
- * Extrai o prefixo de domínio do código ISO do controle.
- *
- * Ex.: "5.1" → "5" ; "8.34" → "8" ; "6.7" → "6"
- *
- * Retorna "" quando o código não segue o padrão.
- */
 function getDomainPrefix(controlCode: string): string {
   const code = String(controlCode || '').trim();
   if (!code) return '';
@@ -137,9 +127,6 @@ function getDomainPrefix(controlCode: string): string {
   return prefix || '';
 }
 
-/**
- * Resolve os metadados do domínio a partir do código ISO.
- */
 function getDomainMeta(controlCode: string): DomainMeta | null {
   const prefix = getDomainPrefix(controlCode);
   return DOMAINS.find((d) => d.prefix === prefix) || null;
@@ -169,10 +156,6 @@ export function RepAuditChecklist() {
   const { planId } = useParams<{ planId: string }>();
   const navigate = useNavigate();
 
-  // ============================================================
-  // ESTADOS (nomes preservados do v51.1 onde possível)
-  // ============================================================
-
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [companyResponses, setCompanyResponses] = useState<Array<{
@@ -185,16 +168,11 @@ export function RepAuditChecklist() {
 
   const [controls, setControls] = useState<Array<any>>([]);
 
-  // 🆕 v51.4 — Filtros e navegação
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [expandedDomains, setExpandedDomains] = useState<Set<string>>(
-    new Set(DOMAINS.map((d) => d.prefix))  // todos expandidos por padrão
+    new Set(DOMAINS.map((d) => d.prefix))
   );
   const [expandedChecklistId, setExpandedChecklistId] = useState<string | null>(null);
-
-  // ============================================================
-  // HOOKS REACT QUERY
-  // ============================================================
 
   const {
     useChecklists,
@@ -211,7 +189,6 @@ export function RepAuditChecklist() {
     refetch,
   } = useChecklists(planId || '');
 
-  // Buscar controles da empresa (para exibição de código+nome)
   useEffect(() => {
     const fetchControls = async () => {
       try {
@@ -225,7 +202,6 @@ export function RepAuditChecklist() {
     fetchControls();
   }, []);
 
-  // Mapa { controlId -> { code, name } }
   const controlsMap = useMemo(() => {
     const map = new Map<string, { code: string; name: string }>();
     (controls || []).forEach((c: any) => {
@@ -247,7 +223,6 @@ export function RepAuditChecklist() {
     return code || name || controlId;
   };
 
-  // Buscar respostas dos usuários (usadas para sincronizar maturidade)
   useEffect(() => {
     const fetchResponses = async () => {
       if (!planId) return;
@@ -274,7 +249,6 @@ export function RepAuditChecklist() {
   const updateChecklistMutation = useUpdateChecklist();
   const completeChecklistMutation = useCompleteChecklist();
 
-  // Evidências do plano (para o evidenceMap)
   const { data: planEvidences = [] } = useEvidenceByPlan(planId || '');
   const uploadEvidence = useUploadEvidence();
 
@@ -291,18 +265,10 @@ export function RepAuditChecklist() {
     return map;
   }, [planEvidences]);
 
-  // ============================================================
-  // LISTA DE CHECKLISTS NORMALIZADA
-  // ============================================================
-
   const allChecklists: AuditChecklistType[] = useMemo(() => {
     if (!Array.isArray(checklistsData)) return [];
     return checklistsData;
   }, [checklistsData]);
-
-  // ============================================================
-  // KPIs (contadores)
-  // ============================================================
 
   const kpis = useMemo(() => {
     const total = allChecklists.length;
@@ -313,10 +279,6 @@ export function RepAuditChecklist() {
 
     return { total, completed, inProgress, pending, progress };
   }, [allChecklists]);
-
-  // ============================================================
-  // CONTAGEM POR STATUS (para os pills de filtro)
-  // ============================================================
 
   const filterCounts = useMemo(() => {
     const total = allChecklists.length;
@@ -331,18 +293,12 @@ export function RepAuditChecklist() {
     };
   }, [allChecklists]);
 
-  // ============================================================
-  // AGRUPAMENTO POR DOMÍNIO (com filtro aplicado)
-  // ============================================================
-
   const groupedByDomain = useMemo(() => {
-    // Aplica filtro de status
     const filtered = allChecklists.filter((c) => {
       if (statusFilter === 'all') return true;
       return c.status === statusFilter;
     });
 
-    // Agrupa por domínio
     const groups: Record<string, AuditChecklistType[]> = {
       '5': [],
       '6': [],
@@ -365,10 +321,6 @@ export function RepAuditChecklist() {
 
     return groups;
   }, [allChecklists, statusFilter, controlsMap]);
-
-  // ============================================================
-  // HANDLERS
-  // ============================================================
 
   const toggleDomain = (prefix: string) => {
     setExpandedDomains((prev) => {
@@ -477,32 +429,55 @@ export function RepAuditChecklist() {
   };
 
   /**
-   * 🆕 v51.5 — Callback de abertura de evidência.
+   * 🔧 v51.5.1 — Abrir evidência via Axios + Blob.
    *
-   * Abre o arquivo em nova aba via GET /api/internal-audit/evidence/:id/file.
+   * MOTIVO DA CORREÇÃO:
+   *   window.open(url) NÃO envia o header Authorization. Como o
+   *   endpoint é protegido por `authenticate`, o backend retornava
+   *   401 ("Token de autenticação não fornecido").
    *
-   * O backend serve o arquivo com Content-Disposition inline,
-   * então o navegador exibe em vez de baixar (PDFs e imagens).
-   *
-   * Nota: usa a URL base da API (via variável de ambiente) para
-   * funcionar tanto em produção (Render) quanto local.
+   * SOLUÇÃO:
+   *   1. Baixa o arquivo via Axios (injeta token automaticamente).
+   *   2. Converte em Blob.
+   *   3. Cria blob URL e abre em nova aba.
+   *   4. Revoga após 60s.
    */
-  const handleOpenEvidence = (evidenceId: string): void => {
+  const handleOpenEvidence = async (evidenceId: string): Promise<void> => {
     if (!evidenceId) return;
 
-    const apiBase =
-      (import.meta as any).env?.VITE_API_URL
-        ? `${(import.meta as any).env.VITE_API_URL}/api`
-        : 'https://code-assessment-898z.onrender.com/api';
+    try {
+      const response = await api.get(
+        `/internal-audit/evidence/${evidenceId}/file`,
+        { responseType: 'blob' }
+      );
 
-    const url = `${apiBase}/internal-audit/evidence/${evidenceId}/file`;
+      const contentType =
+        (response.headers?.['content-type'] as string) ||
+        'application/octet-stream';
 
-    window.open(url, '_blank', 'noopener,noreferrer');
+      const blob = new Blob([response.data], { type: contentType });
+      const blobUrl = window.URL.createObjectURL(blob);
+
+      window.open(blobUrl, '_blank', 'noopener,noreferrer');
+
+      setTimeout(() => {
+        window.URL.revokeObjectURL(blobUrl);
+      }, 60000);
+    } catch (err: any) {
+      // eslint-disable-next-line no-console
+      console.error('Erro ao abrir evidência:', err);
+
+      const status = err?.response?.status;
+
+      if (status === 401) {
+        toast.error('Sessão expirada. Faça login novamente para abrir a evidência.');
+      } else if (status === 404) {
+        toast.error('Arquivo não encontrado no servidor.');
+      } else {
+        toast.error('Não foi possível abrir a evidência. Tente novamente.');
+      }
+    }
   };
-
-  // ============================================================
-  // RENDER — LOADING
-  // ============================================================
 
   if (isLoading || isLoadingResponses) {
     return (
@@ -512,10 +487,6 @@ export function RepAuditChecklist() {
       </div>
     );
   }
-
-  // ============================================================
-  // RENDER — ERRO
-  // ============================================================
 
   if (error) {
     return (
@@ -536,10 +507,6 @@ export function RepAuditChecklist() {
       </div>
     );
   }
-
-  // ============================================================
-  // RENDER — VAZIO (sem checklists no plano)
-  // ============================================================
 
   if (allChecklists.length === 0) {
     return (
@@ -577,16 +544,8 @@ export function RepAuditChecklist() {
     );
   }
 
-  // ============================================================
-  // RENDER PRINCIPAL
-  // ============================================================
-
   return (
     <div className="max-w-6xl mx-auto px-4 py-6">
-      {/* ============================================================
-          HEADER — voltar + título + status geral
-          ============================================================ */}
-
       <div className="flex items-center gap-4 mb-6">
         <button
           onClick={() => navigate(`/rep/audit/execution/${planId}`)}
@@ -607,10 +566,6 @@ export function RepAuditChecklist() {
           Atualizar
         </button>
       </div>
-
-      {/* ============================================================
-          KPIs — 4 cards de contadores
-          ============================================================ */}
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-white rounded-xl border border-gray-200 p-4">
@@ -662,10 +617,6 @@ export function RepAuditChecklist() {
         </div>
       </div>
 
-      {/* ============================================================
-          BARRA DE PROGRESSO GLOBAL
-          ============================================================ */}
-
       <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6">
         <div className="flex items-center justify-between mb-2">
           <span className="text-sm font-medium text-gray-700">
@@ -684,8 +635,11 @@ export function RepAuditChecklist() {
       </div>
 
       {/* ============================================================
-          FILTROS POR STATUS
+          🆕 v51.6 — GRÁFICOS + CARD DE INSIGHT
           ============================================================ */}
+      <div className="mb-6">
+        <RepAuditChecklistCharts checklists={allChecklists} />
+      </div>
 
       <div className="flex items-center gap-2 mb-6 flex-wrap">
         <div className="flex items-center gap-1 text-sm text-gray-500 mr-2">
@@ -718,10 +672,6 @@ export function RepAuditChecklist() {
         })}
       </div>
 
-      {/* ============================================================
-          CARDS POR DOMÍNIO
-          ============================================================ */}
-
       <div className="space-y-4">
         {DOMAINS.map((domain) => {
           const checklistsInDomain = groupedByDomain[domain.prefix] || [];
@@ -734,8 +684,6 @@ export function RepAuditChecklist() {
           const domainProgress =
             domainTotal > 0 ? Math.round((domainCompleted / domainTotal) * 100) : 0;
 
-          // Se não há checklists neste domínio E o filtro não é "all",
-          // esconde o card (evita poluição visual).
           if (domainTotal === 0 && statusFilter !== 'all') {
             return null;
           }
@@ -747,7 +695,6 @@ export function RepAuditChecklist() {
               key={domain.prefix}
               className={`bg-white rounded-xl border ${domain.borderColor} overflow-hidden transition-all`}
             >
-              {/* Header do card */}
               <button
                 type="button"
                 onClick={() => toggleDomain(domain.prefix)}
@@ -795,7 +742,6 @@ export function RepAuditChecklist() {
                 </div>
               </button>
 
-              {/* Lista de controles do domínio */}
               {isExpanded && (
                 <div className="border-t border-gray-200">
                   {checklistsInDomain.length === 0 ? (
@@ -843,7 +789,6 @@ export function RepAuditChecklist() {
 
                         return (
                           <div key={checklist._id}>
-                            {/* Linha do controle */}
                             <button
                               type="button"
                               onClick={() => toggleChecklist(checklist._id)}
@@ -875,7 +820,6 @@ export function RepAuditChecklist() {
                               </span>
                             </button>
 
-                            {/* Conteúdo expandido */}
                             {isChecklistExpanded && (
                               <div className="px-4 pb-4 pt-2 bg-gray-50 border-t border-gray-100">
                                 <AuditChecklist
@@ -890,7 +834,6 @@ export function RepAuditChecklist() {
                                   controlsMap={controlsMap}
                                   onUploadEvidence={handleUploadEvidence}
                                   evidenceMap={evidenceMap}
-                                  /* 🆕 v51.5 — Clique no chip de evidência abre o arquivo em nova aba */
                                   onOpenEvidence={handleOpenEvidence}
                                 />
                               </div>
@@ -906,10 +849,6 @@ export function RepAuditChecklist() {
           );
         })}
       </div>
-
-      {/* ============================================================
-          FOOTER — dica de navegação
-          ============================================================ */}
 
       <div className="mt-6 text-xs text-gray-400 text-center">
         Clique em um domínio para expandir/recolher. Clique em um controle
