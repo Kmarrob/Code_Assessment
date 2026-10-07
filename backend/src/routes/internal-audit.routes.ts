@@ -308,6 +308,12 @@ router.get('/findings/plan/:auditPlanId/stats', auditFindingController.getStats)
 //   controller, mesma resposta em caso de sucesso. A ÚNICA
 //   mudança é que agora o multipart é parseado corretamente.
 //
+// 🆕 v51.5 — ROTA DE DOWNLOAD/VIEW:
+// ----------------------------------------------------------------
+//   Adicionada a rota GET /evidence/:id/file que serve o
+//   arquivo físico para o navegador abrir em nova aba.
+//   DEVE VIR ANTES de /evidence/:id (que é catch-all).
+//
 // ============================================================
 router.post(
   '/evidence/upload',
@@ -315,6 +321,14 @@ router.post(
   handleEvidenceMulterError,
   auditEvidenceController.upload
 );
+
+// 🆕 v51.5 — Servir o arquivo físico da evidência
+// (DEVE VIR ANTES de /evidence/:id)
+router.get(
+  '/evidence/:id/file',
+  auditEvidenceController.download
+);
+
 router.get('/evidence/plan/:auditPlanId', auditEvidenceController.findByPlanId);
 router.get('/evidence/finding/:findingId', auditEvidenceController.findByFindingId);
 router.get('/evidence/:id', auditEvidenceController.findById);

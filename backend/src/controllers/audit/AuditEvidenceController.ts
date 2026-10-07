@@ -1,4 +1,6 @@
 import { Response } from 'express';
+import fs from 'fs';
+import path from 'path';
 import { AuditEvidenceService } from '../../models/audit/services/AuditEvidenceService';
 import { AuthenticatedRequest } from '../../types';
 
@@ -177,6 +179,84 @@ export class AuditEvidenceController {
       }
 
       return res.status(200).json({ success: true, data: evidence });
+    } catch (error: any) {
+      return res.status(400).json({ success: false, message: error.message });
+    }
+  }
+
+  // ============================================================
+  // 🆕 v51.5 — SERVIR ARQUIVO DA EVIDÊNCIA (DOWNLOAD/VIEW)
+  // ============================================================
+  //
+  // MOTIVO:
+  //   O endpoint GET /evidence/:id retorna apenas os METADADOS
+  //   (filename, size, mimeType), não o arquivo binário. Sem um
+  //   endpoint dedicado, o frontend não consegue abrir o arquivo
+  //   ao clicar no chip da evidência.
+  //
+  // COMPORTAMENTO:
+  //   1. Busca os metadados da evidência pelo ID.
+  //   2. Verifica se o arquivo físico existe no disco.
+  //   3. Faz `res.sendFile(...)` com o mimeType correto e
+  //      Content-Disposition inline (abre no navegador em nova aba).
+  //
+  // SEGURANÇA:
+  //   - Rota protegida por `authenticate` (middleware do router).
+  //   - Se o arquivo físico não existir (ex.: apagado do disco),
+  //     retorna 404 com mensagem clara.
+  //
+  // COMPATIBILIDADE:
+  //   Não altera nenhum método existente. É puramente adicional.
+  //
+  // ============================================================
+
+  async download(req: AuthenticatedRequest, res: Response): Promise<Response | void> {
+    try {
+      const { id } = req.params;
+
+      if (!id) {
+        return res.status(400).json({ success: false, message: 'ID não informado' });
+      }
+
+      const evidence = await auditEvidenceService.findById(id);
+
+      if (!evidence) {
+        return res.status(404).json({ success: false, message: 'Evidência não encontrada' });
+      }
+
+      const filepath = String((evidence as any).filepath || '');
+
+      if (!filepath) {
+        return res.status(404).json({
+          success: false,
+          message: 'Caminho do arquivo não registrado para esta evidência',
+        });
+      }
+
+      // Verifica se o arquivo físico existe
+      if (!fs.existsSync(filepath)) {
+        return res.status(404).json({
+          success: false,
+          message:
+            'Arquivo físico não encontrado no servidor. Pode ter sido removido do disco.',
+        });
+      }
+
+      // Força o download inline (para o navegador abrir em nova aba)
+      const mimeType = String((evidence as any).mimeType || 'application/octet-stream');
+      const filename = String((evidence as any).filename || path.basename(filepath));
+
+      // Sanitiza o filename para o header (evita header injection)
+      const safeFilename = filename.replace(/[\r\n"]/g, '_');
+
+      res.setHeader('Content-Type', mimeType);
+      res.setHeader(
+        'Content-Disposition',
+        `inline; filename="${encodeURIComponent(safeFilename)}"`
+      );
+
+      // sendFile respeita Range requests (streaming para arquivos grandes)
+      res.sendFile(path.resolve(filepath));
     } catch (error: any) {
       return res.status(400).json({ success: false, message: error.message });
     }
