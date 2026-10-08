@@ -603,16 +603,41 @@ export function AuditPlanForm({
   }, [scopeMode, controls, selectedControls, excludedControls]);
 
   // ============================================================
-  // OPÇÕES DE MEMBROS (usuários do sistema + manuais)
+  // 🆕 v52.2 — OPÇÕES DE MEMBROS POR ROLE (CORRIGIDO)
+  // ============================================================
+  //
+  // MOTIVO:
+  //   Antes, este bloco filtrava apenas 'rep', 'admin' e 'user'.
+  //   Os 3 novos roles (auditor_lead, auditor, observer) NÃO
+  //   apareciam, então os dropdowns de equipe ficavam vazios.
+  //
+  // SOLUÇÃO:
+  //   Criar 3 listas específicas (uma por role) + 1 lista de
+  //   fallback (para compatibilidade com planos antigos que
+  //   usavam 'user'/'rep'/'admin' como auditores manuais).
+  //
+  // Cada picker do form recebe APENAS a lista do seu role.
+  //
   // ============================================================
 
   const rawUsers: any[] = Array.isArray(usersData)
     ? usersData
     : (usersData as any)?.users || [];
 
+  /**
+   * Lista geral: inclui todos os roles válidos como membros.
+   * Usada como fallback quando o picker não tem role específico.
+   */
   const allMemberOptions: TeamMember[] = useMemo(() => {
     const users: TeamMember[] = (rawUsers || [])
-      .filter((u: any) => u.role === 'rep' || u.role === 'admin' || u.role === 'user')
+      .filter((u: any) =>
+        u.role === 'user' ||
+        u.role === 'rep' ||
+        u.role === 'admin' ||
+        u.role === 'auditor_lead' ||
+        u.role === 'auditor' ||
+        u.role === 'observer'
+      )
       .map((u: any) => ({
         id: u._id || u.id,
         name: u.name,
@@ -621,6 +646,71 @@ export function AuditPlanForm({
       }));
 
     return [...users, ...manualMembers];
+  }, [rawUsers, manualMembers]);
+
+  /**
+   * 🆕 v52.2 — Opções específicas por role.
+   *
+   * Cada picker do form usa uma dessas listas, garantindo que:
+   *   - Auditor Líder só vê usuários com role 'auditor_lead'
+   *   - Auditores só veem usuários com role 'auditor'
+   *   - Observadores só veem usuários com role 'observer'
+   *
+   * Se a lista específica estiver vazia, o fallback é a lista
+   * geral (allMemberOptions) — preservando compatibilidade com
+   * planos antigos e mantendo a opção de "Adicionar manualmente".
+   */
+  const leadAuditorOptions: TeamMember[] = useMemo(() => {
+    const roleUsers = (rawUsers || [])
+      .filter((u: any) => u.role === 'auditor_lead')
+      .map((u: any) => ({
+        id: u._id || u.id,
+        name: u.name,
+        email: u.email,
+        isManual: false,
+      }));
+
+    // Se não há auditores líderes cadastrados, cai no fallback
+    // para preservar a opção de adicionar manualmente
+    if (roleUsers.length === 0) {
+      return manualMembers;
+    }
+
+    return [...roleUsers, ...manualMembers];
+  }, [rawUsers, manualMembers]);
+
+  const auditorOptions: TeamMember[] = useMemo(() => {
+    const roleUsers = (rawUsers || [])
+      .filter((u: any) => u.role === 'auditor')
+      .map((u: any) => ({
+        id: u._id || u.id,
+        name: u.name,
+        email: u.email,
+        isManual: false,
+      }));
+
+    if (roleUsers.length === 0) {
+      return manualMembers;
+    }
+
+    return [...roleUsers, ...manualMembers];
+  }, [rawUsers, manualMembers]);
+
+  const observerOptions: TeamMember[] = useMemo(() => {
+    const roleUsers = (rawUsers || [])
+      .filter((u: any) => u.role === 'observer')
+      .map((u: any) => ({
+        id: u._id || u.id,
+        name: u.name,
+        email: u.email,
+        isManual: false,
+      }));
+
+    if (roleUsers.length === 0) {
+      return manualMembers;
+    }
+
+    return [...roleUsers, ...manualMembers];
   }, [rawUsers, manualMembers]);
 
   // ============================================================
@@ -1462,7 +1552,7 @@ export function AuditPlanForm({
       </div>
 
       {/* ======================================================== */}
-      {/* EQUIPE (v49.1) */}
+      {/* EQUIPE (v49.1 / v52.2) */}
       {/* ======================================================== */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
@@ -1498,6 +1588,7 @@ export function AuditPlanForm({
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* 🆕 v52.2 — Options específicas por role */}
           <TeamMemberPicker
             label="Auditor Líder"
             role="leadAuditor"
@@ -1505,7 +1596,7 @@ export function AuditPlanForm({
             multiple={false}
             value={teamMembersByRole.leadAuditor}
             onChange={(members) => handleTeamRoleChange('leadAuditor', members)}
-            options={allMemberOptions}
+            options={leadAuditorOptions}
             onAddManual={handleAddManualMember}
             onRemoveManual={handleRemoveManualMember}
             error={errors.leadAuditor}
@@ -1518,7 +1609,7 @@ export function AuditPlanForm({
             multiple
             value={teamMembersByRole.auditors}
             onChange={(members) => handleTeamRoleChange('auditors', members)}
-            options={allMemberOptions}
+            options={auditorOptions}
             onAddManual={handleAddManualMember}
             onRemoveManual={handleRemoveManualMember}
             hint="Adicione quantos forem necessários"
@@ -1530,7 +1621,7 @@ export function AuditPlanForm({
             multiple
             value={teamMembersByRole.observers}
             onChange={(members) => handleTeamRoleChange('observers', members)}
-            options={allMemberOptions}
+            options={observerOptions}
             onAddManual={handleAddManualMember}
             onRemoveManual={handleRemoveManualMember}
             hint="Adicione quantos forem necessários"
