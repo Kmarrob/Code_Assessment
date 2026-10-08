@@ -20,6 +20,11 @@ import {
 import { usePlans, usePlanStats } from '../../../hooks/useAudit';
 import { AuditPlan } from '../../../types/audit.types';
 
+// ============================================================
+// 🆕 v52.7.4 — IMPORT PARA DETECÇÃO DE ROLE
+// ============================================================
+import { useAuth } from '../../../../../contexts/AuthContext.js';
+
 const STATUS_COLORS: Record<string, string> = {
   draft: 'bg-gray-100 text-gray-600',
   pending_approval: 'bg-yellow-100 text-yellow-600',
@@ -40,6 +45,28 @@ const STATUS_LABELS: Record<string, string> = {
 
 export function RepAuditDashboard() {
   const navigate = useNavigate();
+
+  // ============================================================
+  // 🆕 v52.7.4 — DETECÇÃO DE ROLE
+  // ============================================================
+  const { user } = useAuth();
+
+  const isRep = user?.role === 'rep';
+  const isAdmin = user?.role === 'admin';
+  const isAuditorLead = user?.role === 'auditor_lead';
+  const isAuditor = user?.role === 'auditor';
+  const isObserver = user?.role === 'observer';
+
+  const canManagePlans = isRep || isAdmin;
+
+  const basePath = isAuditorLead
+    ? '/auditor-lead/audit'
+    : isAuditor
+      ? '/auditor/audit'
+      : isObserver
+        ? '/observer/audit'
+        : '/rep/audit';
+
   const { data: plans = [], isLoading: isLoadingPlans } = usePlans();
   const { data: stats, isLoading: isLoadingStats } = usePlanStats();
 
@@ -56,13 +83,15 @@ export function RepAuditDashboard() {
 
   const isLoading = isLoadingPlans || isLoadingStats;
 
-  // Navegação para as funcionalidades (requerem um planId selecionado)
+  // ============================================================
+  // 🆕 v52.7.4 — Navegação com basePath dinâmico
+  // ============================================================
   const navigateToFeature = (feature: string, planId?: string) => {
     if (!planId) {
-      navigate('/rep/audit/plans');
+      navigate(`${basePath}/plans`);
       return;
     }
-    navigate(`/rep/audit/${feature}/${planId}`);
+    navigate(`${basePath}/${feature}/${planId}`);
   };
 
   // Pega o primeiro plano disponível para navegação rápida
@@ -80,19 +109,23 @@ export function RepAuditDashboard() {
         </div>
         <div className="flex gap-3 mt-4 md:mt-0">
           <button
-            onClick={() => navigate('/rep/audit/plans')}
+            onClick={() => navigate(`${basePath}/plans`)}
             className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
           >
             <Eye className="w-4 h-4" />
             Ver Todos
           </button>
-          <button
-            onClick={() => navigate('/rep/audit/plans/new')}
-            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            Novo Plano
-          </button>
+
+          {/* 🆕 v52.7.4 — Novo Plano só para REP/ADMIN */}
+          {canManagePlans && (
+            <button
+              onClick={() => navigate(`${basePath}/plans/new`)}
+              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Novo Plano
+            </button>
+          )}
         </div>
       </div>
 
@@ -100,7 +133,7 @@ export function RepAuditDashboard() {
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mb-8">
         {/* 🆕 NOVO (v51.2) — Card Dashboard de Auditoria */}
         <div
-          onClick={() => navigate('/rep/audit/dashboard-completo')}
+          onClick={() => navigate(`${basePath}/dashboard-completo`)}
           className="bg-white border-2 border-sky-300 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
         >
           <div className="flex items-center justify-between">
@@ -118,7 +151,7 @@ export function RepAuditDashboard() {
 
         {/* Planos */}
         <div
-          onClick={() => navigate('/rep/audit/plans')}
+          onClick={() => navigate(`${basePath}/plans`)}
           className="bg-white border-2 border-indigo-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
         >
           <div className="flex items-center justify-between">
@@ -137,9 +170,9 @@ export function RepAuditDashboard() {
         <div
           onClick={() => {
             if (firstPlanId) {
-              navigate(`/rep/audit/checklist/${firstPlanId}`);
+              navigate(`${basePath}/checklist/${firstPlanId}`);
             } else {
-              navigate('/rep/audit/plans');
+              navigate(`${basePath}/plans`);
             }
           }}
           className={`bg-white border-2 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer ${
@@ -165,9 +198,9 @@ export function RepAuditDashboard() {
         <div
           onClick={() => {
             if (firstPlanId) {
-              navigate(`/rep/audit/evidence/${firstPlanId}`);
+              navigate(`${basePath}/evidence/${firstPlanId}`);
             } else {
-              navigate('/rep/audit/plans');
+              navigate(`${basePath}/plans`);
             }
           }}
           className={`bg-white border-2 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer ${
@@ -193,9 +226,9 @@ export function RepAuditDashboard() {
         <div
           onClick={() => {
             if (firstPlanId) {
-              navigate(`/rep/audit/findings/${firstPlanId}`);
+              navigate(`${basePath}/findings/${firstPlanId}`);
             } else {
-              navigate('/rep/audit/plans');
+              navigate(`${basePath}/plans`);
             }
           }}
           className={`bg-white border-2 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer ${
@@ -221,9 +254,9 @@ export function RepAuditDashboard() {
         <div
           onClick={() => {
             if (firstPlanId) {
-              navigate(`/rep/audit/risks/${firstPlanId}`);
+              navigate(`${basePath}/risks/${firstPlanId}`);
             } else {
-              navigate('/rep/audit/plans');
+              navigate(`${basePath}/plans`);
             }
           }}
           className={`bg-white border-2 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer ${
@@ -249,9 +282,9 @@ export function RepAuditDashboard() {
         <div
           onClick={() => {
             if (firstPlanId) {
-              navigate(`/rep/audit/actions/${firstPlanId}`);
+              navigate(`${basePath}/actions/${firstPlanId}`);
             } else {
-              navigate('/rep/audit/plans');
+              navigate(`${basePath}/plans`);
             }
           }}
           className={`bg-white border-2 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer ${
@@ -277,9 +310,9 @@ export function RepAuditDashboard() {
         <div
           onClick={() => {
             if (firstPlanId) {
-              navigate(`/rep/audit/soa/${firstPlanId}`);
+              navigate(`${basePath}/soa/${firstPlanId}`);
             } else {
-              navigate('/rep/audit/plans');
+              navigate(`${basePath}/plans`);
             }
           }}
           className={`bg-white border-2 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer ${
@@ -305,9 +338,9 @@ export function RepAuditDashboard() {
         <div
           onClick={() => {
             if (firstPlanId) {
-              navigate(`/rep/audit/program/${firstPlanId}`);
+              navigate(`${basePath}/program/${firstPlanId}`);
             } else {
-              navigate('/rep/audit/plans');
+              navigate(`${basePath}/plans`);
             }
           }}
           className={`bg-white border-2 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer ${
@@ -333,9 +366,9 @@ export function RepAuditDashboard() {
         <div
           onClick={() => {
             if (firstPlanId) {
-              navigate(`/rep/audit/reports/${firstPlanId}`);
+              navigate(`${basePath}/reports/${firstPlanId}`);
             } else {
-              navigate('/rep/audit/plans');
+              navigate(`${basePath}/plans`);
             }
           }}
           className={`bg-white border-2 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer ${
@@ -433,7 +466,7 @@ export function RepAuditDashboard() {
         <div className="p-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
           <h2 className="text-lg font-semibold text-gray-900">Planos Recentes</h2>
           <button
-            onClick={() => navigate('/rep/audit/plans')}
+            onClick={() => navigate(`${basePath}/plans`)}
             className="text-sm text-indigo-600 hover:text-indigo-800 flex items-center gap-1"
           >
             Ver todos
@@ -447,12 +480,16 @@ export function RepAuditDashboard() {
           <div className="p-6 text-center text-gray-500">
             <ClipboardList className="w-12 h-12 text-gray-300 mx-auto mb-3" />
             <p>Nenhum plano de auditoria criado ainda.</p>
-            <button
-              onClick={() => navigate('/rep/audit/plans/new')}
-              className="mt-3 text-indigo-600 hover:text-indigo-800"
-            >
-              Criar primeiro plano →
-            </button>
+
+            {/* 🆕 v52.7.4 — Criar primeiro plano só para REP/ADMIN */}
+            {canManagePlans && (
+              <button
+                onClick={() => navigate(`${basePath}/plans/new`)}
+                className="mt-3 text-indigo-600 hover:text-indigo-800"
+              >
+                Criar primeiro plano →
+              </button>
+            )}
           </div>
         ) : (
           <div className="divide-y divide-gray-200">
@@ -460,7 +497,7 @@ export function RepAuditDashboard() {
               <div
                 key={plan._id}
                 className="p-4 hover:bg-gray-50 transition-colors cursor-pointer"
-                onClick={() => navigate(`/rep/audit/plans/${plan._id}`)}
+                onClick={() => navigate(`${basePath}/plans/${plan._id}`)}
               >
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                   <div className="flex-1 min-w-0">
@@ -488,9 +525,10 @@ export function RepAuditDashboard() {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        navigate(`/rep/audit/plans/${plan._id}`);
+                        navigate(`${basePath}/execution/${plan._id}`);
                       }}
                       className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                      title="Executar"
                     >
                       <Eye className="w-4 h-4" />
                     </button>
