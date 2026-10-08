@@ -19,6 +19,11 @@ import {
 import { useActionsByFinding, useCompleteAction, useValidateAction, useStartAction } from '../../../hooks/useAudit';
 import { AuditActionPlan, AuditActionStatus } from '../../../types/audit.types';
 
+// ============================================================
+// 🆕 v52.9 — IMPORT PARA DETECÇÃO DE ROLE
+// ============================================================
+import { useAuth } from '../../../../../contexts/AuthContext.js';
+
 const STATUS_OPTIONS: { value: AuditActionStatus | 'all'; label: string; color: string }[] = [
   { value: 'all', label: 'Todos', color: 'bg-gray-100 text-gray-600' },
   { value: 'pending', label: 'Pendente', color: 'bg-gray-100 text-gray-600' },
@@ -37,6 +42,21 @@ const STATUS_LABELS: Record<string, string> = {
 export function RepAuditActionPlan() {
   const navigate = useNavigate();
   const { findingId } = useParams<{ findingId: string }>();
+
+  // ============================================================
+  // 🆕 v52.9 — DETECÇÃO DE ROLE + BASE PATH DINÂMICO
+  // ============================================================
+  const { user } = useAuth();
+
+  const basePath =
+    user?.role === 'auditor_lead'
+      ? '/auditor-lead/audit'
+      : user?.role === 'auditor'
+        ? '/auditor/audit'
+        : user?.role === 'observer'
+          ? '/observer/audit'
+          : '/rep/audit';
+
   const [statusFilter, setStatusFilter] = useState<AuditActionStatus | 'all'>('all');
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
@@ -98,8 +118,9 @@ export function RepAuditActionPlan() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
         <div className="flex items-center gap-4">
+          {/* 🔧 v52.9 — basePath dinâmico */}
           <button
-            onClick={() => navigate(`/rep/audit/findings/${findingId}`)}
+            onClick={() => navigate(`${basePath}/findings/${findingId}`)}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -111,8 +132,9 @@ export function RepAuditActionPlan() {
             </p>
           </div>
         </div>
+        {/* 🔧 v52.9 — basePath dinâmico */}
         <button
-          onClick={() => navigate(`/rep/audit/actions/new/${findingId}`)}
+          onClick={() => navigate(`${basePath}/actions/new/${findingId}`)}
           className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors mt-4 md:mt-0"
         >
           <Plus className="w-4 h-4" />
@@ -149,8 +171,9 @@ export function RepAuditActionPlan() {
                 : 'Comece criando um plano de ação para esta NC'}
             </p>
             {statusFilter === 'all' && (
+              // 🔧 v52.9 — basePath dinâmico
               <button
-                onClick={() => navigate(`/rep/audit/actions/new/${findingId}`)}
+                onClick={() => navigate(`${basePath}/actions/new/${findingId}`)}
                 className="mt-4 text-indigo-600 hover:text-indigo-800"
               >
                 Criar primeiro plano →

@@ -15,6 +15,11 @@ import {
 import { useAudit } from '../../../hooks/useAudit';
 import { toast } from 'react-hot-toast';
 
+// ============================================================
+// 🆕 v52.9 — IMPORT PARA DETECÇÃO DE ROLE
+// ============================================================
+import { useAuth } from '../../../../../contexts/AuthContext.js';
+
 interface Evidence {
   _id: string;
   filename: string;
@@ -31,6 +36,21 @@ interface Evidence {
 export function RepAuditEvidence() {
   const { planId } = useParams<{ planId: string }>();
   const navigate = useNavigate();
+
+  // ============================================================
+  // 🆕 v52.9 — DETECÇÃO DE ROLE + BASE PATH DINÂMICO
+  // ============================================================
+  const { user } = useAuth();
+
+  const basePath =
+    user?.role === 'auditor_lead'
+      ? '/auditor-lead/audit'
+      : user?.role === 'auditor'
+        ? '/auditor/audit'
+        : user?.role === 'observer'
+          ? '/observer/audit'
+          : '/rep/audit';
+
   const [isUploading, setIsUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [description, setDescription] = useState('');
@@ -159,8 +179,9 @@ export function RepAuditEvidence() {
     <div className="max-w-5xl mx-auto px-4 py-6">
       {/* Header */}
       <div className="flex items-center gap-4 mb-6">
+        {/* 🔧 v52.9 — basePath dinâmico */}
         <button
-          onClick={() => navigate(`/rep/audit/execution/${planId}`)}
+          onClick={() => navigate(`${basePath}/execution/${planId}`)}
           className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
