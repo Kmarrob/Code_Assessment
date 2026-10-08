@@ -79,12 +79,6 @@ import { RepAuditDashboardWrapper } from './modules/audit/pages/rep/dashboard/Re
 // ============================================
 // 🆕 NOVO (v52.1) - IMPORTAÇÕES DOS DASHBOARDS POR ROLE
 // ============================================
-//
-// MOTIVO:
-//   Os roles auditor_lead, auditor e observer precisam de
-//   telas próprias após o login.
-//
-// ============================================
 import { AuditorLeadDashboard } from './pages/AuditorLeadDashboard.js';
 import { AuditorDashboard } from './pages/AuditorDashboard.js';
 import { ObserverDashboard } from './pages/ObserverDashboard.js';
@@ -673,11 +667,286 @@ function App() {
                   </Route>
 
                   { /* ============================================
+                      🆕 NOVO (v52.4) - ROTAS DE AUDITORIA POR ROLE
+                      ============================================ */ }
+                  { /*
+                      MOTIVO:
+                        Os roles auditor_lead, auditor e observer precisam
+                        acessar as telas de auditoria (planos, execução,
+                        checklists, evidências, relatórios), mas NÃO podem
+                        criar/editar/excluir planos nem gerenciar usuários.
+
+                        SOLUÇÃO:
+                        Criar rotas sob /auditor-lead/audit/*, /auditor/audit/*
+                        e /observer/audit/* que apontam para os MESMOS
+                        componentes, mas com whitelist correta.
+
+                        Os componentes detectam o role do usuário via
+                        useAuth() e escondem as ações não permitidas.
+
+                      --------------------------------------------------
+                      AUDITOR LÍDER — acesso a /auditor-lead/audit/*
+                      --------------------------------------------------
+                  */ }
+                  <Route element={<ProtectedRoute allowedRoles={[UserRole.AUDITOR_LEAD, UserRole.ADMIN]} />}>
+                    <Route path="/auditor-lead/audit/dashboard" element={
+                      <Layout>
+                        <RepAuditDashboardWrapper />
+                      </Layout>
+                    } />
+                    <Route path="/auditor-lead/audit/plans" element={
+                      <Layout>
+                        <RepAuditPlans />
+                      </Layout>
+                    } />
+                    <Route path="/auditor-lead/audit/plans/:id" element={
+                      <Layout>
+                        <RepAuditPlanForm />
+                      </Layout>
+                    } />
+                    <Route path="/auditor-lead/audit/execution/:planId" element={
+                      <Layout>
+                        <RepAuditExecution />
+                      </Layout>
+                    } />
+                    <Route path="/auditor-lead/audit/checklist/:planId" element={
+                      <Layout>
+                        <RepAuditChecklist />
+                      </Layout>
+                    } />
+                    <Route path="/auditor-lead/audit/evidence/:planId" element={
+                      <Layout>
+                        <RepAuditEvidence />
+                      </Layout>
+                    } />
+                    <Route path="/auditor-lead/audit/risks/:planId" element={
+                      <Layout>
+                        <RepAuditRisks />
+                      </Layout>
+                    } />
+                    <Route path="/auditor-lead/audit/soa/:planId" element={
+                      <Layout>
+                        <RepAuditSoA />
+                      </Layout>
+                    } />
+                    <Route path="/auditor-lead/audit/program/:planId" element={
+                      <Layout>
+                        <RepAuditProgram />
+                      </Layout>
+                    } />
+                    <Route path="/auditor-lead/audit/document-review/:planId" element={
+                      <Layout>
+                        <RepAuditDocumentReview />
+                      </Layout>
+                    } />
+                    <Route path="/auditor-lead/audit/findings/:planId" element={
+                      <Layout>
+                        <RepAuditFindings />
+                      </Layout>
+                    } />
+                    <Route path="/auditor-lead/audit/findings/new/:planId" element={
+                      <Layout>
+                        <RepAuditFindingForm />
+                      </Layout>
+                    } />
+                    <Route path="/auditor-lead/audit/findings/:findingId" element={
+                      <Layout>
+                        <RepAuditFindingForm />
+                      </Layout>
+                    } />
+                    <Route path="/auditor-lead/audit/findings/:findingId/edit" element={
+                      <Layout>
+                        <RepAuditFindingForm />
+                      </Layout>
+                    } />
+                    <Route path="/auditor-lead/audit/actions/:findingId" element={
+                      <Layout>
+                        <RepAuditActionPlan />
+                      </Layout>
+                    } />
+                    <Route path="/auditor-lead/audit/actions/new/:findingId" element={
+                      <Layout>
+                        <RepAuditActionPlan />
+                      </Layout>
+                    } />
+                    <Route path="/auditor-lead/audit/reports/:planId" element={
+                      <Layout>
+                        <RepAuditReport />
+                      </Layout>
+                    } />
+                    <Route path="/auditor-lead/audit/reports/:reportId/edit" element={
+                      <Layout>
+                        <RepAuditReport />
+                      </Layout>
+                    } />
+                  </Route>
+
+                  { /* --------------------------------------------------
+                      AUDITOR — acesso a /auditor/audit/*
+                      -------------------------------------------------- */ }
+                  <Route element={<ProtectedRoute allowedRoles={[UserRole.AUDITOR, UserRole.ADMIN]} />}>
+                    <Route path="/auditor/audit/dashboard" element={
+                      <Layout>
+                        <RepAuditDashboardWrapper />
+                      </Layout>
+                    } />
+                    <Route path="/auditor/audit/plans" element={
+                      <Layout>
+                        <RepAuditPlans />
+                      </Layout>
+                    } />
+                    <Route path="/auditor/audit/plans/:id" element={
+                      <Layout>
+                        <RepAuditPlanForm />
+                      </Layout>
+                    } />
+                    <Route path="/auditor/audit/execution/:planId" element={
+                      <Layout>
+                        <RepAuditExecution />
+                      </Layout>
+                    } />
+                    <Route path="/auditor/audit/checklist/:planId" element={
+                      <Layout>
+                        <RepAuditChecklist />
+                      </Layout>
+                    } />
+                    <Route path="/auditor/audit/evidence/:planId" element={
+                      <Layout>
+                        <RepAuditEvidence />
+                      </Layout>
+                    } />
+                    <Route path="/auditor/audit/risks/:planId" element={
+                      <Layout>
+                        <RepAuditRisks />
+                      </Layout>
+                    } />
+                    <Route path="/auditor/audit/soa/:planId" element={
+                      <Layout>
+                        <RepAuditSoA />
+                      </Layout>
+                    } />
+                    <Route path="/auditor/audit/program/:planId" element={
+                      <Layout>
+                        <RepAuditProgram />
+                      </Layout>
+                    } />
+                    <Route path="/auditor/audit/document-review/:planId" element={
+                      <Layout>
+                        <RepAuditDocumentReview />
+                      </Layout>
+                    } />
+                    <Route path="/auditor/audit/findings/:planId" element={
+                      <Layout>
+                        <RepAuditFindings />
+                      </Layout>
+                    } />
+                    <Route path="/auditor/audit/findings/new/:planId" element={
+                      <Layout>
+                        <RepAuditFindingForm />
+                      </Layout>
+                    } />
+                    <Route path="/auditor/audit/findings/:findingId" element={
+                      <Layout>
+                        <RepAuditFindingForm />
+                      </Layout>
+                    } />
+                    <Route path="/auditor/audit/findings/:findingId/edit" element={
+                      <Layout>
+                        <RepAuditFindingForm />
+                      </Layout>
+                    } />
+                    <Route path="/auditor/audit/actions/:findingId" element={
+                      <Layout>
+                        <RepAuditActionPlan />
+                      </Layout>
+                    } />
+                    <Route path="/auditor/audit/actions/new/:findingId" element={
+                      <Layout>
+                        <RepAuditActionPlan />
+                      </Layout>
+                    } />
+                    <Route path="/auditor/audit/reports/:planId" element={
+                      <Layout>
+                        <RepAuditReport />
+                      </Layout>
+                    } />
+                    <Route path="/auditor/audit/reports/:reportId/edit" element={
+                      <Layout>
+                        <RepAuditReport />
+                      </Layout>
+                    } />
+                  </Route>
+
+                  { /* --------------------------------------------------
+                      OBSERVADOR — acesso a /observer/audit/*
+                      (somente leitura)
+                      -------------------------------------------------- */ }
+                  <Route element={<ProtectedRoute allowedRoles={[UserRole.OBSERVER, UserRole.ADMIN]} />}>
+                    <Route path="/observer/audit/dashboard" element={
+                      <Layout>
+                        <RepAuditDashboardWrapper />
+                      </Layout>
+                    } />
+                    <Route path="/observer/audit/plans" element={
+                      <Layout>
+                        <RepAuditPlans />
+                      </Layout>
+                    } />
+                    <Route path="/observer/audit/plans/:id" element={
+                      <Layout>
+                        <RepAuditPlanForm />
+                      </Layout>
+                    } />
+                    <Route path="/observer/audit/execution/:planId" element={
+                      <Layout>
+                        <RepAuditExecution />
+                      </Layout>
+                    } />
+                    <Route path="/observer/audit/checklist/:planId" element={
+                      <Layout>
+                        <RepAuditChecklist />
+                      </Layout>
+                    } />
+                    <Route path="/observer/audit/evidence/:planId" element={
+                      <Layout>
+                        <RepAuditEvidence />
+                      </Layout>
+                    } />
+                    <Route path="/observer/audit/risks/:planId" element={
+                      <Layout>
+                        <RepAuditRisks />
+                      </Layout>
+                    } />
+                    <Route path="/observer/audit/soa/:planId" element={
+                      <Layout>
+                        <RepAuditSoA />
+                      </Layout>
+                    } />
+                    <Route path="/observer/audit/program/:planId" element={
+                      <Layout>
+                        <RepAuditProgram />
+                      </Layout>
+                    } />
+                    <Route path="/observer/audit/document-review/:planId" element={
+                      <Layout>
+                        <RepAuditDocumentReview />
+                      </Layout>
+                    } />
+                    <Route path="/observer/audit/findings/:planId" element={
+                      <Layout>
+                        <RepAuditFindings />
+                      </Layout>
+                    } />
+                    <Route path="/observer/audit/reports/:planId" element={
+                      <Layout>
+                        <RepAuditReport />
+                      </Layout>
+                    } />
+                  </Route>
+
+                  { /* ============================================
                       🆕 NOVO (v52.1) - ROTAS DOS DASHBOARDS POR ROLE
                       ============================================ */ }
-                  { /* --------------------------------------------------
-                      AUDITOR LÍDER
-                      -------------------------------------------------- */ }
                   <Route element={<ProtectedRoute allowedRoles={[UserRole.AUDITOR_LEAD, UserRole.ADMIN]} />}>
                     <Route path="/auditor-lead/dashboard" element={
                       <Layout>
@@ -686,9 +955,6 @@ function App() {
                     } />
                   </Route>
 
-                  { /* --------------------------------------------------
-                      AUDITOR
-                      -------------------------------------------------- */ }
                   <Route element={<ProtectedRoute allowedRoles={[UserRole.AUDITOR, UserRole.ADMIN]} />}>
                     <Route path="/auditor/dashboard" element={
                       <Layout>
@@ -697,9 +963,6 @@ function App() {
                     } />
                   </Route>
 
-                  { /* --------------------------------------------------
-                      OBSERVADOR
-                      -------------------------------------------------- */ }
                   <Route element={<ProtectedRoute allowedRoles={[UserRole.OBSERVER, UserRole.ADMIN]} />}>
                     <Route path="/observer/dashboard" element={
                       <Layout>
