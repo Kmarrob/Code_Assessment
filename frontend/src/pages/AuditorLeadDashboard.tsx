@@ -20,6 +20,14 @@
 //   - Lista detalhada com ações inline (Aprovar/Rejeitar/Ver).
 //   - Modais de confirmação para ações destrutivas.
 //
+// 🔧 v52.5 — CORREÇÃO DE NAVEGAÇÃO:
+//   Os 3 handlers de planos/relatórios agora apontam para as
+//   rotas /auditor-lead/audit/* (novas), que têm whitelist
+//   correta para o role auditor_lead.
+//
+//   Os cards "Maturidade" e "Documentos" continuam apontando
+//   para suas rotas atuais. Serão migrados em rodada futura.
+//
 // SEGURANÇA:
 //   - companyId e userId sempre vêm do AuthContext (token).
 //   - Backend filtra por ambos, garantindo isolamento.
@@ -233,6 +241,14 @@ export const AuditorLeadDashboard: React.FC = () => {
   // ============================================================
   // HANDLERS — NAVEGAÇÃO
   // ============================================================
+  //
+  // 🔧 v52.5 — Os handlers de planos e relatórios apontam
+  // para as rotas /auditor-lead/audit/* (novas).
+  //
+  // Os handlers de Maturidade e Documentos continuam apontando
+  // para /rep/* (serão migrados em rodada futura).
+  //
+  // ============================================================
 
   const handleLogout = async () => {
     await logout();
@@ -258,11 +274,13 @@ export const AuditorLeadDashboard: React.FC = () => {
   };
 
   const handleGoToMyPlans = () => {
-    navigate('/rep/audit/plans');
+    // 🔧 v52.5 — Corrigido para a rota do Auditor Líder
+    navigate('/auditor-lead/audit/plans');
   };
 
   const handleGoToReports = () => {
-    navigate('/rep/audit/reports');
+    // 🔧 v52.5 — Corrigido para a rota do Auditor Líder
+    navigate('/auditor-lead/audit/reports');
   };
 
   const handleGoToMaturity = () => {
@@ -365,7 +383,8 @@ export const AuditorLeadDashboard: React.FC = () => {
   };
 
   const handleViewDetails = (planId: string) => {
-    navigate(`/rep/audit/plans/${planId}`);
+    // 🔧 v52.5 — Corrigido para a rota do Auditor Líder
+    navigate(`/auditor-lead/audit/plans/${planId}`);
   };
 
   const handleRefreshAll = async () => {
