@@ -460,19 +460,25 @@ export class NotificationService {
   //   notificava o Auditor Líder quando um plano era enviado para
   //   sua aprovação. Ele só descobria entrando no sistema.
   //
-  // SOLUÇÃO:
-  //   Método dedicado que dispara notificação in-app + e-mail
-  //   para o Auditor Líder designado.
+  // 🔧 v51.8.1 — SUPORTE A AUDITOR MANUAL
+  // ----------------------------------------------------------------
+  //   PROBLEMA:
+  //     Quando o leadAuditor é salvo como 'manual_<timestamp>'
+  //     (auditor externo sem conta no sistema), o User.findById()
+  //     falhava silenciosamente, e nenhuma notificação era
+  //     enviada.
   //
-  // REAPROVEITAMENTO:
-  //   Usa o tipo `review_request` (já existente no enum do
-  //   Notification), evitando alterações no modelo. O título e a
-  //   mensagem contextualizam a ação de auditoria.
+  //   SOLUÇÃO:
+  //     - Se o ID for um ObjectId válido, cria notificação
+  //       in-app + e-mail (fluxo normal).
+  //     - Se o ID for 'manual_xxx', NÃO cria notificação
+  //       in-app (não há User), mas ENVIA E-MAIL usando o
+  //       `leadAuditorEmail` que foi salvo no próprio plano.
   //
-  // SEGURANÇA:
-  //   - Envolvido em try/catch — se a notificação falhar, o
-  //     fluxo de aprovação não é interrompido.
-  //   - Logs detalhados para diagnóstico.
+  //   SEGURANÇA:
+  //     - Envolvido em try/catch.
+  //     - Fire-and-forget no chamador.
+  //     - Logs detalhados.
   //
   // ============================================
 
@@ -481,20 +487,100 @@ export class NotificationService {
     companyId: string,
     planTitle: string,
     planId: string,
-    createdByName: string
+    createdByName: string,
+    leadAuditorEmail?: string,
+    leadAuditorName?: string
   ): Promise<INotification | null> {
-    return this.createNotification({
-      userId: leadAuditorUserId,
-      companyId,
-      type: 'review_request',
-      title: '🔍 Plano de auditoria aguardando sua aprovação',
-      message: `${createdByName} enviou o plano "${planTitle}" para sua aprovação. Acesse para revisar e aprovar.`,
-      link: `/rep/audit/execution/${planId}`,
-      metadata: {
-        planId,
-        planTitle,
-        userName: createdByName,
-      },
-    });
+    // ============================================================
+    // CASO 1 — Auditor é um usuário do sistema (ObjectId válido)
+    // ============================================================
+    //
+    // Fluxo normal: cria notificação in-app + e-mail via EmailJS.
+    //
+    // ============================================================
+
+    const isValidObjectId =
+      mongoose.Types.ObjectId.isValid(leadAuditorUserId);
+
+    if (isValidObjectId) {
+      // Tenta criar notificação in-app + e-mail (fluxo normal)
+      try {
+        return await this.createNotification({
+          userId: leadAuditorUserId,
+          companyId,
+          type: 'review_request',
+          title: '🔍 Plano de auditoria aguardando sua aprovação',
+          message: `${createdByName} enviou o plano "${planTitle}" para sua aprovação. Acesse para revisar e aprovar.`,
+          link: `/rep/audit/execution/${planId}`,
+          metadata: {
+            planId,
+            planTitle,
+            userName: createdByName,
+          },
+        });
+      } catch (errCreate) {
+        logger.error(
+          `❌ [Notify] Falha ao criar notificação para auditor líder ${leadAuditorUserId}:`,
+          errCreate
+        );
+        return null;
+      }
+    }
+
+    // ============================================================
+    // CASO 2 — Auditor é manual (sem conta no sistema)
+    // ============================================================
+    //
+    // Não há User para criar notificação in-app. Mas ainda podemos
+    // enviar E-MAIL usando `leadAuditorEmail` (que foi salvo no
+    // próprio plano pela tela de criação).
+    //
+    // ============================================================
+
+    logger.info(
+      `ℹ️ [Notify] Auditor Líder é MANUAL (${leadAuditorUserId}). Enviando apenas e-mail para ${leadAuditorEmail || 'N/A'}.`
+    );
+
+    if (!leadAuditorEmail || !leadAuditorEmail.trim()) {
+      logger.warn(
+        `⚠️ [Notify] Auditor Líder manual SEM e-mail cadastrado. Notificação ignorada.`
+      );
+      return null;
+    }
+
+    try {
+      const baseUrl =
+        process.env.FRONTEND_URL ||
+        'https://code-assessment-frontend.onrender.com';
+
+      const link = `${baseUrl}/rep/audit/execution/${planId}`;
+
+      const emailSent = await emailjsService.sendNotificationEmail({
+        to: leadAuditorEmail.trim(),
+        userName: leadAuditorName || 'Auditor Líder',
+        title: 'Plano de auditoria aguardando sua aprovação',
+        message: `${createdByName} enviou o plano "${planTitle}" para sua aprovação. Acesse o sistema para revisar e aprovar.`,
+        link,
+      });
+
+      if (emailSent) {
+        logger.info(
+          `📧 [Notify] E-mail enviado para auditor líder manual: ${leadAuditorEmail}`
+        );
+      } else {
+        logger.warn(
+          `⚠️ [Notify] Falha ao enviar e-mail para auditor líder manual: ${leadAuditorEmail}`
+        );
+      }
+
+      // Não há notificação in-app para retornar
+      return null;
+    } catch (errEmail) {
+      logger.error(
+        `❌ [Notify] Erro ao enviar e-mail para auditor líder manual:`,
+        errEmail
+      );
+      return null;
+    }
   }
 }

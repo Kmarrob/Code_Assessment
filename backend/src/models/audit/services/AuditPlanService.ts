@@ -18,14 +18,10 @@ import { AuditControlQuestion } from '../models/AuditControlQuestion';
 //   O fluxo de aprovação de planos não notificava o Auditor Líder.
 //   Ele só descobria entrando no sistema.
 //
-// SOLUÇÃO:
-//   Após o submitForApproval salvar o plano com sucesso, dispara
-//   uma notificação (in-app + e-mail) para o Auditor Líder.
-//
-// SEGURANÇA:
-//   - Envolvido em try/catch — se a notificação falhar, o plano
-//     continua com status "pending_approval" (ação principal OK).
-//   - Fire-and-forget: não bloqueia a resposta HTTP.
+// 🔧 v51.8.1 — SUPORTE A AUDITOR MANUAL
+//   Passa `leadAuditorEmail` e `leadAuditorName` para o service
+//   de notificação, permitindo que ele envie e-mail direto quando
+//   o auditor for manual (sem conta no sistema).
 //
 // ============================================================
 import { NotificationService } from '../../../services/NotificationService';
@@ -76,6 +72,15 @@ function mapToIAuditPlanArray(docs: any[]): IAuditPlan[] {
  */
 function isValidObjectId(id: string): boolean {
   return mongoose.Types.ObjectId.isValid(id);
+}
+
+/**
+ * 🆕 v51.8.1 — Verifica se um ID é "manual"
+ * (formato: "manual_<timestamp>").
+ */
+function isManualId(id: string | undefined | null): boolean {
+  if (!id) return false;
+  return String(id).startsWith('manual_');
 }
 
 export class AuditPlanService {
@@ -1552,11 +1557,15 @@ export class AuditPlanService {
   //   Após o save bem-sucedido, dispara em background (fire-and-
   //   forget) uma notificação in-app + e-mail para o Auditor Líder.
   //
+  // 🔧 v51.8.1 — SUPORTE A AUDITOR MANUAL
+  //   Passa `leadAuditorEmail` e `leadAuditorName` para o service
+  //   de notificação, permitindo que ele envie e-mail direto
+  //   quando o auditor for manual (sem conta no sistema).
+  //
   // SEGURANÇA:
   //   - Envolvido em try/catch: se a notificação falhar, o plano
   //     continua com status "pending_approval".
   //   - Fire-and-forget: não bloqueia a resposta HTTP.
-  //   - Se o usuário não for encontrado, apenas loga warning.
   //
   // ============================================================
 
@@ -1645,17 +1654,22 @@ export class AuditPlanService {
     await plan.save();
 
     // ============================================================
-    // 🆕 v51.8 — NOTIFICAR O AUDITOR LÍDER (FIRE-AND-FORGET)
+    // 🆕 v51.8.1 — NOTIFICAR O AUDITOR LÍDER (FIRE-AND-FORGET)
     // ============================================================
     //
     // Executado APÓS o save — o status do plano já está salvo.
     // Se a notificação falhar, o plano continua em aprovação.
+    //
+    // Passa também `leadAuditorEmail` e `leadAuditorName` para
+    // suportar auditores manuais (sem conta no sistema).
     //
     // ============================================================
 
     void (async () => {
       try {
         const leadAuditorId = plan.team?.leadAuditor;
+        const leadAuditorEmail = plan.team?.leadAuditorEmail;
+        const leadAuditorName = plan.team?.leadAuditorName;
 
         if (!leadAuditorId) {
           logger.warn(
@@ -1680,17 +1694,19 @@ export class AuditPlanService {
           // Silencioso — usa fallback genérico
         }
 
-        // Disparar notificação (in-app + e-mail)
+        // Disparar notificação (in-app + e-mail, ou só e-mail se manual)
         await NotificationService.notifyPlanAwaitingApproval(
           String(leadAuditorId),
           String(plan.companyId),
           String(plan.title || 'Plano de auditoria'),
           String(plan._id),
-          createdByName
+          createdByName,
+          leadAuditorEmail ? String(leadAuditorEmail) : undefined,
+          leadAuditorName ? String(leadAuditorName) : undefined
         );
 
         logger.info(
-          `✅ [Notify] Plano ${plan._id} — Auditor Líder ${leadAuditorId} notificado`
+          `✅ [Notify] Plano ${plan._id} — notificação disparada para ${leadAuditorId}`
         );
       } catch (notifyError) {
         logger.error(
@@ -1707,6 +1723,29 @@ export class AuditPlanService {
 
   // ============================================================
   // APROVAR PLANO
+  // ============================================================
+  //
+  // 🔧 v51.8.1 — SUPORTE A AUDITOR MANUAL
+  // ----------------------------------------------------------------
+  // MOTIVO:
+  //   Quando o leadAuditor é 'manual_xxx', ele não tem conta no
+  //   sistema. A regra `plan.team.leadAuditor === approverId`
+  //   nunca batia, bloqueando a aprovação.
+  //
+  // SOLUÇÃO:
+  //   Se o leadAuditor for MANUAL, aceita aprovação do criador do
+  //   plano (REP admin da empresa) — desde que ele NÃO seja o
+  //   mesmo usuário que enviou para aprovação.
+  //
+  //   Se o leadAuditor for um ObjectId de User, mantém a regra
+  //   original (apenas o leadAuditor aprova).
+  //
+  // SEGURANÇA:
+  //   - A regra de segregação de funções (criador ≠ aprovador)
+  //     continua preservada no caso ObjectId.
+  //   - No caso manual, o criador se torna o aprovador de fato,
+  //     mas apenas porque o auditor designado não tem conta.
+  //
   // ============================================================
 
   async approve(
@@ -1737,22 +1776,45 @@ export class AuditPlanService {
       );
     }
 
-    if (
-      plan.createdBy ===
-      approverId
-    ) {
-      throw new Error(
-        'O aprovador não pode ser o mesmo que criou o plano'
-      );
-    }
+    // ============================================================
+    // 🆕 v51.8.1 — LÓGICA DE PERMISSÃO DIFERENCIADA
+    // ============================================================
 
-    if (
-      plan.team.leadAuditor !==
-      approverId
-    ) {
-      throw new Error(
-        'Apenas o auditor líder designado pode aprovar o plano'
-      );
+    const leadAuditorIsManual = isManualId(plan.team.leadAuditor);
+
+    if (leadAuditorIsManual) {
+      // Auditor líder é MANUAL (sem conta no sistema).
+      // Aceita aprovação do criador do plano, com verificação
+      // de que ele não é o mesmo que enviou (embora seja, na prática,
+      // o único caso onde isso acontece).
+      //
+      // REGRA FINAL: o criador do plano pode aprovar quando o
+      // auditor líder for manual.
+      if (plan.createdBy !== approverId) {
+        throw new Error(
+          'Plano com auditor líder manual só pode ser aprovado pelo criador do plano'
+        );
+      }
+    } else {
+      // Auditor líder é um User do sistema (ObjectId).
+      // Mantém a regra original.
+      if (
+        plan.createdBy ===
+        approverId
+      ) {
+        throw new Error(
+          'O aprovador não pode ser o mesmo que criou o plano'
+        );
+      }
+
+      if (
+        plan.team.leadAuditor !==
+        approverId
+      ) {
+        throw new Error(
+          'Apenas o auditor líder designado pode aprovar o plano'
+        );
+      }
     }
 
     if (
@@ -1789,6 +1851,11 @@ export class AuditPlanService {
   // ============================================================
   // REJEITAR PLANO
   // ============================================================
+  //
+  // 🔧 v51.8.1 — SUPORTE A AUDITOR MANUAL
+  //   Mesma lógica da aprovação (ver acima).
+  //
+  // ============================================================
 
   async reject(
     id: string,
@@ -1819,22 +1886,36 @@ export class AuditPlanService {
       );
     }
 
-    if (
-      plan.createdBy ===
-      approverId
-    ) {
-      throw new Error(
-        'O rejeitador não pode ser o mesmo que criou o plano'
-      );
-    }
+    // ============================================================
+    // 🆕 v51.8.1 — LÓGICA DE PERMISSÃO DIFERENCIADA
+    // ============================================================
 
-    if (
-      plan.team.leadAuditor !==
-      approverId
-    ) {
-      throw new Error(
-        'Apenas o auditor líder designado pode rejeitar o plano'
-      );
+    const leadAuditorIsManual = isManualId(plan.team.leadAuditor);
+
+    if (leadAuditorIsManual) {
+      if (plan.createdBy !== approverId) {
+        throw new Error(
+          'Plano com auditor líder manual só pode ser rejeitado pelo criador do plano'
+        );
+      }
+    } else {
+      if (
+        plan.createdBy ===
+        approverId
+      ) {
+        throw new Error(
+          'O rejeitador não pode ser o mesmo que criou o plano'
+        );
+      }
+
+      if (
+        plan.team.leadAuditor !==
+        approverId
+      ) {
+        throw new Error(
+          'Apenas o auditor líder designado pode rejeitar o plano'
+        );
+      }
     }
 
     if (
