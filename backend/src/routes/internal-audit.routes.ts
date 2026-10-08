@@ -47,6 +47,32 @@ import {
   auditDashboardController,
 } from '../controllers/audit';
 
+// ============================================================
+// 🆕 v52.7.3 — RepController para a rota /controls
+// ============================================================
+//
+// MOTIVO:
+//   Os roles auditor_lead / auditor / observer precisam listar
+//   os controles da empresa para montar os labels da tela de
+//   execução de auditoria (ex: "5.1 - Políticas...").
+//
+//   A rota existente GET /rep/controls é restrita ao REP. Para
+//   os novos roles, ela retorna 403 e o lookup falha em silêncio,
+//   fazendo o frontend exibir o hash do ObjectId.
+//
+// SOLUÇÃO:
+//   Reaproveitar o MESMO método `getCompanyControls` (já pronto
+//   em RepController) numa rota nova sob /internal-audit/controls,
+//   com authorize(...CAN_READ_AUDIT).
+//
+// SEGURANÇA:
+//   - O método usa req.userId do token (não confia no frontend).
+//   - Busca a empresa do próprio usuário logado via User.findById.
+//   - Aplica o mesmo filtro/ordenação da rota original.
+//
+// ============================================================
+import { RepController } from '../controllers/RepController.js';
+
 const router = Router();
 
 // ============================================================
@@ -135,6 +161,32 @@ const CAN_VIEW_OBSERVER_DASHBOARD = [
   UserRole.ADMIN,
   UserRole.OBSERVER,
 ] as const;
+
+// ============================================================
+// 🆕 v52.7.3 — ROTA DE CONTROLES ACESSÍVEL A TODOS OS ROLES
+// ============================================================
+//
+// MOTIVO:
+//   A tela de execução de auditoria (RepAuditExecution) precisa
+//   listar os controles da empresa para montar os labels
+//   (ex: "5.1 - Políticas..."). Hoje só o REP consegue, via
+//   GET /rep/controls.
+//
+// SOLUÇÃO:
+//   Reaproveita o método `RepController.getCompanyControls` em
+//   uma rota nova, autorizada para todos os roles de auditoria.
+//
+// SEGURANÇA:
+//   - O controller usa req.userId do token.
+//   - Busca a empresa do próprio usuário logado.
+//   - Sem vazamento de dados entre tenants.
+//
+// ============================================================
+router.get(
+  '/controls',
+  authorize(...CAN_READ_AUDIT),
+  RepController.getCompanyControls
+);
 
 // ============================================================
 // 🆕 v50.2.15 — ROTAS DE DASHBOARD
