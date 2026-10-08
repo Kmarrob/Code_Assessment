@@ -621,8 +621,8 @@ export function AuditPlanForm({
   // ============================================================
 
   const rawUsers: any[] = Array.isArray(usersData)
-    ? usersData
-    : (usersData as any)?.users || [];
+  ? usersData
+  : (usersData as any)?.items || (usersData as any)?.users || [];
 
   /**
    * Lista geral: inclui todos os roles válidos como membros.
