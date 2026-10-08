@@ -39,7 +39,23 @@ import { AuditChecklist } from '../../../components/AuditChecklist';
 import api from '@/services/api';
 
 // ============================================================
-// RepAuditExecution — v51.7
+// 🆕 v52.7 — IMPORTS PARA DETECÇÃO DE ROLE
+// ============================================================
+//
+// MOTIVO:
+//   Este componente é compartilhado entre REP, AUDITOR_LEAD,
+//   AUDITOR e OBSERVER. Precisamos detectar o role para:
+//     1. Ajustar o base path de navegação (execution, findings,
+//        reports)
+//     2. Exibir/esconder botões de ação (Enviar/Aprovar/
+//        Iniciar/Concluir/Editar)
+//     3. Ajustar o lookup de controles (fallback)
+//
+// ============================================================
+import { useAuth } from '../../../../../contexts/AuthContext.js';
+
+// ============================================================
+// RepAuditExecution — v51.7 / v52.7
 // ============================================================
 //
 // 🔧 v51.6 — RESTAURAÇÃO
@@ -49,6 +65,16 @@ import api from '@/services/api';
 //   Adicionado banner contextual de fluxo de aprovação + dica
 //   por status. Ajuda o usuário a entender em que etapa do
 //   workflow o plano está e qual o próximo passo.
+//
+// 🔧 v52.7 — NAVEGAÇÃO POR ROLE + LABEL DE CONTROLE
+//   1) Navegação passa a respeitar o role do usuário logado
+//      (basePath dinâmico: /rep, /auditor-lead, /auditor,
+//      /observer).
+//   2) getControlLabel passa a preferir `controlId.id` e
+//      `controlId.nome` do objeto populado (backend v52.7).
+//      O lookup via /rep/controls permanece como FALLBACK —
+//      não é removido.
+//   3) Botões de ação são escondidos para roles sem permissão.
 //
 // ============================================================
 
@@ -201,11 +227,66 @@ export function RepAuditExecution() {
   const navigate = useNavigate();
   const { planId } = useParams<{ planId?: string }>();
   const effectivePlanId = planId || '';
+
+  // ============================================================
+  // 🆕 v52.7 — DETECÇÃO DE ROLE
+  // ============================================================
+  //
+  // MOTIVO:
+  //   O componente é compartilhado por REP, AUDITOR_LEAD,
+  //   AUDITOR e OBSERVER. Precisamos saber o role para:
+  //     1. Definir o base path de navegação (execution,
+  //        findings, reports)
+  //     2. Esconder botões que o role não pode usar
+  //
+  // REGRAS DE PERMISSÃO:
+  //   - REP / ADMIN: pode tudo
+  //   - AUDITOR_LEAD: aprova, inicia, conclui, executa
+  //   - AUDITOR: executa checklists (não aprova/conclui)
+  //   - OBSERVER: somente leitura
+  //
+  // ============================================================
+  const { user } = useAuth();
+
+  const isRep = user?.role === 'rep';
+  const isAdmin = user?.role === 'admin';
+  const isAuditorLead = user?.role === 'auditor_lead';
+  const isAuditor = user?.role === 'auditor';
+  const isObserver = user?.role === 'observer';
+
+  // Permissões consolidadas
+  const canApproveOrConclude = isRep || isAdmin || isAuditorLead;
+  const canExecute = isRep || isAdmin || isAuditorLead || isAuditor;
+  const isReadOnly =
+    isObserver ||
+    plan_is_completed_or_cancelled(); // ajustado abaixo
+
+  // Base path dinâmico
+  const basePath = isAuditorLead
+    ? '/auditor-lead/audit'
+    : isAuditor
+      ? '/auditor/audit'
+      : isObserver
+        ? '/observer/audit'
+        : '/rep/audit';
+
   const [selectedControl, setSelectedControl] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
   // ============================================================
   // 🆕 v49.1.2 — CONTROLES PARA EXIBIÇÃO DE CÓDIGO + NOME
+  // ============================================================
+  //
+  // 🔧 v52.7 — IMPORTANTE:
+  //   Este lookup é FALLBACK. Agora o `checklist.controlId` vem
+  //   populado pelo backend (com `id` e `nome`) e é usado como
+  //   fonte primária. O lookup abaixo só entra em cena se o
+  //   populate falhar (ex: controlId órfão em dados antigos).
+  //
+  //   Isso permite que o componente funcione tanto para REP
+  //   (que pode acessar /rep/controls) quanto para o Auditor
+  //   Líder/Auditor/Observer (que NÃO podem).
+  //
   // ============================================================
 
   const [controls, setControls] = useState<Array<any>>([]);
@@ -217,7 +298,14 @@ export function RepAuditExecution() {
         const list = res.data.data || res.data || [];
         setControls(Array.isArray(list) ? list : []);
       } catch (err) {
-        console.warn('⚠️ Não foi possível carregar controles para exibição:', err);
+        // 🔧 v52.7 — Silencioso por design.
+        // Para roles não-REP, este endpoint retorna 403.
+        // O componente funciona sem ele — o populate do backend
+        // já entrega controlId.id + controlId.nome.
+        console.warn(
+          '⚠️ Não foi possível carregar controles via /rep/controls (esperado para roles não-REP):',
+          err
+        );
       }
     };
     fetchControls();
@@ -234,6 +322,41 @@ export function RepAuditExecution() {
     return map;
   }, [controls]);
 
+  // ============================================================
+  // 🆕 v52.7 — GET CONTROL LABEL (PREFERE POPULATE)
+  // ============================================================
+  //
+  // Prioridade:
+  //   1. Se `checklist.controlId` for OBJETO (populado), usa
+  //      `controlId.id` (código ISO) + `controlId.nome` (título).
+  //   2. Senão, procura no controlsMap (via /rep/controls).
+  //   3. Fallback: retorna o ID/hash cru.
+  //
+  // ============================================================
+  const getControlLabelFromChecklist = (
+    controlId: any
+  ): string => {
+    // Caso 1: controlId é objeto populado
+    if (controlId && typeof controlId === 'object') {
+      const code = String(controlId.id || '');
+      const name = String(controlId.nome || '');
+
+      if (code && name) return `${code} - ${name}`;
+      if (code) return code;
+      if (name) return name;
+
+      // Se for objeto mas sem id/nome, tenta _id
+      const fallbackId = String(controlId._id || '');
+      if (fallbackId) {
+        return getControlLabel(fallbackId);
+      }
+    }
+
+    // Caso 2: controlId é string (fallback antigo)
+    return getControlLabel(String(controlId || ''));
+  };
+
+  // Função auxiliar antiga (mantida para fallback)
   const getControlLabel = (controlId: string): string => {
     const entry = controlsMap.get(String(controlId));
     if (!entry) return controlId;
@@ -378,7 +501,7 @@ export function RepAuditExecution() {
         <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
           <AlertCircle className="w-12 h-12 text-red-600 mx-auto mb-4" />
           <h3 className="text-lg font-semibold text-red-800">Plano não encontrado</h3>
-          <button onClick={() => navigate('/rep/audit/plans')} className="mt-4 text-indigo-600 hover:text-indigo-800">Voltar para lista</button>
+          <button onClick={() => navigate(`${basePath}/plans`)} className="mt-4 text-indigo-600 hover:text-indigo-800">Voltar para lista</button>
         </div>
       </div>
     );
@@ -390,10 +513,15 @@ export function RepAuditExecution() {
   const bannerMeta = getBannerMeta(plan.status);
   const statusHint = getStatusHint(plan.status);
 
+  // 🔧 v52.7 — Cálculo final de "somente leitura" (por role + status)
+  const isPlanLocked =
+    plan.status === 'completed' || plan.status === 'cancelled';
+  const isReadOnlyFinal = isObserver || isPlanLocked;
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex flex-col lg:flex-row lg:items-center gap-4 mb-6">
-        <button onClick={() => navigate('/rep/audit/plans')} className="p-2 hover:bg-gray-100 rounded-lg transition-colors self-start">
+        <button onClick={() => navigate(`${basePath}/plans`)} className="p-2 hover:bg-gray-100 rounded-lg transition-colors self-start">
           <ArrowLeft className="w-5 h-5" />
         </button>
         <div className="flex-1">
@@ -406,27 +534,33 @@ export function RepAuditExecution() {
           <p className="text-gray-500 text-sm mt-1">{plan.description}</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {plan.status === 'draft' && (
+          {/* 🔧 v52.7 — Botões de ação respeitam o role */}
+
+          {plan.status === 'draft' && (isRep || isAdmin) && (
             <button onClick={() => runAction(() => submitPlan.mutateAsync(effectivePlanId))} disabled={isPendingAction} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50">
               <Send className="w-4 h-4" /> Enviar para aprovação
             </button>
           )}
-          {plan.status === 'pending_approval' && (
+
+          {plan.status === 'pending_approval' && canApproveOrConclude && (
             <button onClick={() => runAction(() => approvePlan.mutateAsync(effectivePlanId))} disabled={isPendingAction} className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50">
               <ShieldCheck className="w-4 h-4" /> Aprovar plano
             </button>
           )}
-          {plan.status === 'approved' && (
+
+          {plan.status === 'approved' && canApproveOrConclude && (
             <button onClick={() => runAction(() => startPlan.mutateAsync(effectivePlanId))} disabled={isPendingAction} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50">
               <Play className="w-4 h-4" /> Iniciar auditoria
             </button>
           )}
-          {plan.status === 'in_progress' && (
+
+          {plan.status === 'in_progress' && canApproveOrConclude && (
             <button onClick={() => runAction(() => completePlan.mutateAsync(effectivePlanId))} disabled={isPendingAction || completedChecklists < totalChecklists} className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50" title={completedChecklists < totalChecklists ? 'Conclua todos os checklists antes de encerrar a auditoria' : ''}>
               <CheckCircle className="w-4 h-4" /> Concluir auditoria
             </button>
           )}
-          {plan.status === 'draft' && (
+
+          {plan.status === 'draft' && (isRep || isAdmin) && (
             <button onClick={() => navigate(`/rep/audit/plans/${effectivePlanId}/edit`)} className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">Editar plano</button>
           )}
         </div>
@@ -483,9 +617,10 @@ export function RepAuditExecution() {
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 p-3 mb-6 flex flex-wrap gap-2">
-        <button onClick={() => navigate(`/rep/audit/execution/${effectivePlanId}`)} className="px-3 py-2 rounded-lg bg-indigo-50 text-indigo-700 text-sm font-medium">Checklist</button>
-        <button onClick={() => navigate(`/rep/audit/findings/${effectivePlanId}`)} className="px-3 py-2 rounded-lg hover:bg-gray-50 text-gray-700 text-sm">Achados</button>
-        <button onClick={() => navigate(`/rep/audit/reports/${effectivePlanId}`)} className="px-3 py-2 rounded-lg hover:bg-gray-50 text-gray-700 text-sm">Relatório</button>
+        {/* 🔧 v52.7 — Navegação usa basePath dinâmico */}
+        <button onClick={() => navigate(`${basePath}/execution/${effectivePlanId}`)} className="px-3 py-2 rounded-lg bg-indigo-50 text-indigo-700 text-sm font-medium">Checklist</button>
+        <button onClick={() => navigate(`${basePath}/findings/${effectivePlanId}`)} className="px-3 py-2 rounded-lg hover:bg-gray-50 text-gray-700 text-sm">Achados</button>
+        <button onClick={() => navigate(`${basePath}/reports/${effectivePlanId}`)} className="px-3 py-2 rounded-lg hover:bg-gray-50 text-gray-700 text-sm">Relatório</button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -497,11 +632,15 @@ export function RepAuditExecution() {
             ) : checklists.map((checklist) => {
               const isSelected = selectedControl === checklist.controlId;
               const isCompleted = checklist.status === 'completed';
+              // 🔧 v52.7 — Passa o OBJETO inteiro para aproveitar o populate
+              const controlLabel = getControlLabelFromChecklist(
+                (checklist as any).controlId
+              );
               return (
                 <button key={checklist._id} onClick={() => setSelectedControl(checklist.controlId)} className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors flex items-center justify-between ${isSelected ? 'bg-indigo-50 border-l-4 border-indigo-500' : ''}`}>
                   <div className="flex items-center gap-2 min-w-0">
                     {isCompleted ? <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" /> : <Clock className="w-4 h-4 text-gray-400 flex-shrink-0" />}
-                    <span className="text-sm font-medium text-gray-700 truncate">{getControlLabel(checklist.controlId)}</span>
+                    <span className="text-sm font-medium text-gray-700 truncate">{controlLabel}</span>
                   </div>
                   <ChevronRight className={`w-4 h-4 text-gray-400 ${isSelected ? 'rotate-90' : ''}`} />
                 </button>
@@ -523,7 +662,7 @@ export function RepAuditExecution() {
               onComplete={async () => {
                 await completeChecklist.mutateAsync({ id: selectedChecklist._id, planId: effectivePlanId });
               }}
-              isReadOnly={plan.status === 'completed' || plan.status === 'cancelled'}
+              isReadOnly={isReadOnlyFinal}
               controlsMap={controlsMap}
               onUploadEvidence={handleUploadEvidence}
               evidenceMap={evidenceMap}
