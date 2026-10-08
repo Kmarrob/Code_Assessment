@@ -1,11 +1,74 @@
 // frontend/src/pages/rep/RepNewUser.tsx
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, UserPlus, Loader2, AlertCircle, Mail, Crown, X } from 'lucide-react';
+import {
+  ArrowLeft,
+  UserPlus,
+  Loader2,
+  AlertCircle,
+  Mail,
+  Crown,
+  X,
+  ShieldCheck,
+  UserCheck,
+  Eye,
+  Users,
+} from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card.js';
 import { Button } from '../components/ui/Button.js';
 import { Input } from '../components/ui/Input.js';
 import { repService } from '../services/rep.service.js';
+
+// ============================================================
+// 🆕 v52.0 — ROLES DISPONÍVEIS PARA O REP
+// ============================================================
+//
+// MOTIVO:
+//   Com a introdução dos roles de auditoria interna, o REP
+//   precisa escolher qual papel o novo usuário terá.
+//
+// REGRAS:
+//   - REP pode criar: user, auditor_lead, auditor, observer.
+//   - REP NÃO pode criar: rep, admin, consultant.
+//
+// COMPATIBILIDADE:
+//   - Valor padrão continua sendo 'user' (comportamento antigo).
+//
+// ============================================================
+
+type RoleOption = {
+  value: string;
+  label: string;
+  description: string;
+  Icon: React.ComponentType<{ className?: string }>;
+};
+
+const ROLE_OPTIONS: RoleOption[] = [
+  {
+    value: 'user',
+    label: 'Usuário Comum',
+    description: 'Responde aos controles atribuídos no assessment',
+    Icon: Users,
+  },
+  {
+    value: 'auditor_lead',
+    label: 'Auditor Líder',
+    description: 'Aprova planos, executa auditoria e vê relatórios',
+    Icon: ShieldCheck,
+  },
+  {
+    value: 'auditor',
+    label: 'Auditor',
+    description: 'Executa auditoria em parceria com o Auditor Líder',
+    Icon: UserCheck,
+  },
+  {
+    value: 'observer',
+    label: 'Observador',
+    description: 'Acompanha as auditorias em modo somente leitura',
+    Icon: Eye,
+  },
+];
 
 export const RepNewUser: React.FC = () => {
   const navigate = useNavigate();
@@ -16,9 +79,10 @@ export const RepNewUser: React.FC = () => {
     name: '',
     email: '',
     department: '',
+    role: 'user', // 🆕 v52.0 — Valor padrão = usuário comum
   });
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  
+
   // 🔴 NOVO: Estado para o modal de upgrade
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [upgradeMessage, setUpgradeMessage] = useState('');
@@ -79,27 +143,30 @@ export const RepNewUser: React.FC = () => {
         name: formData.name.trim(),
         email: formData.email.trim(),
         department: formData.department.trim() || undefined,
+        // 🆕 v52.0 — Envia o role escolhido
+        role: formData.role,
       });
 
       setSuccess(`✅ Usuário ${formData.name} criado com sucesso! Um e-mail com o link para criar a senha foi enviado para ${formData.email}.`);
-      
+
       // Limpar formulário
       setFormData({
         name: '',
         email: '',
         department: '',
+        role: 'user',
       });
-      
+
       // Redirecionar após 3 segundos
       setTimeout(() => {
         navigate('/rep');
       }, 3000);
     } catch (err: any) {
       console.error('Erro ao criar usuário:', err);
-      
+
       const status = err.response?.status;
       const message = err.response?.data?.message || 'Erro ao criar usuário. Tente novamente.';
-      
+
       // 🔴 NOVO: Verificar se é erro de limite de usuários (403)
       if (status === 403 && message.includes('Limite de usuários')) {
         setUpgradeMessage(message);
@@ -112,7 +179,7 @@ export const RepNewUser: React.FC = () => {
       const errors = err.response?.data?.errors;
       if (errors) {
         const fieldErrors: Record<string, string> = {};
-        
+
         if (Array.isArray(errors)) {
           errors.forEach((e: any) => {
             if (e.field) {
@@ -128,7 +195,7 @@ export const RepNewUser: React.FC = () => {
             }
           });
         }
-        
+
         setFieldErrors(fieldErrors);
       }
     } finally {
@@ -236,6 +303,66 @@ export const RepNewUser: React.FC = () => {
                 <p className="text-xs text-gray-400 mt-1">Opcional</p>
               </div>
 
+              {/* ============================================================
+                  🆕 v52.0 — SELECT DE ROLE
+                  ============================================================
+                  Permite escolher o papel do novo usuário.
+                  As opções são restritas aos 4 roles que o REP pode criar.
+                  ============================================================ */}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Função / Papel *
+                </label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {ROLE_OPTIONS.map((option) => {
+                    const Icon = option.Icon;
+                    const isSelected = formData.role === option.value;
+
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => handleChange('role', option.value)}
+                        disabled={isLoading}
+                        className={`flex items-start gap-3 p-3 rounded-lg border-2 text-left transition-all ${
+                          isSelected
+                            ? 'border-indigo-500 bg-indigo-50'
+                            : 'border-gray-200 bg-white hover:border-gray-300'
+                        } disabled:opacity-50 disabled:cursor-not-allowed`}
+                      >
+                        <div
+                          className={`p-2 rounded-lg flex-shrink-0 ${
+                            isSelected ? 'bg-indigo-100' : 'bg-gray-100'
+                          }`}
+                        >
+                          <Icon
+                            className={`h-4 w-4 ${
+                              isSelected ? 'text-indigo-600' : 'text-gray-500'
+                            }`}
+                          />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p
+                            className={`text-sm font-semibold ${
+                              isSelected ? 'text-indigo-900' : 'text-gray-700'
+                            }`}
+                          >
+                            {option.label}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            {option.description}
+                          </p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-xs text-gray-400 mt-2">
+                  💡 A função define o que o usuário poderá fazer no sistema
+                </p>
+              </div>
+
               {/* Botões */}
               <div className="flex gap-3 pt-4 border-t border-gray-200">
                 <Button
@@ -274,7 +401,7 @@ export const RepNewUser: React.FC = () => {
           <p className="text-sm text-blue-700 flex items-start gap-2">
             <Mail className="h-4 w-4 flex-shrink-0 mt-0.5" />
             <span>
-              <span className="font-semibold">💡 Como funciona:</span> O usuário receberá um e-mail com um link 
+              <span className="font-semibold">💡 Como funciona:</span> O usuário receberá um e-mail com um link
               para criar sua própria senha de acesso. Após definir a senha, poderá acessar o sistema normalmente.
             </span>
           </p>
