@@ -3,7 +3,12 @@ import { Response, NextFunction } from 'express';
 import mongoose from 'mongoose';
 import { RepService } from '../services/RepService.js';
 import { validate } from '../utils/validation.js';
-import { AuthenticatedRequest } from '../types/index.js';
+
+// ============================================================
+// 🆕 v52.1 — Import do UserRole para cast tipado
+// ============================================================
+import { UserRole, AuthenticatedRequest } from '../types/index.js';
+
 import { AppError, ValidationError, NotFoundError } from '../middleware/errorHandler.js';
 import { ErrorLogger } from '../utils/errorLogger.js';
 import { AuditService } from '../services/AuditService.js';
@@ -67,6 +72,28 @@ export class RepController {
 
   /**
    * Criar usuário pelo preposto
+   *
+   * ============================================================
+   * 🆕 v52.1 — SUPORTE A ROLES DE AUDITORIA
+   * ============================================================
+   *
+   * MOTIVO:
+   *   O schema de validação Zod (repCreateUserSchema) agora
+   *   aceita o campo `role` opcional. Isso significa que
+   *   `validation.data` preserva o `role` enviado pelo frontend
+   *   e o repassa ao service.
+   *
+   * 🔧 CORREÇÃO v52.1.1:
+   *   O TypeScript reclamava que o tipo do Zod (literal union)
+   *   não é diretamente atribuível ao enum UserRole. Aplicamos
+   *   um cast EXPLÍCITO para UserRole, mantendo a tipagem
+   *   forte sem usar `as any`.
+   *
+   * COMPATIBILIDADE:
+   *   - Se `role` não for enviado, `validation.data.role` fica
+   *     `undefined` e o service usa `UserRole.USER` como padrão.
+   *
+   * ============================================================
    */
   static async createUser(
     req: AuthenticatedRequest,
@@ -86,7 +113,28 @@ export class RepController {
         throw new ValidationError(validation.errors || {});
       }
 
-      const user = await RepService.createUser(repId, validation.data);
+      // ============================================================
+      // 🆕 v52.1.1 — Cast explícito do role
+      // ============================================================
+      //
+      // MOTIVO:
+      //   O Zod infere `role` como uma união de literais
+      //   ('user' | 'auditor_lead' | 'auditor' | 'observer').
+      //   O service espera o enum `UserRole`. TypeScript não
+      //   considera literais compatíveis com enums, então
+      //   fazemos o cast explícito.
+      //
+      // SEGURANÇA:
+      //   - O valor já foi validado pelo Zod (whitelist).
+      //   - O cast apenas alinha o tipo, não relaxa a validação.
+      //
+      // ============================================================
+      const dataWithRole = {
+        ...validation.data,
+        role: validation.data.role as UserRole | undefined,
+      };
+
+      const user = await RepService.createUser(repId, dataWithRole);
 
       if (req.userId) {
         await AuditService.logUserCreation(
@@ -139,6 +187,29 @@ export class RepController {
 
   /**
    * Editar usuário pelo preposto
+   *
+   * ============================================================
+   * 🆕 v52.1 — SUPORTE À EDIÇÃO DE ROLE
+   * ============================================================
+   *
+   * MOTIVO:
+   *   Antes, o controller extraía apenas `{ name, email, department }`
+   *   de `req.body` e passava ao service SEM o `role`. O REP não
+   *   conseguia alterar o role de um usuário existente.
+   *
+   * SOLUÇÃO:
+   *   Incluir `role` na extração e no envio ao service. O service
+   *   valida contra a whitelist (ROLES_PERMITIDOS_NO_REP).
+   *
+   * 🔧 CORREÇÃO v52.1.1:
+   *   Cast explícito do `role` para `UserRole` antes de enviar ao
+   *   service (mesmo motivo do createUser).
+   *
+   * COMPATIBILIDADE:
+   *   - Se `role` não for enviado, o service não altera o role
+   *     atual (comportamento antigo — zero regressão).
+   *
+   * ============================================================
    */
   static async updateUser(
     req: AuthenticatedRequest,
@@ -160,21 +231,28 @@ export class RepController {
         });
       }
 
-      const { name, email, department } = req.body;
+      // ============================================================
+      // 🆕 v52.1 — Extrair `role` também
+      // ============================================================
+      const { name, email, department, role } = req.body;
 
       // Validar se pelo menos um campo foi enviado
-      if (!name && !email && !department) {
+      if (!name && !email && !department && !role) {
         throw new ValidationError({
           fields: [
-            'Pelo menos um campo (name, email, department) deve ser fornecido',
+            'Pelo menos um campo (name, email, department, role) deve ser fornecido',
           ],
         });
       }
 
+      // ============================================================
+      // 🆕 v52.1.1 — Cast explícito do role
+      // ============================================================
       const updatedUser = await RepService.updateUser(repId, userId, {
         name,
         email,
         department,
+        role: role as UserRole | undefined,
       });
 
       // 🔐 AUDITORIA & VERIFICAÇÃO DE TIPO (Garante que updatedUser não seja null)
@@ -184,7 +262,7 @@ export class RepController {
           req.user?.email || '',
           userId,
           updatedUser.email,
-          { name, email, department },
+          { name, email, department, role },
           req.ip || '',
           req.headers['user-agent'] || '',
           true
