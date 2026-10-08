@@ -20,6 +20,21 @@ import {
   EyeIcon,
 } from 'lucide-react';
 import { usePlans, useDeletePlan, useCancelPlan } from '../../../hooks/useAudit';
+
+// ============================================================
+// 🆕 v52.6 — IMPORTS PARA DETECÇÃO DE ROLE
+// ============================================================
+//
+// MOTIVO:
+//   Este componente é compartilhado entre REP, AUDITOR_LEAD,
+//   AUDITOR e OBSERVER. Precisamos detectar o role para:
+//     1. Ajustar o base path de navegação
+//     2. Esconder botões que o role não pode usar
+//        (Novo Plano, Editar, Excluir, Cancelar)
+//
+// ============================================================
+import { useAuth } from '../../../../../contexts/AuthContext.js';
+
 import { AuditPlan, AuditStatus } from '../../../types/audit.types';
 
 const STATUS_OPTIONS: { value: AuditStatus | 'all'; label: string }[] = [
@@ -99,6 +114,47 @@ function buildTeamMembers(
 
 export function RepAuditPlans() {
   const navigate = useNavigate();
+
+  // ============================================================
+  // 🆕 v52.6 — DETECÇÃO DE ROLE
+  // ============================================================
+  //
+  // MOTIVO:
+  //   O componente é compartilhado por REP, AUDITOR_LEAD,
+  //   AUDITOR e OBSERVER. Precisamos saber o role para:
+  //     1. Definir o base path de navegação correto
+  //     2. Esconder botões que o role não pode usar
+  //
+  // REGRAS:
+  //   - REP e ADMIN: acesso total (criar/editar/excluir).
+  //   - AUDITOR_LEAD: só leitura de planos + execução.
+  //   - AUDITOR: só leitura + execução.
+  //   - OBSERVER: somente leitura.
+  //
+  // ============================================================
+  const { user } = useAuth();
+
+  const isRep = user?.role === 'rep';
+  const isAdmin = user?.role === 'admin';
+  const isAuditorLead = user?.role === 'auditor_lead';
+  const isAuditor = user?.role === 'auditor';
+  const isObserver = user?.role === 'observer';
+
+  // Quem pode criar/editar/excluir planos
+  const canManagePlans = isRep || isAdmin;
+
+  // Quem pode abrir os detalhes do plano (leitura)
+  const canViewDetails = true; // todos os roles de auditoria + rep
+
+  // Base path de navegação — muda conforme o role
+  const basePath = isAuditorLead
+    ? '/auditor-lead/audit'
+    : isAuditor
+      ? '/auditor/audit'
+      : isObserver
+        ? '/observer/audit'
+        : '/rep/audit';
+
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<AuditStatus | 'all'>('all');
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -167,13 +223,19 @@ export function RepAuditPlans() {
             Gerencie os planos de auditoria interna do SGSI
           </p>
         </div>
-        <button
-          onClick={() => navigate('/rep/audit/plans/new')}
-          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors mt-4 md:mt-0"
-        >
-          <Plus className="w-4 h-4" />
-          Novo Plano
-        </button>
+
+        {/* ============================================================
+            🆕 v52.6 — Botão "Novo Plano" só aparece para REP/ADMIN
+            ============================================================ */}
+        {canManagePlans && (
+          <button
+            onClick={() => navigate('/rep/audit/plans/new')}
+            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors mt-4 md:mt-0"
+          >
+            <Plus className="w-4 h-4" />
+            Novo Plano
+          </button>
+        )}
       </div>
 
       {/* Filters */}
@@ -214,7 +276,7 @@ export function RepAuditPlans() {
                 ? 'Tente ajustar os filtros de busca'
                 : 'Comece criando um novo plano de auditoria'}
             </p>
-            {!searchTerm && statusFilter === 'all' && (
+            {!searchTerm && statusFilter === 'all' && canManagePlans && (
               <button
                 onClick={() => navigate('/rep/audit/plans/new')}
                 className="mt-4 text-indigo-600 hover:text-indigo-800"
@@ -299,14 +361,21 @@ export function RepAuditPlans() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2 ml-4">
+                      {/* ============================================================
+                          🆕 v52.6 — Botão "Visualizar" navega para base path do role
+                          ============================================================ */}
                       <button
-                        onClick={() => navigate(`/rep/audit/plans/${plan._id}`)}
+                        onClick={() => navigate(`${basePath}/execution/${plan._id}`)}
                         className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                         title="Visualizar"
                       >
                         <Eye className="w-4 h-4" />
                       </button>
-                      {plan.status === 'draft' && (
+
+                      {/* ============================================================
+                          🆕 v52.6 — Botões de edição/exclusão só para REP/ADMIN
+                          ============================================================ */}
+                      {canManagePlans && plan.status === 'draft' && (
                         <>
                           <button
                             onClick={() => navigate(`/rep/audit/plans/${plan._id}/edit`)}
@@ -324,7 +393,7 @@ export function RepAuditPlans() {
                           </button>
                         </>
                       )}
-                      {plan.status === 'pending_approval' && (
+                      {canManagePlans && plan.status === 'pending_approval' && (
                         <button
                           onClick={() => handleCancel(plan._id)}
                           className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
