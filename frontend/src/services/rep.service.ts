@@ -114,11 +114,31 @@ export interface RevokeControlData {
 
 /**
  * 🔴 NOVO: Interface para edição de usuário
+ *
+ * 🆕 v52.0 — Adicionado campo `role` OPCIONAL.
+ *
+ * MOTIVO:
+ *   O REP precisa poder alterar o papel de um usuário
+ *   (ex.: promover user → auditor, ou rebaixar auditor → observer).
+ *
+ * COMPATIBILIDADE:
+ *   Campo OPCIONAL. Chamadas antigas sem `role` continuam funcionando
+ *   exatamente como antes (backend usa o role atual do usuário).
+ *
+ * VALORES ACEITOS:
+ *   - 'user'          → Usuário Comum
+ *   - 'auditor_lead'  → Auditor Líder
+ *   - 'auditor'       → Auditor
+ *   - 'observer'      → Observador
+ *
+ * O backend valida contra a whitelist de roles permitidos.
  */
 export interface UpdateUserData {
   name?: string;
   email?: string;
   department?: string;
+  // 🆕 v52.0 — Role opcional
+  role?: string;
 }
 
 /**
@@ -151,24 +171,24 @@ export const repService = {
     status?: 'all' | 'active' | 'inactive';
   }): Promise<{ items: RepUser[]; pagination: any }> {
     const response = await api.get<ApiResponse<any>>('/rep/users', { params });
-    
+
     const data = response.data.data;
     const pagination = response.data.pagination;
-    
+
     if (Array.isArray(data)) {
       return {
         items: data as RepUser[],
         pagination: pagination || { page: 1, limit: 10, total: data.length, totalPages: 1 }
       };
     }
-    
+
     if (data && data.items && Array.isArray(data.items)) {
       return {
         items: data.items as RepUser[],
         pagination: data.pagination || pagination
       };
     }
-    
+
     return {
       items: [],
       pagination: { page: 1, limit: 10, total: 0, totalPages: 1 }
@@ -177,6 +197,20 @@ export const repService = {
 
   /**
    * 🔴 CORRIGIDO: Criar usuário (senha opcional - sistema gera automaticamente)
+   *
+   * 🆕 v52.0 — Adicionado campo `role` OPCIONAL.
+   *
+   * MOTIVO:
+   *   O REP precisa poder escolher o papel do novo usuário
+   *   no momento do cadastro (user, auditor_lead, auditor, observer).
+   *
+   * COMPATIBILIDADE:
+   *   Campo OPCIONAL. Se não for enviado, o backend usa 'user'
+   *   (comportamento antigo, 100% compatível).
+   *
+   * VALIDAÇÃO:
+   *   O backend valida contra a whitelist de roles permitidos
+   *   para o REP. Role inválido retorna 400.
    */
   async createUser(data: {
     name: string;
@@ -184,6 +218,8 @@ export const repService = {
     password?: string;
     company?: string;
     department?: string;
+    // 🆕 v52.0 — Role opcional
+    role?: string;
   }): Promise<User> {
     const response = await api.post<ApiResponse<{ user: User }>>('/rep/users', data);
     return response.data.data.user;
@@ -191,6 +227,8 @@ export const repService = {
 
   /**
    * 🔴 NOVO: Editar usuário
+   *
+   * 🆕 v52.0 — Aceita `role` no payload (via UpdateUserData).
    */
   async updateUser(userId: string, data: UpdateUserData): Promise<User> {
     const response = await api.put<ApiResponse<{ user: User }>>(`/rep/users/${userId}`, data);
@@ -225,23 +263,23 @@ export const repService = {
   }): Promise<AssignmentResult> {
     // FORÇAR conversão para array de strings
     let controlIdsArray: string[] = [];
-    
+
     if (Array.isArray(data.controlIds)) {
       controlIdsArray = data.controlIds.map(id => String(id));
     } else if (data.controlIds && typeof data.controlIds === 'object') {
       controlIdsArray = Object.values(data.controlIds).map(id => String(id));
     }
-    
+
     console.log('📤 repService - controlIdsArray:', controlIdsArray);
-    
+
     const payload = {
       userId: data.userId,
       controlIds: controlIdsArray,
       force: data.force || false,
     };
-    
+
     console.log('📤 repService - payload:', payload);
-    
+
     const response = await api.post<ApiResponse<AssignmentResult>>('/rep/assignments', payload);
     return response.data.data;
   },

@@ -3,14 +3,75 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext.js';
 import {
-  ArrowLeft, Save, Loader2, User, Mail, Building2, AlertCircle,
-  CheckCircle, XCircle
+  ArrowLeft,
+  Save,
+  Loader2,
+  User,
+  Mail,
+  Building2,
+  AlertCircle,
+  CheckCircle,
+  XCircle,
+  ShieldCheck,
+  UserCheck,
+  Eye,
+  Users,
+  Info,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card.js';
 import { Button } from '../components/ui/Button.js';
 import { Input } from '../components/ui/Input.js';
 import { repService } from '../services/rep.service.js';
 import { User as UserType } from '../types';
+
+// ============================================================
+// 🆕 v52.0 — ROLES DISPONÍVEIS PARA EDIÇÃO
+// ============================================================
+//
+// MOTIVO:
+//   O REP precisa poder alterar o papel de um usuário já
+//   cadastrado (ex.: promover user → auditor, ou rebaixar
+//   auditor → observer).
+//
+// REGRAS:
+//   - Só aceita os 4 roles que o REP pode gerenciar.
+//   - role não pode ser alterado para rep/admin/consultant.
+//
+// ============================================================
+
+type RoleOption = {
+  value: string;
+  label: string;
+  description: string;
+  Icon: React.ComponentType<{ className?: string }>;
+};
+
+const ROLE_OPTIONS: RoleOption[] = [
+  {
+    value: 'user',
+    label: 'Usuário Comum',
+    description: 'Responde aos controles atribuídos',
+    Icon: Users,
+  },
+  {
+    value: 'auditor_lead',
+    label: 'Auditor Líder',
+    description: 'Aprova planos, executa e vê relatórios',
+    Icon: ShieldCheck,
+  },
+  {
+    value: 'auditor',
+    label: 'Auditor',
+    description: 'Executa auditoria em parceria',
+    Icon: UserCheck,
+  },
+  {
+    value: 'observer',
+    label: 'Observador',
+    description: 'Acompanha em modo somente leitura',
+    Icon: Eye,
+  },
+];
 
 export const RepEditUser: React.FC = () => {
   const { userId } = useParams<{ userId: string }>();
@@ -26,9 +87,11 @@ export const RepEditUser: React.FC = () => {
     name: '',
     email: '',
     department: '',
+    role: 'user', // 🆕 v52.0
   });
 
   const [originalEmail, setOriginalEmail] = useState('');
+  const [originalRole, setOriginalRole] = useState('user');
 
   // ============================================
   // CARREGAR DADOS DO USUÁRIO
@@ -57,8 +120,11 @@ export const RepEditUser: React.FC = () => {
           name: user.name || '',
           email: user.email || '',
           department: user.department || '',
+          // 🆕 v52.0 — Carrega o role atual
+          role: (user as any).role || 'user',
         });
         setOriginalEmail(user.email || '');
+        setOriginalRole((user as any).role || 'user');
         setError(null);
       } catch (err: any) {
         console.error('Erro ao carregar usuário:', err);
@@ -77,6 +143,12 @@ export const RepEditUser: React.FC = () => {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    setError(null);
+    setSuccessMessage(null);
+  };
+
+  const handleRoleChange = (role: string) => {
+    setFormData((prev) => ({ ...prev, role }));
     setError(null);
     setSuccessMessage(null);
   };
@@ -103,10 +175,11 @@ export const RepEditUser: React.FC = () => {
     }
 
     // Verificar se houve alterações
-    const hasChanges = 
-      formData.name !== '' || 
-      formData.email !== originalEmail || 
-      formData.department !== '';
+    const hasChanges =
+      formData.name !== '' ||
+      formData.email !== originalEmail ||
+      formData.department !== '' ||
+      formData.role !== originalRole;
 
     if (!hasChanges) {
       setError('Nenhuma alteração foi feita');
@@ -129,11 +202,15 @@ export const RepEditUser: React.FC = () => {
       if (formData.department !== undefined) {
         updateData.department = formData.department;
       }
+      // 🆕 v52.0 — Só envia o role se mudou
+      if (formData.role !== originalRole) {
+        updateData.role = formData.role;
+      }
 
       await repService.updateUser(userId!, updateData);
-      
+
       setSuccessMessage('Usuário atualizado com sucesso!');
-      
+
       // 🔴 CORRIGIDO: Redirecionar para o painel do preposto (lista de usuários)
       setTimeout(() => {
         navigate('/rep');
@@ -164,6 +241,8 @@ export const RepEditUser: React.FC = () => {
       </div>
     );
   }
+
+  const roleChanged = formData.role !== originalRole;
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -257,6 +336,73 @@ export const RepEditUser: React.FC = () => {
                     disabled={isSubmitting}
                   />
                 </div>
+              </div>
+
+              {/* ============================================================
+                  🆕 v52.0 — SELECT DE ROLE
+                  ============================================================
+                  Permite alterar o papel do usuário.
+                  Mostra aviso visual quando o role está sendo alterado.
+                  ============================================================ */}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Função / Papel
+                </label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {ROLE_OPTIONS.map((option) => {
+                    const Icon = option.Icon;
+                    const isSelected = formData.role === option.value;
+
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => handleRoleChange(option.value)}
+                        disabled={isSubmitting}
+                        className={`flex items-start gap-3 p-3 rounded-lg border-2 text-left transition-all ${
+                          isSelected
+                            ? 'border-indigo-500 bg-indigo-50'
+                            : 'border-gray-200 bg-white hover:border-gray-300'
+                        } disabled:opacity-50 disabled:cursor-not-allowed`}
+                      >
+                        <div
+                          className={`p-2 rounded-lg flex-shrink-0 ${
+                            isSelected ? 'bg-indigo-100' : 'bg-gray-100'
+                          }`}
+                        >
+                          <Icon
+                            className={`h-4 w-4 ${
+                              isSelected ? 'text-indigo-600' : 'text-gray-500'
+                            }`}
+                          />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p
+                            className={`text-sm font-semibold ${
+                              isSelected ? 'text-indigo-900' : 'text-gray-700'
+                            }`}
+                          >
+                            {option.label}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            {option.description}
+                          </p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {roleChanged && (
+                  <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2">
+                    <Info className="h-4 w-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                    <p className="text-xs text-amber-800">
+                      A função está sendo alterada de <strong>{originalRole}</strong> para <strong>{formData.role}</strong>.
+                      Isso afetará o que o usuário poderá acessar no sistema.
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Feedback */}

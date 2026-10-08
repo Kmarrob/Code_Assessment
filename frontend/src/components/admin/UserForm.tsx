@@ -16,11 +16,33 @@ import { useAdminSecurity } from '../../hooks/useAdminSecurity.js';
 import { CheckCircle, X, Building2 } from 'lucide-react';
 import { companyService, Company } from '../../services/company.service.js';
 
+// ============================================================
+// 🆕 v52.0 — SCHEMA ZOD EXPANDIDO COM OS NOVOS ROLES
+// ============================================================
+//
+// MOTIVO:
+//   Adicionar 3 novos roles ao formulário do admin.
+//
+// COMPATIBILIDADE:
+//   - As 4 roles antigas continuam aceitas.
+//   - Se o formulário receber um role novo, será validado.
+//
+// ============================================================
+
 const userFormSchema = z.object({
   name: z.string().min(3, 'Nome deve ter pelo menos 3 caracteres'),
   email: z.string().email('Email inválido'),
   password: z.string().min(8, 'Senha deve ter pelo menos 8 caracteres').optional(),
-  role: z.enum(['admin', 'rep', 'consultant', 'user']),
+  // 🆕 v52.0 — 3 novos roles adicionados
+  role: z.enum([
+    'admin',
+    'rep',
+    'consultant',
+    'user',
+    'auditor_lead',
+    'auditor',
+    'observer',
+  ]),
   companyId: z.string().optional(),
   company: z.string().optional(),
   department: z.string().optional(),
@@ -57,9 +79,9 @@ export const UserForm = React.memo(({
     const loadCompanies = async () => {
       try {
         const response = await companyService.listCompanies({ limit: 100 });
-        
+
         let companiesList: Company[] = [];
-        
+
         if (response && Array.isArray(response)) {
           companiesList = response;
         } else if (response && response.items && Array.isArray(response.items)) {
@@ -69,7 +91,7 @@ export const UserForm = React.memo(({
         } else if (response && response.companies && Array.isArray(response.companies)) {
           companiesList = response.companies;
         }
-        
+
         setCompanies(companiesList);
         console.log('✅ Empresas carregadas no formulário:', companiesList.length);
       } catch (error) {
@@ -179,7 +201,7 @@ export const UserForm = React.memo(({
     } catch (err: any) {
       const status = err?.response?.status;
       const message = err?.response?.data?.message || '';
-      
+
       // Se for erro de limite de usuários (403) e tiver a mensagem específica
       if (status === 403 && message.includes('Limite de usuários')) {
         if (onUpgradeNeeded) {
@@ -281,6 +303,13 @@ export const UserForm = React.memo(({
             </div>
           )}
 
+          {/* ============================================================
+              🆕 v52.0 — SELECT DE ROLE EXPANDIDO
+              ============================================================
+              Adicionados 3 novos roles de auditoria interna ao
+              dropdown. As 4 roles antigas continuam disponíveis.
+              ============================================================ */}
+
           <div className="animate-slide-up" style={{ animationDelay: '0.15s' }}>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">
               Perfil
@@ -289,14 +318,24 @@ export const UserForm = React.memo(({
               className="w-full h-10 rounded-md border border-input bg-transparent px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 transition-all duration-200"
               {...register('role')}
             >
-              <option value="admin">Administrador</option>
-              <option value="rep">Preposto</option>
-              <option value="consultant">Consultor</option>
-              <option value="user">Usuário</option>
+              <optgroup label="Administração">
+                <option value="admin">Administrador</option>
+                <option value="rep">Preposto</option>
+                <option value="consultant">Consultor</option>
+              </optgroup>
+              <optgroup label="Usuários e Auditores">
+                <option value="user">Usuário Comum</option>
+                <option value="auditor_lead">Auditor Líder</option>
+                <option value="auditor">Auditor</option>
+                <option value="observer">Observador</option>
+              </optgroup>
             </select>
             {errors.role && (
               <p className="text-sm text-red-600 mt-1">{errors.role.message}</p>
             )}
+            <p className="text-xs text-gray-400 mt-1">
+              O perfil define as permissões do usuário no sistema
+            </p>
           </div>
 
           <div className="animate-slide-up" style={{ animationDelay: '0.2s' }}>
