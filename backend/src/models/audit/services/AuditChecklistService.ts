@@ -378,6 +378,26 @@ export class AuditChecklistService {
   // ============================================================
   // BUSCAR CHECKLIST POR PLANO E CONTROLE
   // ============================================================
+  //
+  // 🔧 v52.7 — POPULATE DO CONTROL
+  // ============================================================
+  //
+  // MOTIVO:
+  //   O `controlId` chegava como string bruta (ObjectId) e o
+  //   frontend precisava resolver o código ISO/nome via lookup
+  //   externo. Isso quebrava para roles que não podem acessar
+  //   a rota `/rep/controls` (ex: auditor_lead, auditor).
+  //
+  // SOLUÇÃO:
+  //   Popular o `controlId` diretamente. O frontend passa a
+  //   receber `{ _id, id, nome }` pronto para exibir.
+  //
+  // COMPATIBILIDADE:
+  //   - Se o populate falhar (controlId órfão), o campo continua
+  //     vindo como ObjectId e o frontend usa fallback.
+  //   - Nenhuma consulta existente é alterada em sua essência.
+  //
+  // ============================================================
 
   async findByPlanAndControl(
     auditPlanId: string,
@@ -388,7 +408,9 @@ export class AuditChecklistService {
       await AuditChecklist.findOne({
         auditPlanId,
         controlId,
-      }).lean();
+      })
+        .populate('controlId', 'id nome')
+        .lean();
 
     if (!doc) {
       return null;
@@ -400,6 +422,29 @@ export class AuditChecklistService {
   // ============================================================
   // LISTAR CHECKLISTS POR PLANO
   // ============================================================
+  //
+  // 🔧 v52.7 — POPULATE DO CONTROL
+  // ============================================================
+  //
+  // MOTIVO:
+  //   O frontend `RepAuditExecution` recebia `checklist.controlId`
+  //   como ObjectId puro e precisava buscar os controles via
+  //   `GET /rep/controls` para montar o label "5.1 - Políticas...".
+  //
+  //   Essa rota é restrita ao REP. Para Auditor Líder / Auditor /
+  //   Observador, ela retorna 403 — o lookup falhava em silêncio
+  //   e o hash do ObjectId era exibido no lugar do nome.
+  //
+  // SOLUÇÃO:
+  //   Popular `controlId` no backend. O frontend passa a usar
+  //   `checklist.controlId.id` (código ISO) e
+  //   `checklist.controlId.nome` (título) diretamente.
+  //
+  // COMPATIBILIDADE:
+  //   - Se o populate falhar, o campo vem como ObjectId.
+  //   - O frontend mantém um fallback robusto.
+  //
+  // ============================================================
 
   async findByPlanId(
     auditPlanId: string
@@ -408,7 +453,9 @@ export class AuditChecklistService {
     const docs =
       await AuditChecklist.find({
         auditPlanId,
-      }).lean();
+      })
+        .populate('controlId', 'id nome')
+        .lean();
 
     return mapToIAuditChecklistArray(
       docs
