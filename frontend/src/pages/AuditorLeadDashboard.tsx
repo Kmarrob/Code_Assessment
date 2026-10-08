@@ -9,7 +9,6 @@
 //     - Planos aguardando sua aprovação (pending_approval)
 //     - Planos ativos onde ele é o líder (approved/in_progress)
 //     - Relatórios de auditoria que ele participa
-//     - Atalho para o dashboard de maturidade (somente leitura)
 //
 // DECISÕES DE DESIGN:
 //   - Reaproveita o padrão visual do RepDashboard (cards,
@@ -22,11 +21,13 @@
 //
 // 🔧 v52.5 — CORREÇÃO DE NAVEGAÇÃO:
 //   Os 3 handlers de planos/relatórios agora apontam para as
-//   rotas /auditor-lead/audit/* (novas), que têm whitelist
-//   correta para o role auditor_lead.
+//   rotas /auditor-lead/audit/* (novas).
 //
-//   Os cards "Maturidade" e "Documentos" continuam apontando
-//   para suas rotas atuais. Serão migrados em rodada futura.
+// 🔧 v52.8 — ATALHOS OPERACIONAIS:
+//   Adicionados 10 cards de atalho para todas as telas de
+//   auditoria (Dashboard, Planos, Checklist, Evidências,
+//   Achados, Riscos, Plano de Ação, SoA, Programa, Relatório).
+//   Os cards atuais foram preservados integralmente.
 //
 // SEGURANÇA:
 //   - companyId e userId sempre vêm do AuthContext (token).
@@ -56,6 +57,16 @@ import {
   FolderOpen,
   User as UserIcon,
   RefreshCw,
+  // ============================================================
+  // 🆕 v52.8 — ÍCONES PARA OS NOVOS CARDS OPERACIONAIS
+  // ============================================================
+  ClipboardList,
+  FileCheck,
+  AlertTriangle,
+  Calendar,
+  Upload,
+  ChevronRight,
+  BookOpen,
 } from 'lucide-react';
 import {
   PieChart,
@@ -96,18 +107,14 @@ import type { AuditPlan } from '../modules/audit/types/audit.types.js';
 // ============================================================
 // PALETA DE CORES PARA GRÁFICOS
 // ============================================================
-//
-// Mapeadas pelo status de auditoria. Mantemos consistência
-// visual com as badges de status do sistema.
-//
 const STATUS_COLORS: Record<string, string> = {
-  draft: '#9CA3AF',              // gray-400
-  pending_approval: '#FBBF24',   // amber-400
-  approved: '#3B82F6',           // blue-500
-  in_progress: '#8B5CF6',        // violet-500
-  completed: '#10B981',          // emerald-500
-  rejected: '#EF4444',           // red-500
-  cancelled: '#6B7280',          // gray-500
+  draft: '#9CA3AF',
+  pending_approval: '#FBBF24',
+  approved: '#3B82F6',
+  in_progress: '#8B5CF6',
+  completed: '#10B981',
+  rejected: '#EF4444',
+  cancelled: '#6B7280',
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -194,7 +201,6 @@ export const AuditorLeadDashboard: React.FC = () => {
   const statusDistribution = useMemo(() => {
     const allPlans = [...plansToApprove, ...leadPlans];
 
-    // Deduplicar por _id (um plano em pending pode estar em ambas listas?)
     const seen = new Set<string>();
     const unique: AuditPlan[] = [];
     for (const plan of allPlans) {
@@ -222,13 +228,7 @@ export const AuditorLeadDashboard: React.FC = () => {
   // ============================================================
   // NCs POR DOMÍNIO (BARRAS) — MOCK DATA
   // ============================================================
-  //
-  // NOTA:
-  //   Este gráfico é alimentado por um endpoint futuro de
-  //   estatísticas. Por enquanto, exibimos dados zerados
-  //   para manter o layout. Quando o backend expor o
-  //   `AuditDashboardStats`, substituiremos por dados reais.
-  //
+
   const domainNcData = useMemo(() => {
     return [
       { domain: 'A.5', label: 'Políticas', NC: 0, total: 0 },
@@ -239,15 +239,38 @@ export const AuditorLeadDashboard: React.FC = () => {
   }, []);
 
   // ============================================================
-  // HANDLERS — NAVEGAÇÃO
+  // 🆕 v52.8 — PLANO ATIVO PARA OS ATALHOS OPERACIONAIS
   // ============================================================
   //
-  // 🔧 v52.5 — Os handlers de planos e relatórios apontam
-  // para as rotas /auditor-lead/audit/* (novas).
+  // Os cards operacionais precisam de um planId para navegar
+  // direto para a tela (Checklist, Evidências, Achados, etc.).
   //
-  // Os handlers de Maturidade e Documentos continuam apontando
-  // para /rep/* (serão migrados em rodada futura).
+  // Regra:
+  //   1. Usa o primeiro plano ativo do auditor líder, se houver.
+  //   2. Caso contrário, usa o primeiro plano a aprovar.
+  //   3. Caso contrário, navega para a lista de planos.
   //
+  // ============================================================
+  const operationalPlanId = useMemo(() => {
+    const activePlan = leadPlans.find(
+      (p) => p.status === 'approved' || p.status === 'in_progress'
+    );
+    if (activePlan) return activePlan._id;
+
+    const anyLeadPlan = leadPlans[0];
+    if (anyLeadPlan) return anyLeadPlan._id;
+
+    const anyToApprove = plansToApprove[0];
+    if (anyToApprove) return anyToApprove._id;
+
+    return null;
+  }, [leadPlans, plansToApprove]);
+
+  // Base path fixo para este role
+  const basePath = '/auditor-lead/audit';
+
+  // ============================================================
+  // HANDLERS — NAVEGAÇÃO
   // ============================================================
 
   const handleLogout = async () => {
@@ -256,8 +279,6 @@ export const AuditorLeadDashboard: React.FC = () => {
   };
 
   const handleBack = () => {
-    // Volta para a tela anterior; se não houver histórico,
-    // redireciona para o dashboard padrão.
     if (window.history.length > 1) {
       navigate(-1);
     } else {
@@ -266,7 +287,6 @@ export const AuditorLeadDashboard: React.FC = () => {
   };
 
   const handleGoToApprovals = () => {
-    // Scroll suave até a lista de planos aguardando aprovação
     const el = document.getElementById('approval-list');
     if (el) {
       el.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -274,12 +294,10 @@ export const AuditorLeadDashboard: React.FC = () => {
   };
 
   const handleGoToMyPlans = () => {
-    // 🔧 v52.5 — Corrigido para a rota do Auditor Líder
     navigate('/auditor-lead/audit/plans');
   };
 
   const handleGoToReports = () => {
-    // 🔧 v52.5 — Corrigido para a rota do Auditor Líder
     navigate('/auditor-lead/audit/reports');
   };
 
@@ -293,6 +311,22 @@ export const AuditorLeadDashboard: React.FC = () => {
 
   const handleGoToProfile = () => {
     navigate('/profile');
+  };
+
+  // ============================================================
+  // 🆕 v52.8 — HANDLER DOS CARDS OPERACIONAIS
+  // ============================================================
+  //
+  // Redireciona para a tela correta usando o plano ativo
+  // (ou a lista de planos, se não houver plano disponível).
+  //
+  // ============================================================
+  const handleGoToFeature = (feature: string) => {
+    if (!operationalPlanId) {
+      navigate(`${basePath}/plans`);
+      return;
+    }
+    navigate(`${basePath}/${feature}/${operationalPlanId}`);
   };
 
   // ============================================================
@@ -315,7 +349,6 @@ export const AuditorLeadDashboard: React.FC = () => {
 
     setIsSubmitting(true);
     try {
-      // Importação dinâmica para evitar dependência circular
       const { auditService } = await import(
         '../modules/audit/services/audit.service.js'
       );
@@ -325,7 +358,6 @@ export const AuditorLeadDashboard: React.FC = () => {
       toast.success('Plano aprovado com sucesso!');
       setSelectedPlanToApprove(null);
 
-      // Refetch das duas listas afetadas
       await Promise.all([
         refetchToApprove(),
         refetchLeadPlans(),
@@ -365,7 +397,6 @@ export const AuditorLeadDashboard: React.FC = () => {
       setSelectedPlanToReject(null);
       setRejectionReason('');
 
-      // Refetch
       await Promise.all([
         refetchToApprove(),
         refetchLeadPlans(),
@@ -383,7 +414,6 @@ export const AuditorLeadDashboard: React.FC = () => {
   };
 
   const handleViewDetails = (planId: string) => {
-    // 🔧 v52.5 — Corrigido para a rota do Auditor Líder
     navigate(`/auditor-lead/audit/plans/${planId}`);
   };
 
@@ -541,7 +571,6 @@ export const AuditorLeadDashboard: React.FC = () => {
         {/* KPIs                                                    */}
         {/* ====================================================== */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          {/* KPI 1 — Planos para Aprovar */}
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -562,7 +591,6 @@ export const AuditorLeadDashboard: React.FC = () => {
             </CardContent>
           </Card>
 
-          {/* KPI 2 — Planos Ativos */}
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -583,7 +611,6 @@ export const AuditorLeadDashboard: React.FC = () => {
             </CardContent>
           </Card>
 
-          {/* KPI 3 — Execuções Concluídas */}
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -604,7 +631,6 @@ export const AuditorLeadDashboard: React.FC = () => {
             </CardContent>
           </Card>
 
-          {/* KPI 4 — Taxa de Conclusão */}
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -630,7 +656,6 @@ export const AuditorLeadDashboard: React.FC = () => {
         {/* MINI-GRÁFICOS                                           */}
         {/* ====================================================== */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
-          {/* Donut — Distribuição por Status */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -686,7 +711,6 @@ export const AuditorLeadDashboard: React.FC = () => {
             </CardContent>
           </Card>
 
-          {/* Barras — NCs por Domínio */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -735,7 +759,6 @@ export const AuditorLeadDashboard: React.FC = () => {
         {/* CARDS DE NAVEGAÇÃO                                      */}
         {/* ====================================================== */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-          {/* Card 1 — Aprovar Planos */}
           <div
             onClick={handleGoToApprovals}
             className="bg-white border-2 border-amber-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
@@ -761,7 +784,6 @@ export const AuditorLeadDashboard: React.FC = () => {
             </div>
           </div>
 
-          {/* Card 2 — Executar Auditoria */}
           <div
             onClick={handleGoToMyPlans}
             className="bg-white border-2 border-blue-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
@@ -787,7 +809,6 @@ export const AuditorLeadDashboard: React.FC = () => {
             </div>
           </div>
 
-          {/* Card 3 — Relatórios */}
           <div
             onClick={handleGoToReports}
             className="bg-white border-2 border-emerald-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
@@ -813,7 +834,6 @@ export const AuditorLeadDashboard: React.FC = () => {
             </div>
           </div>
 
-          {/* Card 4 — Dashboard de Maturidade */}
           <div
             onClick={handleGoToMaturity}
             className="bg-white border-2 border-violet-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
@@ -836,7 +856,6 @@ export const AuditorLeadDashboard: React.FC = () => {
             </div>
           </div>
 
-          {/* Card 5 — Documentos */}
           <div
             onClick={handleGoToDocuments}
             className="bg-white border-2 border-indigo-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
@@ -856,7 +875,6 @@ export const AuditorLeadDashboard: React.FC = () => {
             </div>
           </div>
 
-          {/* Card 6 — Meu Perfil */}
           <div
             onClick={handleGoToProfile}
             className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
@@ -873,6 +891,240 @@ export const AuditorLeadDashboard: React.FC = () => {
               <div className="p-3 bg-gray-100 rounded-full">
                 <UserIcon className="w-6 h-6 text-gray-600" />
               </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ====================================================== */}
+        {/* 🆕 v52.8 — ATALHOS OPERACIONAIS DE AUDITORIA           */}
+        {/* ====================================================== */}
+        {/*
+          Cards de acesso rápido às telas internas da auditoria.
+          Todos respeitam o basePath do Auditor Líder
+          (/auditor-lead/audit/...).
+
+          Quando há um plano ativo disponível, o card leva
+          diretamente para a tela da feature com esse plano.
+          Caso contrário, redireciona para a lista de planos.
+        */}
+        <div className="mb-8">
+          <div className="flex items-center gap-2 mb-4">
+            <BookOpen className="w-5 h-5 text-gray-500" />
+            <h2 className="text-lg font-semibold text-gray-900">
+              Atalhos de Auditoria
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+            {/* Dashboard de Auditoria */}
+            <div
+              onClick={() => navigate(`${basePath}/dashboard`)}
+              className="bg-white border-2 border-sky-300 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-medium text-sky-600">Visualizar</p>
+                  <p className="text-sm font-bold text-sky-900">Dashboard</p>
+                </div>
+                <div className="p-2 bg-sky-100 rounded-full">
+                  <BarChart3 className="w-5 h-5 text-sky-600" />
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-sky-400 mt-2" />
+              <p className="text-xs text-gray-400 mt-1">KPIs e gráficos</p>
+            </div>
+
+            {/* Planos */}
+            <div
+              onClick={() => navigate(`${basePath}/plans`)}
+              className="bg-white border-2 border-indigo-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-medium text-indigo-600">Gerenciar</p>
+                  <p className="text-sm font-bold text-indigo-900">Planos</p>
+                </div>
+                <div className="p-2 bg-indigo-100 rounded-full">
+                  <ClipboardList className="w-5 h-5 text-indigo-600" />
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-indigo-400 mt-2" />
+            </div>
+
+            {/* Checklist */}
+            <div
+              onClick={() => handleGoToFeature('checklist')}
+              className={`bg-white border-2 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer ${
+                operationalPlanId ? 'border-green-200' : 'border-gray-200 opacity-60'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-medium text-green-600">Executar</p>
+                  <p className="text-sm font-bold text-green-900">Checklist</p>
+                </div>
+                <div className="p-2 bg-green-100 rounded-full">
+                  <FileCheck className="w-5 h-5 text-green-600" />
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-green-400 mt-2" />
+              {!operationalPlanId && (
+                <p className="text-xs text-gray-400 mt-1">Sem plano ativo</p>
+              )}
+            </div>
+
+            {/* Evidências */}
+            <div
+              onClick={() => handleGoToFeature('evidence')}
+              className={`bg-white border-2 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer ${
+                operationalPlanId ? 'border-blue-200' : 'border-gray-200 opacity-60'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-medium text-blue-600">Gerenciar</p>
+                  <p className="text-sm font-bold text-blue-900">Evidências</p>
+                </div>
+                <div className="p-2 bg-blue-100 rounded-full">
+                  <Upload className="w-5 h-5 text-blue-600" />
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-blue-400 mt-2" />
+              {!operationalPlanId && (
+                <p className="text-xs text-gray-400 mt-1">Sem plano ativo</p>
+              )}
+            </div>
+
+            {/* Achados */}
+            <div
+              onClick={() => handleGoToFeature('findings')}
+              className={`bg-white border-2 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer ${
+                operationalPlanId ? 'border-red-200' : 'border-gray-200 opacity-60'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-medium text-red-600">Registrar</p>
+                  <p className="text-sm font-bold text-red-900">Achados</p>
+                </div>
+                <div className="p-2 bg-red-100 rounded-full">
+                  <AlertCircle className="w-5 h-5 text-red-600" />
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-red-400 mt-2" />
+              {!operationalPlanId && (
+                <p className="text-xs text-gray-400 mt-1">Sem plano ativo</p>
+              )}
+            </div>
+
+            {/* Riscos */}
+            <div
+              onClick={() => handleGoToFeature('risks')}
+              className={`bg-white border-2 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer ${
+                operationalPlanId ? 'border-yellow-200' : 'border-gray-200 opacity-60'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-medium text-yellow-600">Avaliar</p>
+                  <p className="text-sm font-bold text-yellow-900">Riscos</p>
+                </div>
+                <div className="p-2 bg-yellow-100 rounded-full">
+                  <AlertTriangle className="w-5 h-5 text-yellow-600" />
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-yellow-400 mt-2" />
+              {!operationalPlanId && (
+                <p className="text-xs text-gray-400 mt-1">Sem plano ativo</p>
+              )}
+            </div>
+
+            {/* Plano de Ação */}
+            <div
+              onClick={() => handleGoToFeature('actions')}
+              className={`bg-white border-2 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer ${
+                operationalPlanId ? 'border-purple-200' : 'border-gray-200 opacity-60'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-medium text-purple-600">Acompanhar</p>
+                  <p className="text-sm font-bold text-purple-900">Plano de Ação</p>
+                </div>
+                <div className="p-2 bg-purple-100 rounded-full">
+                  <ClipboardCheck className="w-5 h-5 text-purple-600" />
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-purple-400 mt-2" />
+              {!operationalPlanId && (
+                <p className="text-xs text-gray-400 mt-1">Sem plano ativo</p>
+              )}
+            </div>
+
+            {/* SoA */}
+            <div
+              onClick={() => handleGoToFeature('soa')}
+              className={`bg-white border-2 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer ${
+                operationalPlanId ? 'border-teal-200' : 'border-gray-200 opacity-60'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-medium text-teal-600">Visualizar</p>
+                  <p className="text-sm font-bold text-teal-900">SoA</p>
+                </div>
+                <div className="p-2 bg-teal-100 rounded-full">
+                  <FileText className="w-5 h-5 text-teal-600" />
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-teal-400 mt-2" />
+              {!operationalPlanId && (
+                <p className="text-xs text-gray-400 mt-1">Sem plano ativo</p>
+              )}
+            </div>
+
+            {/* Programa */}
+            <div
+              onClick={() => handleGoToFeature('program')}
+              className={`bg-white border-2 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer ${
+                operationalPlanId ? 'border-rose-200' : 'border-gray-200 opacity-60'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-medium text-rose-600">Planejar</p>
+                  <p className="text-sm font-bold text-rose-900">Programa</p>
+                </div>
+                <div className="p-2 bg-rose-100 rounded-full">
+                  <Calendar className="w-5 h-5 text-rose-600" />
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-rose-400 mt-2" />
+              {!operationalPlanId && (
+                <p className="text-xs text-gray-400 mt-1">Sem plano ativo</p>
+              )}
+            </div>
+
+            {/* Relatório */}
+            <div
+              onClick={() => handleGoToFeature('reports')}
+              className={`bg-white border-2 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer ${
+                operationalPlanId ? 'border-red-300' : 'border-gray-200 opacity-60'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-medium text-red-700">Consolidar</p>
+                  <p className="text-sm font-bold text-red-700">Relatório</p>
+                </div>
+                <div className="p-2 bg-red-100 rounded-full">
+                  <FileText className="w-5 h-5 text-red-600" />
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-red-400 mt-2" />
+              {!operationalPlanId && (
+                <p className="text-xs text-gray-400 mt-1">Sem plano ativo</p>
+              )}
             </div>
           </div>
         </div>
@@ -895,7 +1147,6 @@ export const AuditorLeadDashboard: React.FC = () => {
             </div>
           </CardHeader>
           <CardContent>
-            {/* Erro */}
             {errorToApprove ? (
               <div className="text-center py-8">
                 <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-3" />
@@ -929,7 +1180,6 @@ export const AuditorLeadDashboard: React.FC = () => {
                     className="border border-gray-200 rounded-xl p-4 hover:border-amber-300 hover:bg-amber-50/30 transition-colors"
                   >
                     <div className="flex flex-wrap items-start justify-between gap-4">
-                      {/* Coluna esquerda — Info */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap mb-1">
                           <span className="text-xs font-mono bg-gray-100 text-gray-700 px-2 py-0.5 rounded">
@@ -966,7 +1216,6 @@ export const AuditorLeadDashboard: React.FC = () => {
                         </div>
                       </div>
 
-                      {/* Coluna direita — Ações */}
                       <div className="flex items-center gap-2 flex-shrink-0">
                         <Button
                           size="sm"
