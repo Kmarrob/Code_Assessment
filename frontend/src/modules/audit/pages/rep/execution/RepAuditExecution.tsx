@@ -292,7 +292,7 @@ const isReadOnly = isObserver;
   useEffect(() => {
     const fetchControls = async () => {
       try {
-        const res = await api.get('/rep/controls');
+const res = await api.get('/internal-audit/controls');
         const list = res.data.data || res.data || [];
         setControls(Array.isArray(list) ? list : []);
       } catch (err) {
