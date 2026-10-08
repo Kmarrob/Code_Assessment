@@ -847,6 +847,139 @@ export class AuditPlanService {
   }
 
   // ============================================================
+  // 🆕 v52.1 — BUSCAR PLANOS POR MEMBRO DA EQUIPE
+  // ============================================================
+  //
+  // MOTIVO:
+  //   Os 3 novos roles de auditoria (auditor_lead, auditor,
+  //   observer) precisam de dashboards próprios. Cada um vê
+  //   apenas os planos onde participa, filtrados por papel.
+  //
+  //   Em vez de criar 4 métodos quase idênticos, centralizamos
+  //   a lógica aqui e o controller decide qual papel consultar.
+  //
+  // REGRAS:
+  //   - Sempre filtra por companyId (tenant).
+  //   - Sempre filtra por deletedAt: null (soft delete já
+  //     aplicado por hook do schema — mas reforçamos).
+  //   - Ordena por period.startDate DESC (mais recentes primeiro).
+  //   - Retorna IAuditPlan[] já mapeado.
+  //
+  // PAPÉIS SUPORTADOS:
+  //   - 'lead'      → team.leadAuditor === userId
+  //   - 'auditor'   → team.auditors contém userId
+  //   - 'observer'  → team.observers contém userId
+  //
+  // FILTRO ADICIONAL (opcional):
+  //   - statuses        → array de status aceitos
+  //   - excludeStatuses → array de status a excluir
+  //
+  // ============================================================
+
+  async findByTeamMember(
+    userId: string,
+    role: 'lead' | 'auditor' | 'observer',
+    companyId: string,
+    options?: {
+      statuses?: Array<
+        | 'draft'
+        | 'submitted'
+        | 'pending_approval'
+        | 'approved'
+        | 'rejected'
+        | 'in_progress'
+        | 'completed'
+        | 'cancelled'
+      >;
+      excludeStatuses?: Array<
+        | 'draft'
+        | 'submitted'
+        | 'pending_approval'
+        | 'approved'
+        | 'rejected'
+        | 'in_progress'
+        | 'completed'
+        | 'cancelled'
+      >;
+      limit?: number;
+    }
+  ): Promise<IAuditPlan[]> {
+    // ============================================================
+    // VALIDAÇÕES
+    // ============================================================
+
+    if (!userId) {
+      throw new Error(
+        'ID do usuário é obrigatório para buscar planos por membro da equipe'
+      );
+    }
+
+    if (!companyId) {
+      throw new Error(
+        'ID da empresa é obrigatório para buscar planos por membro da equipe'
+      );
+    }
+
+    if (!['lead', 'auditor', 'observer'].includes(role)) {
+      throw new Error(
+        `Papel inválido: "${role}". Use "lead", "auditor" ou "observer".`
+      );
+    }
+
+    // ============================================================
+    // CONSTRUIR QUERY BASE
+    // ============================================================
+
+    const query: any = {
+      companyId,
+      deletedAt: null,
+    };
+
+    // ============================================================
+    // FILTRO POR PAPEL
+    // ============================================================
+
+    if (role === 'lead') {
+      query['team.leadAuditor'] = userId;
+    } else if (role === 'auditor') {
+      query['team.auditors'] = { $in: [userId] };
+    } else {
+      // role === 'observer'
+      query['team.observers'] = { $in: [userId] };
+    }
+
+    // ============================================================
+    // FILTROS OPCIONAIS DE STATUS
+    // ============================================================
+
+    if (options?.statuses && options.statuses.length > 0) {
+      query.status = { $in: options.statuses };
+    } else if (
+      options?.excludeStatuses &&
+      options.excludeStatuses.length > 0
+    ) {
+      query.status = { $nin: options.excludeStatuses };
+    }
+
+    // ============================================================
+    // CONSULTA
+    // ============================================================
+
+    let cursor = AuditPlan.find(query).sort({
+      'period.startDate': -1,
+      createdAt: -1,
+    });
+
+    if (options?.limit && options.limit > 0) {
+      cursor = cursor.limit(options.limit);
+    }
+
+    const docs = await cursor.lean();
+
+    return mapToIAuditPlanArray(docs);
+  }
+
+  // ============================================================
   // BUSCAR PLANO POR ID
   // ============================================================
 
@@ -1784,12 +1917,7 @@ export class AuditPlanService {
 
     if (leadAuditorIsManual) {
       // Auditor líder é MANUAL (sem conta no sistema).
-      // Aceita aprovação do criador do plano, com verificação
-      // de que ele não é o mesmo que enviou (embora seja, na prática,
-      // o único caso onde isso acontece).
-      //
-      // REGRA FINAL: o criador do plano pode aprovar quando o
-      // auditor líder for manual.
+      // Aceita aprovação do criador do plano.
       if (plan.createdBy !== approverId) {
         throw new Error(
           'Plano com auditor líder manual só pode ser aprovado pelo criador do plano'

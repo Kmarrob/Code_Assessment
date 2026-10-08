@@ -1545,6 +1545,288 @@ export class AuditPlanController {
       });
     }
   }
+
+  // ============================================================
+  // 🆕 v52.1 — DASHBOARDS POR ROLE
+  // ============================================================
+  //
+  // MOTIVO:
+  //   Os roles auditor_lead, auditor e observer precisam de
+  //   endpoints dedicados para alimentar seus dashboards.
+  //
+  //   Antes, eles só conseguiam usar GET /plans (que traz TODOS
+  //   os planos da empresa) — o que não é o comportamento
+  //   desejado para auditor e observer (que só devem ver os
+  //   planos em que participam).
+  //
+  //   O REP continua usando GET /plans normalmente.
+  //
+  // SEGURANÇA:
+  //   - companyId sempre vem do token (req.user.companyId),
+  //     nunca do body/query.
+  //   - userId sempre vem do token (req.user._id).
+  //   - As rotas (Bloco 1, arquivo 3/3) aplicam authorize()
+  //     específico por role.
+  //
+  // ============================================================
+
+  // ============================================================
+  // 1/4 — PLANOS AGUARDANDO APROVAÇÃO (AUDITOR LÍDER)
+  // ============================================================
+  //
+  // Retorna planos em status 'pending_approval' onde o usuário
+  // autenticado é o leadAuditor designado.
+  //
+  // USO:
+  //   Alimenta o card "Planos para Aprovar" do AuditorLeadDashboard.
+  //
+  // ROTA:
+  //   GET /api/internal-audit/auditor/plans-to-approve
+  //
+  // ============================================================
+
+  async getPlansToApprove(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<Response> {
+    try {
+      const userId = req.user?._id?.toString();
+      const companyId = req.user?.companyId?.toString();
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: 'Usuário não autenticado',
+        });
+      }
+
+      if (!companyId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Empresa não identificada',
+        });
+      }
+
+      const plans = await auditPlanService.findByTeamMember(
+        userId,
+        'lead',
+        companyId,
+        {
+          statuses: ['pending_approval'],
+        }
+      );
+
+      return res.status(200).json({
+        success: true,
+        data: plans,
+        total: plans.length,
+      });
+    } catch (error: any) {
+      console.error(
+        'Erro ao buscar planos para aprovação:',
+        error
+      );
+
+      return res.status(400).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  }
+
+  // ============================================================
+  // 2/4 — PLANOS ATIVOS DO AUDITOR LÍDER
+  // ============================================================
+  //
+  // Retorna planos onde o usuário autenticado é o leadAuditor,
+  // em status 'approved', 'in_progress' ou 'completed'.
+  //
+  // USO:
+  //   Alimenta o card "Planos que Eu Executo" do AuditorLeadDashboard.
+  //
+  // ROTA:
+  //   GET /api/internal-audit/auditor/lead-plans
+  //
+  // ============================================================
+
+  async getLeadAuditorPlans(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<Response> {
+    try {
+      const userId = req.user?._id?.toString();
+      const companyId = req.user?.companyId?.toString();
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: 'Usuário não autenticado',
+        });
+      }
+
+      if (!companyId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Empresa não identificada',
+        });
+      }
+
+      const plans = await auditPlanService.findByTeamMember(
+        userId,
+        'lead',
+        companyId,
+        {
+          statuses: ['approved', 'in_progress', 'completed'],
+        }
+      );
+
+      return res.status(200).json({
+        success: true,
+        data: plans,
+        total: plans.length,
+      });
+    } catch (error: any) {
+      console.error(
+        'Erro ao buscar planos do auditor líder:',
+        error
+      );
+
+      return res.status(400).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  }
+
+  // ============================================================
+  // 3/4 — PLANOS QUE O AUDITOR PARTICIPA
+  // ============================================================
+  //
+  // Retorna planos onde o usuário autenticado está em
+  // team.auditors[], em qualquer status exceto 'draft',
+  // 'submitted' e 'cancelled'.
+  //
+  // USO:
+  //   Alimenta o card "Planos que Participo" do AuditorDashboard.
+  //
+  // ROTA:
+  //   GET /api/internal-audit/auditor/my-plans
+  //
+  // ============================================================
+
+  async getAuditorPlans(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<Response> {
+    try {
+      const userId = req.user?._id?.toString();
+      const companyId = req.user?.companyId?.toString();
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: 'Usuário não autenticado',
+        });
+      }
+
+      if (!companyId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Empresa não identificada',
+        });
+      }
+
+      const plans = await auditPlanService.findByTeamMember(
+        userId,
+        'auditor',
+        companyId,
+        {
+          excludeStatuses: ['draft', 'submitted', 'cancelled'],
+        }
+      );
+
+      return res.status(200).json({
+        success: true,
+        data: plans,
+        total: plans.length,
+      });
+    } catch (error: any) {
+      console.error(
+        'Erro ao buscar planos do auditor:',
+        error
+      );
+
+      return res.status(400).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  }
+
+  // ============================================================
+  // 4/4 — PLANOS QUE O OBSERVADOR ACOMPANHA
+  // ============================================================
+  //
+  // Retorna planos onde o usuário autenticado está em
+  // team.observers[], em qualquer status exceto 'draft',
+  // 'submitted' e 'cancelled'.
+  //
+  // USO:
+  //   Alimenta o card "Planos que Observo" do ObserverDashboard.
+  //
+  // ROTA:
+  //   GET /api/internal-audit/observer/my-plans
+  //
+  // ============================================================
+
+  async getObserverPlans(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<Response> {
+    try {
+      const userId = req.user?._id?.toString();
+      const companyId = req.user?.companyId?.toString();
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: 'Usuário não autenticado',
+        });
+      }
+
+      if (!companyId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Empresa não identificada',
+        });
+      }
+
+      const plans = await auditPlanService.findByTeamMember(
+        userId,
+        'observer',
+        companyId,
+        {
+          excludeStatuses: ['draft', 'submitted', 'cancelled'],
+        }
+      );
+
+      return res.status(200).json({
+        success: true,
+        data: plans,
+        total: plans.length,
+      });
+    } catch (error: any) {
+      console.error(
+        'Erro ao buscar planos do observador:',
+        error
+      );
+
+      return res.status(400).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  }
 }
 
 export const auditPlanController =

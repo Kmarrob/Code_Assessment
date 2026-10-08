@@ -102,6 +102,41 @@ const CAN_APPROVE_AUDIT = [
 ] as const;
 
 // ============================================================
+// 🆕 v52.1 — CONSTANTES ESPECÍFICAS DOS DASHBOARDS POR ROLE
+// ============================================================
+//
+// MOTIVO:
+//   Cada dashboard por role só deve ser acessível pelo próprio
+//   role (e pelo ADMIN, que tem bypass total).
+//
+// REGRAS:
+//   - CAN_VIEW_LEAD_DASHBOARD      → ADMIN, AUDITOR_LEAD
+//   - CAN_VIEW_AUDITOR_DASHBOARD   → ADMIN, AUDITOR
+//   - CAN_VIEW_OBSERVER_DASHBOARD  → ADMIN, OBSERVER
+//
+// SEGURANÇA:
+//   - O REP NÃO acessa esses endpoints (ele tem o próprio painel
+//     com a rota geral /plans — comportamento inalterado).
+//   - Isolamento por role garante segregação de funções.
+//
+// ============================================================
+
+const CAN_VIEW_LEAD_DASHBOARD = [
+  UserRole.ADMIN,
+  UserRole.AUDITOR_LEAD,
+] as const;
+
+const CAN_VIEW_AUDITOR_DASHBOARD = [
+  UserRole.ADMIN,
+  UserRole.AUDITOR,
+] as const;
+
+const CAN_VIEW_OBSERVER_DASHBOARD = [
+  UserRole.ADMIN,
+  UserRole.OBSERVER,
+] as const;
+
+// ============================================================
 // 🆕 v50.2.15 — ROTAS DE DASHBOARD
 // ============================================================
 //
@@ -249,6 +284,72 @@ router.delete(
   '/plans/:id/exclusions/:controlId',
   authorize(UserRole.ADMIN, UserRole.REP, UserRole.AUDITOR_LEAD),
   auditPlanController.removeExclusion
+);
+
+// ============================================================
+// 🆕 v52.1 — ROTAS DE DASHBOARD POR ROLE
+// ============================================================
+//
+// MOTIVO:
+//   Os roles auditor_lead, auditor e observer precisam de
+//   endpoints dedicados para alimentar seus dashboards.
+//
+//   Antes, todos usavam GET /plans (que traz TODOS os planos
+//   da empresa) — o que não é o comportamento desejado.
+//
+// REGRAS:
+//   - REP: continua usando GET /plans (nenhuma mudança).
+//   - ADMIN: acesso total a qualquer rota de dashboard.
+//   - AUDITOR_LEAD: acessa planos onde é leadAuditor.
+//   - AUDITOR: acessa planos onde está em team.auditors[].
+//   - OBSERVER: acessa planos onde está em team.observers[].
+//
+// SEGURANÇA:
+//   - companyId e userId sempre vêm do token (middleware).
+//   - O controller filtra por ambos, garantindo isolamento
+//     de tenant e de papel.
+//
+// ORDEM DAS ROTAS:
+//   Estas rotas vêm ANTES das rotas genéricas /plans/:id
+//   NÃO É NECESSÁRIO — o prefixo /auditor/... e /observer/...
+//   não conflita com /plans/:id. A ordem é apenas organizacional.
+//
+// ============================================================
+
+// ------------------------------------------------------------
+// AUDITOR LÍDER — Planos para aprovar + Planos que executa
+// ------------------------------------------------------------
+
+router.get(
+  '/auditor/plans-to-approve',
+  authorize(...CAN_VIEW_LEAD_DASHBOARD),
+  auditPlanController.getPlansToApprove
+);
+
+router.get(
+  '/auditor/lead-plans',
+  authorize(...CAN_VIEW_LEAD_DASHBOARD),
+  auditPlanController.getLeadAuditorPlans
+);
+
+// ------------------------------------------------------------
+// AUDITOR — Planos que participa
+// ------------------------------------------------------------
+
+router.get(
+  '/auditor/my-plans',
+  authorize(...CAN_VIEW_AUDITOR_DASHBOARD),
+  auditPlanController.getAuditorPlans
+);
+
+// ------------------------------------------------------------
+// OBSERVADOR — Planos que acompanha
+// ------------------------------------------------------------
+
+router.get(
+  '/observer/my-plans',
+  authorize(...CAN_VIEW_OBSERVER_DASHBOARD),
+  auditPlanController.getObserverPlans
 );
 
 // ============================================================
