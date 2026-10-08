@@ -10,6 +10,25 @@ import { withDbTimeout } from '../middleware/timeout.js';
 // 🔴 NOVO: Import do EmailJSService
 import { emailjsService } from './EmailJSService.js';
 
+// ============================================================
+// 🆕 v52.0 — AdminService JÁ SUPORTA OS NOVOS ROLES
+// ============================================================
+//
+// MOTIVO:
+//   O AdminService não precisou de alteração estrutural. Ele já
+//   aceita `role: UserRole` no CreateUserData e usa
+//   `role: data.role || UserRole.USER`.
+//
+//   Com o enum `UserRole` expandido no Bloco 1, os 3 novos roles
+//   (auditor_lead, auditor, observer) já são automaticamente
+//   aceitos pelo AdminService sem nenhuma alteração.
+//
+// DIFERENÇA DO REP:
+//   - REP: só pode cadastrar 4 roles (whitelist no RepService)
+//   - ADMIN: pode cadastrar TODOS os roles (validação do enum)
+//
+// ============================================================
+
 export interface CreateUserData {
   name: string;
   email: string;

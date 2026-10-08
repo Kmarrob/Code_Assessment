@@ -55,38 +55,163 @@ const router = Router();
 router.use(authenticate);
 
 // ============================================================
+// 🆕 v52.0 — CONSTANTES DE AUTORIZAÇÃO POR GRUPO DE ROLES
+// ============================================================
+//
+// MOTIVO:
+//   Com a introdução dos roles de auditoria interna
+//   (auditor_lead, auditor, observer), precisamos autorizar as
+//   rotas de auditoria de acordo com o papel do usuário.
+//
+// REGRAS:
+//   - REP: continua com acesso total (comportamento antigo).
+//   - ADMIN: acesso total (bypass).
+//   - AUDITOR_LEAD: aprovador + executor + leitura.
+//   - AUDITOR: executor + leitura (NÃO aprova).
+//   - OBSERVER: somente leitura.
+//
+// ESTRATÉGIA:
+//   4 constantes reutilizáveis para evitar repetição em ~100 rotas.
+//
+// SEGURANÇA:
+//   - REP e ADMIN nunca perdem acesso existente.
+//   - Os 3 novos roles ganham acesso (aditivo).
+//   - Nenhuma rota fica mais restrita para quem já funcionava.
+//
+// ============================================================
+
+const CAN_READ_AUDIT = [
+  UserRole.ADMIN,
+  UserRole.REP,
+  UserRole.AUDITOR_LEAD,
+  UserRole.AUDITOR,
+  UserRole.OBSERVER,
+] as const;
+
+const CAN_WRITE_AUDIT = [
+  UserRole.ADMIN,
+  UserRole.REP,
+  UserRole.AUDITOR_LEAD,
+  UserRole.AUDITOR,
+] as const;
+
+const CAN_APPROVE_AUDIT = [
+  UserRole.ADMIN,
+  UserRole.REP,
+  UserRole.AUDITOR_LEAD,
+] as const;
+
+// ============================================================
 // 🆕 v50.2.15 — ROTAS DE DASHBOARD
 // ============================================================
 //
 // Acesso:
 //   - ADMIN: vê tudo (query params opcionais: companyId, planId)
 //   - REP:   vê só a empresa dele (backend força o companyId)
+//   - AUDITOR_LEAD / AUDITOR: veem o dashboard da empresa
+//   - OBSERVER: somente leitura
 //
 // ============================================================
 
 router.get(
   '/dashboard/stats',
+  authorize(...CAN_READ_AUDIT),
   auditDashboardController.getStats
 );
 
 // ============================================================
 // ROTAS DE PLANOS DE AUDITORIA
 // ============================================================
-router.post('/plans', auditPlanController.create);
-router.get('/plans', auditPlanController.findAll);
-router.get('/plans/stats', auditPlanController.getStats);
-router.get('/plans/:id', auditPlanController.findById);
-router.put('/plans/:id', auditPlanController.update);
-router.delete('/plans/:id', auditPlanController.delete);
-router.post('/plans/:id/submit', auditPlanController.submitForApproval);
-router.post('/plans/:id/approve', auditPlanController.approve);
-router.post('/plans/:id/reject', auditPlanController.reject);
-router.post('/plans/:id/cancel', auditPlanController.cancel);
-router.post('/plans/:id/start', auditPlanController.startAudit);
-router.post('/plans/:id/complete', auditPlanController.completeAudit);
+//
+// REGRAS:
+//   - Criar/editar/excluir plano: REP, ADMIN
+//   - Enviar para aprovação:     REP, ADMIN
+//   - Aprovar/rejeitar:          REP, ADMIN, AUDITOR_LEAD
+//   - Cancelar:                  REP, ADMIN, AUDITOR_LEAD
+//   - Iniciar auditoria:         REP, ADMIN, AUDITOR_LEAD, AUDITOR
+//   - Concluir auditoria:        REP, ADMIN, AUDITOR_LEAD
+//   - Consultar planos:          todos os roles de auditoria
+//
+// ============================================================
+
+router.post(
+  '/plans',
+  authorize(UserRole.ADMIN, UserRole.REP),
+  auditPlanController.create
+);
+
+router.get(
+  '/plans',
+  authorize(...CAN_READ_AUDIT),
+  auditPlanController.findAll
+);
+
+router.get(
+  '/plans/stats',
+  authorize(...CAN_READ_AUDIT),
+  auditPlanController.getStats
+);
+
+router.get(
+  '/plans/:id',
+  authorize(...CAN_READ_AUDIT),
+  auditPlanController.findById
+);
+
+router.put(
+  '/plans/:id',
+  authorize(UserRole.ADMIN, UserRole.REP),
+  auditPlanController.update
+);
+
+router.delete(
+  '/plans/:id',
+  authorize(UserRole.ADMIN, UserRole.REP),
+  auditPlanController.delete
+);
+
+router.post(
+  '/plans/:id/submit',
+  authorize(UserRole.ADMIN, UserRole.REP),
+  auditPlanController.submitForApproval
+);
+
+router.post(
+  '/plans/:id/approve',
+  authorize(...CAN_APPROVE_AUDIT),
+  auditPlanController.approve
+);
+
+router.post(
+  '/plans/:id/reject',
+  authorize(...CAN_APPROVE_AUDIT),
+  auditPlanController.reject
+);
+
+router.post(
+  '/plans/:id/cancel',
+  authorize(...CAN_APPROVE_AUDIT),
+  auditPlanController.cancel
+);
+
+router.post(
+  '/plans/:id/start',
+  authorize(...CAN_WRITE_AUDIT),
+  auditPlanController.startAudit
+);
+
+router.post(
+  '/plans/:id/complete',
+  authorize(...CAN_APPROVE_AUDIT),
+  auditPlanController.completeAudit
+);
 
 // 🆕 NOVO (v47.0) - Buscar respostas dos usuários por plano
-router.get('/plans/:planId/responses', auditPlanController.getResponsesByPlan);
+router.get(
+  '/plans/:planId/responses',
+  authorize(...CAN_READ_AUDIT),
+  auditPlanController.getResponsesByPlan
+);
 
 // ============================================================
 // 🆕 NOVO — EXCLUSÃO DE CONTROLES DO ESCOPO (Opção C)
@@ -101,24 +226,28 @@ router.get('/plans/:planId/responses', auditPlanController.getResponsesByPlan);
 // Excluir um controle (adiciona exclusão pendente)
 router.post(
   '/plans/:id/exclusions',
+  authorize(UserRole.ADMIN, UserRole.REP),
   auditPlanController.excludeControl
 );
 
 // Aprovar uma exclusão específica
 router.post(
   '/plans/:id/exclusions/:controlId/approve',
+  authorize(...CAN_APPROVE_AUDIT),
   auditPlanController.approveExclusion
 );
 
 // Rejeitar uma exclusão específica (devolve o controle ao escopo)
 router.post(
   '/plans/:id/exclusions/:controlId/reject',
+  authorize(...CAN_APPROVE_AUDIT),
   auditPlanController.rejectExclusion
 );
 
 // Remover uma exclusão já registrada (devolve o controle ao escopo)
 router.delete(
   '/plans/:id/exclusions/:controlId',
+  authorize(UserRole.ADMIN, UserRole.REP, UserRole.AUDITOR_LEAD),
   auditPlanController.removeExclusion
 );
 
@@ -255,28 +384,116 @@ router.delete(
 // ============================================================
 // ROTAS DE CHECKLISTS
 // ============================================================
-router.get('/checklists/plan/:auditPlanId', auditChecklistController.findByPlanId);
-router.get('/checklists/plan/:auditPlanId/control/:controlId', auditChecklistController.findByPlanAndControl);
-router.get('/checklists/plan/:auditPlanId/stats', auditChecklistController.getStats);
-router.put('/checklists/:id', auditChecklistController.updateChecklist);
-router.post('/checklists/:id/complete', auditChecklistController.complete);
+//
+// REGRAS:
+//   - Consultar checklists:  todos os roles de auditoria
+//   - Editar/concluir:       REP, ADMIN, AUDITOR_LEAD, AUDITOR
+//   - Popular:               REP, ADMIN, AUDITOR_LEAD, AUDITOR
+//
+// ============================================================
+
+router.get(
+  '/checklists/plan/:auditPlanId',
+  authorize(...CAN_READ_AUDIT),
+  auditChecklistController.findByPlanId
+);
+
+router.get(
+  '/checklists/plan/:auditPlanId/control/:controlId',
+  authorize(...CAN_READ_AUDIT),
+  auditChecklistController.findByPlanAndControl
+);
+
+router.get(
+  '/checklists/plan/:auditPlanId/stats',
+  authorize(...CAN_READ_AUDIT),
+  auditChecklistController.getStats
+);
+
+router.put(
+  '/checklists/:id',
+  authorize(...CAN_WRITE_AUDIT),
+  auditChecklistController.updateChecklist
+);
+
+router.post(
+  '/checklists/:id/complete',
+  authorize(...CAN_WRITE_AUDIT),
+  auditChecklistController.complete
+);
 
 // 🆕 NOVO (v47.0) - Popula checklists com respostas dos usuários
 // POST /api/internal-audit/checklists/populate/:auditPlanId
-router.post('/checklists/populate/:auditPlanId', auditChecklistController.populateWithUserResponses);
+router.post(
+  '/checklists/populate/:auditPlanId',
+  authorize(...CAN_WRITE_AUDIT),
+  auditChecklistController.populateWithUserResponses
+);
 
 // ============================================================
 // ROTAS DE NÃO CONFORMIDADES (FINDINGS)
 // ============================================================
-router.post('/findings/plan/:auditPlanId', auditFindingController.create);
-router.get('/findings/plan/:auditPlanId', auditFindingController.findByPlanId);
-router.get('/findings', auditFindingController.findAll);
-router.get('/findings/:id', auditFindingController.findById);
-router.put('/findings/:id', auditFindingController.update);
-router.delete('/findings/:id', auditFindingController.delete);
-router.post('/findings/:id/submit', auditFindingController.submitForValidation);
-router.post('/findings/:id/validate', auditFindingController.validate);
-router.get('/findings/plan/:auditPlanId/stats', auditFindingController.getStats);
+//
+// REGRAS:
+//   - Consultar NCs:    todos os roles de auditoria
+//   - Criar/editar:     REP, ADMIN, AUDITOR_LEAD, AUDITOR
+//   - Excluir/validar:  REP, ADMIN, AUDITOR_LEAD
+//
+// ============================================================
+
+router.post(
+  '/findings/plan/:auditPlanId',
+  authorize(...CAN_WRITE_AUDIT),
+  auditFindingController.create
+);
+
+router.get(
+  '/findings/plan/:auditPlanId',
+  authorize(...CAN_READ_AUDIT),
+  auditFindingController.findByPlanId
+);
+
+router.get(
+  '/findings',
+  authorize(...CAN_READ_AUDIT),
+  auditFindingController.findAll
+);
+
+router.get(
+  '/findings/:id',
+  authorize(...CAN_READ_AUDIT),
+  auditFindingController.findById
+);
+
+router.put(
+  '/findings/:id',
+  authorize(...CAN_WRITE_AUDIT),
+  auditFindingController.update
+);
+
+router.delete(
+  '/findings/:id',
+  authorize(...CAN_APPROVE_AUDIT),
+  auditFindingController.delete
+);
+
+router.post(
+  '/findings/:id/submit',
+  authorize(...CAN_WRITE_AUDIT),
+  auditFindingController.submitForValidation
+);
+
+router.post(
+  '/findings/:id/validate',
+  authorize(...CAN_APPROVE_AUDIT),
+  auditFindingController.validate
+);
+
+router.get(
+  '/findings/plan/:auditPlanId/stats',
+  authorize(...CAN_READ_AUDIT),
+  auditFindingController.getStats
+);
 
 // ============================================================
 // ROTAS DE EVIDÊNCIAS
@@ -314,9 +531,15 @@ router.get('/findings/plan/:auditPlanId/stats', auditFindingController.getStats)
 //   arquivo físico para o navegador abrir em nova aba.
 //   DEVE VIR ANTES de /evidence/:id (que é catch-all).
 //
+// 🆕 v52.0 — AUTORIZAÇÃO:
+//   - Upload: REP, ADMIN, AUDITOR_LEAD, AUDITOR
+//   - Consulta/Download: todos os roles de auditoria
+//   - Exclusão: REP, ADMIN, AUDITOR_LEAD
+//
 // ============================================================
 router.post(
   '/evidence/upload',
+  authorize(...CAN_WRITE_AUDIT),
   uploadEvidence.single('file'),
   handleEvidenceMulterError,
   auditEvidenceController.upload
@@ -326,124 +549,563 @@ router.post(
 // (DEVE VIR ANTES de /evidence/:id)
 router.get(
   '/evidence/:id/file',
+  authorize(...CAN_READ_AUDIT),
   auditEvidenceController.download
 );
 
-router.get('/evidence/plan/:auditPlanId', auditEvidenceController.findByPlanId);
-router.get('/evidence/finding/:findingId', auditEvidenceController.findByFindingId);
-router.get('/evidence/:id', auditEvidenceController.findById);
-router.delete('/evidence/:id', auditEvidenceController.delete);
+router.get(
+  '/evidence/plan/:auditPlanId',
+  authorize(...CAN_READ_AUDIT),
+  auditEvidenceController.findByPlanId
+);
+
+router.get(
+  '/evidence/finding/:findingId',
+  authorize(...CAN_READ_AUDIT),
+  auditEvidenceController.findByFindingId
+);
+
+router.get(
+  '/evidence/:id',
+  authorize(...CAN_READ_AUDIT),
+  auditEvidenceController.findById
+);
+
+router.delete(
+  '/evidence/:id',
+  authorize(...CAN_APPROVE_AUDIT),
+  auditEvidenceController.delete
+);
 
 // ============================================================
 // ROTAS DE PLANOS DE AÇÃO
 // ============================================================
-router.post('/actions', auditActionPlanController.create);
-router.get('/actions/finding/:findingId', auditActionPlanController.findByFindingId);
-router.get('/actions/responsible/:responsible', auditActionPlanController.findByResponsible);
-router.get('/actions/:id', auditActionPlanController.findById);
-router.put('/actions/:id', auditActionPlanController.update);
-router.delete('/actions/:id', auditActionPlanController.delete);
-router.post('/actions/:id/start', auditActionPlanController.startProgress);
-router.post('/actions/:id/complete', auditActionPlanController.complete);
-router.post('/actions/:id/validate', auditActionPlanController.validate);
+//
+// REGRAS:
+//   - Consultar:     todos os roles de auditoria
+//   - Criar/editar:  REP, ADMIN, AUDITOR_LEAD, AUDITOR
+//   - Excluir:       REP, ADMIN, AUDITOR_LEAD
+//   - Validar:       REP, ADMIN, AUDITOR_LEAD
+//
+// ============================================================
+
+router.post(
+  '/actions',
+  authorize(...CAN_WRITE_AUDIT),
+  auditActionPlanController.create
+);
+
+router.get(
+  '/actions/finding/:findingId',
+  authorize(...CAN_READ_AUDIT),
+  auditActionPlanController.findByFindingId
+);
+
+router.get(
+  '/actions/responsible/:responsible',
+  authorize(...CAN_READ_AUDIT),
+  auditActionPlanController.findByResponsible
+);
+
+router.get(
+  '/actions/:id',
+  authorize(...CAN_READ_AUDIT),
+  auditActionPlanController.findById
+);
+
+router.put(
+  '/actions/:id',
+  authorize(...CAN_WRITE_AUDIT),
+  auditActionPlanController.update
+);
+
+router.delete(
+  '/actions/:id',
+  authorize(...CAN_APPROVE_AUDIT),
+  auditActionPlanController.delete
+);
+
+router.post(
+  '/actions/:id/start',
+  authorize(...CAN_WRITE_AUDIT),
+  auditActionPlanController.startProgress
+);
+
+router.post(
+  '/actions/:id/complete',
+  authorize(...CAN_WRITE_AUDIT),
+  auditActionPlanController.complete
+);
+
+router.post(
+  '/actions/:id/validate',
+  authorize(...CAN_APPROVE_AUDIT),
+  auditActionPlanController.validate
+);
 
 // ============================================================
 // ROTAS DE RELATÓRIOS
 // ============================================================
-router.post('/reports', auditReportController.create);
-router.get('/reports', auditReportController.findAll);
-router.get('/reports/plan/:auditPlanId', auditReportController.findByPlanId);
-router.get('/reports/:id', auditReportController.findById);
-router.put('/reports/:id', auditReportController.update);
-router.delete('/reports/:id', auditReportController.delete);
-router.post('/reports/:id/submit', auditReportController.submitForReview);
-router.post('/reports/:id/approve', auditReportController.approve);
-router.post('/reports/:id/reject', auditReportController.reject);
-router.post('/reports/plan/:auditPlanId/generate', auditReportController.generateAutoReport);
+//
+// REGRAS:
+//   - Consultar:        todos os roles de auditoria
+//   - Criar/editar:     REP, ADMIN, AUDITOR_LEAD, AUDITOR
+//   - Aprovar/rejeitar: REP, ADMIN, AUDITOR_LEAD
+//   - Excluir:          REP, ADMIN, AUDITOR_LEAD
+//
+// ============================================================
+
+router.post(
+  '/reports',
+  authorize(...CAN_WRITE_AUDIT),
+  auditReportController.create
+);
+
+router.get(
+  '/reports',
+  authorize(...CAN_READ_AUDIT),
+  auditReportController.findAll
+);
+
+router.get(
+  '/reports/plan/:auditPlanId',
+  authorize(...CAN_READ_AUDIT),
+  auditReportController.findByPlanId
+);
+
+router.get(
+  '/reports/:id',
+  authorize(...CAN_READ_AUDIT),
+  auditReportController.findById
+);
+
+router.put(
+  '/reports/:id',
+  authorize(...CAN_WRITE_AUDIT),
+  auditReportController.update
+);
+
+router.delete(
+  '/reports/:id',
+  authorize(...CAN_APPROVE_AUDIT),
+  auditReportController.delete
+);
+
+router.post(
+  '/reports/:id/submit',
+  authorize(...CAN_WRITE_AUDIT),
+  auditReportController.submitForReview
+);
+
+router.post(
+  '/reports/:id/approve',
+  authorize(...CAN_APPROVE_AUDIT),
+  auditReportController.approve
+);
+
+router.post(
+  '/reports/:id/reject',
+  authorize(...CAN_APPROVE_AUDIT),
+  auditReportController.reject
+);
+
+router.post(
+  '/reports/plan/:auditPlanId/generate',
+  authorize(...CAN_WRITE_AUDIT),
+  auditReportController.generateAutoReport
+);
 
 // ============================================================
 // ROTAS DE PROGRAMA DE AUDITORIAS
 // ============================================================
-router.post('/program', auditProgramController.create);
-router.get('/program/company/:companyId', auditProgramController.findAllByCompany);
-router.get('/program/company/:companyId/year/:year', auditProgramController.findByCompanyAndYear);
-router.get('/program/:id', auditProgramController.findById);
-router.put('/program/:id', auditProgramController.update);
-router.delete('/program/:id', auditProgramController.delete);
-router.post('/program/:id/approve', auditProgramController.approve);
-router.post('/program/:id/activate', auditProgramController.activate);
-router.post('/program/:id/archive', auditProgramController.archive);
-router.get('/program/:id/stats', auditProgramController.getStatistics);
-router.get('/program/:id/next-audits', auditProgramController.generateNextAudits);
+//
+// REGRAS:
+//   - Consultar:        todos os roles de auditoria
+//   - Criar/editar:     REP, ADMIN
+//   - Aprovar/arquivar: REP, ADMIN, AUDITOR_LEAD
+//   - Excluir:          REP, ADMIN
+//
+// ============================================================
+
+router.post(
+  '/program',
+  authorize(UserRole.ADMIN, UserRole.REP),
+  auditProgramController.create
+);
+
+router.get(
+  '/program/company/:companyId',
+  authorize(...CAN_READ_AUDIT),
+  auditProgramController.findAllByCompany
+);
+
+router.get(
+  '/program/company/:companyId/year/:year',
+  authorize(...CAN_READ_AUDIT),
+  auditProgramController.findByCompanyAndYear
+);
+
+router.get(
+  '/program/:id',
+  authorize(...CAN_READ_AUDIT),
+  auditProgramController.findById
+);
+
+router.put(
+  '/program/:id',
+  authorize(UserRole.ADMIN, UserRole.REP),
+  auditProgramController.update
+);
+
+router.delete(
+  '/program/:id',
+  authorize(UserRole.ADMIN, UserRole.REP),
+  auditProgramController.delete
+);
+
+router.post(
+  '/program/:id/approve',
+  authorize(...CAN_APPROVE_AUDIT),
+  auditProgramController.approve
+);
+
+router.post(
+  '/program/:id/activate',
+  authorize(...CAN_APPROVE_AUDIT),
+  auditProgramController.activate
+);
+
+router.post(
+  '/program/:id/archive',
+  authorize(...CAN_APPROVE_AUDIT),
+  auditProgramController.archive
+);
+
+router.get(
+  '/program/:id/stats',
+  authorize(...CAN_READ_AUDIT),
+  auditProgramController.getStatistics
+);
+
+router.get(
+  '/program/:id/next-audits',
+  authorize(...CAN_READ_AUDIT),
+  auditProgramController.generateNextAudits
+);
 
 // Setores
-router.post('/program/:id/sector', auditProgramController.addSector);
-router.put('/program/:id/sector/:index', auditProgramController.updateSector);
+router.post(
+  '/program/:id/sector',
+  authorize(UserRole.ADMIN, UserRole.REP),
+  auditProgramController.addSector
+);
+
+router.put(
+  '/program/:id/sector/:index',
+  authorize(UserRole.ADMIN, UserRole.REP),
+  auditProgramController.updateSector
+);
 
 // Auditoria de fornecedores
-router.post('/program/:id/supplier-audit', auditProgramController.addSupplierAudit);
-router.put('/program/:id/supplier-audit/:index', auditProgramController.updateSupplierAudit);
+router.post(
+  '/program/:id/supplier-audit',
+  authorize(UserRole.ADMIN, UserRole.REP),
+  auditProgramController.addSupplierAudit
+);
+
+router.put(
+  '/program/:id/supplier-audit/:index',
+  authorize(UserRole.ADMIN, UserRole.REP),
+  auditProgramController.updateSupplierAudit
+);
 
 // Auditoria externa
-router.put('/program/:id/external-audit', auditProgramController.updateExternalAudit);
+router.put(
+  '/program/:id/external-audit',
+  authorize(UserRole.ADMIN, UserRole.REP),
+  auditProgramController.updateExternalAudit
+);
 
 // Atividades
-router.post('/program/:id/activity', auditProgramController.addActivity);
-router.put('/program/:id/activity/:index', auditProgramController.updateActivity);
+router.post(
+  '/program/:id/activity',
+  authorize(UserRole.ADMIN, UserRole.REP),
+  auditProgramController.addActivity
+);
+
+router.put(
+  '/program/:id/activity/:index',
+  authorize(UserRole.ADMIN, UserRole.REP),
+  auditProgramController.updateActivity
+);
 
 // ============================================================
 // ROTAS DE DECLARAÇÃO DE APLICABILIDADE (SoA)
 // ============================================================
-router.post('/soa', auditSoAController.create);
-router.get('/soa/company/:companyId', auditSoAController.findByCompany);
-router.get('/soa/company/:companyId/active', auditSoAController.findActiveByCompany);
-router.get('/soa/:id', auditSoAController.findById);
-router.put('/soa/:id', auditSoAController.update);
-router.delete('/soa/:id', auditSoAController.delete);
-router.post('/soa/:id/approve', auditSoAController.approve);
-router.post('/soa/:id/archive', auditSoAController.archive);
-router.get('/soa/:id/stats', auditSoAController.getStatistics);
-router.get('/soa/:id/export', auditSoAController.exportToSpreadsheet);
+//
+// REGRAS:
+//   - Consultar:        todos os roles de auditoria
+//   - Criar/editar:     REP, ADMIN
+//   - Aprovar/arquivar: REP, ADMIN, AUDITOR_LEAD
+//
+// ============================================================
+
+router.post(
+  '/soa',
+  authorize(UserRole.ADMIN, UserRole.REP),
+  auditSoAController.create
+);
+
+router.get(
+  '/soa/company/:companyId',
+  authorize(...CAN_READ_AUDIT),
+  auditSoAController.findByCompany
+);
+
+router.get(
+  '/soa/company/:companyId/active',
+  authorize(...CAN_READ_AUDIT),
+  auditSoAController.findActiveByCompany
+);
+
+router.get(
+  '/soa/:id',
+  authorize(...CAN_READ_AUDIT),
+  auditSoAController.findById
+);
+
+router.put(
+  '/soa/:id',
+  authorize(UserRole.ADMIN, UserRole.REP),
+  auditSoAController.update
+);
+
+router.delete(
+  '/soa/:id',
+  authorize(UserRole.ADMIN, UserRole.REP),
+  auditSoAController.delete
+);
+
+router.post(
+  '/soa/:id/approve',
+  authorize(...CAN_APPROVE_AUDIT),
+  auditSoAController.approve
+);
+
+router.post(
+  '/soa/:id/archive',
+  authorize(...CAN_APPROVE_AUDIT),
+  auditSoAController.archive
+);
+
+router.get(
+  '/soa/:id/stats',
+  authorize(...CAN_READ_AUDIT),
+  auditSoAController.getStatistics
+);
+
+router.get(
+  '/soa/:id/export',
+  authorize(...CAN_READ_AUDIT),
+  auditSoAController.exportToSpreadsheet
+);
 
 // Controles da SoA
-router.put('/soa/:id/control/:clause', auditSoAController.updateControl);
+router.put(
+  '/soa/:id/control/:clause',
+  authorize(UserRole.ADMIN, UserRole.REP),
+  auditSoAController.updateControl
+);
 
 // ============================================================
 // ROTAS DE GESTÃO DE RISCOS
 // ============================================================
-router.post('/risks', auditRiskController.create);
-router.get('/risks/plan/:planId', auditRiskController.findAllByPlan);
-router.get('/risks/company/:companyId', auditRiskController.findAllByCompany);
-router.get('/risks/company/:companyId/stats', auditRiskController.getStatistics);
-router.get('/risks/company/:companyId/critical', auditRiskController.getCriticalRisks);
-router.get('/risks/company/:companyId/export', auditRiskController.exportToSpreadsheet);
-router.get('/risks/:id', auditRiskController.findById);
-router.get('/risks/company/:companyId/risk-id/:riskId', auditRiskController.findByRiskId);
-router.put('/risks/:id', auditRiskController.update);
-router.delete('/risks/:id', auditRiskController.delete);
-router.put('/risks/:id/assessment', auditRiskController.updateAssessment);
-router.post('/risks/:id/treat', auditRiskController.treatRisk);
-router.put('/risks/:id/monitor', auditRiskController.monitorRisk);
-router.post('/risks/:id/reopen', auditRiskController.reopenRisk);
+//
+// REGRAS:
+//   - Consultar:        todos os roles de auditoria
+//   - Criar/editar:     REP, ADMIN, AUDITOR_LEAD, AUDITOR
+//   - Excluir:          REP, ADMIN, AUDITOR_LEAD
+//
+// ============================================================
+
+router.post(
+  '/risks',
+  authorize(...CAN_WRITE_AUDIT),
+  auditRiskController.create
+);
+
+router.get(
+  '/risks/plan/:planId',
+  authorize(...CAN_READ_AUDIT),
+  auditRiskController.findAllByPlan
+);
+
+router.get(
+  '/risks/company/:companyId',
+  authorize(...CAN_READ_AUDIT),
+  auditRiskController.findAllByCompany
+);
+
+router.get(
+  '/risks/company/:companyId/stats',
+  authorize(...CAN_READ_AUDIT),
+  auditRiskController.getStatistics
+);
+
+router.get(
+  '/risks/company/:companyId/critical',
+  authorize(...CAN_READ_AUDIT),
+  auditRiskController.getCriticalRisks
+);
+
+router.get(
+  '/risks/company/:companyId/export',
+  authorize(...CAN_READ_AUDIT),
+  auditRiskController.exportToSpreadsheet
+);
+
+router.get(
+  '/risks/:id',
+  authorize(...CAN_READ_AUDIT),
+  auditRiskController.findById
+);
+
+router.get(
+  '/risks/company/:companyId/risk-id/:riskId',
+  authorize(...CAN_READ_AUDIT),
+  auditRiskController.findByRiskId
+);
+
+router.put(
+  '/risks/:id',
+  authorize(...CAN_WRITE_AUDIT),
+  auditRiskController.update
+);
+
+router.delete(
+  '/risks/:id',
+  authorize(...CAN_APPROVE_AUDIT),
+  auditRiskController.delete
+);
+
+router.put(
+  '/risks/:id/assessment',
+  authorize(...CAN_WRITE_AUDIT),
+  auditRiskController.updateAssessment
+);
+
+router.post(
+  '/risks/:id/treat',
+  authorize(...CAN_WRITE_AUDIT),
+  auditRiskController.treatRisk
+);
+
+router.put(
+  '/risks/:id/monitor',
+  authorize(...CAN_WRITE_AUDIT),
+  auditRiskController.monitorRisk
+);
+
+router.post(
+  '/risks/:id/reopen',
+  authorize(...CAN_APPROVE_AUDIT),
+  auditRiskController.reopenRisk
+);
 
 // ============================================================
 // ROTAS DE REVISÃO DE DOCUMENTAÇÃO
 // ============================================================
-router.post('/document-review', auditDocumentReviewController.create);
-router.get('/document-review/company/:companyId', auditDocumentReviewController.findAllByCompany);
-router.get('/document-review/plan/:auditPlanId', auditDocumentReviewController.findByAuditPlanId);
-router.get('/document-review/:id', auditDocumentReviewController.findById);
-router.put('/document-review/:id', auditDocumentReviewController.update);
-router.delete('/document-review/:id', auditDocumentReviewController.delete);
-router.post('/document-review/:id/complete', auditDocumentReviewController.completeReview);
-router.get('/document-review/:id/summary', auditDocumentReviewController.getSummary);
-router.get('/document-review/:id/nonconformities', auditDocumentReviewController.getNonconformities);
-router.get('/document-review/:id/recommendations', auditDocumentReviewController.getRecommendations);
+//
+// REGRAS:
+//   - Consultar:        todos os roles de auditoria
+//   - Criar/editar:     REP, ADMIN, AUDITOR_LEAD, AUDITOR
+//   - Excluir/completar: REP, ADMIN, AUDITOR_LEAD
+//
+// ============================================================
+
+router.post(
+  '/document-review',
+  authorize(...CAN_WRITE_AUDIT),
+  auditDocumentReviewController.create
+);
+
+router.get(
+  '/document-review/company/:companyId',
+  authorize(...CAN_READ_AUDIT),
+  auditDocumentReviewController.findAllByCompany
+);
+
+router.get(
+  '/document-review/plan/:auditPlanId',
+  authorize(...CAN_READ_AUDIT),
+  auditDocumentReviewController.findByAuditPlanId
+);
+
+router.get(
+  '/document-review/:id',
+  authorize(...CAN_READ_AUDIT),
+  auditDocumentReviewController.findById
+);
+
+router.put(
+  '/document-review/:id',
+  authorize(...CAN_WRITE_AUDIT),
+  auditDocumentReviewController.update
+);
+
+router.delete(
+  '/document-review/:id',
+  authorize(...CAN_APPROVE_AUDIT),
+  auditDocumentReviewController.delete
+);
+
+router.post(
+  '/document-review/:id/complete',
+  authorize(...CAN_APPROVE_AUDIT),
+  auditDocumentReviewController.completeReview
+);
+
+router.get(
+  '/document-review/:id/summary',
+  authorize(...CAN_READ_AUDIT),
+  auditDocumentReviewController.getSummary
+);
+
+router.get(
+  '/document-review/:id/nonconformities',
+  authorize(...CAN_READ_AUDIT),
+  auditDocumentReviewController.getNonconformities
+);
+
+router.get(
+  '/document-review/:id/recommendations',
+  authorize(...CAN_READ_AUDIT),
+  auditDocumentReviewController.getRecommendations
+);
 
 // Documentos da revisão
-router.put('/document-review/:id/document/:clause', auditDocumentReviewController.updateDocument);
-router.put('/document-review/:id/document/:clause/status', auditDocumentReviewController.updateDocumentStatus);
-router.post('/document-review/:id/document', auditDocumentReviewController.addDocument);
-router.delete('/document-review/:id/document/:clause', auditDocumentReviewController.removeDocument);
+router.put(
+  '/document-review/:id/document/:clause',
+  authorize(...CAN_WRITE_AUDIT),
+  auditDocumentReviewController.updateDocument
+);
+
+router.put(
+  '/document-review/:id/document/:clause/status',
+  authorize(...CAN_WRITE_AUDIT),
+  auditDocumentReviewController.updateDocumentStatus
+);
+
+router.post(
+  '/document-review/:id/document',
+  authorize(...CAN_WRITE_AUDIT),
+  auditDocumentReviewController.addDocument
+);
+
+router.delete(
+  '/document-review/:id/document/:clause',
+  authorize(...CAN_APPROVE_AUDIT),
+  auditDocumentReviewController.removeDocument
+);
 
 export default router;

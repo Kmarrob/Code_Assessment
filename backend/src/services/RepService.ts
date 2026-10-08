@@ -18,6 +18,33 @@ import { emailjsService } from './EmailJSService.js';
 import { NotificationService } from './NotificationService.js';
 import crypto from 'crypto';
 
+// ============================================================
+// 🆕 v52.0 — ROLES QUE O REP PODE CADASTRAR
+// ============================================================
+//
+// MOTIVO:
+//   Com a introdução dos roles de auditoria interna (auditor_lead,
+//   auditor, observer), o REP precisa poder cadastrar usuários
+//   com esses papéis.
+//
+// REGRAS:
+//   - O REP pode cadastrar: user, auditor_lead, auditor, observer.
+//   - O REP NÃO pode cadastrar: rep, admin, consultant
+//     (essas são controladas pelo admin do sistema).
+//
+// SEGURANÇA:
+//   - A validação é defensiva: role inválido é rejeitado.
+//   - Se role não for passado, usa o padrão `user` (comportamento antigo).
+//
+// ============================================================
+
+const ROLES_PERMITIDOS_NO_REP: UserRole[] = [
+  UserRole.USER,
+  UserRole.AUDITOR_LEAD,
+  UserRole.AUDITOR,
+  UserRole.OBSERVER,
+];
+
 // Tipo de retorno para listUsers
 interface ListUsersResult {
   users: any[];
@@ -58,10 +85,23 @@ export class RepService {
       throw new NotFoundError('Preposto não encontrado');
     }
 
-    // Construir filtro - USANDO companyId para isolamento
+    // ============================================================
+    // 🆕 v52.0 — FILTRO EXPANDIDO
+    // ============================================================
+    //
+    // ANTES:
+    //   Filtrava apenas `role: UserRole.USER` — o REP via somente
+    //   usuários comuns (não via auditores que ele mesmo criou).
+    //
+    // AGORA:
+    //   Filtra por todos os roles que o REP pode cadastrar.
+    //   Isso inclui: user, auditor_lead, auditor, observer.
+    //
+    // ============================================================
+
     const filter: any = {
       createdBy: repId,
-      role: UserRole.USER
+      role: { $in: ROLES_PERMITIDOS_NO_REP },
     };
 
     // Se o preposto tem companyId, garantir que os usuários também tenham
@@ -192,6 +232,27 @@ export class RepService {
 
   /**
    * Criar usuário pelo preposto (com senha automática)
+   *
+   * ============================================================
+   * 🆕 v52.0 — SUPORTE A ROLES DE AUDITORIA
+   * ============================================================
+   *
+   * MOTIVO:
+   *   O REP agora pode cadastrar usuários com 4 roles diferentes:
+   *     - user (usuário comum — responde assessment)
+   *     - auditor_lead (auditor líder — aprova e executa)
+   *     - auditor (auditor — executa em parceria)
+   *     - observer (observador — somente leitura)
+   *
+   * COMPATIBILIDADE:
+   *   - Se `role` não for passado, usa `user` (comportamento antigo).
+   *   - Se `role` for inválido (admin/rep/consultant), rejeita.
+   *
+   * SEGURANÇA:
+   *   - Lista de roles permitidos é explícita (whitelist).
+   *   - Role `admin`, `rep`, `consultant` NUNCA pode ser criado aqui.
+   *
+   * ============================================================
    */
   static async createUser(
     repId: string,
@@ -200,6 +261,8 @@ export class RepService {
       email: string;
       password?: string;
       department?: string;
+      // 🆕 v52.0 — Role opcional
+      role?: UserRole;
     }
   ) {
     // Verificar se o preposto existe
@@ -207,6 +270,24 @@ export class RepService {
 
     if (!rep) {
       throw new NotFoundError('Preposto não encontrado');
+    }
+
+    // ============================================================
+    // 🆕 v52.0 — VALIDAR ROLE
+    // ============================================================
+
+    let effectiveRole: UserRole = UserRole.USER; // padrão
+
+    if (userData.role !== undefined) {
+      // Verifica se o role está na lista de permitidos
+      if (!ROLES_PERMITIDOS_NO_REP.includes(userData.role)) {
+        throw new ValidationError({
+          role: [
+            `Role inválido. O preposto pode cadastrar apenas: ${ROLES_PERMITIDOS_NO_REP.join(', ')}`
+          ]
+        });
+      }
+      effectiveRole = userData.role;
     }
 
     // Verificar se email já está em uso
@@ -320,7 +401,8 @@ export class RepService {
         password: generatedPassword
       }),
       department: userData.department || '',
-      role: UserRole.USER,
+      // 🆕 v52.0 — Usa o role validado
+      role: effectiveRole,
       createdBy: repId,
       companyId,
       isActive: true,
@@ -330,7 +412,7 @@ export class RepService {
     await user.save();
 
     logger.info(
-      `Usuário criado pelo preposto ${rep.email}: ${user.email} (Empresa: ${companyId})`
+      `Usuário criado pelo preposto ${rep.email}: ${user.email} (Role: ${effectiveRole}, Empresa: ${companyId})`
     );
 
     // Enviar e-mail de boas-vindas com link para criar senha
@@ -371,6 +453,21 @@ export class RepService {
 
   /**
    * Editar usuário pelo preposto
+   *
+   * ============================================================
+   * 🆕 v52.0 — SUPORTE A EDIÇÃO DE ROLE
+   * ============================================================
+   *
+   * MOTIVO:
+   *   O REP precisa poder alterar o role de um usuário depois de
+   *   criado (ex.: promover user → auditor, ou rebaixar auditor
+   *   → observer).
+   *
+   * REGRAS:
+   *   - Só aceita roles da lista permitida (whitelist).
+   *   - Não permite alterar para rep/admin/consultant.
+   *
+   * ============================================================
    */
   static async updateUser(
     repId: string,
@@ -379,6 +476,8 @@ export class RepService {
       name?: string;
       email?: string;
       department?: string;
+      // 🆕 v52.0 — Role opcional na edição
+      role?: UserRole;
     }
   ) {
     const rep = await User.findById(repId);
@@ -418,6 +517,20 @@ export class RepService {
       );
     }
 
+    // ============================================================
+    // 🆕 v52.0 — VALIDAR ROLE (se fornecido)
+    // ============================================================
+
+    if (data.role !== undefined) {
+      if (!ROLES_PERMITIDOS_NO_REP.includes(data.role)) {
+        throw new ValidationError({
+          role: [
+            `Role inválido. O preposto pode atribuir apenas: ${ROLES_PERMITIDOS_NO_REP.join(', ')}`
+          ]
+        });
+      }
+    }
+
     if (
       data.email &&
       data.email !== user.email
@@ -455,6 +568,11 @@ export class RepService {
         data.department;
     }
 
+    // 🆕 v52.0 — Aplicar role se fornecido
+    if (data.role !== undefined) {
+      updateData.role = data.role;
+    }
+
     const updatedUser =
       await User.findByIdAndUpdate(
         userId,
@@ -470,7 +588,7 @@ export class RepService {
       );
 
     logger.info(
-      `Usuário ${user.email} atualizado pelo preposto ${rep.email}`
+      `Usuário ${user.email} atualizado pelo preposto ${rep.email}${data.role ? ` (novo role: ${data.role})` : ''}`
     );
 
     return updatedUser;

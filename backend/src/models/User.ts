@@ -44,6 +44,20 @@ const userSchema = new Schema<IUserDocument>(
       minlength: [8, 'Senha deve ter pelo menos 8 caracteres'],
       select: false,
     },
+    // ============================================================
+    // 🆕 v52.0 — CAMPO ROLE EXPANDIDO
+    // ============================================================
+    //
+    // MOTIVO:
+    //   Adicionados 3 novos roles de auditoria interna:
+    //   auditor_lead, auditor, observer.
+    //
+    // COMPATIBILIDADE:
+    //   O `enum: Object.values(UserRole)` já lê automaticamente
+    //   os valores do enum `UserRole` (que foi expandido em
+    //   `types/index.ts`). Nenhuma alteração necessária aqui.
+    //
+    // ============================================================
     role: {
       type: String,
       enum: Object.values(UserRole),
