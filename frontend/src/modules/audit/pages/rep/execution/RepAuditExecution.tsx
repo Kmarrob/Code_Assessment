@@ -255,11 +255,9 @@ export function RepAuditExecution() {
   const isObserver = user?.role === 'observer';
 
   // Permissões consolidadas
-  const canApproveOrConclude = isRep || isAdmin || isAuditorLead;
-  const canExecute = isRep || isAdmin || isAuditorLead || isAuditor;
-  const isReadOnly =
-    isObserver ||
-    plan_is_completed_or_cancelled(); // ajustado abaixo
+const canApproveOrConclude = isRep || isAdmin || isAuditorLead;
+const canExecute = isRep || isAdmin || isAuditorLead || isAuditor;
+const isReadOnly = isObserver;
 
   // Base path dinâmico
   const basePath = isAuditorLead
