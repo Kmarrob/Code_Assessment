@@ -97,6 +97,36 @@ export const auditKeys = {
       'dashboard-stats',
       filters ? JSON.stringify(filters) : 'all',
     ] as const,
+
+  // ============================================================
+  // 🆕 v52.1 — QUERY KEYS DOS DASHBOARDS POR ROLE
+  // ============================================================
+  //
+  // MOTIVO:
+  //   Os roles auditor_lead, auditor e observer precisam de
+  //   endpoints dedicados para alimentar seus dashboards.
+  //
+  // ESTRUTURA:
+  //   - Cada role tem sua própria subárvore de cache.
+  //   - Isso evita colisão entre dashboards de roles diferentes
+  //     caso um usuário acumule papéis (não esperado, mas
+  //     defensivo).
+  //
+  // ============================================================
+
+  // Query Keys — Auditor Líder
+  auditorLeadPlansToApprove: () =>
+    [...auditKeys.all, 'auditor-lead', 'plans-to-approve'] as const,
+  auditorLeadPlans: () =>
+    [...auditKeys.all, 'auditor-lead', 'lead-plans'] as const,
+
+  // Query Keys — Auditor
+  auditorMyPlans: () =>
+    [...auditKeys.all, 'auditor', 'my-plans'] as const,
+
+  // Query Keys — Observador
+  observerMyPlans: () =>
+    [...auditKeys.all, 'observer', 'my-plans'] as const,
 };
 
 // ============================================================
@@ -308,6 +338,109 @@ export function useRemoveExclusion() {
       queryClient.invalidateQueries({ queryKey: auditKeys.plans() });
       queryClient.invalidateQueries({ queryKey: auditKeys.plansStats() });
     },
+  });
+}
+
+// ============================================================
+// 🆕 v52.1 — HOOKS DOS DASHBOARDS POR ROLE
+// ============================================================
+//
+// MOTIVO:
+//   Os 3 novos roles de auditoria (auditor_lead, auditor,
+//   observer) precisam de hooks dedicados para alimentar
+//   seus dashboards.
+//
+// REGRAS:
+//   - Cada hook é independente e usa sua própria query key.
+//   - staleTime 0 para sempre refetch (dados mudam quando
+//     o REP cria/edita planos em outra tela).
+//   - refetchOnWindowFocus: false (evita refetch agressivo).
+//   - refetchOnMount: 'always' (garante dados frescos ao
+//     entrar no dashboard).
+//
+// ============================================================
+
+/**
+ * 🆕 v52.1 — Hook do Auditor Líder: planos aguardando aprovação.
+ *
+ * Retorna planos em status 'pending_approval' onde o usuário
+ * autenticado é o leadAuditor designado.
+ *
+ * Endpoint backend:
+ *   GET /api/internal-audit/auditor/plans-to-approve
+ *
+ * Roles permitidas: ADMIN, AUDITOR_LEAD
+ */
+export function usePlansToApprove() {
+  return useQuery({
+    queryKey: auditKeys.auditorLeadPlansToApprove(),
+    queryFn: () => auditService.getPlansToApprove(),
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: false,
+  });
+}
+
+/**
+ * 🆕 v52.1 — Hook do Auditor Líder: planos ativos.
+ *
+ * Retorna planos em status 'approved', 'in_progress' ou
+ * 'completed' onde o usuário autenticado é o leadAuditor.
+ *
+ * Endpoint backend:
+ *   GET /api/internal-audit/auditor/lead-plans
+ *
+ * Roles permitidas: ADMIN, AUDITOR_LEAD
+ */
+export function useLeadAuditorPlans() {
+  return useQuery({
+    queryKey: auditKeys.auditorLeadPlans(),
+    queryFn: () => auditService.getLeadAuditorPlans(),
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: false,
+  });
+}
+
+/**
+ * 🆕 v52.1 — Hook do Auditor: planos em que participa.
+ *
+ * Retorna planos onde o usuário autenticado está em
+ * team.auditors[] (excluindo draft/submitted/cancelled).
+ *
+ * Endpoint backend:
+ *   GET /api/internal-audit/auditor/my-plans
+ *
+ * Roles permitidas: ADMIN, AUDITOR
+ */
+export function useAuditorPlans() {
+  return useQuery({
+    queryKey: auditKeys.auditorMyPlans(),
+    queryFn: () => auditService.getAuditorPlans(),
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: false,
+  });
+}
+
+/**
+ * 🆕 v52.1 — Hook do Observador: planos que acompanha.
+ *
+ * Retorna planos onde o usuário autenticado está em
+ * team.observers[] (excluindo draft/submitted/cancelled).
+ *
+ * Endpoint backend:
+ *   GET /api/internal-audit/observer/my-plans
+ *
+ * Roles permitidas: ADMIN, OBSERVER
+ */
+export function useObserverPlans() {
+  return useQuery({
+    queryKey: auditKeys.observerMyPlans(),
+    queryFn: () => auditService.getObserverPlans(),
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -1245,6 +1378,12 @@ export const useAudit = {
   useApproveExclusion,
   useRejectExclusion,
   useRemoveExclusion,
+
+  // 🆕 v52.1 — Dashboards por role
+  usePlansToApprove,
+  useLeadAuditorPlans,
+  useAuditorPlans,
+  useObserverPlans,
 
   // Checklists
   useChecklists,

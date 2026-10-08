@@ -125,6 +125,30 @@ export const LoginPage: React.FC = () => {
           localStorage.setItem('companyId', user.companyId);
         }
         
+        // ============================================================
+        // 🆕 v52.1 — REDIRECIONAMENTO POR ROLE
+        // ============================================================
+        //
+        // MOTIVO:
+        //   Com a introdução dos roles de auditoria
+        //   (auditor_lead, auditor, observer), cada um precisa
+        //   ir para seu próprio dashboard após o login.
+        //
+        // REGRAS:
+        //   - admin        → /admin
+        //   - rep          → /rep
+        //   - consultant   → /consultant
+        //   - auditor_lead → /auditor-lead/dashboard
+        //   - auditor      → /auditor/dashboard
+        //   - observer     → /observer/dashboard
+        //   - user (padrão) → /dashboard
+        //
+        // COMPATIBILIDADE:
+        //   - Os 4 roles antigos continuam com o MESMO destino.
+        //   - Os 3 novos roles ganham destinos próprios.
+        //   - Nenhum comportamento existente é alterado.
+        //
+        // ============================================================
         const role = user.role;
         if (role === 'admin') {
           navigate('/admin');
@@ -132,6 +156,12 @@ export const LoginPage: React.FC = () => {
           navigate('/rep');
         } else if (role === 'consultant') {
           navigate('/consultant');
+        } else if (role === 'auditor_lead') {
+          navigate('/auditor-lead/dashboard');
+        } else if (role === 'auditor') {
+          navigate('/auditor/dashboard');
+        } else if (role === 'observer') {
+          navigate('/observer/dashboard');
         } else {
           navigate('/dashboard');
         }

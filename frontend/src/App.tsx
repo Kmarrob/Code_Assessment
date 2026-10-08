@@ -77,6 +77,19 @@ import { AdminAuditControlQuestions } from './modules/audit/pages/admin/control-
 import { RepAuditDashboardWrapper } from './modules/audit/pages/rep/dashboard/RepAuditDashboardWrapper.js';
 
 // ============================================
+// 🆕 NOVO (v52.1) - IMPORTAÇÕES DOS DASHBOARDS POR ROLE
+// ============================================
+//
+// MOTIVO:
+//   Os roles auditor_lead, auditor e observer precisam de
+//   telas próprias após o login.
+//
+// ============================================
+import { AuditorLeadDashboard } from './pages/AuditorLeadDashboard.js';
+import { AuditorDashboard } from './pages/AuditorDashboard.js';
+import { ObserverDashboard } from './pages/ObserverDashboard.js';
+
+// ============================================
 // IMPORTAÇÕES DO DASHBOARD (DIRETAS - CORRIGIDO)
 // ============================================
 import { DashboardOverview } from './pages/dashboard/DashboardOverview.js';
@@ -655,6 +668,42 @@ function App() {
                     <Route path="/rep/audit/reports/:reportId/edit" element={
                       <Layout>
                         <RepAuditReport />
+                      </Layout>
+                    } />
+                  </Route>
+
+                  { /* ============================================
+                      🆕 NOVO (v52.1) - ROTAS DOS DASHBOARDS POR ROLE
+                      ============================================ */ }
+                  { /* --------------------------------------------------
+                      AUDITOR LÍDER
+                      -------------------------------------------------- */ }
+                  <Route element={<ProtectedRoute allowedRoles={[UserRole.AUDITOR_LEAD, UserRole.ADMIN]} />}>
+                    <Route path="/auditor-lead/dashboard" element={
+                      <Layout>
+                        <AuditorLeadDashboard />
+                      </Layout>
+                    } />
+                  </Route>
+
+                  { /* --------------------------------------------------
+                      AUDITOR
+                      -------------------------------------------------- */ }
+                  <Route element={<ProtectedRoute allowedRoles={[UserRole.AUDITOR, UserRole.ADMIN]} />}>
+                    <Route path="/auditor/dashboard" element={
+                      <Layout>
+                        <AuditorDashboard />
+                      </Layout>
+                    } />
+                  </Route>
+
+                  { /* --------------------------------------------------
+                      OBSERVADOR
+                      -------------------------------------------------- */ }
+                  <Route element={<ProtectedRoute allowedRoles={[UserRole.OBSERVER, UserRole.ADMIN]} />}>
+                    <Route path="/observer/dashboard" element={
+                      <Layout>
+                        <ObserverDashboard />
                       </Layout>
                     } />
                   </Route>

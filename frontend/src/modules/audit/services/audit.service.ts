@@ -238,6 +238,80 @@ export const auditService = {
   },
 
   // ============================================================
+  // 🆕 v52.1 — DASHBOARDS POR ROLE
+  // ============================================================
+  //
+  // MOTIVO:
+  //   Os roles auditor_lead, auditor e observer precisam de
+  //   endpoints dedicados para alimentar seus dashboards.
+  //
+  //   Antes, todos usavam GET /plans (que traz TODOS os planos
+  //   da empresa) — o que não é o comportamento desejado.
+  //
+  // SEGURANÇA:
+  //   - companyId e userId sempre vêm do token (middleware).
+  //   - O backend filtra por ambos, garantindo isolamento
+  //     de tenant e de papel.
+  //
+  // ============================================================
+
+  /**
+   * 🆕 v52.1 — Planos aguardando aprovação do Auditor Líder.
+   *
+   * Retorna planos em status 'pending_approval' onde o usuário
+   * autenticado é o leadAuditor designado.
+   *
+   * Rota backend: GET /api/internal-audit/auditor/plans-to-approve
+   * Roles permitidas: ADMIN, AUDITOR_LEAD
+   */
+  async getPlansToApprove(): Promise<AuditPlan[]> {
+    const response = await api.get(`${BASE_URL}/auditor/plans-to-approve`);
+    return response.data.data;
+  },
+
+  /**
+   * 🆕 v52.1 — Planos ativos onde o usuário é o Auditor Líder.
+   *
+   * Retorna planos em status 'approved', 'in_progress' ou 'completed'
+   * onde o usuário autenticado é o leadAuditor designado.
+   *
+   * Rota backend: GET /api/internal-audit/auditor/lead-plans
+   * Roles permitidas: ADMIN, AUDITOR_LEAD
+   */
+  async getLeadAuditorPlans(): Promise<AuditPlan[]> {
+    const response = await api.get(`${BASE_URL}/auditor/lead-plans`);
+    return response.data.data;
+  },
+
+  /**
+   * 🆕 v52.1 — Planos em que o usuário participa como Auditor.
+   *
+   * Retorna planos onde o usuário autenticado está em
+   * team.auditors[] (excluindo draft/submitted/cancelled).
+   *
+   * Rota backend: GET /api/internal-audit/auditor/my-plans
+   * Roles permitidas: ADMIN, AUDITOR
+   */
+  async getAuditorPlans(): Promise<AuditPlan[]> {
+    const response = await api.get(`${BASE_URL}/auditor/my-plans`);
+    return response.data.data;
+  },
+
+  /**
+   * 🆕 v52.1 — Planos que o usuário acompanha como Observador.
+   *
+   * Retorna planos onde o usuário autenticado está em
+   * team.observers[] (excluindo draft/submitted/cancelled).
+   *
+   * Rota backend: GET /api/internal-audit/observer/my-plans
+   * Roles permitidas: ADMIN, OBSERVER
+   */
+  async getObserverPlans(): Promise<AuditPlan[]> {
+    const response = await api.get(`${BASE_URL}/observer/my-plans`);
+    return response.data.data;
+  },
+
+  // ============================================================
   // CHECKLISTS
   // ============================================================
 

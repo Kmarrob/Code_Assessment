@@ -755,3 +755,131 @@ export interface AuditDashboardStats {
     completionRate: number;
   };
 }
+
+// ============================================================
+// 🆕 v52.1 — TIPOS DOS DASHBOARDS POR ROLE
+// ============================================================
+//
+// MOTIVO:
+//   Os 3 novos roles de auditoria (auditor_lead, auditor,
+//   observer) precisam de dashboards próprios.
+//
+//   Em vez de reutilizar o tipo AuditPlan com status filtrado,
+//   criamos tipos de "resposta" específicos para cada endpoint.
+//
+// ESTRATÉGIA:
+//   - Cada endpoint retorna um array de AuditPlan (mesma
+//     estrutura já existente no sistema).
+//   - NÃO criamos novos tipos de plano — apenas reaproveitamos
+//     AuditPlan.
+//
+//   Este bloco define apenas os tipos de RESPOSTA agregada
+//   (KPIs + listas) que o frontend calculará a partir dos
+//   planos retornados.
+//
+// ============================================================
+
+/**
+ * Resposta agregada do endpoint
+ *   GET /api/internal-audit/auditor/plans-to-approve
+ *
+ * Contém apenas a lista de planos aguardando aprovação onde
+ * o usuário autenticado é o leadAuditor.
+ */
+export interface AuditorPlansToApproveResponse {
+  success: boolean;
+  data: AuditPlan[];
+  total: number;
+}
+
+/**
+ * Resposta agregada do endpoint
+ *   GET /api/internal-audit/auditor/lead-plans
+ *
+ * Contém a lista de planos ativos (approved/in_progress/completed)
+ * onde o usuário autenticado é o leadAuditor.
+ */
+export interface AuditorLeadPlansResponse {
+  success: boolean;
+  data: AuditPlan[];
+  total: number;
+}
+
+/**
+ * Resposta agregada do endpoint
+ *   GET /api/internal-audit/auditor/my-plans
+ *
+ * Contém a lista de planos onde o usuário autenticado está em
+ * team.auditors[] (excluindo draft/submitted/cancelled).
+ */
+export interface AuditorMyPlansResponse {
+  success: boolean;
+  data: AuditPlan[];
+  total: number;
+}
+
+/**
+ * Resposta agregada do endpoint
+ *   GET /api/internal-audit/observer/my-plans
+ *
+ * Contém a lista de planos onde o usuário autenticado está em
+ * team.observers[] (excluindo draft/submitted/cancelled).
+ */
+export interface ObserverMyPlansResponse {
+  success: boolean;
+  data: AuditPlan[];
+  total: number;
+}
+
+/**
+ * 🆕 v52.1 — KPIs calculados no frontend a partir das listas
+ * de planos retornadas pelos endpoints de dashboard por role.
+ *
+ * Estes NÃO são endpoints — são apenas tipos auxiliares para
+ * tipar o resultado de funções utilitárias no frontend
+ * (ex.: calcularKpisAuditorLead(plans)).
+ */
+export interface AuditorLeadDashboardKpis {
+  pendingApproval: number;
+  activePlans: number;
+  completedExecutions: number;
+  approvalRate: number;
+}
+
+export interface AuditorDashboardKpis {
+  totalPlans: number;
+  inProgress: number;
+  completed: number;
+  averageProgress: number;
+}
+
+export interface ObserverDashboardKpis {
+  observedPlans: number;
+  inProgress: number;
+  completed: number;
+  averageProgress: number;
+}
+
+/**
+ * 🆕 v52.1 — Dados para mini-gráficos (Recharts).
+ *
+ * Cada dashboard exibe 1-2 mini-gráficos:
+ *   - Donut de distribuição por status
+ *   - Barras de NCs por domínio (Auditor Líder)
+ */
+export interface DashboardStatusDistribution {
+  draft: number;
+  pending_approval: number;
+  approved: number;
+  in_progress: number;
+  completed: number;
+  cancelled: number;
+  rejected?: number;
+}
+
+export interface DashboardDomainNcDistribution {
+  domain: string;
+  label: string;
+  NC: number;
+  total: number;
+}
