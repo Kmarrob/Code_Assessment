@@ -18,6 +18,11 @@ import {
 import { useAudit } from '../../../hooks/useAudit';
 import { toast } from 'react-hot-toast';
 
+// ============================================================
+// 🆕 v52.9 — IMPORT PARA DETECÇÃO DE ROLE
+// ============================================================
+import { useAuth } from '../../../../../contexts/AuthContext.js';
+
 interface ProgramActivity {
   id: string;
   title: string;
@@ -52,6 +57,21 @@ interface Program {
 export function RepAuditProgram() {
   const { planId } = useParams<{ planId: string }>();
   const navigate = useNavigate();
+
+  // ============================================================
+  // 🆕 v52.9 — DETECÇÃO DE ROLE + BASE PATH DINÂMICO
+  // ============================================================
+  const { user } = useAuth();
+
+  const basePath =
+    user?.role === 'auditor_lead'
+      ? '/auditor-lead/audit'
+      : user?.role === 'auditor'
+        ? '/auditor/audit'
+        : user?.role === 'observer'
+          ? '/observer/audit'
+          : '/rep/audit';
+
   const [showActivityForm, setShowActivityForm] = useState(false);
   const [editingActivity, setEditingActivity] = useState<ProgramActivity | null>(null);
   const [activityToDelete, setActivityToDelete] = useState<string | null>(null);
@@ -193,8 +213,9 @@ export function RepAuditProgram() {
         <p className="text-gray-500 text-sm text-center max-w-md">
           Não há programa de auditoria para este plano.
         </p>
+        {/* 🔧 v52.9 — basePath dinâmico */}
         <button
-          onClick={() => navigate(`/rep/audit/execution/${planId}`)}
+          onClick={() => navigate(`${basePath}/execution/${planId}`)}
           className="mt-4 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
         >
           Voltar para execução
@@ -208,8 +229,9 @@ export function RepAuditProgram() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
         <div className="flex items-center gap-4">
+          {/* 🔧 v52.9 — basePath dinâmico */}
           <button
-            onClick={() => navigate(`/rep/audit/execution/${planId}`)}
+            onClick={() => navigate(`${basePath}/execution/${planId}`)}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />

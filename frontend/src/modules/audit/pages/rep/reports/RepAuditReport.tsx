@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -29,6 +29,11 @@ import {
 } from '../../../hooks/useAudit';
 import { AuditReport, AuditReportStatus } from '../../../types/audit.types';
 
+// ============================================================
+// 🆕 v52.9 — IMPORT PARA DETECÇÃO DE ROLE
+// ============================================================
+import { useAuth } from '../../../../../contexts/AuthContext.js';
+
 const STATUS_OPTIONS: { value: AuditReportStatus | 'all'; label: string; color: string }[] = [
   { value: 'all', label: 'Todos', color: 'bg-gray-100 text-gray-600' },
   { value: 'draft', label: 'Rascunho', color: 'bg-gray-100 text-gray-600' },
@@ -47,6 +52,21 @@ const STATUS_LABELS: Record<string, string> = {
 export function RepAuditReport() {
   const navigate = useNavigate();
   const { planId } = useParams<{ planId: string }>();
+
+  // ============================================================
+  // 🆕 v52.9 — DETECÇÃO DE ROLE + BASE PATH DINÂMICO
+  // ============================================================
+  const { user } = useAuth();
+
+  const basePath =
+    user?.role === 'auditor_lead'
+      ? '/auditor-lead/audit'
+      : user?.role === 'auditor'
+        ? '/auditor/audit'
+        : user?.role === 'observer'
+          ? '/observer/audit'
+          : '/rep/audit';
+
   const [statusFilter, setStatusFilter] = useState<AuditReportStatus | 'all'>('all');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
@@ -120,8 +140,9 @@ export function RepAuditReport() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
         <div className="flex items-center gap-4">
+          {/* 🔧 v52.9 — basePath dinâmico */}
           <button
-            onClick={() => navigate(`/rep/audit/execution/${planId}`)}
+            onClick={() => navigate(`${basePath}/execution/${planId}`)}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -242,8 +263,9 @@ export function RepAuditReport() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2 ml-4">
+                    {/* 🔧 v52.9 — basePath dinâmico */}
                     <button
-                      onClick={() => navigate(`/rep/audit/reports/${report._id}`)}
+                      onClick={() => navigate(`${basePath}/reports/${report._id}`)}
                       className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                       title="Visualizar"
                     >
@@ -251,8 +273,9 @@ export function RepAuditReport() {
                     </button>
                     {report.status === 'draft' && (
                       <>
+                        {/* 🔧 v52.9 — basePath dinâmico */}
                         <button
-                          onClick={() => navigate(`/rep/audit/reports/${report._id}/edit`)}
+                          onClick={() => navigate(`${basePath}/reports/${report._id}/edit`)}
                           className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
                           title="Editar"
                         >
