@@ -19,6 +19,11 @@ import {
 import { useFindings, useFindingStats, useDeleteFinding } from '../../../hooks/useAudit';
 import { AuditFinding, AuditFindingStatus, AuditFindingType } from '../../../types/audit.types';
 
+// ============================================================
+// 🆕 v52.9 — IMPORT PARA DETECÇÃO DE ROLE
+// ============================================================
+import { useAuth } from '../../../../../contexts/AuthContext.js';
+
 const STATUS_OPTIONS: { value: AuditFindingStatus | 'all'; label: string; color: string }[] = [
   { value: 'all', label: 'Todos', color: 'bg-gray-100 text-gray-600' },
   { value: 'open', label: 'Aberta', color: 'bg-red-100 text-red-700' },
@@ -64,6 +69,21 @@ const TYPE_LABELS: Record<string, string> = {
 export function RepAuditFindings() {
   const navigate = useNavigate();
   const { planId } = useParams<{ planId: string }>();
+
+  // ============================================================
+  // 🆕 v52.9 — DETECÇÃO DE ROLE + BASE PATH DINÂMICO
+  // ============================================================
+  const { user } = useAuth();
+
+  const basePath =
+    user?.role === 'auditor_lead'
+      ? '/auditor-lead/audit'
+      : user?.role === 'auditor'
+        ? '/auditor/audit'
+        : user?.role === 'observer'
+          ? '/observer/audit'
+          : '/rep/audit';
+
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<AuditFindingType | 'all'>('all');
   const [statusFilter, setStatusFilter] = useState<AuditFindingStatus | 'all'>('all');
@@ -123,8 +143,9 @@ export function RepAuditFindings() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
         <div className="flex items-center gap-4">
+          {/* 🔧 v52.9 — basePath dinâmico */}
           <button
-            onClick={() => navigate(`/rep/audit/execution/${planId}`)}
+            onClick={() => navigate(`${basePath}/execution/${planId}`)}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -136,8 +157,9 @@ export function RepAuditFindings() {
             </p>
           </div>
         </div>
+        {/* 🔧 v52.9 — basePath dinâmico */}
         <button
-          onClick={() => navigate(`/rep/audit/findings/new/${planId}`)}
+          onClick={() => navigate(`${basePath}/findings/new/${planId}`)}
           className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors mt-4 md:mt-0"
         >
           <Plus className="w-4 h-4" />
@@ -221,8 +243,9 @@ export function RepAuditFindings() {
                 : 'Comece registrando uma não conformidade'}
             </p>
             {!searchTerm && typeFilter === 'all' && statusFilter === 'all' && (
+              // 🔧 v52.9 — basePath dinâmico
               <button
-                onClick={() => navigate(`/rep/audit/findings/new/${planId}`)}
+                onClick={() => navigate(`${basePath}/findings/new/${planId}`)}
                 className="mt-4 text-red-600 hover:text-red-800"
               >
                 Registrar primeira NC →
@@ -287,16 +310,18 @@ export function RepAuditFindings() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2 ml-4">
+                    {/* 🔧 v52.9 — basePath dinâmico */}
                     <button
-                      onClick={() => navigate(`/rep/audit/findings/${finding._id}`)}
+                      onClick={() => navigate(`${basePath}/findings/${finding._id}`)}
                       className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                       title="Visualizar"
                     >
                       <Eye className="w-4 h-4" />
                     </button>
                     {finding.status === 'open' || finding.status === 'in_progress' && (
+                      // 🔧 v52.9 — basePath dinâmico
                       <button
-                        onClick={() => navigate(`/rep/audit/findings/${finding._id}/edit`)}
+                        onClick={() => navigate(`${basePath}/findings/${finding._id}/edit`)}
                         className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
                         title="Editar"
                       >

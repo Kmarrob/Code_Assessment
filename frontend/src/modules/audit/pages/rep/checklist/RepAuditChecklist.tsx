@@ -34,6 +34,11 @@ import api from '@/services/api';
 import { RepAuditChecklistCharts } from './RepAuditChecklistCharts';
 
 // ============================================================
+// 🆕 v52.9 — IMPORT PARA DETECÇÃO DE ROLE
+// ============================================================
+import { useAuth } from '../../../../../contexts/AuthContext.js';
+
+// ============================================================
 // RepAuditChecklist — v51.6 (Página Viva + Gráficos)
 // ============================================================
 //
@@ -60,6 +65,18 @@ import { RepAuditChecklistCharts } from './RepAuditChecklistCharts';
 //     - Pizza (donut) de constatações
 //     - Barras por constatação
 //     - Card de insight dinâmico
+//
+// 🔧 v52.9 — NAVEGAÇÃO POR ROLE
+// ----------------------------------------------------------------
+//   Substitui as rotas hardcoded /rep/audit/* por um basePath
+//   dinâmico que se adapta ao role do usuário logado:
+//     - rep          → /rep/audit
+//     - auditor_lead → /auditor-lead/audit
+//     - auditor      → /auditor/audit
+//     - observer     → /observer/audit
+//
+//   Isso corrige o problema em que o botão "Voltar" quebrava
+//   para o Auditor Líder (redirecionava para a home).
 //
 // ============================================================
 
@@ -156,6 +173,20 @@ export function RepAuditChecklist() {
   const { planId } = useParams<{ planId: string }>();
   const navigate = useNavigate();
 
+  // ============================================================
+  // 🆕 v52.9 — DETECÇÃO DE ROLE + BASE PATH DINÂMICO
+  // ============================================================
+  const { user } = useAuth();
+
+  const basePath =
+    user?.role === 'auditor_lead'
+      ? '/auditor-lead/audit'
+      : user?.role === 'auditor'
+        ? '/auditor/audit'
+        : user?.role === 'observer'
+          ? '/observer/audit'
+          : '/rep/audit';
+
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [companyResponses, setCompanyResponses] = useState<Array<{
@@ -189,10 +220,18 @@ export function RepAuditChecklist() {
     refetch,
   } = useChecklists(planId || '');
 
+  // ============================================================
+  // 🔧 v52.7.3 — Rota acessível a todos os roles
+  // ============================================================
+  //
+  // ANTES: /rep/controls (bloqueada para auditor_lead/auditor/observer)
+  // AGORA: /internal-audit/controls (autorizada para todos os roles de auditoria)
+  //
+  // ============================================================
   useEffect(() => {
     const fetchControls = async () => {
       try {
-        const res = await api.get('/rep/controls');
+        const res = await api.get('/internal-audit/controls');
         const list = res.data.data || res.data || [];
         setControls(Array.isArray(list) ? list : []);
       } catch (err) {
@@ -430,17 +469,6 @@ export function RepAuditChecklist() {
 
   /**
    * 🔧 v51.5.1 — Abrir evidência via Axios + Blob.
-   *
-   * MOTIVO DA CORREÇÃO:
-   *   window.open(url) NÃO envia o header Authorization. Como o
-   *   endpoint é protegido por `authenticate`, o backend retornava
-   *   401 ("Token de autenticação não fornecido").
-   *
-   * SOLUÇÃO:
-   *   1. Baixa o arquivo via Axios (injeta token automaticamente).
-   *   2. Converte em Blob.
-   *   3. Cria blob URL e abre em nova aba.
-   *   4. Revoga após 60s.
    */
   const handleOpenEvidence = async (evidenceId: string): Promise<void> => {
     if (!evidenceId) return;
@@ -464,7 +492,6 @@ export function RepAuditChecklist() {
         window.URL.revokeObjectURL(blobUrl);
       }, 60000);
     } catch (err: any) {
-      // eslint-disable-next-line no-console
       console.error('Erro ao abrir evidência:', err);
 
       const status = err?.response?.status;
@@ -512,8 +539,9 @@ export function RepAuditChecklist() {
     return (
       <div className="max-w-6xl mx-auto px-4 py-6">
         <div className="flex items-center gap-4 mb-6">
+          {/* 🔧 v52.9 — basePath dinâmico */}
           <button
-            onClick={() => navigate(`/rep/audit/execution/${planId}`)}
+            onClick={() => navigate(`${basePath}/execution/${planId}`)}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
           >
             <ArrowLeft className="w-5 h-5" /> Voltar
@@ -533,8 +561,9 @@ export function RepAuditChecklist() {
           <p className="text-gray-500 text-sm">
             Este plano de auditoria ainda não possui checklists gerados.
           </p>
+          {/* 🔧 v52.9 — basePath dinâmico */}
           <button
-            onClick={() => navigate(`/rep/audit/execution/${planId}`)}
+            onClick={() => navigate(`${basePath}/execution/${planId}`)}
             className="mt-6 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
           >
             Ir para a execução
@@ -547,8 +576,9 @@ export function RepAuditChecklist() {
   return (
     <div className="max-w-6xl mx-auto px-4 py-6">
       <div className="flex items-center gap-4 mb-6">
+        {/* 🔧 v52.9 — basePath dinâmico */}
         <button
-          onClick={() => navigate(`/rep/audit/execution/${planId}`)}
+          onClick={() => navigate(`${basePath}/execution/${planId}`)}
           className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
         >
           <ArrowLeft className="w-5 h-5" /> Voltar
