@@ -86,6 +86,7 @@ export declare class NotificationService {
      * Envia lembrete para usuários com controles pendentes
      */
     static sendReminder(userId: string, companyId: string, pendingCount: number): Promise<INotification | null>;
+    static notifyPlanAwaitingApproval(leadAuditorUserId: string, companyId: string, planTitle: string, planId: string, createdByName: string, leadAuditorEmail?: string, leadAuditorName?: string): Promise<INotification | null>;
 }
 export {};
 //# sourceMappingURL=NotificationService.d.ts.map

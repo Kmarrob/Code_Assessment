@@ -4,34 +4,106 @@ export declare const createAuditPlanSchema: z.ZodObject<{
     description: z.ZodString;
     companyId: z.ZodString;
     programId: z.ZodOptional<z.ZodString>;
-    scope: z.ZodObject<{
-        controls: z.ZodArray<z.ZodString, "many">;
+    /**
+     * Escopo do plano de auditoria.
+     *
+     * - mode 'all' (padrão): todos os controles da empresa.
+     *   Neste caso, scope.controls pode vir vazio (o service popula).
+     *   Exclusões são feitas via scope.excludedControls.
+     *
+     * - mode 'custom': apenas os controles informados em controls.
+     *   Neste caso, scope.controls é obrigatório e não vazio.
+     */
+    scope: z.ZodEffects<z.ZodObject<{
+        mode: z.ZodDefault<z.ZodOptional<z.ZodEnum<["all", "custom"]>>>;
+        controls: z.ZodDefault<z.ZodOptional<z.ZodArray<z.ZodString, "many">>>;
+        /**
+         * Exclusões enviadas junto com o payload.
+         * O service processa cada uma para gerar IAuditExcludedControl
+         * com excludedBy e excludedAt preenchidos.
+         */
+        excludedControls: z.ZodDefault<z.ZodOptional<z.ZodArray<z.ZodObject<{
+            controlId: z.ZodString;
+            reason: z.ZodString;
+        }, "strip", z.ZodTypeAny, {
+            reason: string;
+            controlId: string;
+        }, {
+            reason: string;
+            controlId: string;
+        }>, "many">>>;
         processes: z.ZodArray<z.ZodString, "many">;
         areas: z.ZodArray<z.ZodString, "many">;
     }, "strip", z.ZodTypeAny, {
         controls: string[];
+        mode: "all" | "custom";
+        excludedControls: {
+            reason: string;
+            controlId: string;
+        }[];
         processes: string[];
         areas: string[];
     }, {
-        controls: string[];
         processes: string[];
         areas: string[];
+        controls?: string[] | undefined;
+        mode?: "all" | "custom" | undefined;
+        excludedControls?: {
+            reason: string;
+            controlId: string;
+        }[] | undefined;
+    }>, {
+        controls: string[];
+        mode: "all" | "custom";
+        excludedControls: {
+            reason: string;
+            controlId: string;
+        }[];
+        processes: string[];
+        areas: string[];
+    }, {
+        processes: string[];
+        areas: string[];
+        controls?: string[] | undefined;
+        mode?: "all" | "custom" | undefined;
+        excludedControls?: {
+            reason: string;
+            controlId: string;
+        }[] | undefined;
     }>;
     team: z.ZodObject<{
         leadAuditor: z.ZodString;
         auditors: z.ZodArray<z.ZodString, "many">;
         observers: z.ZodArray<z.ZodString, "many">;
         specialists: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+        leadAuditorName: z.ZodOptional<z.ZodString>;
+        leadAuditorEmail: z.ZodUnion<[z.ZodOptional<z.ZodString>, z.ZodLiteral<"">]>;
+        auditorNames: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+        auditorEmails: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+        observerNames: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+        observerEmails: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
     }, "strip", z.ZodTypeAny, {
         leadAuditor: string;
         auditors: string[];
         observers: string[];
         specialists?: string[] | undefined;
+        leadAuditorName?: string | undefined;
+        leadAuditorEmail?: string | undefined;
+        auditorNames?: string[] | undefined;
+        auditorEmails?: string[] | undefined;
+        observerNames?: string[] | undefined;
+        observerEmails?: string[] | undefined;
     }, {
         leadAuditor: string;
         auditors: string[];
         observers: string[];
         specialists?: string[] | undefined;
+        leadAuditorName?: string | undefined;
+        leadAuditorEmail?: string | undefined;
+        auditorNames?: string[] | undefined;
+        auditorEmails?: string[] | undefined;
+        observerNames?: string[] | undefined;
+        observerEmails?: string[] | undefined;
     }>;
     period: z.ZodObject<{
         startDate: z.ZodEffects<z.ZodString, Date, string>;
@@ -54,6 +126,11 @@ export declare const createAuditPlanSchema: z.ZodObject<{
     title: string;
     scope: {
         controls: string[];
+        mode: "all" | "custom";
+        excludedControls: {
+            reason: string;
+            controlId: string;
+        }[];
         processes: string[];
         areas: string[];
     };
@@ -67,6 +144,12 @@ export declare const createAuditPlanSchema: z.ZodObject<{
         auditors: string[];
         observers: string[];
         specialists?: string[] | undefined;
+        leadAuditorName?: string | undefined;
+        leadAuditorEmail?: string | undefined;
+        auditorNames?: string[] | undefined;
+        auditorEmails?: string[] | undefined;
+        observerNames?: string[] | undefined;
+        observerEmails?: string[] | undefined;
     };
     criteria: string[];
     observations?: string | undefined;
@@ -76,9 +159,14 @@ export declare const createAuditPlanSchema: z.ZodObject<{
     description: string;
     title: string;
     scope: {
-        controls: string[];
         processes: string[];
         areas: string[];
+        controls?: string[] | undefined;
+        mode?: "all" | "custom" | undefined;
+        excludedControls?: {
+            reason: string;
+            controlId: string;
+        }[] | undefined;
     };
     period: {
         startDate: string;
@@ -90,6 +178,12 @@ export declare const createAuditPlanSchema: z.ZodObject<{
         auditors: string[];
         observers: string[];
         specialists?: string[] | undefined;
+        leadAuditorName?: string | undefined;
+        leadAuditorEmail?: string | undefined;
+        auditorNames?: string[] | undefined;
+        auditorEmails?: string[] | undefined;
+        observerNames?: string[] | undefined;
+        observerEmails?: string[] | undefined;
     };
     criteria: string[];
     observations?: string | undefined;
@@ -100,34 +194,96 @@ export declare const updateAuditPlanSchema: z.ZodObject<{
     description: z.ZodOptional<z.ZodString>;
     companyId: z.ZodOptional<z.ZodString>;
     programId: z.ZodOptional<z.ZodOptional<z.ZodString>>;
-    scope: z.ZodOptional<z.ZodObject<{
-        controls: z.ZodArray<z.ZodString, "many">;
+    scope: z.ZodOptional<z.ZodEffects<z.ZodObject<{
+        mode: z.ZodDefault<z.ZodOptional<z.ZodEnum<["all", "custom"]>>>;
+        controls: z.ZodDefault<z.ZodOptional<z.ZodArray<z.ZodString, "many">>>;
+        /**
+         * Exclusões enviadas junto com o payload.
+         * O service processa cada uma para gerar IAuditExcludedControl
+         * com excludedBy e excludedAt preenchidos.
+         */
+        excludedControls: z.ZodDefault<z.ZodOptional<z.ZodArray<z.ZodObject<{
+            controlId: z.ZodString;
+            reason: z.ZodString;
+        }, "strip", z.ZodTypeAny, {
+            reason: string;
+            controlId: string;
+        }, {
+            reason: string;
+            controlId: string;
+        }>, "many">>>;
         processes: z.ZodArray<z.ZodString, "many">;
         areas: z.ZodArray<z.ZodString, "many">;
     }, "strip", z.ZodTypeAny, {
         controls: string[];
+        mode: "all" | "custom";
+        excludedControls: {
+            reason: string;
+            controlId: string;
+        }[];
         processes: string[];
         areas: string[];
     }, {
-        controls: string[];
         processes: string[];
         areas: string[];
+        controls?: string[] | undefined;
+        mode?: "all" | "custom" | undefined;
+        excludedControls?: {
+            reason: string;
+            controlId: string;
+        }[] | undefined;
+    }>, {
+        controls: string[];
+        mode: "all" | "custom";
+        excludedControls: {
+            reason: string;
+            controlId: string;
+        }[];
+        processes: string[];
+        areas: string[];
+    }, {
+        processes: string[];
+        areas: string[];
+        controls?: string[] | undefined;
+        mode?: "all" | "custom" | undefined;
+        excludedControls?: {
+            reason: string;
+            controlId: string;
+        }[] | undefined;
     }>>;
     team: z.ZodOptional<z.ZodObject<{
         leadAuditor: z.ZodString;
         auditors: z.ZodArray<z.ZodString, "many">;
         observers: z.ZodArray<z.ZodString, "many">;
         specialists: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+        leadAuditorName: z.ZodOptional<z.ZodString>;
+        leadAuditorEmail: z.ZodUnion<[z.ZodOptional<z.ZodString>, z.ZodLiteral<"">]>;
+        auditorNames: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+        auditorEmails: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+        observerNames: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+        observerEmails: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
     }, "strip", z.ZodTypeAny, {
         leadAuditor: string;
         auditors: string[];
         observers: string[];
         specialists?: string[] | undefined;
+        leadAuditorName?: string | undefined;
+        leadAuditorEmail?: string | undefined;
+        auditorNames?: string[] | undefined;
+        auditorEmails?: string[] | undefined;
+        observerNames?: string[] | undefined;
+        observerEmails?: string[] | undefined;
     }, {
         leadAuditor: string;
         auditors: string[];
         observers: string[];
         specialists?: string[] | undefined;
+        leadAuditorName?: string | undefined;
+        leadAuditorEmail?: string | undefined;
+        auditorNames?: string[] | undefined;
+        auditorEmails?: string[] | undefined;
+        observerNames?: string[] | undefined;
+        observerEmails?: string[] | undefined;
     }>>;
     period: z.ZodOptional<z.ZodObject<{
         startDate: z.ZodEffects<z.ZodString, Date, string>;
@@ -151,6 +307,11 @@ export declare const updateAuditPlanSchema: z.ZodObject<{
     observations?: string | undefined;
     scope?: {
         controls: string[];
+        mode: "all" | "custom";
+        excludedControls: {
+            reason: string;
+            controlId: string;
+        }[];
         processes: string[];
         areas: string[];
     } | undefined;
@@ -165,6 +326,12 @@ export declare const updateAuditPlanSchema: z.ZodObject<{
         auditors: string[];
         observers: string[];
         specialists?: string[] | undefined;
+        leadAuditorName?: string | undefined;
+        leadAuditorEmail?: string | undefined;
+        auditorNames?: string[] | undefined;
+        auditorEmails?: string[] | undefined;
+        observerNames?: string[] | undefined;
+        observerEmails?: string[] | undefined;
     } | undefined;
     criteria?: string[] | undefined;
 }, {
@@ -173,9 +340,14 @@ export declare const updateAuditPlanSchema: z.ZodObject<{
     title?: string | undefined;
     observations?: string | undefined;
     scope?: {
-        controls: string[];
         processes: string[];
         areas: string[];
+        controls?: string[] | undefined;
+        mode?: "all" | "custom" | undefined;
+        excludedControls?: {
+            reason: string;
+            controlId: string;
+        }[] | undefined;
     } | undefined;
     period?: {
         startDate: string;
@@ -188,8 +360,68 @@ export declare const updateAuditPlanSchema: z.ZodObject<{
         auditors: string[];
         observers: string[];
         specialists?: string[] | undefined;
+        leadAuditorName?: string | undefined;
+        leadAuditorEmail?: string | undefined;
+        auditorNames?: string[] | undefined;
+        auditorEmails?: string[] | undefined;
+        observerNames?: string[] | undefined;
+        observerEmails?: string[] | undefined;
     } | undefined;
     criteria?: string[] | undefined;
+}>;
+/**
+ * Excluir um controle do escopo do plano.
+ *
+ * Aplica-se apenas a planos em modo 'all'.
+ * A justificativa deve ter no mínimo 20 caracteres (ISO 19011:2018).
+ */
+export declare const excludeControlSchema: z.ZodObject<{
+    controlId: z.ZodString;
+    reason: z.ZodString;
+}, "strip", z.ZodTypeAny, {
+    reason: string;
+    controlId: string;
+}, {
+    reason: string;
+    controlId: string;
+}>;
+/**
+ * Aprovar uma exclusão de controle.
+ *
+ * Apenas o Auditor Líder pode aprovar.
+ */
+export declare const approveExclusionSchema: z.ZodObject<{
+    controlId: z.ZodString;
+}, "strip", z.ZodTypeAny, {
+    controlId: string;
+}, {
+    controlId: string;
+}>;
+/**
+ * Rejeitar uma exclusão de controle.
+ *
+ * Apenas o Auditor Líder pode rejeitar.
+ * Ao rejeitar, o controle volta ao escopo efetivo.
+ */
+export declare const rejectExclusionSchema: z.ZodObject<{
+    controlId: z.ZodString;
+}, "strip", z.ZodTypeAny, {
+    controlId: string;
+}, {
+    controlId: string;
+}>;
+/**
+ * Remover uma exclusão já registrada.
+ *
+ * Autor da exclusão OU Auditor Líder.
+ * Ao remover, o controle volta ao escopo efetivo.
+ */
+export declare const removeExclusionSchema: z.ZodObject<{
+    controlId: z.ZodString;
+}, "strip", z.ZodTypeAny, {
+    controlId: string;
+}, {
+    controlId: string;
 }>;
 export declare const updateChecklistSchema: z.ZodObject<{
     questions: z.ZodArray<z.ZodObject<{
@@ -254,8 +486,8 @@ export declare const createAuditFindingSchema: z.ZodObject<{
     type: "OM" | "NC_A" | "NC_B" | "CM" | "AP";
     description: string;
     title: string;
-    area: string;
     auditPlanId: string;
+    area: string;
     process: string;
     clause: string;
     deadline: Date;
@@ -266,8 +498,8 @@ export declare const createAuditFindingSchema: z.ZodObject<{
     type: "OM" | "NC_A" | "NC_B" | "CM" | "AP";
     description: string;
     title: string;
-    area: string;
     auditPlanId: string;
+    area: string;
     process: string;
     clause: string;
     deadline: string;
@@ -292,8 +524,8 @@ export declare const updateAuditFindingSchema: z.ZodObject<{
     description?: string | undefined;
     title?: string | undefined;
     controlId?: string | undefined;
-    area?: string | undefined;
     auditPlanId?: string | undefined;
+    area?: string | undefined;
     evidenceIds?: string[] | undefined;
     checklistId?: string | undefined;
     process?: string | undefined;
@@ -304,8 +536,8 @@ export declare const updateAuditFindingSchema: z.ZodObject<{
     description?: string | undefined;
     title?: string | undefined;
     controlId?: string | undefined;
-    area?: string | undefined;
     auditPlanId?: string | undefined;
+    area?: string | undefined;
     evidenceIds?: string[] | undefined;
     checklistId?: string | undefined;
     process?: string | undefined;
@@ -324,8 +556,8 @@ export declare const createAuditActionPlanSchema: z.ZodObject<{
 }, "strip", z.ZodTypeAny, {
     companyId: string;
     action: string;
-    responsible: string;
     auditPlanId: string;
+    responsible: string;
     deadline: Date;
     findingId: string;
     description?: string | undefined;
@@ -333,8 +565,8 @@ export declare const createAuditActionPlanSchema: z.ZodObject<{
 }, {
     companyId: string;
     action: string;
-    responsible: string;
     auditPlanId: string;
+    responsible: string;
     deadline: string;
     findingId: string;
     description?: string | undefined;
@@ -353,8 +585,8 @@ export declare const updateAuditActionPlanSchema: z.ZodObject<{
     companyId?: string | undefined;
     description?: string | undefined;
     action?: string | undefined;
-    responsible?: string | undefined;
     auditPlanId?: string | undefined;
+    responsible?: string | undefined;
     evidenceIds?: string[] | undefined;
     deadline?: Date | undefined;
     findingId?: string | undefined;
@@ -362,8 +594,8 @@ export declare const updateAuditActionPlanSchema: z.ZodObject<{
     companyId?: string | undefined;
     description?: string | undefined;
     action?: string | undefined;
-    responsible?: string | undefined;
     auditPlanId?: string | undefined;
+    responsible?: string | undefined;
     evidenceIds?: string[] | undefined;
     deadline?: string | undefined;
     findingId?: string | undefined;
@@ -703,12 +935,12 @@ export declare const updateAuditReportSchema: z.ZodObject<{
         workDays: number;
     } | undefined;
     summary?: string | undefined;
+    auditPlanId?: string | undefined;
     attachments?: {
         type: "evidence" | "other" | "checklist" | "questionnaire";
         name: string;
         url: string;
     }[] | undefined;
-    auditPlanId?: string | undefined;
     organization?: {
         email: string;
         scope: string;
@@ -749,12 +981,12 @@ export declare const updateAuditReportSchema: z.ZodObject<{
         workDays: number;
     } | undefined;
     summary?: string | undefined;
+    auditPlanId?: string | undefined;
     attachments?: {
         type: "evidence" | "other" | "checklist" | "questionnaire";
         name: string;
         url: string;
     }[] | undefined;
-    auditPlanId?: string | undefined;
     organization?: {
         email: string;
         scope: string;
@@ -790,14 +1022,32 @@ export declare const uploadEvidenceSchema: z.ZodObject<{
     auditPlanId: z.ZodString;
     findingId: z.ZodOptional<z.ZodString>;
     description: z.ZodOptional<z.ZodString>;
+    questionRef: z.ZodOptional<z.ZodObject<{
+        controlId: z.ZodString;
+        questionIndex: z.ZodOptional<z.ZodNumber>;
+    }, "strip", z.ZodTypeAny, {
+        controlId: string;
+        questionIndex?: number | undefined;
+    }, {
+        controlId: string;
+        questionIndex?: number | undefined;
+    }>>;
 }, "strip", z.ZodTypeAny, {
     auditPlanId: string;
     description?: string | undefined;
     findingId?: string | undefined;
+    questionRef?: {
+        controlId: string;
+        questionIndex?: number | undefined;
+    } | undefined;
 }, {
     auditPlanId: string;
     description?: string | undefined;
     findingId?: string | undefined;
+    questionRef?: {
+        controlId: string;
+        questionIndex?: number | undefined;
+    } | undefined;
 }>;
 export declare const createAuditProgramSchema: z.ZodObject<{
     companyId: z.ZodString;
@@ -849,12 +1099,12 @@ export declare const createAuditProgramSchema: z.ZodObject<{
         scope: z.ZodOptional<z.ZodString>;
         status: z.ZodDefault<z.ZodEnum<["not_planned", "scheduled", "in_progress", "completed", "cancelled"]>>;
     }, "strip", z.ZodTypeAny, {
-        status: "in_progress" | "completed" | "cancelled" | "scheduled" | "not_planned";
+        status: "in_progress" | "completed" | "cancelled" | "not_planned" | "scheduled";
         scope?: string | undefined;
         plannedDate?: Date | undefined;
         certificationBody?: string | undefined;
     }, {
-        status?: "in_progress" | "completed" | "cancelled" | "scheduled" | "not_planned" | undefined;
+        status?: "in_progress" | "completed" | "cancelled" | "not_planned" | "scheduled" | undefined;
         scope?: string | undefined;
         plannedDate?: string | undefined;
         certificationBody?: string | undefined;
@@ -892,7 +1142,7 @@ export declare const createAuditProgramSchema: z.ZodObject<{
         supplierId?: string | undefined;
     }[];
     externalAudit: {
-        status: "in_progress" | "completed" | "cancelled" | "scheduled" | "not_planned";
+        status: "in_progress" | "completed" | "cancelled" | "not_planned" | "scheduled";
         scope?: string | undefined;
         plannedDate?: Date | undefined;
         certificationBody?: string | undefined;
@@ -923,7 +1173,7 @@ export declare const createAuditProgramSchema: z.ZodObject<{
         supplierId?: string | undefined;
     }[] | undefined;
     externalAudit?: {
-        status?: "in_progress" | "completed" | "cancelled" | "scheduled" | "not_planned" | undefined;
+        status?: "in_progress" | "completed" | "cancelled" | "not_planned" | "scheduled" | undefined;
         scope?: string | undefined;
         plannedDate?: string | undefined;
         certificationBody?: string | undefined;
@@ -984,12 +1234,12 @@ export declare const updateAuditProgramSchema: z.ZodObject<{
         scope: z.ZodOptional<z.ZodString>;
         status: z.ZodDefault<z.ZodEnum<["not_planned", "scheduled", "in_progress", "completed", "cancelled"]>>;
     }, "strip", z.ZodTypeAny, {
-        status: "in_progress" | "completed" | "cancelled" | "scheduled" | "not_planned";
+        status: "in_progress" | "completed" | "cancelled" | "not_planned" | "scheduled";
         scope?: string | undefined;
         plannedDate?: Date | undefined;
         certificationBody?: string | undefined;
     }, {
-        status?: "in_progress" | "completed" | "cancelled" | "scheduled" | "not_planned" | undefined;
+        status?: "in_progress" | "completed" | "cancelled" | "not_planned" | "scheduled" | undefined;
         scope?: string | undefined;
         plannedDate?: string | undefined;
         certificationBody?: string | undefined;
@@ -1028,7 +1278,7 @@ export declare const updateAuditProgramSchema: z.ZodObject<{
         supplierId?: string | undefined;
     }[] | undefined;
     externalAudit?: {
-        status: "in_progress" | "completed" | "cancelled" | "scheduled" | "not_planned";
+        status: "in_progress" | "completed" | "cancelled" | "not_planned" | "scheduled";
         scope?: string | undefined;
         plannedDate?: Date | undefined;
         certificationBody?: string | undefined;
@@ -1058,7 +1308,7 @@ export declare const updateAuditProgramSchema: z.ZodObject<{
         supplierId?: string | undefined;
     }[] | undefined;
     externalAudit?: {
-        status?: "in_progress" | "completed" | "cancelled" | "scheduled" | "not_planned" | undefined;
+        status?: "in_progress" | "completed" | "cancelled" | "not_planned" | "scheduled" | undefined;
         scope?: string | undefined;
         plannedDate?: string | undefined;
         certificationBody?: string | undefined;
@@ -1717,40 +1967,243 @@ export declare const addDocumentReviewSchema: z.ZodObject<{
     documentId?: string | undefined;
     documentName?: string | undefined;
 }>;
+/**
+ * Schema para criação de pergunta de auditoria.
+ */
+export declare const createAuditQuestionSchema: z.ZodObject<{
+    clauseId: z.ZodString;
+    clauseTitle: z.ZodDefault<z.ZodOptional<z.ZodString>>;
+    clauseGroup: z.ZodDefault<z.ZodOptional<z.ZodString>>;
+    text: z.ZodString;
+    objective: z.ZodDefault<z.ZodOptional<z.ZodString>>;
+    guidance: z.ZodDefault<z.ZodOptional<z.ZodString>>;
+    evidenceExpected: z.ZodDefault<z.ZodOptional<z.ZodString>>;
+    conformityCriteria: z.ZodDefault<z.ZodOptional<z.ZodString>>;
+    nonconformityCriteria: z.ZodDefault<z.ZodOptional<z.ZodString>>;
+    criticality: z.ZodDefault<z.ZodOptional<z.ZodEnum<["low", "medium", "high", "critical"]>>>;
+    relatedControls: z.ZodDefault<z.ZodOptional<z.ZodArray<z.ZodString, "many">>>;
+    relatedDocuments: z.ZodDefault<z.ZodOptional<z.ZodArray<z.ZodString, "many">>>;
+    order: z.ZodDefault<z.ZodOptional<z.ZodNumber>>;
+    active: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
+}, "strip", z.ZodTypeAny, {
+    active: boolean;
+    text: string;
+    objective: string;
+    guidance: string;
+    order: number;
+    evidenceExpected: string;
+    clauseId: string;
+    clauseTitle: string;
+    clauseGroup: string;
+    conformityCriteria: string;
+    nonconformityCriteria: string;
+    criticality: "critical" | "low" | "medium" | "high";
+    relatedControls: string[];
+    relatedDocuments: string[];
+}, {
+    text: string;
+    clauseId: string;
+    active?: boolean | undefined;
+    objective?: string | undefined;
+    guidance?: string | undefined;
+    order?: number | undefined;
+    evidenceExpected?: string | undefined;
+    clauseTitle?: string | undefined;
+    clauseGroup?: string | undefined;
+    conformityCriteria?: string | undefined;
+    nonconformityCriteria?: string | undefined;
+    criticality?: "critical" | "low" | "medium" | "high" | undefined;
+    relatedControls?: string[] | undefined;
+    relatedDocuments?: string[] | undefined;
+}>;
+/**
+ * Schema para atualização de pergunta de auditoria.
+ */
+export declare const updateAuditQuestionSchema: z.ZodObject<{
+    clauseId: z.ZodOptional<z.ZodString>;
+    clauseTitle: z.ZodOptional<z.ZodString>;
+    clauseGroup: z.ZodOptional<z.ZodString>;
+    text: z.ZodOptional<z.ZodString>;
+    objective: z.ZodOptional<z.ZodString>;
+    guidance: z.ZodOptional<z.ZodString>;
+    evidenceExpected: z.ZodOptional<z.ZodString>;
+    conformityCriteria: z.ZodOptional<z.ZodString>;
+    nonconformityCriteria: z.ZodOptional<z.ZodString>;
+    criticality: z.ZodOptional<z.ZodEnum<["low", "medium", "high", "critical"]>>;
+    relatedControls: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+    relatedDocuments: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+    order: z.ZodOptional<z.ZodNumber>;
+    active: z.ZodOptional<z.ZodBoolean>;
+}, "strip", z.ZodTypeAny, {
+    active?: boolean | undefined;
+    text?: string | undefined;
+    objective?: string | undefined;
+    guidance?: string | undefined;
+    order?: number | undefined;
+    evidenceExpected?: string | undefined;
+    clauseId?: string | undefined;
+    clauseTitle?: string | undefined;
+    clauseGroup?: string | undefined;
+    conformityCriteria?: string | undefined;
+    nonconformityCriteria?: string | undefined;
+    criticality?: "critical" | "low" | "medium" | "high" | undefined;
+    relatedControls?: string[] | undefined;
+    relatedDocuments?: string[] | undefined;
+}, {
+    active?: boolean | undefined;
+    text?: string | undefined;
+    objective?: string | undefined;
+    guidance?: string | undefined;
+    order?: number | undefined;
+    evidenceExpected?: string | undefined;
+    clauseId?: string | undefined;
+    clauseTitle?: string | undefined;
+    clauseGroup?: string | undefined;
+    conformityCriteria?: string | undefined;
+    nonconformityCriteria?: string | undefined;
+    criticality?: "critical" | "low" | "medium" | "high" | undefined;
+    relatedControls?: string[] | undefined;
+    relatedDocuments?: string[] | undefined;
+}>;
+/**
+ * Schema para filtros de listagem (query params).
+ * Todos opcionais.
+ */
+export declare const auditQuestionFiltersSchema: z.ZodObject<{
+    clauseId: z.ZodOptional<z.ZodString>;
+    clauseGroup: z.ZodOptional<z.ZodString>;
+    criticality: z.ZodOptional<z.ZodEnum<["low", "medium", "high", "critical"]>>;
+    active: z.ZodOptional<z.ZodUnion<[z.ZodBoolean, z.ZodEffects<z.ZodString, boolean, string>]>>;
+    search: z.ZodOptional<z.ZodString>;
+}, "strip", z.ZodTypeAny, {
+    active?: boolean | undefined;
+    search?: string | undefined;
+    clauseId?: string | undefined;
+    clauseGroup?: string | undefined;
+    criticality?: "critical" | "low" | "medium" | "high" | undefined;
+}, {
+    active?: string | boolean | undefined;
+    search?: string | undefined;
+    clauseId?: string | undefined;
+    clauseGroup?: string | undefined;
+    criticality?: "critical" | "low" | "medium" | "high" | undefined;
+}>;
+/**
+ * Schema para exclusão de pergunta (by ID via params).
+ */
+export declare const deleteAuditQuestionSchema: z.ZodObject<{
+    id: z.ZodString;
+}, "strip", z.ZodTypeAny, {
+    id: string;
+}, {
+    id: string;
+}>;
 declare const _default: {
     createAuditPlanSchema: z.ZodObject<{
         title: z.ZodString;
         description: z.ZodString;
         companyId: z.ZodString;
         programId: z.ZodOptional<z.ZodString>;
-        scope: z.ZodObject<{
-            controls: z.ZodArray<z.ZodString, "many">;
+        /**
+         * Escopo do plano de auditoria.
+         *
+         * - mode 'all' (padrão): todos os controles da empresa.
+         *   Neste caso, scope.controls pode vir vazio (o service popula).
+         *   Exclusões são feitas via scope.excludedControls.
+         *
+         * - mode 'custom': apenas os controles informados em controls.
+         *   Neste caso, scope.controls é obrigatório e não vazio.
+         */
+        scope: z.ZodEffects<z.ZodObject<{
+            mode: z.ZodDefault<z.ZodOptional<z.ZodEnum<["all", "custom"]>>>;
+            controls: z.ZodDefault<z.ZodOptional<z.ZodArray<z.ZodString, "many">>>;
+            /**
+             * Exclusões enviadas junto com o payload.
+             * O service processa cada uma para gerar IAuditExcludedControl
+             * com excludedBy e excludedAt preenchidos.
+             */
+            excludedControls: z.ZodDefault<z.ZodOptional<z.ZodArray<z.ZodObject<{
+                controlId: z.ZodString;
+                reason: z.ZodString;
+            }, "strip", z.ZodTypeAny, {
+                reason: string;
+                controlId: string;
+            }, {
+                reason: string;
+                controlId: string;
+            }>, "many">>>;
             processes: z.ZodArray<z.ZodString, "many">;
             areas: z.ZodArray<z.ZodString, "many">;
         }, "strip", z.ZodTypeAny, {
             controls: string[];
+            mode: "all" | "custom";
+            excludedControls: {
+                reason: string;
+                controlId: string;
+            }[];
             processes: string[];
             areas: string[];
         }, {
-            controls: string[];
             processes: string[];
             areas: string[];
+            controls?: string[] | undefined;
+            mode?: "all" | "custom" | undefined;
+            excludedControls?: {
+                reason: string;
+                controlId: string;
+            }[] | undefined;
+        }>, {
+            controls: string[];
+            mode: "all" | "custom";
+            excludedControls: {
+                reason: string;
+                controlId: string;
+            }[];
+            processes: string[];
+            areas: string[];
+        }, {
+            processes: string[];
+            areas: string[];
+            controls?: string[] | undefined;
+            mode?: "all" | "custom" | undefined;
+            excludedControls?: {
+                reason: string;
+                controlId: string;
+            }[] | undefined;
         }>;
         team: z.ZodObject<{
             leadAuditor: z.ZodString;
             auditors: z.ZodArray<z.ZodString, "many">;
             observers: z.ZodArray<z.ZodString, "many">;
             specialists: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+            leadAuditorName: z.ZodOptional<z.ZodString>;
+            leadAuditorEmail: z.ZodUnion<[z.ZodOptional<z.ZodString>, z.ZodLiteral<"">]>;
+            auditorNames: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+            auditorEmails: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+            observerNames: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+            observerEmails: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
         }, "strip", z.ZodTypeAny, {
             leadAuditor: string;
             auditors: string[];
             observers: string[];
             specialists?: string[] | undefined;
+            leadAuditorName?: string | undefined;
+            leadAuditorEmail?: string | undefined;
+            auditorNames?: string[] | undefined;
+            auditorEmails?: string[] | undefined;
+            observerNames?: string[] | undefined;
+            observerEmails?: string[] | undefined;
         }, {
             leadAuditor: string;
             auditors: string[];
             observers: string[];
             specialists?: string[] | undefined;
+            leadAuditorName?: string | undefined;
+            leadAuditorEmail?: string | undefined;
+            auditorNames?: string[] | undefined;
+            auditorEmails?: string[] | undefined;
+            observerNames?: string[] | undefined;
+            observerEmails?: string[] | undefined;
         }>;
         period: z.ZodObject<{
             startDate: z.ZodEffects<z.ZodString, Date, string>;
@@ -1773,6 +2226,11 @@ declare const _default: {
         title: string;
         scope: {
             controls: string[];
+            mode: "all" | "custom";
+            excludedControls: {
+                reason: string;
+                controlId: string;
+            }[];
             processes: string[];
             areas: string[];
         };
@@ -1786,6 +2244,12 @@ declare const _default: {
             auditors: string[];
             observers: string[];
             specialists?: string[] | undefined;
+            leadAuditorName?: string | undefined;
+            leadAuditorEmail?: string | undefined;
+            auditorNames?: string[] | undefined;
+            auditorEmails?: string[] | undefined;
+            observerNames?: string[] | undefined;
+            observerEmails?: string[] | undefined;
         };
         criteria: string[];
         observations?: string | undefined;
@@ -1795,9 +2259,14 @@ declare const _default: {
         description: string;
         title: string;
         scope: {
-            controls: string[];
             processes: string[];
             areas: string[];
+            controls?: string[] | undefined;
+            mode?: "all" | "custom" | undefined;
+            excludedControls?: {
+                reason: string;
+                controlId: string;
+            }[] | undefined;
         };
         period: {
             startDate: string;
@@ -1809,6 +2278,12 @@ declare const _default: {
             auditors: string[];
             observers: string[];
             specialists?: string[] | undefined;
+            leadAuditorName?: string | undefined;
+            leadAuditorEmail?: string | undefined;
+            auditorNames?: string[] | undefined;
+            auditorEmails?: string[] | undefined;
+            observerNames?: string[] | undefined;
+            observerEmails?: string[] | undefined;
         };
         criteria: string[];
         observations?: string | undefined;
@@ -1819,34 +2294,96 @@ declare const _default: {
         description: z.ZodOptional<z.ZodString>;
         companyId: z.ZodOptional<z.ZodString>;
         programId: z.ZodOptional<z.ZodOptional<z.ZodString>>;
-        scope: z.ZodOptional<z.ZodObject<{
-            controls: z.ZodArray<z.ZodString, "many">;
+        scope: z.ZodOptional<z.ZodEffects<z.ZodObject<{
+            mode: z.ZodDefault<z.ZodOptional<z.ZodEnum<["all", "custom"]>>>;
+            controls: z.ZodDefault<z.ZodOptional<z.ZodArray<z.ZodString, "many">>>;
+            /**
+             * Exclusões enviadas junto com o payload.
+             * O service processa cada uma para gerar IAuditExcludedControl
+             * com excludedBy e excludedAt preenchidos.
+             */
+            excludedControls: z.ZodDefault<z.ZodOptional<z.ZodArray<z.ZodObject<{
+                controlId: z.ZodString;
+                reason: z.ZodString;
+            }, "strip", z.ZodTypeAny, {
+                reason: string;
+                controlId: string;
+            }, {
+                reason: string;
+                controlId: string;
+            }>, "many">>>;
             processes: z.ZodArray<z.ZodString, "many">;
             areas: z.ZodArray<z.ZodString, "many">;
         }, "strip", z.ZodTypeAny, {
             controls: string[];
+            mode: "all" | "custom";
+            excludedControls: {
+                reason: string;
+                controlId: string;
+            }[];
             processes: string[];
             areas: string[];
         }, {
-            controls: string[];
             processes: string[];
             areas: string[];
+            controls?: string[] | undefined;
+            mode?: "all" | "custom" | undefined;
+            excludedControls?: {
+                reason: string;
+                controlId: string;
+            }[] | undefined;
+        }>, {
+            controls: string[];
+            mode: "all" | "custom";
+            excludedControls: {
+                reason: string;
+                controlId: string;
+            }[];
+            processes: string[];
+            areas: string[];
+        }, {
+            processes: string[];
+            areas: string[];
+            controls?: string[] | undefined;
+            mode?: "all" | "custom" | undefined;
+            excludedControls?: {
+                reason: string;
+                controlId: string;
+            }[] | undefined;
         }>>;
         team: z.ZodOptional<z.ZodObject<{
             leadAuditor: z.ZodString;
             auditors: z.ZodArray<z.ZodString, "many">;
             observers: z.ZodArray<z.ZodString, "many">;
             specialists: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+            leadAuditorName: z.ZodOptional<z.ZodString>;
+            leadAuditorEmail: z.ZodUnion<[z.ZodOptional<z.ZodString>, z.ZodLiteral<"">]>;
+            auditorNames: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+            auditorEmails: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+            observerNames: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+            observerEmails: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
         }, "strip", z.ZodTypeAny, {
             leadAuditor: string;
             auditors: string[];
             observers: string[];
             specialists?: string[] | undefined;
+            leadAuditorName?: string | undefined;
+            leadAuditorEmail?: string | undefined;
+            auditorNames?: string[] | undefined;
+            auditorEmails?: string[] | undefined;
+            observerNames?: string[] | undefined;
+            observerEmails?: string[] | undefined;
         }, {
             leadAuditor: string;
             auditors: string[];
             observers: string[];
             specialists?: string[] | undefined;
+            leadAuditorName?: string | undefined;
+            leadAuditorEmail?: string | undefined;
+            auditorNames?: string[] | undefined;
+            auditorEmails?: string[] | undefined;
+            observerNames?: string[] | undefined;
+            observerEmails?: string[] | undefined;
         }>>;
         period: z.ZodOptional<z.ZodObject<{
             startDate: z.ZodEffects<z.ZodString, Date, string>;
@@ -1870,6 +2407,11 @@ declare const _default: {
         observations?: string | undefined;
         scope?: {
             controls: string[];
+            mode: "all" | "custom";
+            excludedControls: {
+                reason: string;
+                controlId: string;
+            }[];
             processes: string[];
             areas: string[];
         } | undefined;
@@ -1884,6 +2426,12 @@ declare const _default: {
             auditors: string[];
             observers: string[];
             specialists?: string[] | undefined;
+            leadAuditorName?: string | undefined;
+            leadAuditorEmail?: string | undefined;
+            auditorNames?: string[] | undefined;
+            auditorEmails?: string[] | undefined;
+            observerNames?: string[] | undefined;
+            observerEmails?: string[] | undefined;
         } | undefined;
         criteria?: string[] | undefined;
     }, {
@@ -1892,9 +2440,14 @@ declare const _default: {
         title?: string | undefined;
         observations?: string | undefined;
         scope?: {
-            controls: string[];
             processes: string[];
             areas: string[];
+            controls?: string[] | undefined;
+            mode?: "all" | "custom" | undefined;
+            excludedControls?: {
+                reason: string;
+                controlId: string;
+            }[] | undefined;
         } | undefined;
         period?: {
             startDate: string;
@@ -1907,6 +2460,12 @@ declare const _default: {
             auditors: string[];
             observers: string[];
             specialists?: string[] | undefined;
+            leadAuditorName?: string | undefined;
+            leadAuditorEmail?: string | undefined;
+            auditorNames?: string[] | undefined;
+            auditorEmails?: string[] | undefined;
+            observerNames?: string[] | undefined;
+            observerEmails?: string[] | undefined;
         } | undefined;
         criteria?: string[] | undefined;
     }>;
@@ -1973,8 +2532,8 @@ declare const _default: {
         type: "OM" | "NC_A" | "NC_B" | "CM" | "AP";
         description: string;
         title: string;
-        area: string;
         auditPlanId: string;
+        area: string;
         process: string;
         clause: string;
         deadline: Date;
@@ -1985,8 +2544,8 @@ declare const _default: {
         type: "OM" | "NC_A" | "NC_B" | "CM" | "AP";
         description: string;
         title: string;
-        area: string;
         auditPlanId: string;
+        area: string;
         process: string;
         clause: string;
         deadline: string;
@@ -2011,8 +2570,8 @@ declare const _default: {
         description?: string | undefined;
         title?: string | undefined;
         controlId?: string | undefined;
-        area?: string | undefined;
         auditPlanId?: string | undefined;
+        area?: string | undefined;
         evidenceIds?: string[] | undefined;
         checklistId?: string | undefined;
         process?: string | undefined;
@@ -2023,8 +2582,8 @@ declare const _default: {
         description?: string | undefined;
         title?: string | undefined;
         controlId?: string | undefined;
-        area?: string | undefined;
         auditPlanId?: string | undefined;
+        area?: string | undefined;
         evidenceIds?: string[] | undefined;
         checklistId?: string | undefined;
         process?: string | undefined;
@@ -2043,8 +2602,8 @@ declare const _default: {
     }, "strip", z.ZodTypeAny, {
         companyId: string;
         action: string;
-        responsible: string;
         auditPlanId: string;
+        responsible: string;
         deadline: Date;
         findingId: string;
         description?: string | undefined;
@@ -2052,8 +2611,8 @@ declare const _default: {
     }, {
         companyId: string;
         action: string;
-        responsible: string;
         auditPlanId: string;
+        responsible: string;
         deadline: string;
         findingId: string;
         description?: string | undefined;
@@ -2072,8 +2631,8 @@ declare const _default: {
         companyId?: string | undefined;
         description?: string | undefined;
         action?: string | undefined;
-        responsible?: string | undefined;
         auditPlanId?: string | undefined;
+        responsible?: string | undefined;
         evidenceIds?: string[] | undefined;
         deadline?: Date | undefined;
         findingId?: string | undefined;
@@ -2081,8 +2640,8 @@ declare const _default: {
         companyId?: string | undefined;
         description?: string | undefined;
         action?: string | undefined;
-        responsible?: string | undefined;
         auditPlanId?: string | undefined;
+        responsible?: string | undefined;
         evidenceIds?: string[] | undefined;
         deadline?: string | undefined;
         findingId?: string | undefined;
@@ -2422,12 +2981,12 @@ declare const _default: {
             workDays: number;
         } | undefined;
         summary?: string | undefined;
+        auditPlanId?: string | undefined;
         attachments?: {
             type: "evidence" | "other" | "checklist" | "questionnaire";
             name: string;
             url: string;
         }[] | undefined;
-        auditPlanId?: string | undefined;
         organization?: {
             email: string;
             scope: string;
@@ -2468,12 +3027,12 @@ declare const _default: {
             workDays: number;
         } | undefined;
         summary?: string | undefined;
+        auditPlanId?: string | undefined;
         attachments?: {
             type: "evidence" | "other" | "checklist" | "questionnaire";
             name: string;
             url: string;
         }[] | undefined;
-        auditPlanId?: string | undefined;
         organization?: {
             email: string;
             scope: string;
@@ -2509,14 +3068,63 @@ declare const _default: {
         auditPlanId: z.ZodString;
         findingId: z.ZodOptional<z.ZodString>;
         description: z.ZodOptional<z.ZodString>;
+        questionRef: z.ZodOptional<z.ZodObject<{
+            controlId: z.ZodString;
+            questionIndex: z.ZodOptional<z.ZodNumber>;
+        }, "strip", z.ZodTypeAny, {
+            controlId: string;
+            questionIndex?: number | undefined;
+        }, {
+            controlId: string;
+            questionIndex?: number | undefined;
+        }>>;
     }, "strip", z.ZodTypeAny, {
         auditPlanId: string;
         description?: string | undefined;
         findingId?: string | undefined;
+        questionRef?: {
+            controlId: string;
+            questionIndex?: number | undefined;
+        } | undefined;
     }, {
         auditPlanId: string;
         description?: string | undefined;
         findingId?: string | undefined;
+        questionRef?: {
+            controlId: string;
+            questionIndex?: number | undefined;
+        } | undefined;
+    }>;
+    excludeControlSchema: z.ZodObject<{
+        controlId: z.ZodString;
+        reason: z.ZodString;
+    }, "strip", z.ZodTypeAny, {
+        reason: string;
+        controlId: string;
+    }, {
+        reason: string;
+        controlId: string;
+    }>;
+    approveExclusionSchema: z.ZodObject<{
+        controlId: z.ZodString;
+    }, "strip", z.ZodTypeAny, {
+        controlId: string;
+    }, {
+        controlId: string;
+    }>;
+    rejectExclusionSchema: z.ZodObject<{
+        controlId: z.ZodString;
+    }, "strip", z.ZodTypeAny, {
+        controlId: string;
+    }, {
+        controlId: string;
+    }>;
+    removeExclusionSchema: z.ZodObject<{
+        controlId: z.ZodString;
+    }, "strip", z.ZodTypeAny, {
+        controlId: string;
+    }, {
+        controlId: string;
     }>;
     createAuditProgramSchema: z.ZodObject<{
         companyId: z.ZodString;
@@ -2568,12 +3176,12 @@ declare const _default: {
             scope: z.ZodOptional<z.ZodString>;
             status: z.ZodDefault<z.ZodEnum<["not_planned", "scheduled", "in_progress", "completed", "cancelled"]>>;
         }, "strip", z.ZodTypeAny, {
-            status: "in_progress" | "completed" | "cancelled" | "scheduled" | "not_planned";
+            status: "in_progress" | "completed" | "cancelled" | "not_planned" | "scheduled";
             scope?: string | undefined;
             plannedDate?: Date | undefined;
             certificationBody?: string | undefined;
         }, {
-            status?: "in_progress" | "completed" | "cancelled" | "scheduled" | "not_planned" | undefined;
+            status?: "in_progress" | "completed" | "cancelled" | "not_planned" | "scheduled" | undefined;
             scope?: string | undefined;
             plannedDate?: string | undefined;
             certificationBody?: string | undefined;
@@ -2611,7 +3219,7 @@ declare const _default: {
             supplierId?: string | undefined;
         }[];
         externalAudit: {
-            status: "in_progress" | "completed" | "cancelled" | "scheduled" | "not_planned";
+            status: "in_progress" | "completed" | "cancelled" | "not_planned" | "scheduled";
             scope?: string | undefined;
             plannedDate?: Date | undefined;
             certificationBody?: string | undefined;
@@ -2642,7 +3250,7 @@ declare const _default: {
             supplierId?: string | undefined;
         }[] | undefined;
         externalAudit?: {
-            status?: "in_progress" | "completed" | "cancelled" | "scheduled" | "not_planned" | undefined;
+            status?: "in_progress" | "completed" | "cancelled" | "not_planned" | "scheduled" | undefined;
             scope?: string | undefined;
             plannedDate?: string | undefined;
             certificationBody?: string | undefined;
@@ -2703,12 +3311,12 @@ declare const _default: {
             scope: z.ZodOptional<z.ZodString>;
             status: z.ZodDefault<z.ZodEnum<["not_planned", "scheduled", "in_progress", "completed", "cancelled"]>>;
         }, "strip", z.ZodTypeAny, {
-            status: "in_progress" | "completed" | "cancelled" | "scheduled" | "not_planned";
+            status: "in_progress" | "completed" | "cancelled" | "not_planned" | "scheduled";
             scope?: string | undefined;
             plannedDate?: Date | undefined;
             certificationBody?: string | undefined;
         }, {
-            status?: "in_progress" | "completed" | "cancelled" | "scheduled" | "not_planned" | undefined;
+            status?: "in_progress" | "completed" | "cancelled" | "not_planned" | "scheduled" | undefined;
             scope?: string | undefined;
             plannedDate?: string | undefined;
             certificationBody?: string | undefined;
@@ -2747,7 +3355,7 @@ declare const _default: {
             supplierId?: string | undefined;
         }[] | undefined;
         externalAudit?: {
-            status: "in_progress" | "completed" | "cancelled" | "scheduled" | "not_planned";
+            status: "in_progress" | "completed" | "cancelled" | "not_planned" | "scheduled";
             scope?: string | undefined;
             plannedDate?: Date | undefined;
             certificationBody?: string | undefined;
@@ -2777,7 +3385,7 @@ declare const _default: {
             supplierId?: string | undefined;
         }[] | undefined;
         externalAudit?: {
-            status?: "in_progress" | "completed" | "cancelled" | "scheduled" | "not_planned" | undefined;
+            status?: "in_progress" | "completed" | "cancelled" | "not_planned" | "scheduled" | undefined;
             scope?: string | undefined;
             plannedDate?: string | undefined;
             certificationBody?: string | undefined;
@@ -3435,6 +4043,124 @@ declare const _default: {
         reviewDate?: string | undefined;
         documentId?: string | undefined;
         documentName?: string | undefined;
+    }>;
+    createAuditQuestionSchema: z.ZodObject<{
+        clauseId: z.ZodString;
+        clauseTitle: z.ZodDefault<z.ZodOptional<z.ZodString>>;
+        clauseGroup: z.ZodDefault<z.ZodOptional<z.ZodString>>;
+        text: z.ZodString;
+        objective: z.ZodDefault<z.ZodOptional<z.ZodString>>;
+        guidance: z.ZodDefault<z.ZodOptional<z.ZodString>>;
+        evidenceExpected: z.ZodDefault<z.ZodOptional<z.ZodString>>;
+        conformityCriteria: z.ZodDefault<z.ZodOptional<z.ZodString>>;
+        nonconformityCriteria: z.ZodDefault<z.ZodOptional<z.ZodString>>;
+        criticality: z.ZodDefault<z.ZodOptional<z.ZodEnum<["low", "medium", "high", "critical"]>>>;
+        relatedControls: z.ZodDefault<z.ZodOptional<z.ZodArray<z.ZodString, "many">>>;
+        relatedDocuments: z.ZodDefault<z.ZodOptional<z.ZodArray<z.ZodString, "many">>>;
+        order: z.ZodDefault<z.ZodOptional<z.ZodNumber>>;
+        active: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
+    }, "strip", z.ZodTypeAny, {
+        active: boolean;
+        text: string;
+        objective: string;
+        guidance: string;
+        order: number;
+        evidenceExpected: string;
+        clauseId: string;
+        clauseTitle: string;
+        clauseGroup: string;
+        conformityCriteria: string;
+        nonconformityCriteria: string;
+        criticality: "critical" | "low" | "medium" | "high";
+        relatedControls: string[];
+        relatedDocuments: string[];
+    }, {
+        text: string;
+        clauseId: string;
+        active?: boolean | undefined;
+        objective?: string | undefined;
+        guidance?: string | undefined;
+        order?: number | undefined;
+        evidenceExpected?: string | undefined;
+        clauseTitle?: string | undefined;
+        clauseGroup?: string | undefined;
+        conformityCriteria?: string | undefined;
+        nonconformityCriteria?: string | undefined;
+        criticality?: "critical" | "low" | "medium" | "high" | undefined;
+        relatedControls?: string[] | undefined;
+        relatedDocuments?: string[] | undefined;
+    }>;
+    updateAuditQuestionSchema: z.ZodObject<{
+        clauseId: z.ZodOptional<z.ZodString>;
+        clauseTitle: z.ZodOptional<z.ZodString>;
+        clauseGroup: z.ZodOptional<z.ZodString>;
+        text: z.ZodOptional<z.ZodString>;
+        objective: z.ZodOptional<z.ZodString>;
+        guidance: z.ZodOptional<z.ZodString>;
+        evidenceExpected: z.ZodOptional<z.ZodString>;
+        conformityCriteria: z.ZodOptional<z.ZodString>;
+        nonconformityCriteria: z.ZodOptional<z.ZodString>;
+        criticality: z.ZodOptional<z.ZodEnum<["low", "medium", "high", "critical"]>>;
+        relatedControls: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+        relatedDocuments: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+        order: z.ZodOptional<z.ZodNumber>;
+        active: z.ZodOptional<z.ZodBoolean>;
+    }, "strip", z.ZodTypeAny, {
+        active?: boolean | undefined;
+        text?: string | undefined;
+        objective?: string | undefined;
+        guidance?: string | undefined;
+        order?: number | undefined;
+        evidenceExpected?: string | undefined;
+        clauseId?: string | undefined;
+        clauseTitle?: string | undefined;
+        clauseGroup?: string | undefined;
+        conformityCriteria?: string | undefined;
+        nonconformityCriteria?: string | undefined;
+        criticality?: "critical" | "low" | "medium" | "high" | undefined;
+        relatedControls?: string[] | undefined;
+        relatedDocuments?: string[] | undefined;
+    }, {
+        active?: boolean | undefined;
+        text?: string | undefined;
+        objective?: string | undefined;
+        guidance?: string | undefined;
+        order?: number | undefined;
+        evidenceExpected?: string | undefined;
+        clauseId?: string | undefined;
+        clauseTitle?: string | undefined;
+        clauseGroup?: string | undefined;
+        conformityCriteria?: string | undefined;
+        nonconformityCriteria?: string | undefined;
+        criticality?: "critical" | "low" | "medium" | "high" | undefined;
+        relatedControls?: string[] | undefined;
+        relatedDocuments?: string[] | undefined;
+    }>;
+    auditQuestionFiltersSchema: z.ZodObject<{
+        clauseId: z.ZodOptional<z.ZodString>;
+        clauseGroup: z.ZodOptional<z.ZodString>;
+        criticality: z.ZodOptional<z.ZodEnum<["low", "medium", "high", "critical"]>>;
+        active: z.ZodOptional<z.ZodUnion<[z.ZodBoolean, z.ZodEffects<z.ZodString, boolean, string>]>>;
+        search: z.ZodOptional<z.ZodString>;
+    }, "strip", z.ZodTypeAny, {
+        active?: boolean | undefined;
+        search?: string | undefined;
+        clauseId?: string | undefined;
+        clauseGroup?: string | undefined;
+        criticality?: "critical" | "low" | "medium" | "high" | undefined;
+    }, {
+        active?: string | boolean | undefined;
+        search?: string | undefined;
+        clauseId?: string | undefined;
+        clauseGroup?: string | undefined;
+        criticality?: "critical" | "low" | "medium" | "high" | undefined;
+    }>;
+    deleteAuditQuestionSchema: z.ZodObject<{
+        id: z.ZodString;
+    }, "strip", z.ZodTypeAny, {
+        id: string;
+    }, {
+        id: string;
     }>;
 };
 export default _default;

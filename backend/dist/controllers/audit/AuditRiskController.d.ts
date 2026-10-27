@@ -1,69 +1,140 @@
 import { Response } from 'express';
 import { AuthenticatedRequest } from '../../types';
 export declare class AuditRiskController {
+    constructor();
     /**
-     * Criar novo risco
+     * ============================================================
+     * OBTÉM O COMPANY ID DO USUÁRIO AUTENTICADO
+     * ============================================================
+     *
+     * Regra:
+     *
+     * - Usuários vinculados a empresa:
+     *   sempre utilizam req.user.companyId.
+     *
+     * - ADMIN:
+     *   pode operar sobre uma empresa informada explicitamente,
+     *   caso a arquitetura atual permita administração global.
+     *
+     * Para usuários comuns, companyId enviado pelo frontend
+     * nunca deve substituir o companyId da sessão.
+     */
+    private getAuthenticatedCompanyId;
+    /**
+     * Verifica se o usuário pode operar sobre determinada empresa.
+     *
+     * ADMIN é tratado como usuário de plataforma.
+     *
+     * Para qualquer outro perfil, o companyId deve ser exatamente
+     * igual ao companyId presente no token/sessão.
+     */
+    private canAccessCompany;
+    /**
+     * Obtém o tenant efetivo.
+     *
+     * Para usuários comuns:
+     *   tenant = empresa da sessão.
+     *
+     * Para ADMIN:
+     *   pode utilizar companyId fornecido na requisição.
+     */
+    private resolveCompanyId;
+    /**
+     * ============================================================
+     * CRIAR NOVO RISCO
      * POST /api/internal-audit/risks
+     * ============================================================
      */
     create(req: AuthenticatedRequest, res: Response): Promise<Response>;
     /**
-     * Buscar risco por ID
+     * ============================================================
+     * BUSCAR RISCO POR ID
      * GET /api/internal-audit/risks/:id
+     * ============================================================
      */
     findById(req: AuthenticatedRequest, res: Response): Promise<Response>;
     /**
-     * Buscar risco por ID (identificador único)
-     * GET /api/internal-audit/risks/company/:companyId/risk-id/:riskId
+     * ============================================================
+     * BUSCAR RISCO PELO ID FUNCIONAL
+     * GET /risks/company/:companyId/risk-id/:riskId
+     * ============================================================
      */
     findByRiskId(req: AuthenticatedRequest, res: Response): Promise<Response>;
     /**
-     * Listar riscos de uma empresa
-     * GET /api/internal-audit/risks/company/:companyId
+     * ============================================================
+     * LISTAR RISCOS DE UMA EMPRESA
+     * GET /risks/company/:companyId
+     * ============================================================
      */
+    /**
+     * ============================================================
+     * LISTAR RISCOS DE UM PLANO DE AUDITORIA
+     * GET /risks/plan/:planId
+     * ============================================================
+     */
+    findAllByPlan(req: AuthenticatedRequest, res: Response): Promise<Response>;
     findAllByCompany(req: AuthenticatedRequest, res: Response): Promise<Response>;
     /**
-     * Atualizar risco
+     * ============================================================
+     * ATUALIZAR RISCO
      * PUT /api/internal-audit/risks/:id
+     * ============================================================
      */
     update(req: AuthenticatedRequest, res: Response): Promise<Response>;
     /**
-     * Atualizar avaliação do risco
-     * PUT /api/internal-audit/risks/:id/assessment
+     * ============================================================
+     * ATUALIZAR AVALIAÇÃO
+     * PUT /risks/:id/assessment
+     * ============================================================
      */
     updateAssessment(req: AuthenticatedRequest, res: Response): Promise<Response>;
     /**
-     * Tratar risco
-     * POST /api/internal-audit/risks/:id/treat
+     * ============================================================
+     * TRATAR RISCO
+     * POST /risks/:id/treat
+     * ============================================================
      */
     treatRisk(req: AuthenticatedRequest, res: Response): Promise<Response>;
     /**
-     * Monitorar risco
-     * PUT /api/internal-audit/risks/:id/monitor
+     * ============================================================
+     * MONITORAR RISCO
+     * PUT /risks/:id/monitor
+     * ============================================================
      */
     monitorRisk(req: AuthenticatedRequest, res: Response): Promise<Response>;
     /**
-     * Reabrir risco
-     * POST /api/internal-audit/risks/:id/reopen
+     * ============================================================
+     * REABRIR RISCO
+     * POST /risks/:id/reopen
+     * ============================================================
      */
     reopenRisk(req: AuthenticatedRequest, res: Response): Promise<Response>;
     /**
-     * Excluir risco
-     * DELETE /api/internal-audit/risks/:id
+     * ============================================================
+     * EXCLUIR RISCO
+     * DELETE /risks/:id
+     * ============================================================
      */
     delete(req: AuthenticatedRequest, res: Response): Promise<Response>;
     /**
-     * Obter estatísticas de riscos
-     * GET /api/internal-audit/risks/company/:companyId/stats
+     * ============================================================
+     * ESTATÍSTICAS
+     * GET /risks/company/:companyId/stats
+     * ============================================================
      */
     getStatistics(req: AuthenticatedRequest, res: Response): Promise<Response>;
     /**
-     * Obter riscos críticos
-     * GET /api/internal-audit/risks/company/:companyId/critical
+     * ============================================================
+     * RISCOS CRÍTICOS
+     * GET /risks/company/:companyId/critical
+     * ============================================================
      */
     getCriticalRisks(req: AuthenticatedRequest, res: Response): Promise<Response>;
     /**
-     * Exportar riscos para formato de planilha
-     * GET /api/internal-audit/risks/company/:companyId/export
+     * ============================================================
+     * EXPORTAR RISCOS
+     * GET /risks/company/:companyId/export
+     * ============================================================
      */
     exportToSpreadsheet(req: AuthenticatedRequest, res: Response): Promise<Response>;
 }

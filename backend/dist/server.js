@@ -46,6 +46,8 @@ const audit_routes_js_1 = __importDefault(require("./routes/audit.routes.js"));
 // 🆕 NOVO (v44.0) - Import do módulo de auditoria interna (planos, checklists, NCs, relatórios)
 const internal_audit_routes_js_1 = __importDefault(require("./routes/internal-audit.routes.js"));
 const app = (0, express_1.default)();
+// ✅ CORREÇÃO: Configurar trust proxy para rate limit funcionar atrás de proxy (Render)
+app.set('trust proxy', 1);
 app.use((0, compression_1.default)({
     level: 6,
     filter: (req, res) => {

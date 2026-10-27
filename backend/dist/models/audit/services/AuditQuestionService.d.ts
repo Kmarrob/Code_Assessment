@@ -1,60 +1,73 @@
 import { IAuditQuestion } from '../models/AuditQuestion';
-export interface IQuestionFilters {
+export interface CreateAuditQuestionDTO {
+    clauseId: string;
+    clauseTitle?: string;
+    clauseGroup?: string;
+    text: string;
+    objective?: string;
+    guidance?: string;
+    evidenceExpected?: string;
+    conformityCriteria?: string;
+    nonconformityCriteria?: string;
+    criticality?: 'low' | 'medium' | 'high' | 'critical';
+    relatedControls?: string[];
+    relatedDocuments?: string[];
+    order?: number;
+    active?: boolean;
+}
+export interface UpdateAuditQuestionDTO {
+    clauseId?: string;
+    clauseTitle?: string;
+    clauseGroup?: string;
+    text?: string;
+    objective?: string;
+    guidance?: string;
+    evidenceExpected?: string;
+    conformityCriteria?: string;
+    nonconformityCriteria?: string;
+    criticality?: 'low' | 'medium' | 'high' | 'critical';
+    relatedControls?: string[];
+    relatedDocuments?: string[];
+    order?: number;
+    active?: boolean;
+}
+export interface AuditQuestionFilters {
+    clauseId?: string;
+    clauseGroup?: string;
+    criticality?: 'low' | 'medium' | 'high' | 'critical';
+    active?: boolean;
     search?: string;
-    category?: 'clause' | 'control';
-    isActive?: boolean;
-    clause?: string;
-    section?: string;
 }
 export declare class AuditQuestionService {
     /**
-     * Criar uma nova pergunta
+     * Cria uma nova pergunta de auditoria.
      */
-    create(data: Partial<IAuditQuestion>, userId: string): Promise<IAuditQuestion>;
+    create(data: CreateAuditQuestionDTO, createdBy: string): Promise<IAuditQuestion>;
     /**
-     * Listar perguntas com filtros
+     * Lista todas as perguntas com filtros opcionais.
      */
-    findAll(filters?: IQuestionFilters): Promise<IAuditQuestion[]>;
+    findAll(filters?: AuditQuestionFilters): Promise<IAuditQuestion[]>;
     /**
-     * Buscar pergunta por ID
+     * Busca uma pergunta por ID.
      */
     findById(id: string): Promise<IAuditQuestion | null>;
     /**
-     * Atualizar pergunta
+     * Atualiza uma pergunta.
      */
-    update(id: string, data: Partial<IAuditQuestion>, userId: string): Promise<IAuditQuestion | null>;
+    update(id: string, data: UpdateAuditQuestionDTO): Promise<IAuditQuestion | null>;
     /**
-     * Ativar/Desativar pergunta
+     * Soft delete — marca como deletada, não remove fisicamente.
      */
-    toggleStatus(id: string, isActive: boolean, userId: string): Promise<IAuditQuestion | null>;
+    delete(id: string): Promise<boolean>;
     /**
-     * Excluir pergunta (soft delete)
-     */
-    delete(id: string, userId: string): Promise<IAuditQuestion | null>;
-    /**
-     * Buscar perguntas por cláusula
-     */
-    findByClause(clause: string, onlyActive?: boolean): Promise<IAuditQuestion[]>;
-    /**
-     * Buscar perguntas por seção
-     */
-    findBySection(section: string, onlyActive?: boolean): Promise<IAuditQuestion[]>;
-    /**
-     * Buscar perguntas por controle
-     */
-    findByControlId(controlId: string, onlyActive?: boolean): Promise<IAuditQuestion[]>;
-    /**
-     * Obter estatísticas das perguntas
+     * Estatísticas das perguntas.
      */
     getStats(): Promise<{
         total: number;
         active: number;
         inactive: number;
-        byCategory: {
-            clause: number;
-            control: number;
-        };
-        bySection: Record<string, number>;
+        byCriticality: Record<string, number>;
+        byClauseGroup: Record<string, number>;
     }>;
 }
 export declare const auditQuestionService: AuditQuestionService;

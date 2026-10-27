@@ -1,19 +1,51 @@
 import { IAuditRisk } from '../models/AuditRisk';
 export declare class AuditRiskService {
     /**
-     * Criar novo risco
+     * ============================================================
+     * GERAR PRÓXIMO IDENTIFICADOR DO RISCO
+     * ============================================================
+     *
+     * O identificador é sequencial dentro da empresa.
+     *
+     * Exemplo:
+     *
+     * Empresa A:
+     * R-001
+     * R-002
+     *
+     * Empresa B:
+     * R-001
+     * R-002
+     */
+    private generateNextRiskId;
+    /**
+     * ============================================================
+     * CRIAR NOVO RISCO
+     * ============================================================
      */
     create(data: Partial<IAuditRisk>): Promise<IAuditRisk>;
     /**
-     * Buscar risco por ID
+     * ============================================================
+     * BUSCAR RISCO POR OBJECT ID
+     * ============================================================
+     *
+     * IMPORTANTE:
+     *
+     * Nunca buscar somente pelo _id.
+     *
+     * A empresa também precisa fazer parte do filtro.
      */
-    findById(id: string): Promise<IAuditRisk | null>;
+    findById(companyId: string, id: string): Promise<IAuditRisk | null>;
     /**
-     * Buscar risco por ID (identificador único)
+     * ============================================================
+     * BUSCAR RISCO PELO IDENTIFICADOR FUNCIONAL
+     * ============================================================
      */
     findByRiskId(companyId: string, riskId: string): Promise<IAuditRisk | null>;
     /**
-     * Listar riscos de uma empresa
+     * ============================================================
+     * LISTAR RISCOS DE UMA EMPRESA
+     * ============================================================
      */
     findAllByCompany(companyId: string, options?: {
         status?: string;
@@ -23,21 +55,29 @@ export declare class AuditRiskService {
         skip?: number;
     }): Promise<IAuditRisk[]>;
     /**
-     * Atualizar risco
+     * ============================================================
+     * ATUALIZAR RISCO
+     * ============================================================
+     *
+     * O risco somente pode ser atualizado se pertencer à empresa.
      */
-    update(id: string, data: Partial<IAuditRisk>): Promise<IAuditRisk | null>;
+    update(companyId: string, id: string, data: Partial<IAuditRisk>): Promise<IAuditRisk | null>;
     /**
-     * Atualizar avaliação do risco (probabilidade e impacto)
+     * ============================================================
+     * ATUALIZAR AVALIAÇÃO DO RISCO
+     * ============================================================
      */
-    updateAssessment(id: string, data: {
+    updateAssessment(companyId: string, id: string, data: {
         probability: 1 | 2 | 3 | 4 | 5;
         impact: 1 | 2 | 3 | 4 | 5;
         updatedBy: string;
     }): Promise<IAuditRisk | null>;
     /**
-     * Tratar risco (aplicar tratamento)
+     * ============================================================
+     * TRATAR RISCO
+     * ============================================================
      */
-    treatRisk(id: string, data: {
+    treatRisk(companyId: string, id: string, data: {
         treatment: 'accept' | 'mitigate' | 'transfer' | 'avoid';
         treatmentPlan: string;
         probabilityAfter: 1 | 2 | 3 | 4 | 5;
@@ -46,33 +86,45 @@ export declare class AuditRiskService {
         treatedBy: string;
     }): Promise<IAuditRisk | null>;
     /**
-     * Monitorar risco (após tratamento)
+     * ============================================================
+     * MONITORAR RISCO
+     * ============================================================
      */
-    monitorRisk(id: string, data: {
+    monitorRisk(companyId: string, id: string, data: {
         status: 'monitored' | 'closed';
         updatedBy: string;
     }): Promise<IAuditRisk | null>;
     /**
-     * Reabrir risco
+     * ============================================================
+     * REABRIR RISCO
+     * ============================================================
      */
-    reopenRisk(id: string, data: {
+    reopenRisk(companyId: string, id: string, data: {
         reason: string;
         updatedBy: string;
     }): Promise<IAuditRisk | null>;
     /**
-     * Excluir risco (soft delete)
+     * ============================================================
+     * SOFT DELETE
+     * ============================================================
      */
-    delete(id: string): Promise<IAuditRisk | null>;
+    delete(companyId: string, id: string): Promise<IAuditRisk | null>;
     /**
-     * Obter estatísticas de riscos
+     * ============================================================
+     * ESTATÍSTICAS
+     * ============================================================
      */
     getStatistics(companyId: string): Promise<any>;
     /**
-     * Obter riscos críticos (high e critical)
+     * ============================================================
+     * RISCOS CRÍTICOS
+     * ============================================================
      */
     getCriticalRisks(companyId: string): Promise<IAuditRisk[]>;
     /**
-     * Exportar riscos para formato de planilha
+     * ============================================================
+     * EXPORTAÇÃO
+     * ============================================================
      */
     exportToSpreadsheet(companyId: string): Promise<any>;
 }

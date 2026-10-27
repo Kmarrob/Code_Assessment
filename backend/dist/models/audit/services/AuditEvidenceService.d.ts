@@ -1,4 +1,4 @@
-import { IAuditEvidence } from '../types/audit.types';
+import { IAuditEvidence, IAuditEvidenceQuestionRef } from '../types/audit.types';
 export declare class AuditEvidenceService {
     create(data: {
         auditPlanId: string;
@@ -8,6 +8,7 @@ export declare class AuditEvidenceService {
         mimeType: string;
         size: number;
         description?: string;
+        questionRef?: IAuditEvidenceQuestionRef;
     }, uploadedBy: string): Promise<IAuditEvidence>;
     findByPlanId(auditPlanId: string): Promise<IAuditEvidence[]>;
     findByFindingId(findingId: string): Promise<IAuditEvidence[]>;

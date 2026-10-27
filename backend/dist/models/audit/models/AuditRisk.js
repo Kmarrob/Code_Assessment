@@ -35,7 +35,10 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuditRisk = void 0;
 const mongoose_1 = __importStar(require("mongoose"));
-// Função auxiliar para calcular nível de risco
+/**
+ * Calcula o nível de risco com base na probabilidade
+ * e no impacto.
+ */
 function calculateRiskLevel(probability, impact) {
     const score = probability * impact;
     if (score <= 4)
@@ -47,15 +50,92 @@ function calculateRiskLevel(probability, impact) {
     return 'critical';
 }
 const AuditRiskSchema = new mongoose_1.Schema({
-    companyId: { type: String, required: true, index: true },
-    auditPlanId: { type: String, index: true },
-    id: { type: String, required: true, unique: true },
-    description: { type: String, required: true },
-    eventOrAsset: { type: String, required: true },
-    owner: { type: String, required: true },
-    threat: { type: String, required: true },
-    vulnerability: { type: String, required: true },
-    existingControl: { type: String, required: true },
+    /**
+     * TENANT ISOLATION
+     *
+     * Este campo identifica a empresa proprietária do risco.
+     *
+     * IMPORTANTE:
+     * O controller deve sempre obter este valor a partir do
+     * usuário autenticado e nunca confiar somente no valor
+     * enviado pelo frontend.
+     */
+    companyId: {
+        type: String,
+        required: true,
+        index: true,
+        trim: true,
+    },
+    /**
+     * Plano de auditoria ao qual o risco está vinculado.
+     *
+     * Também pertence indiretamente ao tenant através do
+     * AuditPlan.
+     */
+    auditPlanId: {
+        type: String,
+        index: true,
+        trim: true,
+    },
+    /**
+     * Identificador funcional do risco.
+     *
+     * Exemplo:
+     * R-001
+     * R-002
+     *
+     * ATENÇÃO:
+     * Não utilizar unique: true aqui.
+     *
+     * A unicidade deve ser composta por:
+     * companyId + id
+     *
+     * permitindo:
+     *
+     * Empresa A → R-001
+     * Empresa B → R-001
+     */
+    id: {
+        type: String,
+        required: true,
+        trim: true,
+    },
+    // ==========================================================
+    // DADOS DO RISCO
+    // ==========================================================
+    description: {
+        type: String,
+        required: true,
+        trim: true,
+    },
+    eventOrAsset: {
+        type: String,
+        required: true,
+        trim: true,
+    },
+    owner: {
+        type: String,
+        required: true,
+        trim: true,
+    },
+    threat: {
+        type: String,
+        required: true,
+        trim: true,
+    },
+    vulnerability: {
+        type: String,
+        required: true,
+        trim: true,
+    },
+    existingControl: {
+        type: String,
+        required: true,
+        trim: true,
+    },
+    // ==========================================================
+    // AVALIAÇÃO
+    // ==========================================================
     probability: {
         type: Number,
         enum: [1, 2, 3, 4, 5],
@@ -71,13 +151,26 @@ const AuditRiskSchema = new mongoose_1.Schema({
         enum: ['low', 'medium', 'high', 'critical'],
         required: true,
     },
-    riskClassification: { type: String, required: true },
+    riskClassification: {
+        type: String,
+        required: true,
+        trim: true,
+    },
+    // ==========================================================
+    // TRATAMENTO
+    // ==========================================================
     treatment: {
         type: String,
         enum: ['accept', 'mitigate', 'transfer', 'avoid'],
         required: true,
     },
-    treatmentPlan: { type: String, required: true },
+    treatmentPlan: {
+        type: String,
+        required: true,
+    },
+    // ==========================================================
+    // RISCO RESIDUAL
+    // ==========================================================
     probabilityAfter: {
         type: Number,
         enum: [1, 2, 3, 4, 5],
@@ -93,40 +186,141 @@ const AuditRiskSchema = new mongoose_1.Schema({
         enum: ['low', 'medium', 'high', 'critical'],
         required: true,
     },
+    // ==========================================================
+    // STATUS
+    // ==========================================================
     status: {
         type: String,
-        enum: ['identified', 'analyzed', 'treated', 'monitored', 'closed'],
+        enum: [
+            'identified',
+            'analyzed',
+            'treated',
+            'monitored',
+            'closed',
+        ],
         default: 'identified',
     },
-    treatmentDeadline: { type: Date },
-    treatedAt: { type: Date },
-    treatedBy: { type: String },
-    createdBy: { type: String, required: true },
-    updatedBy: { type: String, required: true },
-    deletedAt: { type: Date },
+    treatmentDeadline: {
+        type: Date,
+    },
+    treatedAt: {
+        type: Date,
+    },
+    treatedBy: {
+        type: String,
+    },
+    // ==========================================================
+    // AUDITORIA
+    // ==========================================================
+    createdBy: {
+        type: String,
+        required: true,
+    },
+    updatedBy: {
+        type: String,
+        required: true,
+    },
+    deletedAt: {
+        type: Date,
+        default: null,
+    },
 }, {
     timestamps: true,
-    toJSON: { virtuals: true },
-    toObject: { virtuals: true },
+    toJSON: {
+        virtuals: true,
+    },
+    toObject: {
+        virtuals: true,
+    },
 });
-// Índices
-AuditRiskSchema.index({ companyId: 1, id: 1 }, { unique: true });
-AuditRiskSchema.index({ companyId: 1, status: 1 });
-AuditRiskSchema.index({ companyId: 1, riskLevel: 1 });
-// Middleware para soft delete
+// ============================================================
+// ÍNDICES
+// ============================================================
+/**
+ * Identificador funcional único dentro da empresa.
+ *
+ * Permite:
+ *
+ * Empresa A → R-001
+ * Empresa B → R-001
+ *
+ * mas impede:
+ *
+ * Empresa A → R-001
+ * Empresa A → R-001
+ */
+AuditRiskSchema.index({
+    companyId: 1,
+    id: 1,
+}, {
+    unique: true,
+});
+/**
+ * Consultas por empresa e status.
+ */
+AuditRiskSchema.index({
+    companyId: 1,
+    status: 1,
+});
+/**
+ * Consultas por empresa e nível de risco.
+ */
+AuditRiskSchema.index({
+    companyId: 1,
+    riskLevel: 1,
+});
+/**
+ * Consultas por empresa e plano de auditoria.
+ */
+AuditRiskSchema.index({
+    companyId: 1,
+    auditPlanId: 1,
+});
+/**
+ * Consultas de riscos ativos.
+ */
+AuditRiskSchema.index({
+    companyId: 1,
+    deletedAt: 1,
+});
+// ============================================================
+// SOFT DELETE
+// ============================================================
+/**
+ * Impede que riscos excluídos logicamente sejam retornados
+ * pelas consultas normais.
+ */
 AuditRiskSchema.pre('find', function () {
-    this.where({ deletedAt: null });
+    this.where({
+        deletedAt: null,
+    });
 });
 AuditRiskSchema.pre('findOne', function () {
-    this.where({ deletedAt: null });
+    this.where({
+        deletedAt: null,
+    });
 });
-// Middleware para calcular níveis automaticamente antes de salvar
+AuditRiskSchema.pre('findOneAndUpdate', function () {
+    this.where({
+        deletedAt: null,
+    });
+});
+// ============================================================
+// CÁLCULO AUTOMÁTICO DO RISCO
+// ============================================================
 AuditRiskSchema.pre('save', function (next) {
-    // Calcular nível de risco
+    /**
+     * Risco inerente.
+     */
     this.riskLevel = calculateRiskLevel(this.probability, this.impact);
-    // Calcular risco residual
+    /**
+     * Risco residual.
+     */
     this.residualRisk = calculateRiskLevel(this.probabilityAfter, this.impactAfter);
     next();
 });
+// ============================================================
+// MODEL
+// ============================================================
 exports.AuditRisk = mongoose_1.default.model('AuditRisk', AuditRiskSchema);
 //# sourceMappingURL=AuditRisk.js.map

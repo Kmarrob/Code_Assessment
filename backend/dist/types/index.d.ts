@@ -39,7 +39,10 @@ export declare enum UserRole {
     ADMIN = "admin",
     REP = "rep",
     CONSULTANT = "consultant",
-    USER = "user"
+    USER = "user",
+    AUDITOR_LEAD = "auditor_lead",// Auditor Líder (aprova + executa + vê relatórios)
+    AUDITOR = "auditor",// Auditor (executa em parceria + vê relatórios)
+    OBSERVER = "observer"
 }
 export declare enum ResponseStatus {
     PENDING = "pending",

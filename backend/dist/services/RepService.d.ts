@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import { ResponseStatus } from '../types/index.js';
+import { UserRole, ResponseStatus } from '../types/index.js';
 interface ListUsersResult {
     users: any[];
     pagination: {
@@ -23,12 +23,34 @@ export declare class RepService {
     }): Promise<ListUsersResult>;
     /**
      * Criar usuário pelo preposto (com senha automática)
+     *
+     * ============================================================
+     * 🆕 v52.0 — SUPORTE A ROLES DE AUDITORIA
+     * ============================================================
+     *
+     * MOTIVO:
+     *   O REP agora pode cadastrar usuários com 4 roles diferentes:
+     *     - user (usuário comum — responde assessment)
+     *     - auditor_lead (auditor líder — aprova e executa)
+     *     - auditor (auditor — executa em parceria)
+     *     - observer (observador — somente leitura)
+     *
+     * COMPATIBILIDADE:
+     *   - Se `role` não for passado, usa `user` (comportamento antigo).
+     *   - Se `role` for inválido (admin/rep/consultant), rejeita.
+     *
+     * SEGURANÇA:
+     *   - Lista de roles permitidos é explícita (whitelist).
+     *   - Role `admin`, `rep`, `consultant` NUNCA pode ser criado aqui.
+     *
+     * ============================================================
      */
     static createUser(repId: string, userData: {
         name: string;
         email: string;
         password?: string;
         department?: string;
+        role?: UserRole;
     }): Promise<mongoose.FlattenMaps<import("../models/User.js").IUserDocument> & Required<{
         _id: mongoose.Types.ObjectId;
     }> & {
@@ -36,11 +58,27 @@ export declare class RepService {
     }>;
     /**
      * Editar usuário pelo preposto
+     *
+     * ============================================================
+     * 🆕 v52.0 — SUPORTE A EDIÇÃO DE ROLE
+     * ============================================================
+     *
+     * MOTIVO:
+     *   O REP precisa poder alterar o role de um usuário depois de
+     *   criado (ex.: promover user → auditor, ou rebaixar auditor
+     *   → observer).
+     *
+     * REGRAS:
+     *   - Só aceita roles da lista permitida (whitelist).
+     *   - Não permite alterar para rep/admin/consultant.
+     *
+     * ============================================================
      */
     static updateUser(repId: string, userId: string, data: {
         name?: string;
         email?: string;
         department?: string;
+        role?: UserRole;
     }): Promise<(mongoose.Document<unknown, {}, import("../models/User.js").IUserDocument, {}, {}> & import("../models/User.js").IUserDocument & Required<{
         _id: mongoose.Types.ObjectId;
     }> & {

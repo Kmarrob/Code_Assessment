@@ -1,0 +1,14 @@
+[
+  {
+    "controlId": "6.7",
+    "controlName": "Trabalho remoto",
+    "controlGroup": "A.6 Pessoas",
+    "controlDescription": "As medidas de segurança devem ser implementadas quando o pessoal estiver trabalhando remotamente para proteger as informações acessadas, processadas ou armazenadas fora das instalações da organização.",
+    "text": "A política de trabalho remoto considera as características do local de trabalho remoto, como armários com chave, transporte seguro entre locais, regras de acesso remoto, mesa limpa, impressão e descarte de informações?",
+    "objective": "Verificar se a política trata dos aspectos físicos e operacionais do ambiente de trabalho remoto.",
+    "guidance": "Analise a política de trabalho remoto e verifique se ela inclui requisitos específicos sobre o local físico, incluindo mobiliário seguro, transporte de documentos, regras de mesa limpa e descarte.",
+    "evidenceExpected": "Política de trabalho remoto com seção específica sobre as características do local de trabalho remoto.",
+    "order": 5,
+    "active": true
+  }
+]

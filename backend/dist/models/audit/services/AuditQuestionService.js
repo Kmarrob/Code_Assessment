@@ -1,139 +1,207 @@
 "use strict";
+// ============================================================
+// AuditQuestionService.ts
+// ============================================================
+//
+// SERVIÇO: Gerenciamento de perguntas de auditoria de cláusulas
+//
+// RESPONSABILIDADES:
+//   - CRUD de perguntas (create, findAll, findById, update, delete)
+//   - Filtros por cláusula, grupo, criticidade, ativo
+//   - Estatísticas (total, por grupo, por criticidade)
+//   - Soft delete
+//
+// ACESSO:
+//   Apenas ADMIN (a validação de role fica nas rotas)
+//
+// ============================================================
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.auditQuestionService = exports.AuditQuestionService = void 0;
 const AuditQuestion_1 = require("../models/AuditQuestion");
+// ============================================================
+// HELPER
+// ============================================================
+function mapToIAuditQuestion(doc) {
+    if (!doc)
+        return null;
+    const obj = typeof doc.toObject === 'function' ? doc.toObject() : doc;
+    return {
+        ...obj,
+        id: obj._id ? obj._id.toString() : obj.id,
+    };
+}
+function isValidObjectId(id) {
+    return require('mongoose').Types.ObjectId.isValid(id);
+}
+// ============================================================
+// SERVICE
+// ============================================================
 class AuditQuestionService {
     /**
-     * Criar uma nova pergunta
+     * Cria uma nova pergunta de auditoria.
      */
-    async create(data, userId) {
+    async create(data, createdBy) {
+        if (!data.clauseId || !data.clauseId.trim()) {
+            throw new Error('ID da cláusula é obrigatório');
+        }
+        if (!data.text || data.text.trim().length < 5) {
+            throw new Error('Texto da pergunta deve ter no mínimo 5 caracteres');
+        }
+        if (!createdBy) {
+            throw new Error('Usuário criador é obrigatório');
+        }
         const question = new AuditQuestion_1.AuditQuestion({
-            ...data,
-            createdBy: userId,
-            updatedBy: userId,
+            clauseId: data.clauseId.trim(),
+            clauseTitle: data.clauseTitle?.trim() || '',
+            clauseGroup: data.clauseGroup?.trim() || '',
+            text: data.text.trim(),
+            objective: data.objective?.trim() || '',
+            guidance: data.guidance?.trim() || '',
+            evidenceExpected: data.evidenceExpected?.trim() || '',
+            conformityCriteria: data.conformityCriteria?.trim() || '',
+            nonconformityCriteria: data.nonconformityCriteria?.trim() || '',
+            criticality: data.criticality || 'medium',
+            relatedControls: Array.isArray(data.relatedControls) ? data.relatedControls : [],
+            relatedDocuments: Array.isArray(data.relatedDocuments) ? data.relatedDocuments : [],
+            order: typeof data.order === 'number' ? data.order : 1,
+            active: data.active !== undefined ? data.active : true,
+            createdBy,
         });
-        return await question.save();
+        await question.save();
+        return mapToIAuditQuestion(question.toObject());
     }
     /**
-     * Listar perguntas com filtros
+     * Lista todas as perguntas com filtros opcionais.
      */
     async findAll(filters = {}) {
-        const query = { deletedAt: null };
-        if (filters.category) {
-            query.category = filters.category;
+        const query = {};
+        if (filters.clauseId) {
+            query.clauseId = filters.clauseId;
         }
-        if (filters.isActive !== undefined) {
-            query.isActive = filters.isActive;
+        if (filters.clauseGroup) {
+            query.clauseGroup = filters.clauseGroup;
         }
-        if (filters.clause) {
-            query.clause = filters.clause;
+        if (filters.criticality) {
+            query.criticality = filters.criticality;
         }
-        if (filters.section) {
-            query.section = filters.section;
+        if (filters.active !== undefined) {
+            query.active = filters.active;
         }
-        if (filters.search) {
-            const searchRegex = new RegExp(filters.search, 'i');
+        if (filters.search && filters.search.trim()) {
+            const escaped = filters.search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             query.$or = [
-                { text: searchRegex },
-                { clause: searchRegex },
-                { section: searchRegex },
+                { text: { $regex: escaped, $options: 'i' } },
+                { clauseTitle: { $regex: escaped, $options: 'i' } },
+                { clauseId: { $regex: escaped, $options: 'i' } },
             ];
         }
-        const results = await AuditQuestion_1.AuditQuestion.find(query)
-            .sort({ section: 1, order: 1, clause: 1 })
-            .exec();
-        return results.map((doc) => doc.toObject());
+        const docs = await AuditQuestion_1.AuditQuestion.find(query)
+            .sort({ clauseGroup: 1, clauseId: 1, order: 1 })
+            .lean();
+        return docs.map((doc) => mapToIAuditQuestion(doc));
     }
     /**
-     * Buscar pergunta por ID
+     * Busca uma pergunta por ID.
      */
     async findById(id) {
-        const result = await AuditQuestion_1.AuditQuestion.findOne({ _id: id, deletedAt: null }).exec();
-        return result ? result.toObject() : null;
-    }
-    /**
-     * Atualizar pergunta
-     */
-    async update(id, data, userId) {
-        const result = await AuditQuestion_1.AuditQuestion.findOneAndUpdate({ _id: id, deletedAt: null }, { ...data, updatedBy: userId }, { new: true, runValidators: true }).exec();
-        return result ? result.toObject() : null;
-    }
-    /**
-     * Ativar/Desativar pergunta
-     */
-    async toggleStatus(id, isActive, userId) {
-        const result = await AuditQuestion_1.AuditQuestion.findOneAndUpdate({ _id: id, deletedAt: null }, { isActive, updatedBy: userId }, { new: true }).exec();
-        return result ? result.toObject() : null;
-    }
-    /**
-     * Excluir pergunta (soft delete)
-     */
-    async delete(id, userId) {
-        const result = await AuditQuestion_1.AuditQuestion.findOneAndUpdate({ _id: id, deletedAt: null }, { deletedAt: new Date(), updatedBy: userId }, { new: true }).exec();
-        return result ? result.toObject() : null;
-    }
-    /**
-     * Buscar perguntas por cláusula
-     */
-    async findByClause(clause, onlyActive = true) {
-        const query = { clause, deletedAt: null };
-        if (onlyActive) {
-            query.isActive = true;
+        if (!isValidObjectId(id)) {
+            throw new Error('ID da pergunta inválido');
         }
-        const results = await AuditQuestion_1.AuditQuestion.find(query)
-            .sort({ order: 1 })
-            .exec();
-        return results.map((doc) => doc.toObject());
+        const doc = await AuditQuestion_1.AuditQuestion.findById(id).lean();
+        if (!doc)
+            return null;
+        return mapToIAuditQuestion(doc);
     }
     /**
-     * Buscar perguntas por seção
+     * Atualiza uma pergunta.
      */
-    async findBySection(section, onlyActive = true) {
-        const query = { section, deletedAt: null };
-        if (onlyActive) {
-            query.isActive = true;
+    async update(id, data) {
+        if (!isValidObjectId(id)) {
+            throw new Error('ID da pergunta inválido');
         }
-        const results = await AuditQuestion_1.AuditQuestion.find(query)
-            .sort({ clause: 1, order: 1 })
-            .exec();
-        return results.map((doc) => doc.toObject());
+        const question = await AuditQuestion_1.AuditQuestion.findById(id);
+        if (!question) {
+            throw new Error('Pergunta não encontrada');
+        }
+        // Atualiza campos permitidos
+        if (data.clauseId !== undefined)
+            question.clauseId = data.clauseId.trim();
+        if (data.clauseTitle !== undefined)
+            question.clauseTitle = data.clauseTitle.trim();
+        if (data.clauseGroup !== undefined)
+            question.clauseGroup = data.clauseGroup.trim();
+        if (data.text !== undefined) {
+            const trimmed = data.text.trim();
+            if (trimmed.length < 5) {
+                throw new Error('Texto da pergunta deve ter no mínimo 5 caracteres');
+            }
+            question.text = trimmed;
+        }
+        if (data.objective !== undefined)
+            question.objective = data.objective.trim();
+        if (data.guidance !== undefined)
+            question.guidance = data.guidance.trim();
+        if (data.evidenceExpected !== undefined)
+            question.evidenceExpected = data.evidenceExpected.trim();
+        if (data.conformityCriteria !== undefined)
+            question.conformityCriteria = data.conformityCriteria.trim();
+        if (data.nonconformityCriteria !== undefined)
+            question.nonconformityCriteria = data.nonconformityCriteria.trim();
+        if (data.criticality !== undefined)
+            question.criticality = data.criticality;
+        if (data.relatedControls !== undefined)
+            question.relatedControls = data.relatedControls;
+        if (data.relatedDocuments !== undefined)
+            question.relatedDocuments = data.relatedDocuments;
+        if (data.order !== undefined)
+            question.order = data.order;
+        if (data.active !== undefined)
+            question.active = data.active;
+        await question.save();
+        return mapToIAuditQuestion(question.toObject());
     }
     /**
-     * Buscar perguntas por controle
+     * Soft delete — marca como deletada, não remove fisicamente.
      */
-    async findByControlId(controlId, onlyActive = true) {
-        const query = { controlId, category: 'control', deletedAt: null };
-        if (onlyActive) {
-            query.isActive = true;
+    async delete(id) {
+        if (!isValidObjectId(id)) {
+            throw new Error('ID da pergunta inválido');
         }
-        const results = await AuditQuestion_1.AuditQuestion.find(query)
-            .sort({ order: 1 })
-            .exec();
-        return results.map((doc) => doc.toObject());
+        const question = await AuditQuestion_1.AuditQuestion.findById(id);
+        if (!question) {
+            throw new Error('Pergunta não encontrada');
+        }
+        question.deletedAt = new Date();
+        await question.save();
+        return true;
     }
     /**
-     * Obter estatísticas das perguntas
+     * Estatísticas das perguntas.
      */
     async getStats() {
-        const total = await AuditQuestion_1.AuditQuestion.countDocuments({ deletedAt: null });
-        const active = await AuditQuestion_1.AuditQuestion.countDocuments({ deletedAt: null, isActive: true });
-        const inactive = await AuditQuestion_1.AuditQuestion.countDocuments({ deletedAt: null, isActive: false });
-        const byCategory = {
-            clause: await AuditQuestion_1.AuditQuestion.countDocuments({ deletedAt: null, category: 'clause' }),
-            control: await AuditQuestion_1.AuditQuestion.countDocuments({ deletedAt: null, category: 'control' }),
+        const total = await AuditQuestion_1.AuditQuestion.countDocuments();
+        const active = await AuditQuestion_1.AuditQuestion.countDocuments({ active: true });
+        const inactive = await AuditQuestion_1.AuditQuestion.countDocuments({ active: false });
+        const byCriticality = {
+            critical: await AuditQuestion_1.AuditQuestion.countDocuments({ criticality: 'critical' }),
+            high: await AuditQuestion_1.AuditQuestion.countDocuments({ criticality: 'high' }),
+            medium: await AuditQuestion_1.AuditQuestion.countDocuments({ criticality: 'medium' }),
+            low: await AuditQuestion_1.AuditQuestion.countDocuments({ criticality: 'low' }),
         };
-        const sections = await AuditQuestion_1.AuditQuestion.aggregate([
+        const groupAgg = await AuditQuestion_1.AuditQuestion.aggregate([
             { $match: { deletedAt: null } },
-            { $group: { _id: '$section', count: { $sum: 1 } } },
-            { $sort: { _id: 1 } },
+            { $group: { _id: '$clauseGroup', count: { $sum: 1 } } },
         ]);
-        const bySection = {};
-        sections.forEach((s) => {
-            bySection[s._id] = s.count;
+        const byClauseGroup = {};
+        groupAgg.forEach((g) => {
+            byClauseGroup[g._id || 'Sem grupo'] = g.count;
         });
-        return { total, active, inactive, byCategory, bySection };
+        return { total, active, inactive, byCriticality, byClauseGroup };
     }
 }
 exports.AuditQuestionService = AuditQuestionService;
+// ============================================================
+// INSTÂNCIA SINGLETON (padrão do projeto)
+// ============================================================
 exports.auditQuestionService = new AuditQuestionService();
 //# sourceMappingURL=AuditQuestionService.js.map

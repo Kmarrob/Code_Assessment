@@ -12,6 +12,8 @@ export interface INotificationMetadata {
     status?: string;
     reason?: string;
     pendingCount?: number;
+    planId?: string;
+    planTitle?: string;
 }
 export interface INotification extends Document {
     userId: mongoose.Types.ObjectId;

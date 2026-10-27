@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.AuditDocumentReview = exports.AuditRisk = exports.AuditSoA = exports.AuditProgram = exports.AuditReport = exports.AuditActionPlan = exports.AuditEvidence = exports.AuditFinding = exports.AuditChecklist = exports.AuditPlan = void 0;
+exports.AuditControlQuestion = exports.AuditQuestion = exports.AuditDocumentReview = exports.AuditRisk = exports.AuditSoA = exports.AuditProgram = exports.AuditReport = exports.AuditActionPlan = exports.AuditEvidence = exports.AuditFinding = exports.AuditChecklist = exports.AuditPlan = void 0;
 var AuditPlan_1 = require("./AuditPlan");
 Object.defineProperty(exports, "AuditPlan", { enumerable: true, get: function () { return AuditPlan_1.AuditPlan; } });
 var AuditChecklist_1 = require("./AuditChecklist");
@@ -21,4 +21,15 @@ var AuditRisk_1 = require("./AuditRisk");
 Object.defineProperty(exports, "AuditRisk", { enumerable: true, get: function () { return AuditRisk_1.AuditRisk; } });
 var AuditDocumentReview_1 = require("./AuditDocumentReview");
 Object.defineProperty(exports, "AuditDocumentReview", { enumerable: true, get: function () { return AuditDocumentReview_1.AuditDocumentReview; } });
+var AuditQuestion_1 = require("./AuditQuestion");
+Object.defineProperty(exports, "AuditQuestion", { enumerable: true, get: function () { return AuditQuestion_1.AuditQuestion; } });
+// ============================================================
+// 🆕 v50.1 — Perguntas de auditoria por controle (Anexo A)
+// ============================================================
+// Coleção nova e isolada para armazenar as perguntas de
+// auditoria dos 93 controles (ISO 27001:2022 Anexo A).
+// Diferente de AuditQuestion (cláusulas 4-10) e de Question
+// (Assessment do usuário).
+var AuditControlQuestion_1 = require("./AuditControlQuestion");
+Object.defineProperty(exports, "AuditControlQuestion", { enumerable: true, get: function () { return AuditControlQuestion_1.AuditControlQuestion; } });
 //# sourceMappingURL=index.js.map

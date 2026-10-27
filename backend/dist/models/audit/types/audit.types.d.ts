@@ -1,35 +1,220 @@
-export type AuditStatus = 'draft' | 'pending_approval' | 'approved' | 'in_progress' | 'completed' | 'cancelled';
-export type AuditFindingType = 'nc_a' | 'nc_b' | 'comment' | 'opportunity' | 'positive';
+export type AuditStatus = 'draft' | 'submitted' | 'pending_approval' | 'approved' | 'rejected' | 'in_progress' | 'completed' | 'cancelled';
+export type AuditFindingType = 'NC_A' | 'NC_B' | 'CM' | 'OM' | 'AP';
 export type AuditFindingStatus = 'open' | 'in_progress' | 'pending_validation' | 'closed' | 'reopened';
 export type AuditActionStatus = 'pending' | 'in_progress' | 'completed' | 'rejected';
 export type AuditReportStatus = 'draft' | 'pending_review' | 'approved' | 'rejected';
 export type AuditChecklistStatus = 'pending' | 'in_progress' | 'completed';
+export type AuditScopeMode = 'all' | 'custom';
+export type AuditProgramStatus = 'draft' | 'approved' | 'active' | 'archived';
+export type SectorImportance = 'critical' | 'standard';
+export type SectorFrequency = 'annual' | 'semiannual' | 'quarterly';
+export type ExternalAuditStatus = 'not_planned' | 'scheduled' | 'in_progress' | 'completed' | 'cancelled';
+export interface IAuditProgramSector {
+    name: string;
+    processes: string[];
+    importance: SectorImportance;
+    scoreA: number;
+    scoreB: number;
+    frequency: SectorFrequency;
+    nextAuditDate?: Date;
+}
+export interface IAuditProgramSupplierAudit {
+    supplierName: string;
+    supplierId?: string;
+    auditDate: Date;
+    scope: string;
+}
+export interface IAuditProgramExternalAudit {
+    plannedDate?: Date;
+    certificationBody?: string;
+    scope?: string;
+    status: ExternalAuditStatus;
+}
+export interface IAuditProgramActivity {
+    name: string;
+    description?: string;
+    scheduledDate: Date;
+}
+export interface IAuditProgram {
+    _id: string;
+    id: string;
+    companyId: string;
+    year: number;
+    sectors: IAuditProgramSector[];
+    supplierAudits: IAuditProgramSupplierAudit[];
+    externalAudit: IAuditProgramExternalAudit;
+    otherActivities: IAuditProgramActivity[];
+    observations?: string;
+    status: AuditProgramStatus;
+    createdBy: string;
+    createdAt: Date;
+    updatedAt: Date;
+    deletedAt?: Date;
+}
+export interface IAuditSoAMotivators {
+    business: boolean;
+    risk: boolean;
+    legal: boolean;
+    contract: boolean;
+}
+export interface IAuditSoAControl {
+    clause: string;
+    title: string;
+    objective: string;
+    motivators: IAuditSoAMotivators;
+    applicable: boolean;
+    justification?: string;
+    lastAssessmentDate?: Date;
+    implemented: boolean;
+    implementationDate?: Date;
+    responsible?: string;
+    evidence?: string;
+}
+export interface IAuditSoAStatistics {
+    total: number;
+    applicable: number;
+    notApplicable: number;
+    implemented: number;
+    notImplemented: number;
+}
+export interface IAuditSoA {
+    _id: string;
+    id: string;
+    companyId: string;
+    version: string;
+    controls: IAuditSoAControl[];
+    statistics: IAuditSoAStatistics;
+    observations?: string;
+    status: 'draft' | 'approved' | 'archived';
+    createdBy: string;
+    approvedBy?: string;
+    approvedAt?: Date;
+    createdAt: Date;
+    updatedAt: Date;
+    deletedAt?: Date;
+}
+export type RiskTreatment = 'accept' | 'mitigate' | 'transfer' | 'avoid';
+export type RiskStatus = 'identified' | 'analyzed' | 'treated' | 'monitored' | 'closed';
+export interface IAuditRisk {
+    _id: string;
+    id: string;
+    companyId: string;
+    auditPlanId?: string;
+    riskId: string;
+    description: string;
+    eventOrAsset: string;
+    owner: string;
+    threat: string;
+    vulnerability: string;
+    existingControl: string;
+    probability: number;
+    impact: number;
+    riskLevel: number;
+    riskClassification: string;
+    treatment: RiskTreatment;
+    treatmentPlan?: string;
+    probabilityAfter?: number;
+    impactAfter?: number;
+    residualRisk?: number;
+    treatmentDeadline?: Date;
+    status: RiskStatus;
+    createdBy: string;
+    createdAt: Date;
+    updatedAt: Date;
+    deletedAt?: Date;
+}
+export type DocumentReviewStatus = 'OK' | 'NC_A' | 'NC_B' | 'PI' | 'GP' | 'CM' | '--';
+export interface IAuditDocumentReviewItem {
+    clause: string;
+    requirement: string;
+    status: DocumentReviewStatus;
+    observations?: string;
+    reviewer: string;
+    reviewDate: Date;
+    documentId?: string;
+    documentName?: string;
+}
+export interface IAuditDocumentReviewSummary {
+    total: number;
+    ok: number;
+    ncA: number;
+    ncB: number;
+    pi: number;
+    gp: number;
+    cm: number;
+    pending: number;
+}
+export interface IAuditDocumentReview {
+    _id: string;
+    id: string;
+    companyId: string;
+    auditPlanId: string;
+    documents: IAuditDocumentReviewItem[];
+    summary: IAuditDocumentReviewSummary;
+    observations?: string;
+    status: 'pending' | 'in_progress' | 'completed';
+    createdBy: string;
+    completedBy?: string;
+    completedAt?: Date;
+    createdAt: Date;
+    updatedAt: Date;
+    deletedAt?: Date;
+}
+export interface IAuditExcludedControl {
+    controlId: string;
+    reason: string;
+    excludedBy: string;
+    excludedAt: Date;
+    approvedBy?: string;
+    approvedAt?: Date;
+}
+export interface IAuditPlanScope {
+    mode: AuditScopeMode;
+    controls: string[];
+    excludedControls: IAuditExcludedControl[];
+    processes: string[];
+    areas: string[];
+    totalAvailableControls: number;
+}
+export interface IAuditPlanTeam {
+    leadAuditor: string;
+    auditors: string[];
+    observers: string[];
+    specialists?: string[];
+    leadAuditorName?: string;
+    leadAuditorEmail?: string;
+    auditorNames?: string[];
+    auditorEmails?: string[];
+    observerNames?: string[];
+    observerEmails?: string[];
+}
+export interface IAuditPlanPeriod {
+    startDate: Date;
+    endDate: Date;
+    estimatedDays: number;
+}
 export interface IAuditPlan {
     _id: string;
     id: string;
     companyId: string;
     title: string;
     description: string;
-    scope: {
-        controls: string[];
-        processes: string[];
-        areas: string[];
-    };
-    period: {
-        startDate: Date;
-        endDate: Date;
-    };
-    team: {
-        leadAuditor: string;
-        auditors: string[];
-        observers: string[];
-    };
+    code?: string;
+    programId?: string;
+    scope: IAuditPlanScope;
+    period: IAuditPlanPeriod;
+    team: IAuditPlanTeam;
     criteria: string[];
     status: AuditStatus;
     createdBy: string;
     createdAt: Date;
-    approvedBy: string;
-    approvedAt: Date;
+    approvedBy?: string;
+    approvedAt?: Date;
+    rejectionReason?: string;
+    startedAt?: Date;
+    completedAt?: Date;
+    completedBy?: string;
+    observations?: string;
     updatedAt: Date;
     deletedAt?: Date;
 }
@@ -51,15 +236,26 @@ export interface IAuditChecklistQuestion {
     answeredAt?: Date;
     answeredBy?: string;
 }
+export interface IAuditChecklistStatistics {
+    total: number;
+    conforme: number;
+    nonConforme: number;
+    observacao: number;
+    oportunidade: number;
+    naoAplicavel: number;
+}
 export interface IAuditChecklist {
     _id: string;
     id: string;
     auditPlanId: string;
     controlId: string;
     questions: IAuditChecklistQuestion[];
+    statistics: IAuditChecklistStatistics;
     status: AuditChecklistStatus;
-    completedBy: string;
-    completedAt: Date;
+    completedBy?: string;
+    completedAt?: Date;
+    createdBy: string;
+    updatedBy?: string;
     createdAt: Date;
     updatedAt: Date;
     deletedAt?: Date;
@@ -83,17 +279,33 @@ export interface IAuditFinding {
     status: AuditFindingStatus;
     createdBy: string;
     createdAt: Date;
-    validatedBy: string;
-    validatedAt: Date;
+    validatedBy?: string;
+    validatedAt?: Date;
     validationComment?: string;
+    reopenedAt?: Date;
+    reopenedBy?: string;
+    reopenReason?: string;
     updatedAt: Date;
     deletedAt?: Date;
+}
+export interface IAuditEvidenceQuestionRef {
+    /** ID do controle auditado (ex.: "5.1", "8.34"). */
+    controlId: string;
+    /**
+     * Índice zero-based da pergunta de auditoria dentro de
+     * `auditQuestions[]` do checklist.
+     *
+     * AUSENTE quando a evidência é da constatação final do
+     * controle (não de uma pergunta específica).
+     */
+    questionIndex?: number;
 }
 export interface IAuditEvidence {
     _id: string;
     id: string;
     auditPlanId: string;
     findingId?: string;
+    questionRef?: IAuditEvidenceQuestionRef;
     filename: string;
     filepath: string;
     mimeType: string;
@@ -117,9 +329,9 @@ export interface IAuditActionPlan {
     status: AuditActionStatus;
     createdBy: string;
     createdAt: Date;
-    validatedBy: string;
-    validatedAt: Date;
-    validationComment: string;
+    validatedBy?: string;
+    validatedAt?: Date;
+    validationComment?: string;
     updatedAt: Date;
     updatedBy?: string;
     deletedAt?: Date;
@@ -162,28 +374,42 @@ export interface IAuditReport {
     status: AuditReportStatus;
     createdBy: string;
     createdAt: Date;
-    approvedBy: string;
-    approvedAt: Date;
+    approvedBy?: string;
+    approvedAt?: Date;
     rejectionReason?: string;
     updatedAt: Date;
     deletedAt?: Date;
 }
 export interface CreateAuditPlanDTO {
+    code?: string;
     title: string;
     description: string;
     scope: {
-        controls: string[];
+        mode?: AuditScopeMode;
+        controls?: string[];
+        excludedControls?: Array<{
+            controlId: string;
+            reason: string;
+        }>;
         processes: string[];
         areas: string[];
     };
     period: {
-        startDate: Date;
-        endDate: Date;
+        startDate: Date | string;
+        endDate: Date | string;
+        estimatedDays?: number;
     };
     team: {
         leadAuditor: string;
         auditors: string[];
         observers?: string[];
+        specialists?: string[];
+        leadAuditorName?: string;
+        leadAuditorEmail?: string;
+        auditorNames?: string[];
+        auditorEmails?: string[];
+        observerNames?: string[];
+        observerEmails?: string[];
     };
     criteria: string[];
 }
@@ -196,16 +422,37 @@ export interface UpdateAuditPlanDTO {
         areas?: string[];
     };
     period?: {
-        startDate?: Date;
-        endDate?: Date;
+        startDate?: Date | string;
+        endDate?: Date | string;
     };
     team?: {
         leadAuditor?: string;
         auditors?: string[];
         observers?: string[];
+        specialists?: string[];
+        leadAuditorName?: string;
+        leadAuditorEmail?: string;
+        auditorNames?: string[];
+        auditorEmails?: string[];
+        observerNames?: string[];
+        observerEmails?: string[];
     };
     criteria?: string[];
     status?: AuditStatus;
+    observations?: string;
+}
+export interface ExcludeControlDTO {
+    controlId: string;
+    reason: string;
+}
+export interface ApproveExclusionDTO {
+    controlId: string;
+}
+export interface RejectExclusionDTO {
+    controlId: string;
+}
+export interface RemoveExclusionDTO {
+    controlId: string;
 }
 export interface CreateAuditFindingDTO {
     type: AuditFindingType;
@@ -216,7 +463,7 @@ export interface CreateAuditFindingDTO {
     clause: string;
     controlId?: string;
     evidenceIds?: string[];
-    deadline?: Date;
+    deadline?: Date | string;
 }
 export interface UpdateAuditFindingDTO {
     title?: string;
@@ -226,20 +473,20 @@ export interface UpdateAuditFindingDTO {
     clause?: string;
     evidenceIds?: string[];
     status?: AuditFindingStatus;
-    deadline?: Date;
+    deadline?: Date | string;
 }
 export interface CreateAuditActionPlanDTO {
     findingId: string;
     action: string;
     description?: string;
     responsible: string;
-    deadline: Date;
+    deadline: Date | string;
 }
 export interface UpdateAuditActionPlanDTO {
     action?: string;
     description?: string;
     responsible?: string;
-    deadline?: Date;
+    deadline?: Date | string;
     evidenceIds?: string[];
     status?: AuditActionStatus;
 }
@@ -256,6 +503,80 @@ export interface UpdateAuditReportDTO {
     recommendations?: string[];
     findings?: IAuditReportFinding[];
     status?: AuditReportStatus;
+}
+export interface CreateAuditRiskDTO {
+    companyId?: string;
+    auditPlanId?: string;
+    description: string;
+    eventOrAsset: string;
+    owner: string;
+    threat: string;
+    vulnerability: string;
+    existingControl: string;
+    probability: number;
+    impact: number;
+    riskClassification: string;
+    treatment?: RiskTreatment;
+    treatmentPlan?: string;
+    probabilityAfter?: number;
+    impactAfter?: number;
+    treatmentDeadline?: Date | string;
+    status?: RiskStatus;
+}
+export interface UpdateAuditRiskDTO {
+    description?: string;
+    eventOrAsset?: string;
+    owner?: string;
+    threat?: string;
+    vulnerability?: string;
+    existingControl?: string;
+    probability?: number;
+    impact?: number;
+    riskClassification?: string;
+    treatment?: RiskTreatment;
+    treatmentPlan?: string;
+    probabilityAfter?: number;
+    impactAfter?: number;
+    treatmentDeadline?: Date | string;
+    status?: RiskStatus;
+}
+export interface CreateAuditProgramDTO {
+    companyId: string;
+    year: number;
+    sectors?: IAuditProgramSector[];
+    supplierAudits?: IAuditProgramSupplierAudit[];
+    externalAudit?: IAuditProgramExternalAudit;
+    otherActivities?: IAuditProgramActivity[];
+    observations?: string;
+}
+export interface UpdateAuditProgramDTO {
+    year?: number;
+    sectors?: IAuditProgramSector[];
+    supplierAudits?: IAuditProgramSupplierAudit[];
+    externalAudit?: IAuditProgramExternalAudit;
+    otherActivities?: IAuditProgramActivity[];
+    observations?: string;
+}
+export interface CreateAuditSoADTO {
+    companyId: string;
+    version?: string;
+    controls?: IAuditSoAControl[];
+    observations?: string;
+}
+export interface UpdateAuditSoADTO {
+    version?: string;
+    controls?: IAuditSoAControl[];
+    observations?: string;
+}
+export interface CreateAuditDocumentReviewDTO {
+    companyId: string;
+    auditPlanId: string;
+    documents?: IAuditDocumentReviewItem[];
+    observations?: string;
+}
+export interface UpdateAuditDocumentReviewDTO {
+    documents?: IAuditDocumentReviewItem[];
+    observations?: string;
 }
 export interface AuditFilters {
     companyId?: string;
@@ -289,9 +610,121 @@ export interface AuditStats {
     pendingActions: number;
     completedActions: number;
 }
+export interface AuditFindingStats {
+    total: number;
+    ncA: number;
+    ncB: number;
+    comment: number;
+    opportunity: number;
+    positive: number;
+    open: number;
+    inProgress: number;
+    pendingValidation: number;
+    closed: number;
+    reopened: number;
+}
+export interface AuditChecklistStats {
+    total: number;
+    conforme: number;
+    nonConforme: number;
+    observacao: number;
+    oportunidade: number;
+    naoAplicavel: number;
+    pending: number;
+    inProgress: number;
+    completed: number;
+}
 export interface IAuditQuestion {
     controlId: string;
     question: string;
     category: 'organizational' | 'people' | 'physical' | 'technological';
+}
+/**
+ * Criticidade de uma pergunta de auditoria.
+ */
+export type AuditQuestionCriticality = 'low' | 'medium' | 'high' | 'critical';
+/**
+ * Interface principal da pergunta de auditoria de cláusulas.
+ * Espelha 1:1 o modelo Mongoose AuditQuestion.
+ */
+export interface IAuditQuestionFull {
+    _id: string;
+    id: string;
+    clauseId: string;
+    clauseTitle: string;
+    clauseGroup: string;
+    text: string;
+    objective: string;
+    guidance: string;
+    evidenceExpected: string;
+    conformityCriteria: string;
+    nonconformityCriteria: string;
+    criticality: AuditQuestionCriticality;
+    relatedControls: string[];
+    relatedDocuments: string[];
+    order: number;
+    active: boolean;
+    createdBy: string;
+    createdAt: Date;
+    updatedAt: Date;
+    deletedAt?: Date;
+}
+/**
+ * DTO para criar uma pergunta de auditoria.
+ */
+export interface CreateAuditQuestionFullDTO {
+    clauseId: string;
+    clauseTitle?: string;
+    clauseGroup?: string;
+    text: string;
+    objective?: string;
+    guidance?: string;
+    evidenceExpected?: string;
+    conformityCriteria?: string;
+    nonconformityCriteria?: string;
+    criticality?: AuditQuestionCriticality;
+    relatedControls?: string[];
+    relatedDocuments?: string[];
+    order?: number;
+    active?: boolean;
+}
+/**
+ * DTO para atualizar uma pergunta de auditoria.
+ */
+export interface UpdateAuditQuestionFullDTO {
+    clauseId?: string;
+    clauseTitle?: string;
+    clauseGroup?: string;
+    text?: string;
+    objective?: string;
+    guidance?: string;
+    evidenceExpected?: string;
+    conformityCriteria?: string;
+    nonconformityCriteria?: string;
+    criticality?: AuditQuestionCriticality;
+    relatedControls?: string[];
+    relatedDocuments?: string[];
+    order?: number;
+    active?: boolean;
+}
+/**
+ * Filtros para listar perguntas de auditoria.
+ */
+export interface AuditQuestionFullFilters {
+    clauseId?: string;
+    clauseGroup?: string;
+    criticality?: AuditQuestionCriticality;
+    active?: boolean;
+    search?: string;
+}
+/**
+ * Estatísticas das perguntas de auditoria.
+ */
+export interface AuditQuestionFullStats {
+    total: number;
+    active: number;
+    inactive: number;
+    byCriticality: Record<string, number>;
+    byClauseGroup: Record<string, number>;
 }
 //# sourceMappingURL=audit.types.d.ts.map

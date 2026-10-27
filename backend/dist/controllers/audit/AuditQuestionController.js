@@ -1,44 +1,34 @@
 "use strict";
+// ============================================================
+// AuditQuestionController.ts
+// ============================================================
+//
+// CONTROLLER: Gerenciamento de perguntas de auditoria
+//
+// ACESSO:
+//   Todas as rotas têm middleware `authorize(UserRole.ADMIN)`
+//   no arquivo de rotas (defesa em profundidade).
+//
+// ============================================================
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.auditQuestionController = exports.AuditQuestionController = void 0;
+// 🔧 CORREÇÃO v49.2.1 — Caminho correto do service
+// ANTES:  '../services/AuditQuestionService'                    → controllers/services/ (inexistente)
+// DEPOIS: '../../models/audit/services/AuditQuestionService'    → correto
 const AuditQuestionService_1 = require("../../models/audit/services/AuditQuestionService");
 class AuditQuestionController {
     /**
-     * Criar uma nova pergunta
      * POST /api/internal-audit/questions
+     * Cria uma nova pergunta de auditoria.
      */
     async create(req, res) {
         try {
-            const userId = req.user?._id?.toString();
-            if (!userId) {
-                res.status(401).json({ success: false, message: 'Usuário não autenticado' });
+            const user = req.user;
+            if (!user) {
+                res.status(401).json({ success: false, message: 'Não autenticado' });
                 return;
             }
-            const { text, clause, category, controlId, isActive, answerType, order, section } = req.body;
-            if (!text || !clause || !category || !section) {
-                res.status(400).json({
-                    success: false,
-                    message: 'Campos obrigatórios: text, clause, category, section',
-                });
-                return;
-            }
-            if (category === 'control' && !controlId) {
-                res.status(400).json({
-                    success: false,
-                    message: 'Para perguntas de controle, controlId é obrigatório',
-                });
-                return;
-            }
-            const question = await AuditQuestionService_1.auditQuestionService.create({
-                text,
-                clause,
-                category,
-                controlId,
-                isActive: isActive !== undefined ? isActive : true,
-                answerType: answerType || 'C_NC_OB_OM_NA',
-                order: order || 0,
-                section,
-            }, userId);
+            const question = await AuditQuestionService_1.auditQuestionService.create(req.body, user._id.toString());
             res.status(201).json({
                 success: true,
                 data: question,
@@ -46,31 +36,31 @@ class AuditQuestionController {
             });
         }
         catch (error) {
-            res.status(500).json({
+            console.error('❌ [AuditQuestionController.create]', error);
+            res.status(400).json({
                 success: false,
-                message: error.message || 'Erro ao criar pergunta',
+                message: error?.message || 'Erro ao criar pergunta',
             });
         }
     }
     /**
-     * Listar perguntas com filtros
      * GET /api/internal-audit/questions
+     * Lista todas as perguntas com filtros.
      */
     async findAll(req, res) {
         try {
-            const userId = req.user?._id?.toString();
-            if (!userId) {
-                res.status(401).json({ success: false, message: 'Usuário não autenticado' });
-                return;
-            }
-            const { search, category, isActive, clause, section } = req.query;
-            const filters = {
-                search: search,
-                category: category,
-                isActive: isActive !== undefined ? isActive === 'true' : undefined,
-                clause: clause,
-                section: section,
-            };
+            const { clauseId, clauseGroup, criticality, active, search } = req.query;
+            const filters = {};
+            if (clauseId)
+                filters.clauseId = String(clauseId);
+            if (clauseGroup)
+                filters.clauseGroup = String(clauseGroup);
+            if (criticality)
+                filters.criticality = String(criticality);
+            if (active !== undefined)
+                filters.active = active === 'true';
+            if (search)
+                filters.search = String(search);
             const questions = await AuditQuestionService_1.auditQuestionService.findAll(filters);
             res.status(200).json({
                 success: true,
@@ -79,88 +69,53 @@ class AuditQuestionController {
             });
         }
         catch (error) {
+            console.error('❌ [AuditQuestionController.findAll]', error);
             res.status(500).json({
                 success: false,
-                message: error.message || 'Erro ao listar perguntas',
+                message: error?.message || 'Erro ao listar perguntas',
             });
         }
     }
     /**
-     * Buscar pergunta por ID
      * GET /api/internal-audit/questions/:id
+     * Busca uma pergunta por ID.
      */
     async findById(req, res) {
         try {
-            const userId = req.user?._id?.toString();
-            if (!userId) {
-                res.status(401).json({ success: false, message: 'Usuário não autenticado' });
-                return;
-            }
-            const { id } = req.params;
+            // 🔧 v49.2.2 — Guard para TypeScript: garante que id é string
+            const id = String(req.params.id || '').trim();
             if (!id) {
-                res.status(400).json({
-                    success: false,
-                    message: 'ID da pergunta é obrigatório',
-                });
+                res.status(400).json({ success: false, message: 'ID é obrigatório' });
                 return;
             }
             const question = await AuditQuestionService_1.auditQuestionService.findById(id);
             if (!question) {
-                res.status(404).json({
-                    success: false,
-                    message: 'Pergunta não encontrada',
-                });
+                res.status(404).json({ success: false, message: 'Pergunta não encontrada' });
                 return;
             }
-            res.status(200).json({
-                success: true,
-                data: question,
-            });
+            res.status(200).json({ success: true, data: question });
         }
         catch (error) {
+            console.error('❌ [AuditQuestionController.findById]', error);
             res.status(500).json({
                 success: false,
-                message: error.message || 'Erro ao buscar pergunta',
+                message: error?.message || 'Erro ao buscar pergunta',
             });
         }
     }
     /**
-     * Atualizar pergunta
      * PUT /api/internal-audit/questions/:id
+     * Atualiza uma pergunta.
      */
     async update(req, res) {
         try {
-            const userId = req.user?._id?.toString();
-            if (!userId) {
-                res.status(401).json({ success: false, message: 'Usuário não autenticado' });
-                return;
-            }
-            const { id } = req.params;
+            // 🔧 v49.2.2 — Guard para TypeScript: garante que id é string
+            const id = String(req.params.id || '').trim();
             if (!id) {
-                res.status(400).json({
-                    success: false,
-                    message: 'ID da pergunta é obrigatório',
-                });
+                res.status(400).json({ success: false, message: 'ID é obrigatório' });
                 return;
             }
-            const { text, clause, category, controlId, isActive, answerType, order, section } = req.body;
-            const question = await AuditQuestionService_1.auditQuestionService.update(id, {
-                text,
-                clause,
-                category,
-                controlId,
-                isActive,
-                answerType,
-                order,
-                section,
-            }, userId);
-            if (!question) {
-                res.status(404).json({
-                    success: false,
-                    message: 'Pergunta não encontrada',
-                });
-                return;
-            }
+            const question = await AuditQuestionService_1.auditQuestionService.update(id, req.body);
             res.status(200).json({
                 success: true,
                 data: question,
@@ -168,192 +123,60 @@ class AuditQuestionController {
             });
         }
         catch (error) {
-            res.status(500).json({
+            console.error('❌ [AuditQuestionController.update]', error);
+            res.status(400).json({
                 success: false,
-                message: error.message || 'Erro ao atualizar pergunta',
+                message: error?.message || 'Erro ao atualizar pergunta',
             });
         }
     }
     /**
-     * Ativar/Desativar pergunta
-     * PATCH /api/internal-audit/questions/:id/toggle
-     */
-    async toggleStatus(req, res) {
-        try {
-            const userId = req.user?._id?.toString();
-            if (!userId) {
-                res.status(401).json({ success: false, message: 'Usuário não autenticado' });
-                return;
-            }
-            const { id } = req.params;
-            if (!id) {
-                res.status(400).json({
-                    success: false,
-                    message: 'ID da pergunta é obrigatório',
-                });
-                return;
-            }
-            const { isActive } = req.body;
-            if (isActive === undefined) {
-                res.status(400).json({
-                    success: false,
-                    message: 'O campo isActive é obrigatório',
-                });
-                return;
-            }
-            const question = await AuditQuestionService_1.auditQuestionService.toggleStatus(id, isActive, userId);
-            if (!question) {
-                res.status(404).json({
-                    success: false,
-                    message: 'Pergunta não encontrada',
-                });
-                return;
-            }
-            res.status(200).json({
-                success: true,
-                data: question,
-                message: `Pergunta ${isActive ? 'ativada' : 'desativada'} com sucesso`,
-            });
-        }
-        catch (error) {
-            res.status(500).json({
-                success: false,
-                message: error.message || 'Erro ao alterar status',
-            });
-        }
-    }
-    /**
-     * Excluir pergunta (soft delete)
      * DELETE /api/internal-audit/questions/:id
+     * Soft delete de uma pergunta.
      */
     async delete(req, res) {
         try {
-            const userId = req.user?._id?.toString();
-            if (!userId) {
-                res.status(401).json({ success: false, message: 'Usuário não autenticado' });
-                return;
-            }
-            const { id } = req.params;
+            // 🔧 v49.2.2 — Guard para TypeScript: garante que id é string
+            const id = String(req.params.id || '').trim();
             if (!id) {
-                res.status(400).json({
-                    success: false,
-                    message: 'ID da pergunta é obrigatório',
-                });
+                res.status(400).json({ success: false, message: 'ID é obrigatório' });
                 return;
             }
-            const question = await AuditQuestionService_1.auditQuestionService.delete(id, userId);
-            if (!question) {
-                res.status(404).json({
-                    success: false,
-                    message: 'Pergunta não encontrada',
-                });
-                return;
-            }
+            await AuditQuestionService_1.auditQuestionService.delete(id);
             res.status(200).json({
                 success: true,
                 message: 'Pergunta excluída com sucesso',
             });
         }
         catch (error) {
-            res.status(500).json({
+            console.error('❌ [AuditQuestionController.delete]', error);
+            res.status(400).json({
                 success: false,
-                message: error.message || 'Erro ao excluir pergunta',
+                message: error?.message || 'Erro ao excluir pergunta',
             });
         }
     }
     /**
-     * Buscar perguntas por cláusula
-     * GET /api/internal-audit/questions/clause/:clause
-     */
-    async findByClause(req, res) {
-        try {
-            const userId = req.user?._id?.toString();
-            if (!userId) {
-                res.status(401).json({ success: false, message: 'Usuário não autenticado' });
-                return;
-            }
-            const { clause } = req.params;
-            if (!clause) {
-                res.status(400).json({
-                    success: false,
-                    message: 'Cláusula é obrigatória',
-                });
-                return;
-            }
-            const { onlyActive } = req.query;
-            const questions = await AuditQuestionService_1.auditQuestionService.findByClause(clause, onlyActive !== 'false');
-            res.status(200).json({
-                success: true,
-                data: questions,
-                total: questions.length,
-            });
-        }
-        catch (error) {
-            res.status(500).json({
-                success: false,
-                message: error.message || 'Erro ao buscar perguntas por cláusula',
-            });
-        }
-    }
-    /**
-     * Buscar perguntas por seção
-     * GET /api/internal-audit/questions/section/:section
-     */
-    async findBySection(req, res) {
-        try {
-            const userId = req.user?._id?.toString();
-            if (!userId) {
-                res.status(401).json({ success: false, message: 'Usuário não autenticado' });
-                return;
-            }
-            const { section } = req.params;
-            if (!section) {
-                res.status(400).json({
-                    success: false,
-                    message: 'Seção é obrigatória',
-                });
-                return;
-            }
-            const { onlyActive } = req.query;
-            const questions = await AuditQuestionService_1.auditQuestionService.findBySection(section, onlyActive !== 'false');
-            res.status(200).json({
-                success: true,
-                data: questions,
-                total: questions.length,
-            });
-        }
-        catch (error) {
-            res.status(500).json({
-                success: false,
-                message: error.message || 'Erro ao buscar perguntas por seção',
-            });
-        }
-    }
-    /**
-     * Obter estatísticas das perguntas
      * GET /api/internal-audit/questions/stats
+     * Estatísticas das perguntas.
      */
     async getStats(req, res) {
         try {
-            const userId = req.user?._id?.toString();
-            if (!userId) {
-                res.status(401).json({ success: false, message: 'Usuário não autenticado' });
-                return;
-            }
             const stats = await AuditQuestionService_1.auditQuestionService.getStats();
-            res.status(200).json({
-                success: true,
-                data: stats,
-            });
+            res.status(200).json({ success: true, data: stats });
         }
         catch (error) {
+            console.error('❌ [AuditQuestionController.getStats]', error);
             res.status(500).json({
                 success: false,
-                message: error.message || 'Erro ao obter estatísticas',
+                message: error?.message || 'Erro ao buscar estatísticas',
             });
         }
     }
 }
 exports.AuditQuestionController = AuditQuestionController;
+// ============================================================
+// INSTÂNCIA SINGLETON
+// ============================================================
 exports.auditQuestionController = new AuditQuestionController();
 //# sourceMappingURL=AuditQuestionController.js.map

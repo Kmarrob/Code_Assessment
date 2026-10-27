@@ -5,16 +5,19 @@ export declare const repCreateUserSchema: z.ZodObject<{
     password: z.ZodOptional<z.ZodString>;
     company: z.ZodOptional<z.ZodString>;
     department: z.ZodOptional<z.ZodString>;
+    role: z.ZodOptional<z.ZodEnum<["user", "auditor_lead", "auditor", "observer"]>>;
 }, "strip", z.ZodTypeAny, {
     name: string;
     email: string;
     password?: string | undefined;
+    role?: "user" | "auditor_lead" | "auditor" | "observer" | undefined;
     company?: string | undefined;
     department?: string | undefined;
 }, {
     name: string;
     email: string;
     password?: string | undefined;
+    role?: "user" | "auditor_lead" | "auditor" | "observer" | undefined;
     company?: string | undefined;
     department?: string | undefined;
 }>;
@@ -47,11 +50,14 @@ export declare const repListUsersSchema: z.ZodObject<{
 export declare const repUpdateUserSchema: z.ZodObject<{
     name: z.ZodOptional<z.ZodString>;
     department: z.ZodOptional<z.ZodString>;
+    role: z.ZodOptional<z.ZodEnum<["user", "auditor_lead", "auditor", "observer"]>>;
 }, "strip", z.ZodTypeAny, {
     name?: string | undefined;
+    role?: "user" | "auditor_lead" | "auditor" | "observer" | undefined;
     department?: string | undefined;
 }, {
     name?: string | undefined;
+    role?: "user" | "auditor_lead" | "auditor" | "observer" | undefined;
     department?: string | undefined;
 }>;
 export declare const repInactivateUserSchema: z.ZodObject<{

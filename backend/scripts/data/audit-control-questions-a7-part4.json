@@ -1,0 +1,98 @@
+[
+  {
+    "controlId": "7.13",
+    "controlName": "Manutenção de equipamentos",
+    "controlGroup": "A.7 Físicos",
+    "controlDescription": "Os equipamentos devem ser mantidos corretamente para garantir a disponibilidade, integridade e confidencialidade das informações.",
+    "text": "Os equipamentos são mantidos de acordo com a frequência de manutenção e as especificações recomendadas pelo fornecedor?",
+    "objective": "Verificar se há manutenção periódica conforme especificação do fornecedor.",
+    "guidance": "Solicite o plano de manutenção preventiva dos equipamentos. Verifique se está alinhado às recomendações do fornecedor e se há registros de execução.",
+    "evidenceExpected": "Plano de manutenção preventiva e registros de execução conforme especificação do fornecedor.",
+    "order": 1,
+    "active": true
+  },
+  {
+    "controlId": "7.13",
+    "controlName": "Manutenção de equipamentos",
+    "controlGroup": "A.7 Físicos",
+    "controlDescription": "Os equipamentos devem ser mantidos corretamente para garantir a disponibilidade, integridade e confidencialidade das informações.",
+    "text": "A organização assegura que apenas pessoal de manutenção autorizado realize reparos e manutenção nos equipamentos?",
+    "objective": "Verificar se há controle sobre quem realiza manutenção.",
+    "guidance": "Confirme se há lista de técnicos autorizados (internos e externos). Verifique se a identificação é exigida na entrada e se há registro de quem realizou cada manutenção.",
+    "evidenceExpected": "Lista de pessoal de manutenção autorizado e registros de manutenções com identificação do executor.",
+    "order": 2,
+    "active": true
+  },
+  {
+    "controlId": "7.13",
+    "controlName": "Manutenção de equipamentos",
+    "controlGroup": "A.7 Físicos",
+    "controlDescription": "Os equipamentos devem ser mantidos corretamente para garantir a disponibilidade, integridade e confidencialidade das informações.",
+    "text": "Existe um processo para supervisionar o pessoal de manutenção durante a realização de manutenção no local?",
+    "objective": "Verificar se terceiros são supervisionados durante a manutenção.",
+    "guidance": "Confirme se há regra que exige acompanhamento de técnicos terceiros por colaborador da organização. Verifique se a regra é cumprida na prática.",
+    "evidenceExpected": "Procedimento que exija supervisão de terceiros e registros de acompanhamento.",
+    "order": 3,
+    "active": true
+  },
+  {
+    "controlId": "7.13",
+    "controlName": "Manutenção de equipamentos",
+    "controlGroup": "A.7 Físicos",
+    "controlDescription": "Os equipamentos devem ser mantidos corretamente para garantir a disponibilidade, integridade e confidencialidade das informações.",
+    "text": "Existe um processo para autorizar e controlar o acesso para manutenção remota?",
+    "objective": "Verificar se há controle sobre manutenção remota.",
+    "guidance": "Confirme se há regras para autorização de acesso remoto para manutenção (aprovação prévia, registros de sessão, canais seguros).",
+    "evidenceExpected": "Procedimento de autorização e controle de manutenção remota com registros.",
+    "order": 4,
+    "active": true
+  },
+  {
+    "controlId": "7.13",
+    "controlName": "Manutenção de equipamentos",
+    "controlGroup": "A.7 Físicos",
+    "controlDescription": "Os equipamentos devem ser mantidos corretamente para garantir a disponibilidade, integridade e confidencialidade das informações.",
+    "text": "Existe um processo para inspecionar os equipamentos antes de colocá-los novamente em operação após a manutenção, para garantir que não foram adulterados e estão funcionando adequadamente?",
+    "objective": "Verificar se há inspeção pós-manutenção dos equipamentos.",
+    "guidance": "Verifique se o procedimento exige inspeção pós-manutenção (verificação de hardware, software, configurações). Confirme se há registros.",
+    "evidenceExpected": "Procedimento de inspeção pós-manutenção com registros de execução.",
+    "order": 5,
+    "active": true
+  },
+  {
+    "controlId": "7.14",
+    "controlName": "Descarte seguro ou reutilização de equipamentos",
+    "controlGroup": "A.7 Físicos",
+    "controlDescription": "Os itens do equipamento contendo mídia de armazenamento devem ser verificados para garantir que quaisquer dados confidenciais e software licenciado tenham sido removidos ou substituídos com segurança antes do descarte ou reutilização.",
+    "text": "A organização definiu um processo formal para o descarte seguro e a reutilização de equipamentos e ativos?",
+    "objective": "Verificar se há processo formal de descarte seguro.",
+    "guidance": "Solicite o procedimento de descarte seguro. Verifique se define critérios para destruição ou sobrescrita segura de dados e se aplica a todos os tipos de mídia.",
+    "evidenceExpected": "Procedimento formal de descarte seguro e reutilização de equipamentos.",
+    "order": 1,
+    "active": true
+  },
+  {
+    "controlId": "7.14",
+    "controlName": "Descarte seguro ou reutilização de equipamentos",
+    "controlGroup": "A.7 Físicos",
+    "controlDescription": "Os itens do equipamento contendo mídia de armazenamento devem ser verificados para garantir que quaisquer dados confidenciais e software licenciado tenham sido removidos ou substituídos com segurança antes do descarte ou reutilização.",
+    "text": "A organização assegura a destruição física ou a exclusão segura dos dados nos dispositivos de armazenamento antes do descarte?",
+    "objective": "Verificar se há destruição ou sobrescrita segura de dados antes do descarte.",
+    "guidance": "Verifique se há uso de ferramentas de sobrescrita (ex.: DBAN) ou destruição física (shredder, incineração). Confirme se há certificados de destruição para equipamentos terceirizados.",
+    "evidenceExpected": "Registros de destruição ou sobrescrita segura de dados, com certificados quando aplicável.",
+    "order": 2,
+    "active": true
+  },
+  {
+    "controlId": "7.14",
+    "controlName": "Descarte seguro ou reutilização de equipamentos",
+    "controlGroup": "A.7 Físicos",
+    "controlDescription": "Os itens do equipamento contendo mídia de armazenamento devem ser verificados para garantir que quaisquer dados confidenciais e software licenciado tenham sido removidos ou substituídos com segurança antes do descarte ou reutilização.",
+    "text": "A organização assegura a remoção de etiquetas e marcações que identifiquem a organização ou indiquem a classificação, proprietário, sistema ou rede antes do descarte?",
+    "objective": "Verificar se há remoção de identificações antes do descarte.",
+    "guidance": "Confirme se o procedimento exige remoção de etiquetas patrimoniais, tags de inventário, adesivos com nome da empresa ou de sistemas antes de descartar ou doar equipamentos.",
+    "evidenceExpected": "Procedimento que exija remoção de etiquetas e marcações antes do descarte, com registros.",
+    "order": 3,
+    "active": true
+  }
+]

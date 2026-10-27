@@ -1,51 +1,35 @@
-import { Response } from 'express';
-import { AuthenticatedRequest } from '../../types';
+import { Request, Response } from 'express';
 export declare class AuditQuestionController {
     /**
-     * Criar uma nova pergunta
      * POST /api/internal-audit/questions
+     * Cria uma nova pergunta de auditoria.
      */
-    create(req: AuthenticatedRequest, res: Response): Promise<void>;
+    create(req: Request, res: Response): Promise<void>;
     /**
-     * Listar perguntas com filtros
      * GET /api/internal-audit/questions
+     * Lista todas as perguntas com filtros.
      */
-    findAll(req: AuthenticatedRequest, res: Response): Promise<void>;
+    findAll(req: Request, res: Response): Promise<void>;
     /**
-     * Buscar pergunta por ID
      * GET /api/internal-audit/questions/:id
+     * Busca uma pergunta por ID.
      */
-    findById(req: AuthenticatedRequest, res: Response): Promise<void>;
+    findById(req: Request, res: Response): Promise<void>;
     /**
-     * Atualizar pergunta
      * PUT /api/internal-audit/questions/:id
+     * Atualiza uma pergunta.
      */
-    update(req: AuthenticatedRequest, res: Response): Promise<void>;
+    update(req: Request, res: Response): Promise<void>;
     /**
-     * Ativar/Desativar pergunta
-     * PATCH /api/internal-audit/questions/:id/toggle
-     */
-    toggleStatus(req: AuthenticatedRequest, res: Response): Promise<void>;
-    /**
-     * Excluir pergunta (soft delete)
      * DELETE /api/internal-audit/questions/:id
+     * Soft delete de uma pergunta.
      */
-    delete(req: AuthenticatedRequest, res: Response): Promise<void>;
+    delete(req: Request, res: Response): Promise<void>;
     /**
-     * Buscar perguntas por cláusula
-     * GET /api/internal-audit/questions/clause/:clause
-     */
-    findByClause(req: AuthenticatedRequest, res: Response): Promise<void>;
-    /**
-     * Buscar perguntas por seção
-     * GET /api/internal-audit/questions/section/:section
-     */
-    findBySection(req: AuthenticatedRequest, res: Response): Promise<void>;
-    /**
-     * Obter estatísticas das perguntas
      * GET /api/internal-audit/questions/stats
+     * Estatísticas das perguntas.
      */
-    getStats(req: AuthenticatedRequest, res: Response): Promise<void>;
+    getStats(req: Request, res: Response): Promise<void>;
 }
 export declare const auditQuestionController: AuditQuestionController;
 //# sourceMappingURL=AuditQuestionController.d.ts.map

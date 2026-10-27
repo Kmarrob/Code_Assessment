@@ -4,12 +4,43 @@ exports.MaturityLevel = exports.ProgressStatus = exports.ResponseStatus = export
 // ============================================
 // ENUMS
 // ============================================
+// ============================================================
+// 🆕 v52.0 — USER ROLE EXPANDIDO
+// ============================================================
+//
+// MOTIVO:
+//   O sistema precisa suportar papéis específicos de auditoria
+//   interna (SGSI), permitindo que o REP cadastre usuários com
+//   responsabilidades claras:
+//     - Auditor Líder: aprova planos, executa, vê relatórios
+//     - Auditor: executa em parceria, vê relatórios
+//     - Observador: somente leitura
+//
+// REGRAS DE NEGÓCIO:
+//   - Os 4 roles existentes (admin, rep, consultant, user) são
+//     PRESERVADOS. Nada é removido ou renomeado.
+//   - Os 3 novos roles são ADITIVOS.
+//   - Login, refresh de token e validações existentes
+//     continuam funcionando sem alteração.
+//
+// COMPATIBILIDADE:
+//   - Tokens JWT antigos continuam válidos (o payload é string).
+//   - O enum do Mongoose aceita os valores antigos + novos.
+//   - Middlewares de autorização que usam `authorize(role)`
+//     continuam funcionando para os roles antigos.
+//
+// ============================================================
 var UserRole;
 (function (UserRole) {
+    // ---- Roles existentes (INALTERADOS) ----
     UserRole["ADMIN"] = "admin";
     UserRole["REP"] = "rep";
     UserRole["CONSULTANT"] = "consultant";
     UserRole["USER"] = "user";
+    // ---- 🆕 v52.0 — Roles de auditoria interna (SGSI) ----
+    UserRole["AUDITOR_LEAD"] = "auditor_lead";
+    UserRole["AUDITOR"] = "auditor";
+    UserRole["OBSERVER"] = "observer";
 })(UserRole || (exports.UserRole = UserRole = {}));
 var ResponseStatus;
 (function (ResponseStatus) {

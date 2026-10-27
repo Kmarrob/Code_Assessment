@@ -5,6 +5,7 @@ export declare class AuditEvidenceController {
     findByPlanId(req: AuthenticatedRequest, res: Response): Promise<Response>;
     findByFindingId(req: AuthenticatedRequest, res: Response): Promise<Response>;
     findById(req: AuthenticatedRequest, res: Response): Promise<Response>;
+    download(req: AuthenticatedRequest, res: Response): Promise<Response | void>;
     delete(req: AuthenticatedRequest, res: Response): Promise<Response>;
 }
 //# sourceMappingURL=AuditEvidenceController.d.ts.map

@@ -1,22 +1,24 @@
-import mongoose, { Document } from 'mongoose';
-export interface IAuditQuestion extends Document {
+import mongoose, { Model } from 'mongoose';
+export interface IAuditQuestion {
+    _id: mongoose.Types.ObjectId;
+    clauseId: string;
+    clauseTitle: string;
+    clauseGroup: string;
     text: string;
-    clause: string;
-    category: 'clause' | 'control';
-    controlId?: string;
-    isActive: boolean;
-    answerType: 'C_NC_NA' | 'C_NC_OB_OM_NA';
+    objective: string;
+    guidance: string;
+    evidenceExpected: string;
+    conformityCriteria: string;
+    nonconformityCriteria: string;
+    criticality: 'low' | 'medium' | 'high' | 'critical';
+    relatedControls: string[];
+    relatedDocuments: string[];
     order: number;
-    section: string;
+    active: boolean;
     createdBy: string;
-    updatedBy: string;
     createdAt: Date;
     updatedAt: Date;
     deletedAt?: Date;
 }
-export declare const AuditQuestion: mongoose.Model<IAuditQuestion, {}, {}, {}, mongoose.Document<unknown, {}, IAuditQuestion, {}, {}> & IAuditQuestion & Required<{
-    _id: mongoose.Types.ObjectId;
-}> & {
-    __v: number;
-}, any>;
+export declare const AuditQuestion: Model<IAuditQuestion>;
 //# sourceMappingURL=AuditQuestion.d.ts.map

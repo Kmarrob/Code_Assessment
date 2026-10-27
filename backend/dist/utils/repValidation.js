@@ -6,6 +6,38 @@ const zod_1 = require("zod");
 // ============================================
 // ESQUEMAS DE VALIDAÇÃO PARA REP (PREPOSTO)
 // ============================================
+// ============================================================
+// 🆕 v52.1 — ROLES PERMITIDOS PARA O REP CADASTRAR
+// ============================================================
+//
+// MOTIVO:
+//   Com a introdução dos roles de auditoria interna
+//   (auditor_lead, auditor, observer), o schema de validação
+//   do REP precisa aceitar esses valores.
+//
+// PROBLEMA ANTERIOR:
+//   O schema `repCreateUserSchema` NÃO tinha o campo `role`.
+//   O Zod faz strip silencioso de campos desconhecidos, então
+//   o `role` enviado pelo frontend era REMOVIDO antes de chegar
+//   ao service. Resultado: o service usava o padrão `user`.
+//
+// SOLUÇÃO:
+//   Adicionar `role` como campo opcional com enum dos 4 roles
+//   permitidos. Assim o Zod preserva o valor e o service
+//   o utiliza corretamente.
+//
+// SEGURANÇA:
+//   - O REP NÃO pode criar: rep, admin, consultant.
+//   - A whitelist está espelhada aqui E no RepService (defesa em
+//     profundidade).
+//
+// ============================================================
+const allowedRolesForRep = [
+    'user',
+    'auditor_lead',
+    'auditor',
+    'observer',
+];
 // Schema para criação de usuário pelo preposto
 exports.repCreateUserSchema = zod_1.z.object({
     name: zod_1.z.string()
@@ -26,6 +58,28 @@ exports.repCreateUserSchema = zod_1.z.object({
         .optional(), // 🔴 TORNADO OPCIONAL
     company: zod_1.z.string().max(100).optional(),
     department: zod_1.z.string().max(100).optional(),
+    // ============================================================
+    // 🆕 v52.1 — CAMPO ROLE
+    // ============================================================
+    //
+    // Opcional. Se ausente, o service usa `user` como padrão
+    // (comportamento antigo — compatibilidade total).
+    //
+    // Valores aceitos:
+    //   - 'user'          → usuário comum
+    //   - 'auditor_lead'  → auditor líder
+    //   - 'auditor'       → auditor
+    //   - 'observer'      → observador
+    //
+    // Valores rejeitados (por segurança):
+    //   - 'admin', 'rep', 'consultant' → Zod lança erro 400.
+    //
+    // ============================================================
+    role: zod_1.z.enum(allowedRolesForRep, {
+        errorMap: () => ({
+            message: 'Role inválido. O preposto pode cadastrar apenas: user, auditor_lead, auditor, observer',
+        }),
+    }).optional(),
 });
 // Schema para atribuição de controles
 exports.repAssignControlsSchema = zod_1.z.object({
@@ -39,7 +93,19 @@ exports.repListUsersSchema = zod_1.z.object({
     search: zod_1.z.string().max(100).optional(),
     status: zod_1.z.enum(['all', 'active', 'inactive']).default('all'),
 });
-// Schema para atualização de usuário pelo preposto
+// ============================================================
+// 🆕 v52.1 — SCHEMA DE ATUALIZAÇÃO DE USUÁRIO
+// ============================================================
+//
+// MOTIVO:
+//   O schema anterior NÃO tinha o campo `role`. Isso significa
+//   que o REP não podia alterar o role de um usuário existente.
+//
+// SOLUÇÃO:
+//   Adicionar `role` como campo opcional com a mesma whitelist
+//   do create.
+//
+// ============================================================
 exports.repUpdateUserSchema = zod_1.z.object({
     name: zod_1.z.string()
         .min(3, 'Nome deve ter pelo menos 3 caracteres')
@@ -49,6 +115,14 @@ exports.repUpdateUserSchema = zod_1.z.object({
     department: zod_1.z.string()
         .max(100, 'Departamento deve ter no máximo 100 caracteres')
         .optional(),
+    // ============================================================
+    // 🆕 v52.1 — CAMPO ROLE (na edição)
+    // ============================================================
+    role: zod_1.z.enum(allowedRolesForRep, {
+        errorMap: () => ({
+            message: 'Role inválido. O preposto pode atribuir apenas: user, auditor_lead, auditor, observer',
+        }),
+    }).optional(),
 });
 // Schema para inativação de usuário
 exports.repInactivateUserSchema = zod_1.z.object({

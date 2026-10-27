@@ -1,14 +1,31 @@
 import mongoose from 'mongoose';
+export interface IAuditExcludedControl {
+    controlId: string;
+    reason: string;
+    excludedBy: string;
+    excludedAt: Date;
+    approvedBy?: string;
+    approvedAt?: Date;
+}
 export interface IAuditPlanScope {
+    mode: 'all' | 'custom';
     controls: string[];
+    excludedControls: IAuditExcludedControl[];
     processes: string[];
     areas: string[];
+    totalAvailableControls: number;
 }
 export interface IAuditPlanTeam {
     leadAuditor: string;
     auditors: string[];
     observers: string[];
     specialists?: string[];
+    leadAuditorName?: string;
+    leadAuditorEmail?: string;
+    auditorNames?: string[];
+    auditorEmails?: string[];
+    observerNames?: string[];
+    observerEmails?: string[];
 }
 export interface IAuditPlanPeriod {
     startDate: Date;

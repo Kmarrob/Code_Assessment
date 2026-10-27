@@ -6,6 +6,18 @@ class AuditEvidenceService {
     // ============================================================
     // CRIAR EVIDÊNCIA
     // ============================================================
+    //
+    // 🆕 v51.1 — CAMPO `questionRef` (OPCIONAL)
+    // ------------------------------------------
+    // Permite vincular a evidência a uma pergunta específica
+    // do checklist:
+    //   - questionIndex presente → pergunta de auditoria.
+    //   - questionIndex ausente  → constatação final do controle.
+    //
+    // Se não for enviado, a evidência fica apenas vinculada ao
+    // plano (comportamento antigo, 100% compatível).
+    //
+    // ============================================================
     async create(data, uploadedBy) {
         const evidence = new AuditEvidence_1.AuditEvidence({
             ...data,

@@ -18,6 +18,31 @@ const index_js_1 = require("../types/index.js");
 const EmailJSService_js_1 = require("./EmailJSService.js");
 // 🔴 NOVO: Import do NotificationService
 const NotificationService_js_1 = require("./NotificationService.js");
+// ============================================================
+// 🆕 v52.0 — ROLES QUE O REP PODE CADASTRAR
+// ============================================================
+//
+// MOTIVO:
+//   Com a introdução dos roles de auditoria interna (auditor_lead,
+//   auditor, observer), o REP precisa poder cadastrar usuários
+//   com esses papéis.
+//
+// REGRAS:
+//   - O REP pode cadastrar: user, auditor_lead, auditor, observer.
+//   - O REP NÃO pode cadastrar: rep, admin, consultant
+//     (essas são controladas pelo admin do sistema).
+//
+// SEGURANÇA:
+//   - A validação é defensiva: role inválido é rejeitado.
+//   - Se role não for passado, usa o padrão `user` (comportamento antigo).
+//
+// ============================================================
+const ROLES_PERMITIDOS_NO_REP = [
+    index_js_1.UserRole.USER,
+    index_js_1.UserRole.AUDITOR_LEAD,
+    index_js_1.UserRole.AUDITOR,
+    index_js_1.UserRole.OBSERVER,
+];
 class RepService {
     /**
      * Listar usuários de um preposto (usuários que ele cadastrou)
@@ -29,10 +54,22 @@ class RepService {
         if (!rep) {
             throw new errorHandler_js_1.NotFoundError('Preposto não encontrado');
         }
-        // Construir filtro - USANDO companyId para isolamento
+        // ============================================================
+        // 🆕 v52.0 — FILTRO EXPANDIDO
+        // ============================================================
+        //
+        // ANTES:
+        //   Filtrava apenas `role: UserRole.USER` — o REP via somente
+        //   usuários comuns (não via auditores que ele mesmo criou).
+        //
+        // AGORA:
+        //   Filtra por todos os roles que o REP pode cadastrar.
+        //   Isso inclui: user, auditor_lead, auditor, observer.
+        //
+        // ============================================================
         const filter = {
             createdBy: repId,
-            role: index_js_1.UserRole.USER
+            role: { $in: ROLES_PERMITIDOS_NO_REP },
         };
         // Se o preposto tem companyId, garantir que os usuários também tenham
         if (rep.companyId) {
@@ -137,12 +174,48 @@ class RepService {
     }
     /**
      * Criar usuário pelo preposto (com senha automática)
+     *
+     * ============================================================
+     * 🆕 v52.0 — SUPORTE A ROLES DE AUDITORIA
+     * ============================================================
+     *
+     * MOTIVO:
+     *   O REP agora pode cadastrar usuários com 4 roles diferentes:
+     *     - user (usuário comum — responde assessment)
+     *     - auditor_lead (auditor líder — aprova e executa)
+     *     - auditor (auditor — executa em parceria)
+     *     - observer (observador — somente leitura)
+     *
+     * COMPATIBILIDADE:
+     *   - Se `role` não for passado, usa `user` (comportamento antigo).
+     *   - Se `role` for inválido (admin/rep/consultant), rejeita.
+     *
+     * SEGURANÇA:
+     *   - Lista de roles permitidos é explícita (whitelist).
+     *   - Role `admin`, `rep`, `consultant` NUNCA pode ser criado aqui.
+     *
+     * ============================================================
      */
     static async createUser(repId, userData) {
         // Verificar se o preposto existe
         const rep = await User_js_1.User.findById(repId);
         if (!rep) {
             throw new errorHandler_js_1.NotFoundError('Preposto não encontrado');
+        }
+        // ============================================================
+        // 🆕 v52.0 — VALIDAR ROLE
+        // ============================================================
+        let effectiveRole = index_js_1.UserRole.USER; // padrão
+        if (userData.role !== undefined) {
+            // Verifica se o role está na lista de permitidos
+            if (!ROLES_PERMITIDOS_NO_REP.includes(userData.role)) {
+                throw new errorHandler_js_1.ValidationError({
+                    role: [
+                        `Role inválido. O preposto pode cadastrar apenas: ${ROLES_PERMITIDOS_NO_REP.join(', ')}`
+                    ]
+                });
+            }
+            effectiveRole = userData.role;
         }
         // Verificar se email já está em uso
         const existingUser = await User_js_1.User.findOne({
@@ -219,14 +292,15 @@ class RepService {
                 password: generatedPassword
             }),
             department: userData.department || '',
-            role: index_js_1.UserRole.USER,
+            // 🆕 v52.0 — Usa o role validado
+            role: effectiveRole,
             createdBy: repId,
             companyId,
             isActive: true,
             mustChangePassword: true
         });
         await user.save();
-        logger_js_1.logger.info(`Usuário criado pelo preposto ${rep.email}: ${user.email} (Empresa: ${companyId})`);
+        logger_js_1.logger.info(`Usuário criado pelo preposto ${rep.email}: ${user.email} (Role: ${effectiveRole}, Empresa: ${companyId})`);
         // Enviar e-mail de boas-vindas com link para criar senha
         try {
             const frontendUrl = process.env.FRONTEND_URL ||
@@ -251,6 +325,21 @@ class RepService {
     }
     /**
      * Editar usuário pelo preposto
+     *
+     * ============================================================
+     * 🆕 v52.0 — SUPORTE A EDIÇÃO DE ROLE
+     * ============================================================
+     *
+     * MOTIVO:
+     *   O REP precisa poder alterar o role de um usuário depois de
+     *   criado (ex.: promover user → auditor, ou rebaixar auditor
+     *   → observer).
+     *
+     * REGRAS:
+     *   - Só aceita roles da lista permitida (whitelist).
+     *   - Não permite alterar para rep/admin/consultant.
+     *
+     * ============================================================
      */
     static async updateUser(repId, userId, data) {
         const rep = await User_js_1.User.findById(repId);
@@ -269,6 +358,18 @@ class RepService {
             user.companyId?.toString() !==
                 rep.companyId.toString()) {
             throw new errorHandler_js_1.AppError('Usuário não pertence à mesma empresa do preposto', 403);
+        }
+        // ============================================================
+        // 🆕 v52.0 — VALIDAR ROLE (se fornecido)
+        // ============================================================
+        if (data.role !== undefined) {
+            if (!ROLES_PERMITIDOS_NO_REP.includes(data.role)) {
+                throw new errorHandler_js_1.ValidationError({
+                    role: [
+                        `Role inválido. O preposto pode atribuir apenas: ${ROLES_PERMITIDOS_NO_REP.join(', ')}`
+                    ]
+                });
+            }
         }
         if (data.email &&
             data.email !== user.email) {
@@ -297,13 +398,17 @@ class RepService {
             updateData.department =
                 data.department;
         }
+        // 🆕 v52.0 — Aplicar role se fornecido
+        if (data.role !== undefined) {
+            updateData.role = data.role;
+        }
         const updatedUser = await User_js_1.User.findByIdAndUpdate(userId, {
             $set: updateData
         }, {
             new: true,
             runValidators: true
         }).select('_id name email department role isActive');
-        logger_js_1.logger.info(`Usuário ${user.email} atualizado pelo preposto ${rep.email}`);
+        logger_js_1.logger.info(`Usuário ${user.email} atualizado pelo preposto ${rep.email}${data.role ? ` (novo role: ${data.role})` : ''}`);
         return updatedUser;
     }
     /**
@@ -943,6 +1048,75 @@ class RepService {
             statusMap[item._id] =
                 item.count;
         });
+        // ============================================================
+        // 🔧 CORREÇÃO CRÍTICA — ERRO 500 NO /api/rep/stats
+        // ============================================================
+        //
+        // ANTES (com bug):
+        //   $avg: { $toDouble: '$maturityLevel' }
+        //
+        //   Problema: se algum Response tiver maturityLevel = 'N/A',
+        //   o $toDouble lança MongoServerError em runtime:
+        //   "Failed to parse number 'N/A' in $convert with no onError value"
+        //   → pipeline quebra → promise rejeita → endpoint retorna 500
+        //
+        // DEPOIS (corrigido):
+        //   Usar $convert com onError e onNull
+        //
+        //   - Se for '0', '1', '2'   → número válido → entra no $avg
+        //   - Se for 'N/A'           → onError/null → null → ignorado no $avg
+        //   - Se for null/undefined  → onNull       → null → ignorado no $avg
+        //   - Se for qualquer lixo  → onError       → null → ignorado no $avg
+        //
+        // Resultado: a agregação NUNCA mais quebra, mesmo com dados sujos.
+        //
+        // Documentação: https://www.mongodb.com/docs/manual/reference/operator/aggregation/convert/
+        const maturityAvg = await Response_js_1.Response.aggregate([
+            {
+                $lookup: {
+                    from: 'assignments',
+                    localField: 'assignmentId',
+                    foreignField: '_id',
+                    as: 'assignment'
+                }
+            },
+            {
+                $unwind: '$assignment'
+            },
+            {
+                $match: {
+                    'assignment.assignedBy': new mongoose_1.default.Types.ObjectId(repId),
+                    'assignment.userId': {
+                        $in: activeUserIds
+                    }
+                }
+            },
+            {
+                $addFields: {
+                    maturityNumeric: {
+                        $convert: {
+                            input: '$maturityLevel',
+                            to: 'double',
+                            onError: null, // ← CORREÇÃO: trata 'N/A' e outros inválidos
+                            onNull: null // ← CORREÇÃO: trata null/undefined
+                        }
+                    }
+                }
+            },
+            {
+                $match: {
+                    maturityNumeric: { $ne: null } // ← Só considera valores numéricos válidos
+                }
+            },
+            {
+                $group: {
+                    _id: null,
+                    avgMaturity: {
+                        $avg: '$maturityNumeric'
+                    }
+                }
+            }
+        ]);
         const totalResponses = await Response_js_1.Response.aggregate([
             {
                 $lookup: {
@@ -965,37 +1139,6 @@ class RepService {
             },
             {
                 $count: 'total'
-            }
-        ]);
-        const maturityAvg = await Response_js_1.Response.aggregate([
-            {
-                $lookup: {
-                    from: 'assignments',
-                    localField: 'assignmentId',
-                    foreignField: '_id',
-                    as: 'assignment'
-                }
-            },
-            {
-                $unwind: '$assignment'
-            },
-            {
-                $match: {
-                    'assignment.assignedBy': new mongoose_1.default.Types.ObjectId(repId),
-                    'assignment.userId': {
-                        $in: activeUserIds
-                    }
-                }
-            },
-            {
-                $group: {
-                    _id: null,
-                    avgMaturity: {
-                        $avg: {
-                            $toDouble: '$maturityLevel'
-                        }
-                    }
-                }
             }
         ]);
         const totalResponsesCount = totalResponses[0]?.total ||

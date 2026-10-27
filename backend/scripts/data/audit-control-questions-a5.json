@@ -1,0 +1,86 @@
+[
+  {
+    "controlId": "5.13",
+    "controlName": "Rotulagem de informações",
+    "controlGroup": "A.5 Organizacionais",
+    "controlDescription": "Convém que um conjunto apropriado de procedimentos para rotulagem de informações seja desenvolvido e implementado de acordo com o esquema de classificação de informações adotado pela organização.",
+    "text": "Existe uma política ou procedimento documentado que descreva o processo para rotular as informações dentro da organização?",
+    "objective": "Verificar se a organização definiu formalmente como rotular as informações.",
+    "guidance": "Solicite o procedimento de rotulagem. Verifique se ele está alinhado ao esquema de classificação adotado. Confirme se o procedimento cobre diferentes tipos de mídia (documentos digitais, impressos, e-mails, sistemas).",
+    "evidenceExpected": "Procedimento formal de rotulagem alinhado à política de classificação da informação.",
+    "order": 1,
+    "active": true
+  },
+  {
+    "controlId": "5.13",
+    "controlName": "Rotulagem de informações",
+    "controlGroup": "A.5 Organizacionais",
+    "controlDescription": "Convém que um conjunto apropriado de procedimentos para rotulagem de informações seja desenvolvido e implementado de acordo com o esquema de classificação de informações adotado pela organização.",
+    "text": "O processo de rotulagem define claramente o conteúdo que deve ser incluído no rótulo das informações?",
+    "objective": "Verificar se o rótulo tem campos definidos e padronizados.",
+    "guidance": "Analise o procedimento e verifique se o rótulo contém, no mínimo: nível de classificação, proprietário, data de criação e prazo de revisão (quando aplicável). Confirme se há padronização visual.",
+    "evidenceExpected": "Procedimento que defina o conteúdo padronizado do rótulo, com exemplo de aplicação.",
+    "order": 2,
+    "active": true
+  },
+  {
+    "controlId": "5.14",
+    "controlName": "Transferência de informação",
+    "controlGroup": "A.5 Organizacionais",
+    "controlDescription": "Regras, procedimentos ou acordos de transferência de informações devem estar em vigor para todos os tipos de instalações de transferência dentro da organização e entre a organização e outras partes.",
+    "text": "Existe uma política ou procedimento documentado que descreva o processo para manter a segurança das informações transferidas dentro da organização e com partes interessadas externas?",
+    "objective": "Verificar se a organização possui regras formais para transferência segura de informações.",
+    "guidance": "Solicite a política de transferência de informações. Verifique se ela abrange transferências internas e externas, meios físicos e eletrônicos, e se define responsabilidades.",
+    "evidenceExpected": "Política de Transferência de Informações vigente, cobrindo transferências internas e externas.",
+    "order": 1,
+    "active": true
+  },
+  {
+    "controlId": "5.14",
+    "controlName": "Transferência de informação",
+    "controlGroup": "A.5 Organizacionais",
+    "controlDescription": "Regras, procedimentos ou acordos de transferência de informações devem estar em vigor para todos os tipos de instalações de transferência dentro da organização e entre a organização e outras partes.",
+    "text": "Os procedimentos sobre como as informações devem ser transferidas estão disponíveis a todos os colaboradores?",
+    "objective": "Verificar se os procedimentos são acessíveis e conhecidos pelos colaboradores.",
+    "guidance": "Confirme onde os procedimentos estão publicados (intranet, manual do colaborador, treinamentos). Entreviste alguns colaboradores e pergunte como procedem para transferir informações confidenciais.",
+    "evidenceExpected": "Evidências de publicação dos procedimentos e confirmação de conhecimento pelos colaboradores.",
+    "order": 2,
+    "active": true
+  },
+  {
+    "controlId": "5.14",
+    "controlName": "Transferência de informação",
+    "controlGroup": "A.5 Organizacionais",
+    "controlDescription": "Regras, procedimentos ou acordos de transferência de informações devem estar em vigor para todos os tipos de instalações de transferência dentro da organização e entre a organização e outras partes.",
+    "text": "Existem controles técnicos apropriados para impedir formas não autorizadas de transferência de dados?",
+    "objective": "Verificar se há controles técnicos que reforçam a política de transferência.",
+    "guidance": "Verifique controles como: bloqueio de USB, DLP (Data Loss Prevention), criptografia em trânsito, restrições de e-mail externo, VPN obrigatória para acesso remoto. Confira as configurações vigentes.",
+    "evidenceExpected": "Configurações de controles técnicos (DLP, criptografia, restrições) documentadas e ativas.",
+    "order": 3,
+    "active": true
+  },
+  {
+    "controlId": "5.14",
+    "controlName": "Transferência de informação",
+    "controlGroup": "A.5 Organizacionais",
+    "controlDescription": "Regras, procedimentos ou acordos de transferência de informações devem estar em vigor para todos os tipos de instalações de transferência dentro da organização e entre a organização e outras partes.",
+    "text": "Existe uma política e um processo documentado que detalhem como as mídias físicas devem ser transportadas?",
+    "objective": "Verificar se há regras específicas para transporte de mídias físicas.",
+    "guidance": "Solicite o procedimento que trate do transporte de mídias físicas (fitas, HDs externos, documentos impressos). Confirme se há requisitos de empacotamento, rastreamento e comprovação de entrega.",
+    "evidenceExpected": "Procedimento formal para transporte de mídias físicas, com requisitos de segurança e rastreabilidade.",
+    "order": 4,
+    "active": true
+  },
+  {
+    "controlId": "5.14",
+    "controlName": "Transferência de informação",
+    "controlGroup": "A.5 Organizacionais",
+    "controlDescription": "Regras, procedimentos ou acordos de transferência de informações devem estar em vigor para todos os tipos de instalações de transferência dentro da organização e entre a organização e outras partes.",
+    "text": "As mídias em transporte estão protegidas contra acesso não autorizado, uso indevido ou corrupção?",
+    "objective": "Verificar se as mídias em trânsito estão protegidas adequadamente.",
+    "guidance": "Verifique se as mídias são criptografadas, acondicionadas em embalagens lacradas e transportadas por meios confiáveis. Confirme se há registros de rastreamento e comprovantes de recebimento.",
+    "evidenceExpected": "Evidências de criptografia de mídias, registros de rastreamento e comprovantes de entrega segura.",
+    "order": 5,
+    "active": true
+  }
+]

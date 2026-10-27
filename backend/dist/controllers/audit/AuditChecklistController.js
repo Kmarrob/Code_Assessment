@@ -2,6 +2,39 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuditChecklistController = void 0;
 const services_1 = require("../../models/audit/services");
+// ============================================================
+// 🆕 v51.3 — HELPER DE STATUS HTTP
+// ============================================================
+//
+// MOTIVO:
+//   Antes, todos os erros viravam 500, mesmo quando o problema
+//   era de permissão (403) ou recurso não encontrado (404).
+//   Isso confundia o diagnóstico e não dava feedback claro
+//   ao cliente.
+//
+// SOLUÇÃO:
+//   Mapeia a mensagem de erro para o status HTTP correto.
+//
+// ============================================================
+function inferHttpStatus(error, fallbackMessage) {
+    const msg = String(error?.message || '').toLowerCase();
+    if (msg.includes('apenas') ||
+        msg.includes('membros') ||
+        msg.includes('criador do plano') ||
+        msg.includes('auditor líder')) {
+        return 403;
+    }
+    if (msg.includes('não encontrado') ||
+        msg.includes('não encontrada')) {
+        return 404;
+    }
+    if (msg.includes('obrigatório') ||
+        msg.includes('inválido') ||
+        msg.includes('deve ser')) {
+        return 400;
+    }
+    return 500;
+}
 class AuditChecklistController {
     // ============================================================
     // BUSCAR CHECKLIST POR PLANO E CONTROLE
@@ -61,11 +94,26 @@ class AuditChecklistController {
     // ============================================================
     // ATUALIZAR CHECKLIST
     // ============================================================
+    //
+    // 🆕 v50.1 — Agora aceita payload COMPLETO:
+    //   - questions           (opcional, mantém compatibilidade)
+    //   - auditQuestions      (opcional)
+    //   - finalConclusion     (opcional)
+    //   - finalObservation    (opcional)
+    //   - finalEvidenceIds    (opcional)
+    //   - finalJustification  (opcional)
+    //
+    // REGRA:
+    //   Pelo menos UM dos campos acima deve estar presente.
+    //   Chamadas antigas (só questions) continuam funcionando.
+    //
+    // 🔧 v51.3 — Status HTTP apropriado
+    // ============================================================
     async updateChecklist(req, res) {
         try {
             const { id } = req.params;
-            const { questions } = req.body;
             const userId = req.user?._id?.toString();
+            const { questions, auditQuestions, finalConclusion, finalObservation, finalEvidenceIds, finalJustification, } = req.body;
             if (!userId) {
                 res.status(401).json({ success: false, message: 'Usuário não autenticado' });
                 return;
@@ -75,11 +123,65 @@ class AuditChecklistController {
                 res.status(400).json({ success: false, message: 'ID do checklist é obrigatório' });
                 return;
             }
-            if (!questions || !Array.isArray(questions)) {
-                res.status(400).json({ success: false, message: 'Campo questions é obrigatório e deve ser um array' });
+            // ✅ VALIDAÇÃO: pelo menos um campo deve ser enviado
+            const hasQuestions = questions !== undefined;
+            const hasAuditQuestions = auditQuestions !== undefined;
+            const hasFinalConclusion = finalConclusion !== undefined;
+            const hasFinalObservation = finalObservation !== undefined;
+            const hasFinalEvidenceIds = finalEvidenceIds !== undefined;
+            const hasFinalJustification = finalJustification !== undefined;
+            const hasAnyField = hasQuestions ||
+                hasAuditQuestions ||
+                hasFinalConclusion ||
+                hasFinalObservation ||
+                hasFinalEvidenceIds ||
+                hasFinalJustification;
+            if (!hasAnyField) {
+                res.status(400).json({
+                    success: false,
+                    message: 'Pelo menos um dos campos (questions, auditQuestions, finalConclusion, finalObservation, finalEvidenceIds, finalJustification) deve ser enviado',
+                });
                 return;
             }
-            const checklist = await services_1.auditChecklistService.updateChecklist(id, questions, userId);
+            // ✅ VALIDAÇÃO: se questions vier, precisa ser array
+            if (hasQuestions && !Array.isArray(questions)) {
+                res.status(400).json({
+                    success: false,
+                    message: 'Campo questions deve ser um array',
+                });
+                return;
+            }
+            // ✅ VALIDAÇÃO: se auditQuestions vier, precisa ser array
+            if (hasAuditQuestions && !Array.isArray(auditQuestions)) {
+                res.status(400).json({
+                    success: false,
+                    message: 'Campo auditQuestions deve ser um array',
+                });
+                return;
+            }
+            // ✅ VALIDAÇÃO: se finalEvidenceIds vier, precisa ser array
+            if (hasFinalEvidenceIds && !Array.isArray(finalEvidenceIds)) {
+                res.status(400).json({
+                    success: false,
+                    message: 'Campo finalEvidenceIds deve ser um array',
+                });
+                return;
+            }
+            // ---- Repassar para o service (payload parcial) ----
+            const payload = {};
+            if (hasQuestions)
+                payload.questions = questions;
+            if (hasAuditQuestions)
+                payload.auditQuestions = auditQuestions;
+            if (hasFinalConclusion)
+                payload.finalConclusion = finalConclusion;
+            if (hasFinalObservation)
+                payload.finalObservation = finalObservation;
+            if (hasFinalEvidenceIds)
+                payload.finalEvidenceIds = finalEvidenceIds;
+            if (hasFinalJustification)
+                payload.finalJustification = finalJustification;
+            const checklist = await services_1.auditChecklistService.updateChecklist(id, payload, userId);
             if (!checklist) {
                 res.status(404).json({ success: false, message: 'Checklist não encontrado' });
                 return;
@@ -87,11 +189,19 @@ class AuditChecklistController {
             res.status(200).json({ success: true, data: checklist, message: 'Checklist atualizado com sucesso' });
         }
         catch (error) {
-            res.status(500).json({ success: false, message: error.message || 'Erro ao atualizar checklist' });
+            // 🔧 v51.3 — Status HTTP apropriado
+            const status = inferHttpStatus(error, 'Erro ao atualizar checklist');
+            res.status(status).json({
+                success: false,
+                message: error.message || 'Erro ao atualizar checklist',
+            });
         }
     }
     // ============================================================
     // MARCAR CHECKLIST COMO CONCLUÍDO
+    // ============================================================
+    //
+    // 🔧 v51.3 — Status HTTP apropriado
     // ============================================================
     async complete(req, res) {
         try {
@@ -114,7 +224,12 @@ class AuditChecklistController {
             res.status(200).json({ success: true, data: checklist, message: 'Checklist concluído com sucesso' });
         }
         catch (error) {
-            res.status(500).json({ success: false, message: error.message || 'Erro ao concluir checklist' });
+            // 🔧 v51.3 — Status HTTP apropriado
+            const status = inferHttpStatus(error, 'Erro ao concluir checklist');
+            res.status(status).json({
+                success: false,
+                message: error.message || 'Erro ao concluir checklist',
+            });
         }
     }
     // ============================================================
