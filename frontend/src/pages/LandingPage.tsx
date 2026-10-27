@@ -19,6 +19,8 @@ import { MetaTags } from '../components/MetaTags.js';
 import { SchemaMarkup, WebApplicationSchema, OrganizationSchema } from '../components/SchemaMarkup.js';
 import { OptimizedImage } from '../components/ui/OptimizedImage.js';
 import { brandingService, PublicBrandingData } from '../services/branding.service.js';
+import { useAuth } from '../contexts/AuthContext'; // NOVO (ajuste o caminho se necessário)
+import { useNavigate } from 'react-router-dom'; // NOVO
 
 // Cores da paleta MRS
 const MRS_COLORS = {
@@ -120,15 +122,16 @@ const products = [
     linkLabel: 'Começar Agora',
   },
   {
+    {
     id: 'lgpd',
     name: 'LGPD',
     image: '/products/lgpd.png',
     description: 'Sistema de adequação à Lei Geral de Proteção de Dados. Mapeamento de dados pessoais, avaliação de riscos e plano de conformidade.',
-    status: 'coming-soon',
-    statusLabel: 'Em breve',
-    statusColor: '#f59e0b',
-    link: '#',
-    linkLabel: 'Saiba mais',
+    status: 'available', // Alterado de coming-soon para available
+    statusLabel: 'Disponível', // Alterado
+    statusColor: '#10b981', // Verde
+    link: '#', // Vamos tratar o clique via código
+    linkLabel: 'Acessar Sistema',
   },
   {
     id: 'pci-dss',
@@ -239,6 +242,12 @@ export const LandingPage: React.FC = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
 
   // ============================================
+  // NOVO: Auth e Navegação para o SSO do LGPD
+  // ============================================
+  const { user, isAuthenticated } = useAuth(); // NOVO
+  const navigate = useNavigate(); // NOVO
+
+  // ============================================
   // 🔴 NOVO: Funções de navegação do carrossel
   // ============================================
   const nextSlide = () => {
@@ -252,7 +261,6 @@ export const LandingPage: React.FC = () => {
   const goToSlide = (index: number) => {
     setCurrentSlide(index);
   };
-
   // ============================================
   // 🔴 CORRIGIDO: Carregar branding sem requisições autenticadas
   // ============================================
@@ -569,21 +577,56 @@ export const LandingPage: React.FC = () => {
                           {product.description}
                         </p>
 
-                        {/* Botão de Ação */}
-                        <Link to={product.link}>
+                                                {/* Botão de Ação */}
+                        {product.id === 'lgpd' ? (
                           <Button
-                            variant={isAvailable ? 'default' : 'outline'}
+                            onClick={async (e) => {
+                              e.preventDefault();
+                              if (!isAuthenticated) {
+                                navigate('/login');
+                                return;
+                              }
+                              try {
+                                const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/auth/sso/lgpd`, {
+                                  headers: {
+                                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                                  }
+                                });
+                                
+                                if (!response.ok) throw new Error('Falha ao gerar SSO');
+                                
+                                const data = await response.json();
+                                window.location.href = data.redirectUrl;
+                              } catch (err) {
+                                alert('Erro ao conectar com o módulo LGPD. Faça login novamente.');
+                                navigate('/login');
+                              }
+                            }}
                             className="w-full py-2.5 group-hover:shadow-md transition-all duration-300"
                             style={{
-                              backgroundColor: isAvailable ? colors.accent : 'transparent',
-                              color: isAvailable ? '#FFFFFF' : colors.primary,
-                              borderColor: isAvailable ? colors.accent : colors.accent + '40',
+                              backgroundColor: colors.accent,
+                              color: '#FFFFFF',
                             }}
                           >
                             {product.linkLabel}
                             <ArrowRight className="ml-2 h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
                           </Button>
-                        </Link>
+                        ) : (
+                          <Link to={product.link}>
+                            <Button
+                              variant={isAvailable ? 'default' : 'outline'}
+                              className="w-full py-2.5 group-hover:shadow-md transition-all duration-300"
+                              style={{
+                                backgroundColor: isAvailable ? colors.accent : 'transparent',
+                                color: isAvailable ? '#FFFFFF' : colors.primary,
+                                borderColor: isAvailable ? colors.accent : colors.accent + '40',
+                              }}
+                            >
+                              {product.linkLabel}
+                              <ArrowRight className="ml-2 h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
+                            </Button>
+                          </Link>
+                        )}
                       </div>
 
                       {/* Linha inferior colorida */}
