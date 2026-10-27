@@ -111,6 +111,7 @@ const features = [
 // ============================================
 const products = [
   {
+      {
     id: 'code-assessment',
     name: 'Code_Assessment',
     image: '/products/code-assessment.png',
@@ -122,15 +123,14 @@ const products = [
     linkLabel: 'Começar Agora',
   },
   {
-    {
     id: 'lgpd',
     name: 'LGPD',
     image: '/products/lgpd.png',
     description: 'Sistema de adequação à Lei Geral de Proteção de Dados. Mapeamento de dados pessoais, avaliação de riscos e plano de conformidade.',
-    status: 'available', // Alterado de coming-soon para available
-    statusLabel: 'Disponível', // Alterado
-    statusColor: '#10b981', // Verde
-    link: '#', // Vamos tratar o clique via código
+    status: 'available',
+    statusLabel: 'Disponível',
+    statusColor: '#10b981',
+    link: '#',
     linkLabel: 'Acessar Sistema',
   },
   {
