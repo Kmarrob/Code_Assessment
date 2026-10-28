@@ -111,7 +111,6 @@ const features = [
 // ============================================
 const products = [
   {
-      {
     id: 'code-assessment',
     name: 'Code_Assessment',
     image: '/products/code-assessment.png',
