@@ -584,7 +584,7 @@ export const LandingPage: React.FC = () => {
                               
                               // ALTERADO: Se não estiver logado, vai para o LGPD
                               if (!isAuthenticated) {
-                                window.location.href = 'https://lgpd-frontend.onrender.com/login'; 
+                                window.location.href = 'https://lgpd-frontend.onrender.com/'; 
                                 return;
                               }
                               
