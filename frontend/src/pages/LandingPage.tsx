@@ -576,15 +576,18 @@ export const LandingPage: React.FC = () => {
                           {product.description}
                         </p>
 
-                                                {/* Botão de Ação */}
+                                               {/* Botão de Ação */}
                         {product.id === 'lgpd' ? (
                           <Button
                             onClick={async (e) => {
                               e.preventDefault();
+                              
+                              // ALTERADO: Se não estiver logado, vai para o LGPD
                               if (!isAuthenticated) {
-                                navigate('/login');
+                                window.location.href = 'https://lgpd-frontend.onrender.com/login'; 
                                 return;
                               }
+                              
                               try {
                                 const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/auth/sso/lgpd`, {
                                   headers: {
@@ -598,7 +601,8 @@ export const LandingPage: React.FC = () => {
                                 window.location.href = data.redirectUrl;
                               } catch (err) {
                                 alert('Erro ao conectar com o módulo LGPD. Faça login novamente.');
-                                navigate('/login');
+                                // ALTERADO: Fallback também vai para o LGPD
+                                window.location.href = 'https://lgpd-frontend.onrender.com/login';
                               }
                             }}
                             className="w-full py-2.5 group-hover:shadow-md transition-all duration-300"
